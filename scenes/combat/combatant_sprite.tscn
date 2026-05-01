@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://7bwex4iwx8hy"]
+
+[node name="CombatantSprite" type="Node2D"]

@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://crtwbnt6o3ugw"]
+
+[node name="ClockBar" type="Node2D"]
