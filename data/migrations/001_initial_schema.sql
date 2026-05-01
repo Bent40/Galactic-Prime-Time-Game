@@ -1,5 +1,16 @@
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS schema_version (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	version INTEGER NOT NULL CHECK (version >= 0),
+	migration_name TEXT NOT NULL DEFAULT '',
+	applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO schema_version (id, version, migration_name)
+VALUES (1, 0, 'baseline');
+
 CREATE TABLE IF NOT EXISTS races (
 	id INTEGER PRIMARY KEY,
 	key TEXT NOT NULL UNIQUE,
@@ -30,6 +41,7 @@ CREATE TABLE IF NOT EXISTS skills (
 );
 
 CREATE INDEX IF NOT EXISTS idx_skills_primary_stat ON skills(primary_stat);
+CREATE INDEX IF NOT EXISTS idx_skills_secondary_stat ON skills(secondary_stat);
 CREATE INDEX IF NOT EXISTS idx_skills_is_magic ON skills(is_magic);
 
 CREATE TABLE IF NOT EXISTS skill_thresholds (
@@ -104,6 +116,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE INDEX IF NOT EXISTS idx_items_item_type ON items(item_type);
 CREATE INDEX IF NOT EXISTS idx_items_tier ON items(tier);
+CREATE INDEX IF NOT EXISTS idx_items_damage_type ON items(damage_type);
 
 CREATE TABLE IF NOT EXISTS modifiers (
 	id INTEGER PRIMARY KEY,
@@ -224,3 +237,10 @@ CREATE TABLE IF NOT EXISTS npc (
 
 CREATE INDEX IF NOT EXISTS idx_npc_floor ON npc(floor);
 CREATE INDEX IF NOT EXISTS idx_npc_role ON npc(role);
+
+UPDATE schema_version
+SET version = 1,
+	migration_name = '001_initial_schema',
+	applied_at = CURRENT_TIMESTAMP,
+	updated_at = CURRENT_TIMESTAMP
+WHERE id = 1 AND version < 1;
