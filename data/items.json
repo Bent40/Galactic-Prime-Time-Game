@@ -1,1 +1,141 @@
-null
+[
+  {
+    "id": 1,
+    "key": "light_small_weapon",
+    "name": "Light Small Weapon",
+    "description": "Placeholder for daggers, shortswords, knives, and tools.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "physique": 1,
+      "hands": 1
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Bleed",
+    "damage_amount": 2,
+    "base_moment_cost": 1,
+    "range_pattern": "range_1_single_target",
+    "modifier_slots": 1,
+    "effects": []
+  },
+  {
+    "id": 2,
+    "key": "light_large_weapon",
+    "name": "Light Large Weapon",
+    "description": "Placeholder for rapiers, whips, spears, and light polearms.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "physique": 3,
+      "hands": 2,
+      "adjacent_empty_radius": 1
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Bleed",
+    "damage_amount": 2,
+    "base_moment_cost": 1,
+    "range_pattern": "range_2_line",
+    "modifier_slots": 1,
+    "effects": []
+  },
+  {
+    "id": 3,
+    "key": "heavy_small_weapon",
+    "name": "Heavy Small Weapon",
+    "description": "Placeholder for maces, hammers, axes, and clubs.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "physique": 2,
+      "hands": 1
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Crush",
+    "damage_amount": 2,
+    "base_moment_cost": 1,
+    "range_pattern": "range_1_single_target",
+    "modifier_slots": 1,
+    "effects": []
+  },
+  {
+    "id": 4,
+    "key": "heavy_large_weapon",
+    "name": "Heavy Large Weapon",
+    "description": "Placeholder for greatswords, mauls, halberds, and large polearms.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "physique": 5,
+      "hands": 2,
+      "adjacent_empty_radius": 1
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Crush",
+    "damage_amount": 3,
+    "base_moment_cost": 2,
+    "range_pattern": "range_2_line_or_arc",
+    "modifier_slots": 2,
+    "effects": []
+  },
+  {
+    "id": 5,
+    "key": "light_ranged_weapon",
+    "name": "Light Ranged Weapon",
+    "description": "Placeholder for pistols, hand crossbows, slings, and bows.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "reflexes": 2,
+      "hands": 1,
+      "steady_ground": true,
+      "ammunition": true
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Bleed",
+    "damage_amount": 1,
+    "base_moment_cost": 1,
+    "range_pattern": "range_5_plus_single_target",
+    "modifier_slots": 1,
+    "effects": []
+  },
+  {
+    "id": 6,
+    "key": "heavy_ranged_weapon",
+    "name": "Heavy Ranged Weapon",
+    "description": "Placeholder for rifles, shotguns, cannons, large bows, and heavy crossbows.",
+    "item_type": "weapon",
+    "tier": "common",
+    "stat_requirements": {
+      "reflexes": 4,
+      "hands": 2,
+      "steady_ground": true,
+      "ammunition": true,
+      "reloading": true
+    },
+    "body_parts": [
+      "left_arm",
+      "right_arm"
+    ],
+    "damage_type": "Crush",
+    "damage_amount": 4,
+    "base_moment_cost": 2,
+    "range_pattern": "range_5_plus_variable",
+    "modifier_slots": 2,
+    "effects": []
+  }
+]

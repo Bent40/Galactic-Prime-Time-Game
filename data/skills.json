@@ -1,1 +1,130 @@
-null
+[
+  {
+    "id": 1,
+    "key": "brutal_swing",
+    "name": "Brutal Swing",
+    "description": "Placeholder physique attack skill.",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {
+      "physique": 2
+    },
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 2,
+    "key": "hold_the_line",
+    "name": "Hold the Line",
+    "description": "Placeholder defensive endurance skill.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {
+      "physique": 3
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 3,
+    "key": "snap_shot",
+    "name": "Snap Shot",
+    "description": "Placeholder reflexes ranged skill.",
+    "primary_stat": "reflexes",
+    "secondary_stat": "mind",
+    "stat_requirements": {
+      "reflexes": 2
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 4,
+    "key": "quick_step",
+    "name": "Quick Step",
+    "description": "Placeholder repositioning skill.",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {
+      "reflexes": 2
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 5,
+    "key": "pattern_read",
+    "name": "Pattern Read",
+    "description": "Placeholder tactical analysis skill.",
+    "primary_stat": "mind",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {
+      "mind": 2
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 6,
+    "key": "mental_static",
+    "name": "Mental Static",
+    "description": "Placeholder psychic interference skill.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {
+      "mind": 3
+    },
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 7,
+    "key": "camera_call",
+    "name": "Camera Call",
+    "description": "Placeholder audience-facing charm skill.",
+    "primary_stat": "charm",
+    "secondary_stat": "mind",
+    "stat_requirements": {
+      "charm": 2
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 8,
+    "key": "say_the_line",
+    "name": "Say the Line",
+    "description": "Placeholder performance skill.",
+    "primary_stat": "charm",
+    "secondary_stat": null,
+    "stat_requirements": {
+      "charm": 3
+    },
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "unlock_requirements": {},
+    "effects": []
+  }
+]

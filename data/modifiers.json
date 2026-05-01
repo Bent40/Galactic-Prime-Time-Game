@@ -1,1 +1,38 @@
-null
+[
+  {
+    "id": 1,
+    "key": "barbed",
+    "name": "Barbed",
+    "description": "Placeholder modifier for extra bleeding pressure.",
+    "modifier_type": "weapon",
+    "tier": "common",
+    "effects": []
+  },
+  {
+    "id": 2,
+    "key": "weighted",
+    "name": "Weighted",
+    "description": "Placeholder modifier for heavier impact.",
+    "modifier_type": "weapon",
+    "tier": "common",
+    "effects": []
+  },
+  {
+    "id": 3,
+    "key": "insulated",
+    "name": "Insulated",
+    "description": "Placeholder modifier for environmental protection.",
+    "modifier_type": "armor",
+    "tier": "common",
+    "effects": []
+  },
+  {
+    "id": 4,
+    "key": "camera_ready",
+    "name": "Camera Ready",
+    "description": "Placeholder modifier for audience-facing gear.",
+    "modifier_type": "utility",
+    "tier": "common",
+    "effects": []
+  }
+]

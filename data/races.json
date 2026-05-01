@@ -1,1 +1,47 @@
-null
+[
+  {
+    "id": 1,
+    "key": "human",
+    "name": "Human",
+    "description": "Baseline abducted contestant template.",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "unlocked": 1
+  },
+  {
+    "id": 2,
+    "key": "animal",
+    "name": "Animal",
+    "description": "Placeholder non-human contestant body plan.",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "unlocked": 0
+  },
+  {
+    "id": 3,
+    "key": "robot",
+    "name": "Robot",
+    "description": "Placeholder synthetic contestant body plan.",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "unlocked": 0
+  }
+]

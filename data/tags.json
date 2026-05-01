@@ -1,1 +1,113 @@
-null
+[
+  {
+    "id": 1,
+    "key": "documentary",
+    "name": "Documentary",
+    "description": "Everyday life turned cinema.",
+    "category": "identity",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Performance": 1
+    }
+  },
+  {
+    "id": 2,
+    "key": "playa",
+    "name": "Playa",
+    "description": "Flirting with danger for the camera.",
+    "category": "performance",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Risk": 1
+    }
+  },
+  {
+    "id": 3,
+    "key": "absolute_cinema",
+    "name": "Absolute Cinema",
+    "description": "A moment dramatic enough to silence the table.",
+    "category": "performance",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Spectacle": 2
+    }
+  },
+  {
+    "id": 4,
+    "key": "edgy",
+    "name": "Edgy",
+    "description": "Dark choices with a steady face.",
+    "category": "identity",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Subversion": 1
+    }
+  },
+  {
+    "id": 5,
+    "key": "anime",
+    "name": "Anime",
+    "description": "Big reactions, bigger backstory energy.",
+    "category": "performance",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Spectacle": 1
+    }
+  },
+  {
+    "id": 6,
+    "key": "leeroy_jenkins",
+    "name": "LEEROY JENKINS",
+    "description": "Charge first, let everyone else react.",
+    "category": "risk",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Risk": 2
+    }
+  },
+  {
+    "id": 7,
+    "key": "scrub",
+    "name": "Scrub",
+    "description": "A memorable mistake under pressure.",
+    "category": "identity",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Performance": 1
+    }
+  },
+  {
+    "id": 8,
+    "key": "vengeful",
+    "name": "Vengeful",
+    "description": "Repay harm with deliberate action.",
+    "category": "identity",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Subversion": 1,
+      "Risk": 1
+    }
+  },
+  {
+    "id": 9,
+    "key": "fan_favorite",
+    "name": "Fan Favorite",
+    "description": "The crowd roots for you specifically.",
+    "category": "audience",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Performance": 2
+    }
+  },
+  {
+    "id": 10,
+    "key": "corporate_asset",
+    "name": "Corporate Asset",
+    "description": "Complete the directive exactly as issued.",
+    "category": "corporate",
+    "unlock_conditions": {},
+    "goal_modifier_weights": {
+      "Spectacle": 1
+    }
+  }
+]

@@ -1,1 +1,110 @@
-null
+[
+  {
+    "id": 1,
+    "key": "placeholder_mob",
+    "name": "Placeholder Mob",
+    "description": "Baseline disposable enemy seed.",
+    "category": "Mob",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "stat_block": {
+      "physique": 1,
+      "reflexes": 1,
+      "mind": 1,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 0,
+      "Psychic": 0
+    },
+    "reward_table": []
+  },
+  {
+    "id": 2,
+    "key": "placeholder_elite",
+    "name": "Placeholder Elite",
+    "description": "Baseline elite enemy seed.",
+    "category": "Elite",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "stat_block": {
+      "physique": 3,
+      "reflexes": 2,
+      "mind": 1,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 1,
+      "Affliction": 0,
+      "Psychic": 0
+    },
+    "reward_table": []
+  },
+  {
+    "id": 3,
+    "key": "placeholder_boss",
+    "name": "Placeholder Boss",
+    "description": "Baseline boss enemy seed.",
+    "category": "Boss",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "stat_block": {
+      "physique": 5,
+      "reflexes": 3,
+      "mind": 2,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 2,
+      "Affliction": 1,
+      "Psychic": 0
+    },
+    "reward_table": []
+  },
+  {
+    "id": 4,
+    "key": "placeholder_super_boss",
+    "name": "Placeholder Super Boss",
+    "description": "Baseline super boss enemy seed.",
+    "category": "Super Boss",
+    "body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "stat_block": {
+      "physique": 8,
+      "reflexes": 5,
+      "mind": 4,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 3,
+      "Affliction": 2,
+      "Psychic": 1
+    },
+    "reward_table": []
+  }
+]

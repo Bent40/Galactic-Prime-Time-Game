@@ -1,1 +1,151 @@
-null
+[
+  {
+    "id": "bleeding",
+    "name": "Bleeding",
+    "description": "Placeholder physical condition; advances toward lethal blood loss.",
+    "resistance_type": "Physical",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "advances_on_clock_reset": true,
+      "max_tier": 4
+    }
+  },
+  {
+    "id": "crushed",
+    "name": "Crushed",
+    "description": "Placeholder physical condition; disables limbs and threatens lethal parts.",
+    "resistance_type": "Physical",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "advances_on_clock_reset": true,
+      "max_tier": 2
+    }
+  },
+  {
+    "id": "suffocation",
+    "name": "Suffocation",
+    "description": "Placeholder torso death-timer condition.",
+    "resistance_type": "None",
+    "target_body_parts": [
+      "torso"
+    ],
+    "spread_rules": {
+      "clock_timer": 2,
+      "timer_resets_on_reapply": false
+    }
+  },
+  {
+    "id": "chilled",
+    "name": "Chilled",
+    "description": "Placeholder affliction condition; slows and can disable affected parts.",
+    "resistance_type": "Affliction",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "advances_on_clock_reset": true,
+      "max_tier": 3
+    }
+  },
+  {
+    "id": "exhausted",
+    "name": "Exhausted",
+    "description": "Placeholder whole-body condition; increases moment costs.",
+    "resistance_type": "None",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "whole_body": true
+    }
+  },
+  {
+    "id": "infected",
+    "name": "Infected",
+    "description": "Placeholder whole-body affliction; prevents healing and worsens other conditions.",
+    "resistance_type": "Affliction",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "whole_body": true,
+      "accelerates_other_conditions": true
+    }
+  },
+  {
+    "id": "burn",
+    "name": "Burn",
+    "description": "Placeholder physical condition; cauterizes at low tiers and destroys at high tiers.",
+    "resistance_type": "Physical",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "advances_on_clock_reset": true,
+      "max_tier": 3
+    }
+  },
+  {
+    "id": "poison",
+    "name": "Poison",
+    "description": "Placeholder delayed affliction condition.",
+    "resistance_type": "Affliction",
+    "target_body_parts": [
+      "head",
+      "torso",
+      "left_arm",
+      "right_arm",
+      "left_leg",
+      "right_leg"
+    ],
+    "spread_rules": {
+      "activation_delay": true,
+      "poison_soup": true
+    }
+  },
+  {
+    "id": "dissolution",
+    "name": "Dissolution",
+    "description": "Placeholder psychic condition; threatens mind collapse.",
+    "resistance_type": "Psychic",
+    "target_body_parts": [],
+    "spread_rules": {
+      "clock_timer": 2,
+      "timer_pauses_when_source_removed": true
+    }
+  }
+]
