@@ -1,10 +1,740 @@
 [
-  { "id": 1, "skill_id": 1, "level": 5, "threshold_name": "Rending Arc", "description": "Upgrade: Brutal Swing hits all targets in a 2-space arc.", "stat_requirements": { "physique": 6 }, "effects": ["area:arc2"] },
-  { "id": 2, "skill_id": 2, "level": 5, "threshold_name": "Bulwark", "description": "Upgrade: while holding the line, adjacent allies gain +1 physical resistance.", "stat_requirements": { "physique": 6 }, "effects": ["aura:phys_resist:1"] },
-  { "id": 3, "skill_id": 3, "level": 5, "threshold_name": "Double Tap", "description": "Upgrade: Snap Shot fires a second round at the same target (same Moment).", "stat_requirements": { "reflexes": 6 }, "effects": ["extra_round:1"] },
-  { "id": 4, "skill_id": 4, "level": 5, "threshold_name": "Phantom Step", "description": "Mutation: Quick Step also breaks one grapple or pin when used.", "stat_requirements": { "reflexes": 6 }, "effects": ["breaks_grapple"] },
-  { "id": 5, "skill_id": 5, "level": 5, "threshold_name": "Read the Room", "description": "Upgrade: Pattern Read reveals the scheduled Moments of ALL enemies until Clock reset.", "stat_requirements": { "mind": 6 }, "effects": ["reveal:all_enemy_schedules"] },
-  { "id": 6, "skill_id": 6, "level": 5, "threshold_name": "White Noise", "description": "Upgrade: Mental Static also delays the target's next scheduled action by 1 Moment.", "stat_requirements": { "mind": 6 }, "effects": ["delay_target_action:1"] },
-  { "id": 7, "skill_id": 7, "level": 5, "threshold_name": "Director's Favorite", "description": "Upgrade: Camera Call's doubling extends through the target's next TWO actions.", "stat_requirements": { "charm": 6 }, "effects": ["camera_call_duration:2"] },
-  { "id": 8, "skill_id": 8, "level": 5, "threshold_name": "Catchphrase", "description": "Mutation: Say the Line becomes your signature - crowd reaction triggers even out of combat.", "stat_requirements": { "charm": 6 }, "effects": ["works_out_of_combat"] }
+  {
+    "id": 1,
+    "skill_id": 1,
+    "level": 5,
+    "threshold_name": "Attack all adjacent positions",
+    "description": "Attack all adjacent positions",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 2,
+    "skill_id": 1,
+    "level": 6,
+    "threshold_name": "Attack all adjacent positions",
+    "description": "Attack all adjacent positions. On kill, affect mobs adjacent to target that arent in range.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 3,
+    "skill_id": 2,
+    "level": 5,
+    "threshold_name": "+4 Duration",
+    "description": "+4 Duration",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 4,
+    "skill_id": 2,
+    "level": 6,
+    "threshold_name": "+4 Duration. Ignore Physical terrain effects",
+    "description": "+4 Duration. Ignore Physical terrain effects",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 5,
+    "skill_id": 3,
+    "level": 5,
+    "threshold_name": "+3 Clock. Resolve Infection",
+    "description": "+3 Clock. Resolve Infection",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 6,
+    "skill_id": 3,
+    "level": 6,
+    "threshold_name": "Resolve Infection, Bleed or Crush",
+    "description": "Resolve Infection, Bleed or Crush",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 7,
+    "skill_id": 5,
+    "level": 5,
+    "threshold_name": "Reduce remaining cost by 5",
+    "description": "Reduce remaining cost by 5.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 8,
+    "skill_id": 5,
+    "level": 6,
+    "threshold_name": "Reduce remaining cost by 5",
+    "description": "Reduce remaining cost by 5. Even if the action doesn't collapse, for the next 3 moments, it doesn't affect you.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 9,
+    "skill_id": 6,
+    "level": 5,
+    "threshold_name": "+4 Action",
+    "description": "+4 Action",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 10,
+    "skill_id": 6,
+    "level": 6,
+    "threshold_name": "+4 Actions. You can pick another enemy",
+    "description": "+4 Actions. You can pick another enemy.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 11,
+    "skill_id": 7,
+    "level": 5,
+    "threshold_name": "4 Movement space per moment",
+    "description": "4 Movement space per moment",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 12,
+    "skill_id": 7,
+    "level": 6,
+    "threshold_name": "Threshold 6",
+    "description": "5 Movement space per moment or suffocate target within 1 clock.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 13,
+    "skill_id": 8,
+    "level": 5,
+    "threshold_name": "Reduce Damage By 5",
+    "description": "Reduce Damage By 5",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 14,
+    "skill_id": 8,
+    "level": 6,
+    "threshold_name": "Reduce Damage By 5",
+    "description": "Reduce Damage By 5. Works against Bleeding and Chill damage as well.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 15,
+    "skill_id": 9,
+    "level": 5,
+    "threshold_name": "+2 Space, -4 Moment cooldown",
+    "description": "+2 Space, -4 Moment cooldown",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 16,
+    "skill_id": 9,
+    "level": 6,
+    "threshold_name": "+2 Space",
+    "description": "+2 Space, -4 Moment Cooldown, Can be used twice per cooldown Rotation",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 17,
+    "skill_id": 10,
+    "level": 5,
+    "threshold_name": "+2 Space, +10 Range",
+    "description": "+2 Space, +10 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 18,
+    "skill_id": 10,
+    "level": 6,
+    "threshold_name": "+2 Space",
+    "description": "+2 Space, +10 Range. You can choose poison type (Hemo, Neuro, Pneumo)",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 19,
+    "skill_id": 11,
+    "level": 5,
+    "threshold_name": "+4 Space",
+    "description": "+4 Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 20,
+    "skill_id": 11,
+    "level": 6,
+    "threshold_name": "+4 Space",
+    "description": "+4 Space. Can choose poison type (Hemo, Neuro, Pneumo",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 21,
+    "skill_id": 12,
+    "level": 5,
+    "threshold_name": "+2 Damage, +2 Area",
+    "description": "+2 Damage, +2 Area",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 22,
+    "skill_id": 12,
+    "level": 6,
+    "threshold_name": "+2 Damage",
+    "description": "+2 Damage, +2 Area, Enemies hit are pinned in place for 5 Moments.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 23,
+    "skill_id": 13,
+    "level": 5,
+    "threshold_name": "+8 Wall HP",
+    "description": "+8 Wall HP",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 24,
+    "skill_id": 13,
+    "level": 6,
+    "threshold_name": "+8 Wall HP. Wall can be healed with chill damage",
+    "description": "+8 Wall HP. Wall can be healed with chill damage.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 25,
+    "skill_id": 14,
+    "level": 5,
+    "threshold_name": "+4 Burn Damage",
+    "description": "+4 Burn Damage",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 26,
+    "skill_id": 14,
+    "level": 6,
+    "threshold_name": "+4 Burn Damage",
+    "description": "+4 Burn Damage. Ball splits into cluster balls, dealing half damage on area.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 27,
+    "skill_id": 15,
+    "level": 5,
+    "threshold_name": "+4 Space",
+    "description": "+4 Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 28,
+    "skill_id": 15,
+    "level": 6,
+    "threshold_name": "+4 space",
+    "description": "+4 space. Enemies passing through take tier 2 Shock.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 29,
+    "skill_id": 16,
+    "level": 5,
+    "threshold_name": "+2 Space, +10 Range",
+    "description": "+2 Space, +10 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 30,
+    "skill_id": 16,
+    "level": 6,
+    "threshold_name": "+2 Space",
+    "description": "+2 Space, +10 Range. You can redeploy the field at 1 moment cost once.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 31,
+    "skill_id": 17,
+    "level": 5,
+    "threshold_name": "+12 Range",
+    "description": "+12 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 32,
+    "skill_id": 17,
+    "level": 6,
+    "threshold_name": "+12 Range",
+    "description": "+12 Range, You're no longer exposed when using telekinesis",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 33,
+    "skill_id": 19,
+    "level": 5,
+    "threshold_name": "+20 Range",
+    "description": "+20 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 34,
+    "skill_id": 19,
+    "level": 6,
+    "threshold_name": "+20 Range. Can choose multiple targets in range",
+    "description": "+20 Range. Can choose multiple targets in range.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 35,
+    "skill_id": 20,
+    "level": 5,
+    "threshold_name": "+2 Damage, +2 Space",
+    "description": "+2 Damage, +2 Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 36,
+    "skill_id": 20,
+    "level": 6,
+    "threshold_name": "+2 Damage",
+    "description": "+2 Damage, +2 Space. Can chain pounce with itself up to 4 times for 1 moment cost instead.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 37,
+    "skill_id": 21,
+    "level": 5,
+    "threshold_name": "+4 Damage",
+    "description": "+4 Damage",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 38,
+    "skill_id": 21,
+    "level": 6,
+    "threshold_name": "+4 Damage",
+    "description": "+4 Damage, Reposition anywhere around the target within 2 spaces.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 39,
+    "skill_id": 22,
+    "level": 5,
+    "threshold_name": "+4 Bleed",
+    "description": "+4 Bleed",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 40,
+    "skill_id": 22,
+    "level": 6,
+    "threshold_name": "+4 Bleed",
+    "description": "+4 Bleed.  May chain to another slip through if a target is adjacent.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 41,
+    "skill_id": 23,
+    "level": 5,
+    "threshold_name": "+4 Crush",
+    "description": "+4 Crush",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 42,
+    "skill_id": 23,
+    "level": 6,
+    "threshold_name": "+4 Crush. Ignores 3 Resistance",
+    "description": "+4 Crush. Ignores 3 Resistance.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 43,
+    "skill_id": 24,
+    "level": 5,
+    "threshold_name": "+2 Crush +2 Space",
+    "description": "+2 Crush +2 Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 44,
+    "skill_id": 24,
+    "level": 6,
+    "threshold_name": "+2 Crush +2 Space",
+    "description": "+2 Crush +2 Space. It is a circle instead of a cone",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 45,
+    "skill_id": 25,
+    "level": 5,
+    "threshold_name": "+8 Damage",
+    "description": "+8 Damage",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 46,
+    "skill_id": 25,
+    "level": 6,
+    "threshold_name": "+8 Damage",
+    "description": "+8 Damage. Shockwave from Execution activates Shockwave automatically",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 47,
+    "skill_id": 26,
+    "level": 5,
+    "threshold_name": "+2 Space, +2 Die. You choose result",
+    "description": "+2 Space, +2 Die. You choose result.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 48,
+    "skill_id": 26,
+    "level": 6,
+    "threshold_name": "+2 Space",
+    "description": "+2 Space, +2 Die. You choose result.  When chained, Pressure Strike can be used twice in the same moment.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 49,
+    "skill_id": 27,
+    "level": 5,
+    "threshold_name": "+2 Bleed, +2 Space",
+    "description": "+2 Bleed, +2 Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 50,
+    "skill_id": 27,
+    "level": 6,
+    "threshold_name": "+2 Bleed",
+    "description": "+2 Bleed, +2 Space. The hit ignores resistance completely.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 51,
+    "skill_id": 29,
+    "level": 5,
+    "threshold_name": "+4 Range",
+    "description": "+4 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 52,
+    "skill_id": 29,
+    "level": 6,
+    "threshold_name": "+4 Range",
+    "description": "+4 Range. Reveals if the target is lying or suppressing an emotion.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 53,
+    "skill_id": 30,
+    "level": 5,
+    "threshold_name": "+1 Movement",
+    "description": "+1 Movement",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 54,
+    "skill_id": 30,
+    "level": 6,
+    "threshold_name": "Threshold 6",
+    "description": "Lung capacity extends Suffocation timer by 2 Clocks total and swimming no longer counts as difficult terrain.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 55,
+    "skill_id": 31,
+    "level": 5,
+    "threshold_name": "+2 range",
+    "description": "+2 range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 56,
+    "skill_id": 32,
+    "level": 5,
+    "threshold_name": "+12 range",
+    "description": "+12 range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 57,
+    "skill_id": 32,
+    "level": 6,
+    "threshold_name": "Threshold 6",
+    "description": "Catching a thrown item that was used as an attack negates its damage.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 58,
+    "skill_id": 32,
+    "level": 7,
+    "threshold_name": "Can pick 2 targets",
+    "description": "Can pick 2 targets",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 59,
+    "skill_id": 33,
+    "level": 5,
+    "threshold_name": "+1 Charm",
+    "description": "+1 Charm",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 60,
+    "skill_id": 33,
+    "level": 6,
+    "threshold_name": "While Dancing",
+    "description": "While Dancing, allies within 2 spaces also benefit from the +1 Charm aura.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 61,
+    "skill_id": 34,
+    "level": 5,
+    "threshold_name": "+1 Strength",
+    "description": "+1 Strength",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 62,
+    "skill_id": 34,
+    "level": 6,
+    "threshold_name": "Threshold 6",
+    "description": "Mimicry fools machinery and voice recognition software.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 63,
+    "skill_id": 35,
+    "level": 5,
+    "threshold_name": "+ 3 Image, +1 Video",
+    "description": "+ 3 Image, +1 Video",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 64,
+    "skill_id": 35,
+    "level": 6,
+    "threshold_name": "Threshold 6",
+    "description": "Projected media can substitute for a Charm-based social action once per Clock.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 65,
+    "skill_id": 36,
+    "level": 5,
+    "threshold_name": "+4 Command Complication",
+    "description": "+4 Command Complication.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 66,
+    "skill_id": 36,
+    "level": 6,
+    "threshold_name": "+4 command Complication",
+    "description": "+4 command Complication. Can change directions as long as the command is active.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 67,
+    "skill_id": 37,
+    "level": 5,
+    "threshold_name": "+4 Die",
+    "description": "+4 Die",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 68,
+    "skill_id": 37,
+    "level": 6,
+    "threshold_name": "Negate a Forced Action - Body once per Clock",
+    "description": "Negate a Forced Action - Body once per Clock",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 69,
+    "skill_id": 38,
+    "level": 5,
+    "threshold_name": "Crude: +1 Use",
+    "description": "Crude: +1 Use, +1 Clock Timer. Basic: +1 Use, +1 Clock Timer. Allows the creation of Quality items.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 70,
+    "skill_id": 38,
+    "level": 6,
+    "threshold_name": "You can create up to Quality items",
+    "description": "You can create up to Quality items. Items created are permanent.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 71,
+    "skill_id": 39,
+    "level": 5,
+    "threshold_name": "+4 Crush",
+    "description": "+4 Crush",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 72,
+    "skill_id": 39,
+    "level": 6,
+    "threshold_name": "Damage can now be added onto Martial Arts Skills",
+    "description": "Damage can now be added onto Martial Arts Skills",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 73,
+    "skill_id": 40,
+    "level": 5,
+    "threshold_name": "+20 Range",
+    "description": "+20 Range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 74,
+    "skill_id": 40,
+    "level": 6,
+    "threshold_name": "Minimap reveals layout 5 km around",
+    "description": "Minimap reveals layout 5 km around, You can now squeeze into spaces as small as a rat's hole.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 75,
+    "skill_id": 41,
+    "level": 5,
+    "threshold_name": "Threshold 5",
+    "description": "-1 Moment cost to Simple Locks and Moderate Locks, Can Unlock Complex Locks (Multi Mechanism Puzzle Locks)",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 76,
+    "skill_id": 41,
+    "level": 6,
+    "threshold_name": "-1 Moment cost to Simple Locks",
+    "description": "-1 Moment cost to Simple Locks, Moderate Locks and Complex Locks. Can unlock Magical Locks.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 77,
+    "skill_id": 42,
+    "level": 5,
+    "threshold_name": "Threshold 5",
+    "description": "+1 Movement when performing an acrobatic maneuver. Safe falling distance +1",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 78,
+    "skill_id": 42,
+    "level": 6,
+    "threshold_name": "+1 Jump per turn",
+    "description": "+1 Jump per turn. You can now change directions mid jump.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 79,
+    "skill_id": 43,
+    "level": 5,
+    "threshold_name": "+2 Bleed on Torso",
+    "description": "+2 Bleed on Torso, +1 bleed on Limbs, Deal 2 Bleed on Head hit.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 80,
+    "skill_id": 43,
+    "level": 6,
+    "threshold_name": "+2 Bleed on Torso",
+    "description": "+2 Bleed on Torso, +1 bleed on Limbs, Deal 2 Bleed on Head hit. Apply Bleed tier 2 Instead.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 81,
+    "skill_id": 44,
+    "level": 5,
+    "threshold_name": "-4 Reveal Space",
+    "description": "-4 Reveal Space",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 82,
+    "skill_id": 44,
+    "level": 6,
+    "threshold_name": "- 4 Reveal Space",
+    "description": "- 4 Reveal Space,  Can move one space without break effect.",
+    "stat_requirements": {},
+    "effects": []
+  }
 ]

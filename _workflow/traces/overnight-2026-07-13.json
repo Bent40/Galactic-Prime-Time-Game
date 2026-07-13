@@ -19,6 +19,23 @@
       "content": "Workflow wiring done: memory pack filled (check OK), learnings seeded (9 entries), traces enabled, bmad.config.yaml (6 context tags OK), CLAUDE.md with activation block, boot.json receipt (profile game, size small, partial adoption - no pack install)",
       "stage": "implement",
       "ts": "2026-07-13T21:57:38Z"
+    },
+    {
+      "artifacts": [
+        "docs/rules-addendum.md"
+      ],
+      "content": "Rules addendum drafted: 10 ruling groups (R0-R10), 20 KAN-2 acceptance criteria. PROVISIONAL taste calls flagged for morning: miss/dodge model, cap numbers, Burn-Shock cost, RPM numbers, grapple gates, requirements-halving, token-exchange cut",
+      "stage": "decision",
+      "ts": "2026-07-13T22:01:11Z"
+    },
+    {
+      "artifacts": [
+        "data/",
+        "scripts/validate_seeds.py"
+      ],
+      "content": "Seed data completed and validated (validate_seeds.py green, 31 rows). Real campaign enemies ported incl. 6-phase Incinedile. Learning: no Godot 4 binary obtainable in this container (proxy 403s GitHub releases + godotengine hosts; apt has only godot3) - GDScript tests must run on owner machine/CI; gdparse (gdtoolkit) is the honest in-container syntax gate",
+      "stage": "implement",
+      "ts": "2026-07-13T22:07:59Z"
     }
   ],
   "task": "Overnight groundwork: workflow wiring, rules addendum, seed data, KAN-2 engine",

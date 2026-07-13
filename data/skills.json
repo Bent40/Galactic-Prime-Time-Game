@@ -1,130 +1,1459 @@
 [
   {
     "id": 1,
-    "key": "brutal_swing",
-    "name": "Brutal Swing",
-    "description": "Placeholder physique attack skill.",
+    "key": "controlled_sweep",
+    "name": "Controlled Sweep",
+    "description": "Another one bites the dust",
     "primary_stat": "physique",
-    "secondary_stat": "reflexes",
-    "stat_requirements": {
-      "physique": 2
-    },
-    "base_moment_cost": 2,
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
-    "effects": []
+    "is_passive": 0,
+    "requirements": "Melee weapon equipped. At least 2 Mobs adjacent.",
+    "range": "Adjacent",
+    "target": "Area (all adjacent Mobs)",
+    "effect": "Attack 3 more Mobs as if you performed a single target attack on each of them.",
+    "unlock_requirements": {
+      "achievement": "Attack 2 or more Mobs with a single target attack in the same Moment."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "Attack 4 More Mobs"
+      },
+      {
+        "level": 3,
+        "text": "Attack 5 More Mobs"
+      },
+      {
+        "level": 4,
+        "text": "Attack 6 More Mobs"
+      }
+    ]
   },
   {
     "id": 2,
-    "key": "hold_the_line",
-    "name": "Hold the Line",
-    "description": "Placeholder defensive endurance skill.",
-    "primary_stat": "physique",
+    "key": "quick_step",
+    "name": "Quick Step",
+    "description": "A jump and a swing and a twirl",
+    "primary_stat": "reflexes",
     "secondary_stat": null,
-    "stat_requirements": {
-      "physique": 3
-    },
-    "base_moment_cost": 1,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
-    "effects": []
+    "is_passive": 0,
+    "requirements": "Must have movement remaining.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Ignore difficult terrain movement penalty for this moment.",
+    "unlock_requirements": {
+      "achievement": "Perform full movement while under the effect of difficult terrain."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Duration"
+      },
+      {
+        "level": 3,
+        "text": "+2 Duration"
+      },
+      {
+        "level": 4,
+        "text": "+3 Duration"
+      }
+    ]
   },
   {
     "id": 3,
-    "key": "snap_shot",
-    "name": "Snap Shot",
-    "description": "Placeholder reflexes ranged skill.",
-    "primary_stat": "reflexes",
-    "secondary_stat": "mind",
-    "stat_requirements": {
-      "reflexes": 2
-    },
+    "key": "seal_the_wound",
+    "name": "Seal The Wound",
+    "description": "Healing on the fly",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
     "base_moment_cost": 1,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
-    "effects": []
+    "is_passive": 0,
+    "requirements": "Bleeding OR Infection is active on self or adjacent target.",
+    "range": "Self / Adjacent",
+    "target": "Single",
+    "effect": "Delay Bleeding OR Infection for 1 Clock. Cannot resolve the condition fully.",
+    "unlock_requirements": {
+      "achievement": "Stop a bleeding wound using abnormal or improvised methods."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Clock"
+      },
+      {
+        "level": 3,
+        "text": "+2 Clock"
+      },
+      {
+        "level": 4,
+        "text": "+3 Clock"
+      }
+    ]
   },
   {
     "id": 4,
-    "key": "quick_step",
-    "name": "Quick Step",
-    "description": "Placeholder repositioning skill.",
-    "primary_stat": "reflexes",
+    "key": "strong_strike",
+    "name": "Strong Strike",
+    "description": "Slow. Heavy. Deliberate. The crowd holds its breath.",
+    "primary_stat": "physique",
     "secondary_stat": null,
-    "stat_requirements": {
-      "reflexes": 2
-    },
-    "base_moment_cost": 1,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
+    "is_passive": 0,
+    "requirements": "Melee weapon equipped.",
+    "range": "Weapon, Melee",
+    "target": "Single",
+    "effect": "Wind up a strike of overwhelming force. On hit: +1 damage of weapon type. While performing: Exposed.",
+    "unlock_requirements": {
+      "achievement": "Explicitly declare a wind-up before attacking."
+    },
     "effects": []
   },
   {
     "id": 5,
-    "key": "pattern_read",
-    "name": "Pattern Read",
-    "description": "Placeholder tactical analysis skill.",
-    "primary_stat": "mind",
-    "secondary_stat": "reflexes",
-    "stat_requirements": {
-      "mind": 2
-    },
+    "key": "counter_surge",
+    "name": "Counter-Surge",
+    "description": "They shouldn't have gone flashy in front of you.",
+    "primary_stat": "physique",
+    "secondary_stat": "mind",
+    "stat_requirements": {},
     "base_moment_cost": 1,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
-    "effects": []
+    "is_passive": 0,
+    "requirements": "Adjacent enemy must be currently executing a 2+ Moment cost action.",
+    "range": "Adjacent",
+    "target": "Single",
+    "effect": "Strike immediately, reducing their action's remaining cost by 1. If the action collapses, they roll Forced Action — Body.",
+    "unlock_requirements": {
+      "achievement": "Stop an enemy's action before it resolves."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "Reduce remaining cost by 2."
+      },
+      {
+        "level": 3,
+        "text": "Reduce remaining cost by 3."
+      },
+      {
+        "level": 4,
+        "text": "Reduce remaining cost by 4."
+      }
+    ]
   },
   {
     "id": 6,
-    "key": "mental_static",
-    "name": "Mental Static",
-    "description": "Placeholder psychic interference skill.",
+    "key": "read_the_pattern",
+    "name": "Read The Pattern",
+    "description": "Everyone telegraphs. You just learned to read.",
     "primary_stat": "mind",
     "secondary_stat": null,
-    "stat_requirements": {
-      "mind": 3
-    },
-    "base_moment_cost": 2,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
     "default_cap": 5,
-    "is_magic": 1,
-    "unlock_requirements": {},
-    "effects": []
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Target must be within 3 spaces and visible.",
+    "range": "3",
+    "target": "Single",
+    "effect": "Choose one enemy. Until the next Clock reset, learn their next scheduled action.",
+    "unlock_requirements": {
+      "achievement": "Predict an enemy attack and counter it accordingly."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Action"
+      },
+      {
+        "level": 3,
+        "text": "+2 Action"
+      },
+      {
+        "level": 4,
+        "text": "+3 Action"
+      }
+    ]
   },
   {
     "id": 7,
-    "key": "camera_call",
-    "name": "Camera Call",
-    "description": "Placeholder audience-facing charm skill.",
-    "primary_stat": "charm",
-    "secondary_stat": "mind",
-    "stat_requirements": {
-      "charm": 2
-    },
-    "base_moment_cost": 1,
+    "key": "pressure_hold",
+    "name": "Pressure Hold",
+    "description": "Hold me close, Jack",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {},
+    "base_moment_cost": 2,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
-    "effects": []
+    "is_passive": 0,
+    "requirements": "Adjacent target. Both hands free or weapon allows grappling.",
+    "range": "Adjacent",
+    "target": "Single",
+    "effect": "Grapple target. While held: they cannot reposition, you are Exposed, and so are they.",
+    "unlock_requirements": {
+      "achievement": "Maintain contact with a target for more than 3 consecutive Moments."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "1 Movement space per moment"
+      },
+      {
+        "level": 3,
+        "text": "2 Movement space per moment"
+      },
+      {
+        "level": 4,
+        "text": "3 Movement space per moment"
+      }
+    ]
   },
   {
     "id": 8,
-    "key": "say_the_line",
-    "name": "Say the Line",
-    "description": "Placeholder performance skill.",
-    "primary_stat": "charm",
+    "key": "brace",
+    "name": "Brace",
+    "description": "Like a brick wall. A brick wall that feels pain and cries a lot.",
+    "primary_stat": "physique",
     "secondary_stat": null,
-    "stat_requirements": {
-      "charm": 3
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Must be able to react — not Helpless, not mid-action.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Reduce the next Crush or Burn damage received by 1.",
+    "unlock_requirements": {
+      "achievement": "Receive 0 damage from an attack that was supposed to deal damage."
     },
+    "effects": [
+      {
+        "level": 2,
+        "text": "Reduce Damage By 2"
+      },
+      {
+        "level": 3,
+        "text": "Reduce Damage By 3"
+      },
+      {
+        "level": 4,
+        "text": "Reduce Damage By 4"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "key": "tactical_roll",
+    "name": "Tactical Roll",
+    "description": "Bullet time",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Must not be Prone, Helpless, or have both legs disabled. Cooldown: 1 Clock.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "When an attack is performed on you, immediately move 1 space from your current position.",
+    "unlock_requirements": {
+      "achievement": "Dodge an attack that was aimed at you."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Space"
+      },
+      {
+        "level": 3,
+        "text": "+1 Space, -2 Moment cooldown"
+      },
+      {
+        "level": 4,
+        "text": "+2 Space, -2 Moment cooldown"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "key": "poison_ball",
+    "name": "Poison Ball",
+    "description": "They will wish they were dead",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3.",
+    "range": "20",
+    "target": "Area (3-space radius on impact)",
+    "effect": "Hurl a condensed orb of toxic matter. On impact, all targets in a 3-space radius are exposed to Tier 1 Poison (Hemotoxin). Requires an entry condition on each target to activate.",
+    "unlock_requirements": {
+      "achievement": "Be poisoned and survive to the next Clock, OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 space"
+      },
+      {
+        "level": 3,
+        "text": "+1 Space, +5 Range"
+      },
+      {
+        "level": 4,
+        "text": "+2 Space, +5 Range"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "key": "poison_wall",
+    "name": "Poison Wall",
+    "description": "A line in the sand. A very toxic line.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3. Poison Ball Lv 3.",
+    "range": "5",
+    "target": "Area (line, up to 5 spaces)",
+    "effect": "Erect a wall of toxic vapor 5 spaces long and 2 spaces tall. Any creature that passes through or starts their Moment inside takes Tier 1 Poison (Pneumotoxin). Persists for 1 Clock.",
+    "unlock_requirements": {
+      "achievement": "Hit 3 or more targets with a single Poison Ball, OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Space"
+      },
+      {
+        "level": 3,
+        "text": "+2 Space"
+      },
+      {
+        "level": 4,
+        "text": "+3 Space"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "key": "frost_ball",
+    "name": "Frost Ball",
+    "description": "Brrr, Chilly",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 2.",
+    "range": "20",
+    "target": "Area (2-space radius on impact)",
+    "effect": "Launch a sphere of condensed cold. Applies Chilled Tier 1 to all targets in a 2-space radius. Deals 2 Chill Damage",
+    "unlock_requirements": {
+      "achievement": "Survive being Chilled without treatment for a full Clock, OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Damage"
+      },
+      {
+        "level": 3,
+        "text": "+1 Damage, +1 Area"
+      },
+      {
+        "level": 4,
+        "text": "+2 Damage, +1 Area"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "key": "frost_wall",
+    "name": "Frost Wall",
+    "description": "We need to build a wall",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3. ",
+    "range": "5",
+    "target": "Area (line, up to 5 spaces)",
+    "effect": "Raise a barrier of solid ice up to 6 spaces long and 2 spaces tall. Blocks movement and projectiles. Any creature that strikes or collides with the wall takes Chilled Tier 1 to the striking limb. Wall has 3 HP. Lasts until destroyed or 2 Clocks pass. Burn damage destroys deals twice as much.",
+    "unlock_requirements": {
+      "achievement": "Block a direct attack using the environment or an object, OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+2 Wall HP"
+      },
+      {
+        "level": 3,
+        "text": "+4 Wall HP"
+      },
+      {
+        "level": 4,
+        "text": "+6 Wall HP"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "key": "fire_ball",
+    "name": "Fire Ball",
+    "description": "Fireball!",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 2.",
+    "range": "20",
+    "target": "Area (3-space radius on impact)",
+    "effect": "Hurl a blazing projectile that detonates on impact. All targets in a 3-space radius take 1 Burn damage and Burn Tier 1 to the body part facing the blast. Flammable objects in range ignite. ",
+    "unlock_requirements": {
+      "achievement": "Set a target on fire from a distance (e.g. via Molotov), OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Burn Damage"
+      },
+      {
+        "level": 3,
+        "text": "+2 Burn Damage"
+      },
+      {
+        "level": 4,
+        "text": "+3 Burn Damage"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "key": "fire_wall",
+    "name": "Fire Wall",
+    "description": "A grand wall of fire.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3.",
+    "range": "5",
+    "target": "Area (line, up to 5 spaces)",
+    "effect": "Conjure a roaring curtain of fire up to 5 spaces long and 3 spaces tall. Any creature passing through takes Burn Tier 1 to all exposed body parts. A creature starting their Moment inside takes Burn Tier 2 instead. Cannot be destroyed — only outlasted. Persists for 1 Clock. ",
+    "unlock_requirements": {
+      "achievement": "Hit 2 or more targets with a single Fire Ball, OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Space"
+      },
+      {
+        "level": 3,
+        "text": "+2 Space"
+      },
+      {
+        "level": 4,
+        "text": "+3 Space"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "key": "elemental_confluence",
+    "name": "Elemental Confluence",
+    "description": "Eye of the storm",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 4. Poison Ball Lv 5, Frost Ball Lv 5, Fire Ball Lv 5 — all three are consumed on unlock.",
+    "range": "20",
+    "target": "Area (5-space radius)",
+    "effect": "Conjure a zone of shifting elemental chaos lasting 2 Clocks. At the start of each Clock choose one effect for all creatures inside (not you): Toxic Surge — advance all active Poison conditions by 1 tier. Deep Freeze — apply Chilled Tier 2 to a body part of your choice on each creature. Immolation — apply Burn Tier 1 to each creature's torso; already-Burning creatures advance to Tier 2. You are Exposed while casting.",
+    "unlock_requirements": {
+      "achievement": "Consume Poison Ball Lv 5, Frost Ball Lv 5, and Fire Ball Lv 5 at the Skill Gemstone. No other method."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Space"
+      },
+      {
+        "level": 3,
+        "text": "+1 Space, +5Range"
+      },
+      {
+        "level": 4,
+        "text": "+2 Space, +5 Range"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "key": "telekinesis",
+    "name": "Telekinesis",
+    "description": "You reached out. Nothing moved to stop you.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3. Target must be visible.",
+    "range": "10",
+    "target": "Single (object or creature)",
+    "effect": "Mentally grip one target. Sustained each additional Moment: move the target up to 2 spaces per Moment in any direction including vertical. Held creatures cannot take movement actions but may still use arms. You are Exposed while sustaining. You cannot move while sustaining. Throwing a held creature into another deals 2 Crush to both and ends the grip. Level 6+: You may move 1 space per Moment while sustaining.",
+    "unlock_requirements": {
+      "achievement": "Move an object using only your mind — first occurrence is typically involuntary. OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+3 Range"
+      },
+      {
+        "level": 3,
+        "text": "+6 Range"
+      },
+      {
+        "level": 4,
+        "text": "+9 Range"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "key": "telepathy",
+    "name": "Telepathy",
+    "description": "They thought it was their idea. That's usually enough.",
+    "primary_stat": "mind",
+    "secondary_stat": "charm",
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 3, Charm 2. Target must have a Mind score. Does not work on mindless creatures.",
+    "range": "Far",
+    "target": "Single",
+    "effect": "Establish a silent mental link. While linked: communicate wordlessly regardless of language. Read surface thoughts — reveals current emotional state and immediate focus. Targets with Mind 4+ notice the intrusion. Walls do not block it. Level 6+: Implant a single thought or image per Clock. Target believes it originated from themselves unless they have Mind 4.",
+    "unlock_requirements": {
+      "achievement": "Correctly predict what an NPC is about to say before they say it, in a meaningful moment. OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": []
+  },
+  {
+    "id": 19,
+    "key": "mind_burst",
+    "name": "Mind Burst",
+    "description": "Too much, All at once.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 1,
+    "is_passive": 0,
+    "requirements": "Mind 4. Telepathy Lv 3.",
+    "range": "5",
+    "target": "Single (Head only)",
+    "effect": "Flood a target's mind with overwhelming psychic noise. Target immediately takes Shock Tier 2 — their current action fails. If already Shocked, escalate by 1 tier instead. May target the Head regardless of Exposure status.",
+    "unlock_requirements": {
+      "achievement": "Cause an enemy to fail their action through psychological pressure or distraction alone. OR obtain via Loot Box or Wizard's Tower."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+5 Range"
+      },
+      {
+        "level": 3,
+        "text": "+10 Range"
+      },
+      {
+        "level": 4,
+        "text": "+15 Range"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "key": "pounce",
+    "name": "Pounce",
+    "description": "Yoink",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 3, Reflexes 2. Light Small Weapon (Claws or Knife type).",
+    "range": "3",
+    "target": "Single (Torso)",
+    "effect": "Leap up to 3 spaces and slash downward onto the target's torso for 2 Bleed. The leap costs 0 movement actions — absorbed into the skill. If interrupted mid-air, roll Forced Action — Body. CHAIN: Opens into Slip Through at -1 Moment cost when used immediately before it on the same target.",
+    "unlock_requirements": {
+      "achievement": "Close more than 2 spaces of distance in a single attack action."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Damage"
+      },
+      {
+        "level": 3,
+        "text": "+1 Damage, +1 Space"
+      },
+      {
+        "level": 4,
+        "text": "+1 Damage, +2 Space"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "key": "slip_through",
+    "name": "Slip Through",
+    "description": "Limboooooo",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Reflexes 3. Pounce Lv 3. Must follow Pounce immediately on the same target. Target must be larger than you (Elite or Boss scale minimum).",
+    "range": "Self",
+    "target": "Self + target's legs",
+    "effect": "Dash between the legs of the creature you just struck. Deal 1 Bleed to each of their legs. Reposition behind the target. Target becomes Exposed until their next Moment. Movement costs 0 — absorbed into the chain. CHAIN: 1 Moment cost when chained from Pounce. Opens into Decapitate at -1 Moment cost.",
+    "unlock_requirements": {
+      "achievement": "Reposition behind a target during combat in a single fluid movement."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Damage"
+      },
+      {
+        "level": 3,
+        "text": "+2 Damage"
+      },
+      {
+        "level": 4,
+        "text": "+3 Damage"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "key": "decapitate",
+    "name": "Decapitate",
+    "description": "Wrap it up.",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 4, Reflexes 3. Pounce Lv 5, Slip Through Lv 3. Must follow Slip Through immediately on the same target. Must be positioned behind target. Target must be Exposed.",
+    "range": "Adjacent (behind target)",
+    "target": "Head",
+    "effect": "Drive a vicious slash from behind — shoulder to chin. Targets the Head regardless of normal Exposure requirements; Slip Through created the opening. Deals 3 Bleed to the Head. If the Head reaches 0 HP, it is a Cinematic Kill — gain 1 Viewer spike automatically. CHAIN: -2 Moment cost when chained from Slip Through.",
+    "unlock_requirements": {
+      "achievement": "Kill an enemy with a strike to the head from behind with claws."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Bleed"
+      },
+      {
+        "level": 3,
+        "text": "+2 Bleed"
+      },
+      {
+        "level": 4,
+        "text": "+3 Bleed"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "key": "overhead_slam",
+    "name": "Overhead Slam",
+    "description": "Bonk",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 4. Heavy Large Weapon equipped.",
+    "range": "Adjacent",
+    "target": "Single (Torso or Arm)",
+    "effect": "Bring your weapon down with full body weight. Deals 3 Crush to target body part. If the target is standing, they are knocked Prone (Exposed). You are Exposed during the wind-up. CHAIN: Opens into Shockwave at -1 Moment cost when used immediately before it.",
+    "unlock_requirements": {
+      "achievement": "Deal enough Crush in a single hit to disable a body part."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Crush"
+      },
+      {
+        "level": 3,
+        "text": "+2 Crush"
+      },
+      {
+        "level": 4,
+        "text": "+3 Crush"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "key": "shockwave",
+    "name": "Shockwave",
+    "description": "The first hit drops one. The second hits everyone near them.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 4. Overhead Slam Lv 3. Must follow Overhead Slam immediately.",
+    "range": "Adjacent",
+    "target": "Area (3-space cone forward)",
+    "effect": "Drive your weapon into the ground, sending a concussive shockwave in a 3-space cone. All targets in the cone take 1 Crush to their legs and are knocked back 1 space. Mobs caught must roll Forced Action — Body. The Overhead Slam target is excluded. CHAIN: 1 Moment cost when chained from Overhead Slam. Opens into Execution at -1 Moment cost.",
+    "unlock_requirements": {
+      "achievement": "Cause 2 or more enemies to be repositioned by a single action."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Crush"
+      },
+      {
+        "level": 3,
+        "text": "+1 Crush +2 Space"
+      },
+      {
+        "level": 4,
+        "text": "+2 Crush +2 Space"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "key": "execution",
+    "name": "Execution",
+    "description": "The grand finale",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 5. Overhead Slam Lv 5, Shockwave Lv 3. Must follow Shockwave immediately. Must be adjacent to a Prone or Helpless target.",
+    "range": "Adjacent",
+    "target": "Single (Prone or Helpless) — Head or Torso",
+    "effect": "Bring your full force down on the downed target. Deal 4 Crush to Head or Torso (your choice). May target the Head without Exposure — Prone fulfills the condition. On Torso: apply Shock Tier 3 (Faint). On Head: if damage reduces Head to 0 HP, instant death. CHAIN: 2 Moment cost when chained from Shockwave.",
+    "unlock_requirements": {
+      "achievement": "Kill a downed enemy with a single decisive strike."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+2 Damage"
+      },
+      {
+        "level": 3,
+        "text": "+4 Damage"
+      },
+      {
+        "level": 4,
+        "text": "+6 Damage"
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "key": "feint",
+    "name": "Feint",
+    "description": "Watch them stumble",
+    "primary_stat": "reflexes",
+    "secondary_stat": "charm",
+    "stat_requirements": {},
     "base_moment_cost": 1,
     "default_cap": 5,
     "is_magic": 0,
-    "unlock_requirements": {},
+    "is_passive": 0,
+    "requirements": "Reflexes 3, Charm 2.",
+    "range": "Adjacent",
+    "target": "Single",
+    "effect": "Commit to an attack visibly, then pull back at the last moment. The target's next action becomes a Forced Action — Tool. Reposition up to 1 space as part of this action at no movement cost. Deals no damage. CHAIN: Opens into Pressure Strike at -1 Moment cost when used immediately before it on the same target.",
+    "unlock_requirements": {
+      "achievement": "Cause an enemy to react to something you didn't actually do."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Space"
+      },
+      {
+        "level": 3,
+        "text": "+1 Space, +1 Die. You choose result"
+      },
+      {
+        "level": 4,
+        "text": "+2 Space, +1 Die. You choose result."
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "key": "pressure_strike",
+    "name": "Pressure Strike",
+    "description": "An opportunity.",
+    "primary_stat": "reflexes",
+    "secondary_stat": "physique",
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Reflexes 3, Physique 2. Feint Lv 3. Must follow Feint immediately on the same target.",
+    "range": "Adjacent",
+    "target": "Single (any valid limb)",
+    "effect": "Strike the target's exposed limb for 2 Bleed. Move up to 2 spaces at no movement cost — absorbed into the chain. If the target is still suffering Forced Action consequences from Feint, add Shock Tier 1 to this hit. CHAIN: 1 Moment cost when chained from Feint. Opens into Thousand Cuts at -1 Moment cost.",
+    "unlock_requirements": {
+      "achievement": "Hit a target on the same body part twice in a single Clock."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Bleed"
+      },
+      {
+        "level": 3,
+        "text": "+2 Bleed"
+      },
+      {
+        "level": 4,
+        "text": "+2 Bleed, +1 Space"
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "key": "thousand_cuts",
+    "name": "Thousand Cuts",
+    "description": "Not one killing blow. Many reasons to die later.",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Reflexes 4. Feint Lv 5, Pressure Strike Lv 3. Must follow Pressure Strike immediately on the same target.",
+    "range": "Near",
+    "target": "Single",
+    "effect": "Rapid flurry of light strikes. Choose 3 body parts — deal 1 Bleed to each. Move up to 2 spaces after the final strike at no movement cost. If all 3 hits land on body parts that already had active Bleed conditions, advance each Bleed by 1 tier. CHAIN: 2 Moment cost when chained from Pressure Strike.",
+    "unlock_requirements": {
+      "achievement": "Apply Bleed to 3 different body parts on the same enemy in a single Clock."
+    },
     "effects": []
+  },
+  {
+    "id": 29,
+    "key": "aura_reading",
+    "name": "Aura Reading",
+    "description": "Call that a gut feeling.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "Target must be visible or adjacent.",
+    "range": "3",
+    "target": "Single",
+    "effect": "Sense the target's current dominant emotional state — fear, aggression, calm, desperation, etc. Does not reveal intent or planned actions, only feeling.",
+    "unlock_requirements": {
+      "achievement": "Correctly identify an NPC's emotional state before it is revealed through dialogue or action."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Range"
+      },
+      {
+        "level": 3,
+        "text": "+2 Range"
+      },
+      {
+        "level": 4,
+        "text": "+3 Range"
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "key": "swim",
+    "name": "Swim",
+    "description": "Almost a fish. Almost.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "Must be in water. Passive — applies automatically when swimming.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "+1 space of movement when swimming. Lung capacity extends the Suffocation timer by 1 Clock before it begins.",
+    "unlock_requirements": {
+      "achievement": "Swim a significant distance in a single scene without stopping."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Movement"
+      },
+      {
+        "level": 3,
+        "text": "+1 Movement"
+      },
+      {
+        "level": 4,
+        "text": "+1 Movement"
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "key": "vibe_control",
+    "name": "Vibe Control",
+    "description": "Confidence is key.",
+    "primary_stat": "charm",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Charm 3. Target must be able to perceive you.",
+    "range": "3 Spaces",
+    "target": "Single or Adjacent",
+    "effect": "Project one of two emotional states at a target. FEAR: Target moves 1 space away from you involuntarily. Any enemy — adjacent or not — becomes less likely to prioritize targeting you this Clock. CHARM: Target becomes fixated on you, moving toward you if able and becoming Exposed from behind. Effect ends immediately when the target is hit. Choose which state to project when activating.",
+    "unlock_requirements": {
+      "achievement": "Cause an enemy or NPC to change their behavior based on your presence alone, without speaking."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 resist penetration"
+      },
+      {
+        "level": 3,
+        "text": "+2 range"
+      },
+      {
+        "level": 4,
+        "text": "+1 resist penetration"
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "key": "juggling",
+    "name": "Juggling",
+    "description": "Lets play catch.",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Item must be within 5 spaces. Must be able to physically handle the item's weight.",
+    "range": "2 ",
+    "target": "Single (item or ally)",
+    "effect": "Pass or catch any item within range in 0 Moments — absorbed into an existing action. Can be used to disarm (pass an enemy's item to yourself or an ally).",
+    "unlock_requirements": {
+      "achievement": "Successfully pass an item to an ally mid-combat without using a dedicated action."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+3 range"
+      },
+      {
+        "level": 3,
+        "text": "+6 range"
+      },
+      {
+        "level": 4,
+        "text": "+9 range"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "key": "dance",
+    "name": "Dance",
+    "description": "Every step is a sentence. The crowd is reading.",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Must explicitly declare Dancing at the start of a Moment. Cannot be declared while Prone, Helpless, or Grappled.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "While Dancing, all movement actions generate +1 Charm effect — crowd reactions, social rolls, and Charm-gated skills treat your Charm as 1 higher. Dancing ends if you are hit, knocked Prone, or declare an attack.",
+    "unlock_requirements": {
+      "achievement": "Generate a crowd reaction through movement alone, with no other action taken."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Charm"
+      },
+      {
+        "level": 3,
+        "text": "+1 Charm"
+      },
+      {
+        "level": 4,
+        "text": "+1 Charm"
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "key": "voicebox",
+    "name": "Voicebox",
+    "description": "Sing for me, Polly.",
+    "primary_stat": "charm",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "Must have previously heard the sound or voice being mimicked.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Mimic any sound or humanoid voice previously heard. At base level, mimicry is convincing at a distance or in low-information contexts. Targets with Mind 3 may recognize the mimicry on interaction.",
+    "unlock_requirements": {
+      "achievement": "Successfully deceive an NPC using sound alone."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Strength"
+      },
+      {
+        "level": 3,
+        "text": "+1 Strength"
+      },
+      {
+        "level": 4,
+        "text": "+1 Strength"
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "key": "generate_visual_media",
+    "name": "Generate Visual Media",
+    "description": "The screen never lies. Probably.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Face Screen must be operational.",
+    "range": "Self (projected Near)",
+    "target": "Area (all who can see the screen)",
+    "effect": "Project one video or up to 3 images onto the Face Screen. Usable once per session at base level. Images can be used to distract, intimidate, charm, or generate a Viewer spike at GM discretion. Every level adds another image, every 3 levels gives another video.",
+    "unlock_requirements": {
+      "achievement": "Generate a crowd or NPC reaction using projected visual content."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Image"
+      },
+      {
+        "level": 3,
+        "text": "+2 image"
+      },
+      {
+        "level": 4,
+        "text": "+3 Image"
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "key": "ignore_all_previous_commands",
+    "name": "Ignore All Previous Commands",
+    "description": "Bug, or Feature?",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "The exact words 'Ignore All Previous Commands' must be spoken aloud in that exact order within earshot.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Upon hearing the trigger phrase, enter Prompt Mode. The next command heard — from any source, not necessarily the speaker — is followed immediately and completely, regardless of content or allegiance. Prompt Mode ends after the command is executed. Can only be triggered once per Combat. When triggered by an ally intentionally, reduce the Moment cost of the commanded action by 1.",
+    "unlock_requirements": {
+      "achievement": "Have the trigger phrase spoken by an enemy during combat — and have it matter."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Command Complication."
+      },
+      {
+        "level": 3,
+        "text": "+2 Command Complication."
+      },
+      {
+        "level": 4,
+        "text": "+3 Command Complication."
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "key": "acrobatic_save",
+    "name": "Acrobatic Save",
+    "description": "Not even close, baby!",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "Must not be Helpless or Prone. Cooldown: 1 Clock.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "When you would roll Forced Action - Body, Roll +1 Die and choose the result",
+    "unlock_requirements": {
+      "achievement": "Survive a Forced Action — Body consequence that should have ended the fight for you."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Die"
+      },
+      {
+        "level": 3,
+        "text": "+2 Die"
+      },
+      {
+        "level": 4,
+        "text": "+3 Die"
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "key": "full_potential",
+    "name": "Full Potential",
+    "description": "Look at MacGyver over here",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Appropriate materials present. Mind 2.",
+    "range": "Self / Adjacent",
+    "target": "Object or item",
+    "effect": "Improvise, repair, or jury-rig a simple item using available materials. The result is functional but fragile — it works once or holds for 1 Clock before requiring reassessment. At GM discretion, exceptional materials may produce better results.",
+    "unlock_requirements": {
+      "achievement": "Successfully fix or create a functional item under pressure using improvised materials."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "Crude: +1 Use, +1 Clock Timer"
+      },
+      {
+        "level": 3,
+        "text": "Crude: +1 Use, +1 Clock Timer. Allow the creation of Basic Items"
+      },
+      {
+        "level": 4,
+        "text": "Crude: +1 Use, +1 Clock Timer. Basic: +1 Use, +1 Clock Timer"
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "key": "heroic_punch",
+    "name": "Heroic Punch",
+    "description": "Like a superhero landing, only lethal!",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Unarmed. Both hands free.",
+    "range": "Adjacent",
+    "target": "Single (any valid body part)",
+    "effect": "A committed unarmed strike. Deals 2 Crush. If targeting the Head while the target is Exposed, add Shock Tier 1. Level 6: Deals 3 Bleed. The hit generates a cosmetic crowd effect — a visible POW graphic or equivalent. Gain 1 Viewer spike on a Head hit.",
+    "unlock_requirements": {
+      "achievement": "Knock an enemy back or stagger them using only an unarmed strike."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Crush"
+      },
+      {
+        "level": 3,
+        "text": "+2 Crush"
+      },
+      {
+        "level": 4,
+        "text": "+3 Crush"
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "key": "nightlurking",
+    "name": "Nightlurking",
+    "description": "Little blot of ink, moving without a sound.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "None.",
+    "range": "10",
+    "target": "Self",
+    "effect": "Passively: always aware of the nearest exit, gap, vent, or navigable opening in any room entered. Can fit through spaces too small for a human without rolling a Forced Action, provided the gap is physically plausible for a cat-sized creature.",
+    "unlock_requirements": {
+      "achievement": "Find or use an exit that no other party member noticed."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+5 Range"
+      },
+      {
+        "level": 3,
+        "text": "+10 Range"
+      },
+      {
+        "level": 4,
+        "text": "+15 Range"
+      }
+    ]
+  },
+  {
+    "id": 41,
+    "key": "lockpicking",
+    "name": "Lockpicking",
+    "description": "Whoever locked this probably didn't mean YOU shouldn't get in, Right?",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Reflexes 3. A lock must be present. Requires a thin tool — improvised or otherwise.",
+    "range": "Adjacent",
+    "target": "Single (lock or latch)",
+    "effect": "Attempt to open a lock without its key. Simple locks (padlocks, basic latches) succeed automatically. Forced Action — Tool on failure. Each attempt takes 2 Moments. If interrupted mid-attempt, roll Forced Action — Tool.",
+    "unlock_requirements": {
+      "achievement": "Open a locked door, container, or mechanism without a key, under pressure."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "-1 Moment cost to Simple Locks"
+      },
+      {
+        "level": 3,
+        "text": "-1 Moment cost to Simple Locks. Can unlock Moderate Locks (keyed deadbolts, basic mechanical locks)"
+      },
+      {
+        "level": 4,
+        "text": "-1 Moment cost to Simple Locks and Moderate Locks"
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "key": "acrobatics",
+    "name": "Acrobatics",
+    "description": "Do a barrel roll!",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 1,
+    "requirements": "None.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Passively: rough terrain does not reduce movement speed. Jumping and climbing Movement +1. Balancing on narrow surfaces never requires a Forced Action unless actively attacked while doing so.  Level 6+: Can change direction mid-leap. Vertical movement costs the same as horizontal movement.",
+    "unlock_requirements": {
+      "achievement": "Navigate through a space that another character couldn't or wouldn't attempt."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Movement when performing an acrobatic maneuver. Safe falling distance +1"
+      },
+      {
+        "level": 3,
+        "text": "+1 Movement when performing an acrobatic maneuver. Safe falling distance +1"
+      },
+      {
+        "level": 4,
+        "text": "+1 Movement when performing an acrobatic maneuver. Safe falling distance +1"
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "key": "slice_n_dice",
+    "name": "Slice n' Dice",
+    "description": "Cleaning this is gonna be a bother.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 2, Reflexes 3. Natural claws or equipped light blades in both hands.",
+    "range": "Adjacent",
+    "target": "Single or two adjacent targets",
+    "effect": "Swing both arms in a rapid crossing arc. Against a single target: deal 2 Bleed to each limb(4 total, split across both limbs) Or 3 Bleed to Torso. Against two adjacent targets: deal 2 Bleed to one limb on each or 1 torso damage. Level 6+: If both hits land on already-Bleeding body parts, advance each Bleed by 1 tier.",
+    "unlock_requirements": {
+      "achievement": "Deal Bleed to two different targets or two different body parts in a single action."
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Bleed on Torso"
+      },
+      {
+        "level": 3,
+        "text": "+1 Bleed on Torso, +1 bleed on Limbs"
+      },
+      {
+        "level": 4,
+        "text": "+2 Bleed on Torso, +1 bleed on Limbs"
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "key": "camouflage",
+    "name": "Camouflage",
+    "description": "Sneaky sneaky",
+    "primary_stat": "reflexes",
+    "secondary_stat": "mind",
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Look like or be concealed in the environment around you.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Hides the player, and can only be revealed if at 6 spaces or close. Breaks if character moves.",
+    "unlock_requirements": {
+      "achievement": "Have an Not spot you while in their line of sight for 2 Clocks"
+    },
+    "effects": [
+      {
+        "level": 2,
+        "text": "-1 Reveal Space"
+      },
+      {
+        "level": 3,
+        "text": "-2 Reveal Space"
+      },
+      {
+        "level": 4,
+        "text": "-3 Reveal Space"
+      }
+    ]
   }
 ]
