@@ -202,6 +202,42 @@ greatsword; rebalance at content-port time, not in the engine.
 - **Upgrade Tokens (B14):** out of engine scope until the Lounge epic (KAN-7); noted as an
   open economy design item.
 
+## R11 — Engine interpretation log (implemented in KAN-2; all PROVISIONAL)
+
+Calls the engine had to make where R0–R10 were silent. The sim implements these today;
+overturning one is a code change, not a rewrite.
+
+1. **Forced-Action table for stat shortfall:** weapon/tool stat or hands shortfall → Tool
+   table; condition-driven and above-weight-grapple rolls → Body table.
+2. **Snapshot boundary is tick start:** same-tick movement never dodges anything; movement
+   on any earlier tick dodges windups; instants never re-check.
+3. **Torso conditions gate all actions:** a Forced-Body condition tier on the torso (or the
+   acting part) forces every action — torso is the whole-body proxy.
+4. **Shock stacking vs strong sources:** `max(current + 1, source_tier)` — a Burn-T3 Shock 3
+   is never weakened by the target already being lightly shocked (refines E5's literal text).
+5. **Resistance splits cleanly:** flat physical resistance reduces HP only and never blocks
+   condition application; tier immunity (Affliction/Psychic) is the condition blocker.
+6. **Above-weight grapple still lands** (Forced Actions are always allowed; the grappler
+   eats the Body roll) — size ≥2 gap and bosses still immune to grapple-Suffocation (R9).
+7. **The grappler can't reposition either** while holding (two-sided lock).
+8. **Combat's one free inventory interaction is literal** — if the tick's free slot is
+   already spent, the freebie is consumed as a paid action and never comes back.
+9. **Timers and partial Clocks:** timers created mid-Clock count the partial Clock at the
+   first reset (harsh); bleed-out always gets one full Clock of grace (R5); timers created
+   during a reset start at the next reset.
+10. **Collateral (Tool 3)** hits the nearest combatant excluding actor and intended target,
+    torso-preferred, HP only; the environment absorbs it when nobody qualifies. **Whiff**
+    negates the action entirely and does not consume magazine.
+11. **Magazine defaults** apply only to explicit `magazine` fields or key-matched weapon
+    classes; the ported items.json rows don't carry rpm/magazine yet (content pass open).
+12. **Bleeding T4 kills from any part** (tier table as authored — you can bleed out from a
+    limb wound).
+
+Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
+dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
+phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call behavior,
+token economy, Lounge/session mechanics.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.
