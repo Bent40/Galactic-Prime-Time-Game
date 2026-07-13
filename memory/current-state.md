@@ -15,14 +15,27 @@
 
 ## In progress
 
-- Overnight groundwork session (2026-07-13): digital rules addendum → seed-data completion
-  → KAN-2 headless engine + tests → repo hygiene. Trace id `overnight-2026-07-13`.
+- KAN-2 is **code-complete but NOT validated live**: all 12 sim/test files gdparse-clean,
+  tests written for all 20 acceptance criteria, but no Godot 4 binary exists in the session
+  container — `scripts/run_sim_tests.sh` exits 3 SKIP. First real run must happen on the
+  owner's machine (`godot` on PATH or `$GODOT_BIN`, then `bash scripts/run_sim_tests.sh`).
+  Expect first-run failures; that's normal for an unexecuted suite.
 
 ## Next
 
-- Morning review of PROVISIONAL rulings in `docs/rules-addendum.md`.
-- Continue KAN-2 to completion; then the vertical slice (review-4 §5 definition).
+- **Owner morning review:** PROVISIONAL rulings in `docs/rules-addendum.md` (R2 dodge
+  model, R3 caps, R4 Burn-Shock, R8 RPM, R9 grapple, R10 requirements-halving + exchange
+  cut) **+ the R11 engine interpretation log** (12 implemented judgment calls).
+- **Run the test suite on a machine with Godot 4.5** — the trace `overnight-2026-07-13` is
+  honestly labeled *failed* until this passes; re-record the signal when green.
+- Vendor godot-sqlite into `addons/` (blocked in-container: proxy 403s GitHub + asset lib).
+- KAN-3 scaffolding (main scene, GameController autoload — deliberately NOT done overnight
+  to respect the epic order; the empty-window state persists until then).
+- Content pass: rich tag descriptions live in the rulebook docx (DB export has empty
+  strings); items need rpm/magazine fields (R8); Camouflage's third stat (charm) was
+  dropped by the 2-stat schema — decide whether the schema grows.
 
 ## Blockers
 
-- None hard. Taste-call rulings queued for owner morning review (work proceeds around them).
+- No Godot 4 binary obtainable in session containers (proxy) — live validation is
+  owner-side or CI-side only.

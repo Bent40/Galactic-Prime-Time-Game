@@ -6,8 +6,26 @@
     "size": "small",
     "type": "feature"
   },
+  "ended_ts": "2026-07-13T22:58:29Z",
   "id": "overnight-2026-07-13",
-  "signals": [],
+  "label": "failed",
+  "label_reason": "1 executable signal(s) failed (tests)",
+  "signals": [
+    {
+      "cmd": "bash scripts/run_sim_tests.sh",
+      "exit_code": 3,
+      "kind": "tests",
+      "summary": "SKIP: no Godot 4 binary in container; sim tests not executed (honest non-pass)",
+      "ts": "2026-07-13T22:58:29Z"
+    },
+    {
+      "cmd": "python3 scripts/validate_seeds.py",
+      "exit_code": 0,
+      "kind": "eval",
+      "summary": "seed data green: 141 rows (44 skills, 82 thresholds, 28 items via parse, 3 real enemies, 9 conditions tiered)",
+      "ts": "2026-07-13T22:58:29Z"
+    }
+  ],
   "stages": [
     {
       "artifacts": [
@@ -44,6 +62,22 @@
       "content": "Campaign content ported: 44 skills/82 thresholds/28 items/100 tags/27 modifiers, validator green 141 rows, verified independently. Flags: Camouflage 3rd stat dropped (schema), Fedora Psy kept raw, tag descriptions empty in export (live in docx)",
       "stage": "implement",
       "ts": "2026-07-13T22:15:51Z"
+    },
+    {
+      "artifacts": [
+        "simulation/",
+        "tests/",
+        "scripts/run_sim_tests.sh"
+      ],
+      "content": "Validation ladder run: gdparse clean on all 12 .gd files (independent run); validate_seeds.py PASS (141 rows); run_sim_tests.sh exit 3 SKIP (no Godot 4 binary obtainable in container) - GDScript tests written for all 20 acceptance criteria but NOT executed; first run on owner machine",
+      "stage": "test",
+      "ts": "2026-07-13T22:58:29Z"
+    },
+    {
+      "artifacts": [],
+      "content": "Overnight complete: workflow wiring, rules addendum (R0-R11), seed data completed + real campaign content ported, KAN-2 engine + full test suite implemented (gdparse-clean, unexecuted), hygiene dispositions recorded. PROVISIONAL rulings + R11 interpretation log queued for owner morning review",
+      "stage": "report",
+      "ts": "2026-07-13T22:58:29Z"
     }
   ],
   "task": "Overnight groundwork: workflow wiring, rules addendum, seed data, KAN-2 engine",
