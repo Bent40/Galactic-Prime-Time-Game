@@ -36,6 +36,14 @@
       "content": "Seed data completed and validated (validate_seeds.py green, 31 rows). Real campaign enemies ported incl. 6-phase Incinedile. Learning: no Godot 4 binary obtainable in this container (proxy 403s GitHub releases + godotengine hosts; apt has only godot3) - GDScript tests must run on owner machine/CI; gdparse (gdtoolkit) is the honest in-container syntax gate",
       "stage": "implement",
       "ts": "2026-07-13T22:07:59Z"
+    },
+    {
+      "artifacts": [
+        "data/"
+      ],
+      "content": "Campaign content ported: 44 skills/82 thresholds/28 items/100 tags/27 modifiers, validator green 141 rows, verified independently. Flags: Camouflage 3rd stat dropped (schema), Fedora Psy kept raw, tag descriptions empty in export (live in docx)",
+      "stage": "implement",
+      "ts": "2026-07-13T22:15:51Z"
     }
   ],
   "task": "Overnight groundwork: workflow wiring, rules addendum, seed data, KAN-2 engine",
