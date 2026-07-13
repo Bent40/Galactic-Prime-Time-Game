@@ -78,6 +78,37 @@ complete product.
 6. Unchanged: `RefCounted` headless model, MVC boundaries, SQLite static-data layer, DAL
    single-owner rule, signal catalog, naming conventions.
 
+## Design sketch — combat fields & clock drivers (status: SKETCH, owner-proposed)
+
+*Not yet DECIDED — promote after the digital rules addendum settles the tick rulings.*
+
+**Idea (owner):** Moments only exist inside combat and as time calculations. In the shared
+world, combat is a **field** — a delimited zone in the world; entering it binds you to that
+field's shared Moment clock, with time pressure so players can't stall each other.
+
+**Refinement (review):** treat Moments as **real-time ticks with a declare window**, not
+turns with timers — the clock advances on a wall-clock cadence inside a field (tunable,
+~3–5s/Moment, may accelerate when all combatants have committed); miss your declare window
+and you idle or a default fires. Continuous pressure, no waiting on other players' menus,
+faithful to "there are no turns."
+
+- **Clock drivers are pluggable, sim never self-advances:** paused-on-decision (solo, ATB
+  wait-mode feel) / timed declare windows (co-op fields) / pure wall-clock (spectated
+  broadcasts). Same deterministic sim under all three — the driver only decides *when*
+  commands are fed in. This slots directly into the command-stream contract above;
+  no contract change required.
+- **Precedents (pattern is MMO-proven):** Wizard101 combat circles, Dofus/Wakfu tactical
+  fights with turn timers, Toontown cog battles, OSRS's global 0.6s tick.
+- **Field rules to settle later:** hard boundary (entrants rooted, no shooting in/out,
+  leavers forfeit); joining legal only at Clock resets (the book's existing reorganization
+  beat; diegetically "the cameras cut to the new arrival"); interloper/pvp-adjacent join
+  rules are Stage 3 only — Stages 1–2 fields are party-instanced.
+- **Out-of-combat time:** overworld runs a coarse ambient clock (Clocks tick on wall time)
+  so conditions/cooldowns keep advancing between fields; fields run the fine Moment clock.
+- **Dependency:** raises the priority of the free-action-cap ruling (review-1 finding D1) —
+  unlimited 0-cost actions inside a real-time tick would become an APM contest. The digital
+  rules addendum must settle actions-per-tick first.
+
 ## What does NOT change
 
 - **Build order:** digital rules addendum (review-1 fix-first five) → KAN-2 headless engine
