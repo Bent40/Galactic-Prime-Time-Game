@@ -1,0 +1,26 @@
+{
+  "classification": {
+    "risk": [
+      "medium"
+    ],
+    "size": "small",
+    "type": "feature"
+  },
+  "id": "overnight-2026-07-13",
+  "signals": [],
+  "stages": [
+    {
+      "artifacts": [
+        "CLAUDE.md",
+        "bmad.config.yaml",
+        "memory/",
+        "_workflow/"
+      ],
+      "content": "Workflow wiring done: memory pack filled (check OK), learnings seeded (9 entries), traces enabled, bmad.config.yaml (6 context tags OK), CLAUDE.md with activation block, boot.json receipt (profile game, size small, partial adoption - no pack install)",
+      "stage": "implement",
+      "ts": "2026-07-13T21:57:38Z"
+    }
+  ],
+  "task": "Overnight groundwork: workflow wiring, rules addendum, seed data, KAN-2 engine",
+  "ts": "2026-07-13T21:52:51Z"
+}

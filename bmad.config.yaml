@@ -1,0 +1,42 @@
+# bmad.config.yaml — project config consumed by `wf` (validate/context).
+# Godot 4.5 project; validation commands are wired as the pieces land.
+
+validation:
+  # Seed-data integrity (JSON shape + schema-enum cross-checks). Wired 2026-07-13.
+  data:
+    - "python3 scripts/validate_seeds.py"
+  # KAN-2 headless sim tests. Requires a Godot 4.5 binary (godot on PATH or $GODOT_BIN).
+  # The script exits 3 = explicit SKIP when no binary is available — a SKIP is not a pass.
+  test:
+    - "bash scripts/run_sim_tests.sh"
+
+context:
+  tags:
+    sim:
+      type: work_area
+      description: headless combat simulation (MODEL — RefCounted, no Godot node deps)
+      paths: ["simulation/**"]
+    controller:
+      type: work_area
+      description: Godot-aware controller layer (GameController autoload, DAL, saves)
+      paths: ["controller/**"]
+    view:
+      type: work_area
+      description: scenes + UI (VIEW — presentation only, talks to GameController)
+      paths: ["scenes/**", "ui/**"]
+    data:
+      type: work_area
+      description: SQLite schema/migrations + JSON seed data (static game content)
+      paths: ["data/**"]
+    design:
+      type: work_area
+      description: design docs — direction, reviews, rules addendum, GDD/architecture PDFs
+      paths: ["docs/**"]
+    sim-contract:
+      type: risk
+      description: >
+        Changes here must preserve the command-stream contract (state = f(seed, command
+        log); no wall-clock/unlogged randomness in simulation/**). Check docs/DIRECTION.md
+        technical deltas before merging.
+      paths: ["simulation/**", "docs/DIRECTION.md"]
+      triggers: ["determinism", "serialization"]

@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "generated": "2026-07-13T21:57:38Z",
+  "mode": "brownfield",
+  "monorepo": false,
+  "monorepo_evidence": [],
+  "stack": {
+    "langs": [
+      "gd"
+    ],
+    "framework": null,
+    "manifests": [
+      "project.godot"
+    ],
+    "tests": [],
+    "ci": [],
+    "containers": false,
+    "git": {
+      "repo": true,
+      "branch": "claude/galactic-prime-time-review-kxlelf",
+      "dirty": true,
+      "last_commit_days": 0
+    },
+    "file_count": 76,
+    "walk_capped": false
+  },
+  "bmad": {
+    "state": "none",
+    "version": null,
+    "phase": null,
+    "next_required": null,
+    "artifacts": {},
+    "sprint_status": null,
+    "note": null
+  },
+  "subsystems": {
+    "memory": {
+      "state": "initialized"
+    },
+    "learn": {
+      "state": "initialized",
+      "detail": 9
+    },
+    "context": {
+      "state": "initialized"
+    },
+    "validation": {
+      "state": "initialized"
+    },
+    "spec": {
+      "state": "absent"
+    },
+    "packs": {
+      "state": "absent",
+      "packs": null,
+      "targets": null,
+      "profile": null
+    },
+    "guard": {
+      "state": "off"
+    },
+    "locks": {
+      "state": "none",
+      "count": 0
+    },
+    "hooks": {
+      "state": "none",
+      "hooks": [],
+      "sandbox": false
+    },
+    "instruction_files": [
+      "CLAUDE.md"
+    ],
+    "traces": {
+      "state": "present"
+    }
+  },
+  "readiness": {
+    "memory": "READY",
+    "learn": "READY",
+    "audit": "SETUP-NEEDED (needs a story file with acceptance criteria)",
+    "split-task": "READY",
+    "lock": "READY",
+    "validate": "READY",
+    "mutate": "READY"
+  },
+  "metrics": {
+    "skills_installed": 0,
+    "skills_referenced_always_loaded": 0,
+    "firing_path_pct": null,
+    "invocation_rate_baseline": null
+  },
+  "receipts": {
+    "last_scan": "2026-07-13T21:57:38Z"
+  },
+  "size": {
+    "proposed": "small",
+    "risk": [],
+    "confirmed": "small",
+    "at": "2026-07-13"
+  },
+  "activation": {
+    "profile": "game",
+    "confirmed": true,
+    "score": 0.2,
+    "alternates": [],
+    "ambiguous": false,
+    "addons": [],
+    "addons_proposed": [],
+    "applied_at": null
+  }
+}

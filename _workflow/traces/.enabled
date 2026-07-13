@@ -1,0 +1,3 @@
+# wf trace capture opt-in marker. Its presence tells the ambient router to
+# record a process trail at task completion (orchestration.trace_capture_on_
+# completion). Remove this file to stop ambient capture.
