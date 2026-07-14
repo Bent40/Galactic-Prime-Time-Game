@@ -92,14 +92,11 @@ trait, or can one high trait carry it?
 - TTRPG:
 - Decision:
 
-**Q16 → NQ1 (rewritten — compendium contradiction).** The compendium records "cooldowns
-removed from the system entirely" `[EXECUTED]`, but July's live data still carries them:
-Tactical Roll & Acrobatic Save reference cooldowns, and threshold text says "-4 Moment
-cooldown" / "twice per cooldown Rotation". Which is true — cooldowns are gone (what
-replaces them on those skills?), or they came back after May? ⚙ (engine currently supports
-them; costless either way)
-- TTRPG:
-- Decision:
+**Q16.** ~~cooldowns~~ **RULED (2026-07-14, = NQ1): no cooldowns — priming instead.**
+Skills gate on preparation conditions (channels, stacks, stances); high-tier items may skip
+specific primes. Cooldown-texted skills (Tactical Roll, Acrobatic Save, "-4 Moment
+cooldown" thresholds) get re-expressed as primes during your skill passover. Closed at the
+rules level; content pass open.
 
 ## C. Combat timing — validating the PROVISIONAL rulings ⚙
 
