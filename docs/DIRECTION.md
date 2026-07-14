@@ -105,9 +105,23 @@ faithful to "there are no turns."
   rules are Stage 3 only — Stages 1–2 fields are party-instanced.
 - **Out-of-combat time:** overworld runs a coarse ambient clock (Clocks tick on wall time)
   so conditions/cooldowns keep advancing between fields; fields run the fine Moment clock.
+- **Noise/absorption (compendium GDD v0.1, adopted):** noisy combat attracts nearby
+  encounters — when a field's Clock completes, eligible area encounters can be absorbed
+  into the ongoing fight. Kills grinding, makes stealth/social relevant, and the audience
+  clock and absorption clock can be one system. Slots directly into the field model: an
+  absorption = a join event at the Clock-reset beat.
 - **Dependency:** raises the priority of the free-action-cap ruling (review-1 finding D1) —
   unlimited 0-cost actions inside a real-time tick would become an APM contest. The digital
   rules addendum must settle actions-per-tick first.
+
+## Design source of truth (order of precedence)
+
+1. This document (owner-decided direction).
+2. `docs/rules-addendum.md` (canonical digital rulings; R12 = compendium-adopted systems).
+3. **`docs/GPT_Master_Compendium.md`** (consolidated design record through ~May 5: system
+   v0.91, GDD v0.1 decisions, boss/modifier design, campaign story, party data). Where it
+   conflicts with newer live data, see `docs/review/review-5-compendium-delta.md` NQ items.
+4. The GDD/architecture PDFs, then the rulebook docx.
 
 ## What does NOT change
 

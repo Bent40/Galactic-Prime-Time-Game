@@ -18,3 +18,8 @@
   char-sheet app DMG_TYPES/RACES are NOT imported (drift documented in review-1).
 - **SKETCH (not decided):** combat fields with real-time tick clock drivers — in
   `docs/DIRECTION.md`, pending rules-addendum tick rulings.
+- **Compendium adopted (2026-07-14):** `docs/GPT_Master_Compendium.md` = design record
+  through ~May 5; precedence DIRECTION > addendum > compendium > PDFs > docx. Adopted from
+  it: modifier economy (R12), noise/absorption, flat enemy mental resistance, death model,
+  Reflexes-gated boss counters, Incinedile enrichment. Conflicts awaiting rulings: NQ1–NQ7
+  (cooldowns removed-vs-present is the big one). See review-5-compendium-delta.md.

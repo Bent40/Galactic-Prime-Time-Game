@@ -15,9 +15,10 @@ early prevents rework.
 
 ## A. Character creation & advancement
 
-**Q1.** The rulebook says allocate **7 points** per pillar at creation; the char-sheet app
-defaults to **bonusPoints {body: 5, core: 5}**. Which is current, and do traits start at
-base 1 each with points added on top (app model → effective 1–5 range)?
+**Q1.** ~~7 vs 5 points~~ **Mostly answered by the compendium:** 7 across Body + 7 across
+Core is confirmed (the party's creation stats sum exactly 7+7). Remaining sliver: why does
+the app default `bonusPoints {body: 5, core: 5}` — stale default to fix, or does base-1 per
+trait + 5 = the same 7-point math in different clothes?
 - TTRPG:
 - Decision:
 
@@ -78,10 +79,8 @@ auto-reveal when the sim detects the deed (achievement-style), or stay GM/direct
 - TTRPG:
 - Decision:
 
-**Q13.** "Capacity" (per-skill, default 5) and the "cap" that Patron Tokens raise — same
-number, one concept? `[assumed: yes]`
-- TTRPG:
-- Decision:
+**Q13.** ~~Capacity vs cap~~ **Answered by the compendium** (§7.2 instance model): same
+concept. Closed — `as-is`.
 
 **Q14.** Camouflage lists **three** stats (reflexes/mind/charm). Is 3-stat a real pattern
 the schema must support, or a data quirk? `[port dropped the third stat — charm]` ⚙
@@ -93,9 +92,12 @@ trait, or can one high trait carry it?
 - TTRPG:
 - Decision:
 
-**Q16.** Skill cooldowns ("Cooldown: 2 Moments" / "1 Clock"): counted from declaration or
-resolution, and does a Clock reset clear them? `[assumed R3: from resolution, absolute
-ticks, resets don't clear]` ⚙
+**Q16 → NQ1 (rewritten — compendium contradiction).** The compendium records "cooldowns
+removed from the system entirely" `[EXECUTED]`, but July's live data still carries them:
+Tactical Roll & Acrobatic Save reference cooldowns, and threshold text says "-4 Moment
+cooldown" / "twice per cooldown Rotation". Which is true — cooldowns are gone (what
+replaces them on those skills?), or they came back after May? ⚙ (engine currently supports
+them; costless either way)
 - TTRPG:
 - Decision:
 
@@ -188,10 +190,9 @@ between them at your table?
 - TTRPG:
 - Decision:
 
-**Q33.** Dissolution: what sources have appeared, and what happened to a character whose
-Mind collapsed? `[assumed R5: removed-from-play event, body persists; never engine-death]`
-- TTRPG:
-- Decision:
+**Q33.** ~~Dissolution~~ **Answered by the compendium** (§2.8): sources = explicit only
+(demonic-noble presence, environment); embrace = ghoul (persists in story), escape = scar
+(one emotion amplified near demons). Matches R5's removed-from-play model. Closed — `as-is`.
 
 ## E. Exposure, audience & the metagame (feeds the spectacle engine + Stage-2 design)
 
@@ -290,13 +291,13 @@ Face, Torso, Mouth, Utility) — is there a slot list, and can two same-slot ite
 - TTRPG:
 - Decision:
 
-**Q52.** Item tiers (Crude/Basic/Quality/Superior/Exceptional): what does tier change
-mechanically?
-- TTRPG:
-- Decision:
+**Q52.** ~~Item tiers~~ **Answered by the compendium** (§3.2): tier = modifier slots
+(Crude 0/0 → Exceptional 2/2 prefix/suffix) + modifier-tier ACCESS gating. Closed — `as-is`
+unless you've changed it since May.
 
-**Q53.** Affixes: prefix+suffix max one each? How do items GET affixes (Enchantment Altar
-only, loot rolls)? Do affix tiers gate onto item tiers?
+**Q53.** ~~Affixes~~ **Mostly answered** (§3.2): slots per tier, access gating, extraction
+friction ladder. Remaining sliver: do dropped/looted items ever come pre-affixed, or is the
+Enchantment Altar the only application path?
 - TTRPG:
 - Decision:
 
@@ -393,6 +394,39 @@ Burn-Shock, R8 RPM defaults, R9 grapple gates, R10 requirements-halving, R11 ite
 approve wholesale pending playtest, or itemized review? (Answering the C/D questions above
 already covers most of them.)
 - Decision:
+
+---
+
+## L. New questions raised by the Master Compendium (2026-07-14)
+
+**NQ1.** = Q16 above (cooldowns: removed vs still-in-content).
+
+**NQ2.** Incineradile breach B: "7+ damage in a single **hit**" (compendium) or "single
+**turn**" (DB boss notes — closest Moment-clock reading: one tick)? `[seeded: single_hit]`
+- Ruling:
+
+**NQ3.** Incineradile phases: the compendium designs 4 (ends at Pressure Valve II, network
+exposed); the live DB has 6 (adds Threshold 3 + a 19-space lethal Explosion 3 at death).
+Which ran at the table / which is canon for the game? `[seeded: 6, with a note]`
+- Ruling:
+
+**NQ4.** Party size: compendium says 4 players; the DB has 5 characters (Frod joined
+later?). Canonical party size for encounter budgets — and does Frod exist going forward?
+- Ruling:
+
+**NQ5.** Tutorial HP tuning (compendium open item #7): you were weighing boosting all
+body-part HP vs easier max-HP acquisition, because it's "hard to hurt without killing."
+Any decision since? (This directly affects the digital slice's damage feel — 2-damage
+weapons one-shot 2-HP arms.)
+- Ruling:
+
+**NQ6.** XQUEZ/T tank kit: finalize Intercept / Iron Stance as written in §3.3, or revise?
+(They'd become seed skills + the first reaction-skill test cases.)
+- Ruling:
+
+**NQ7.** Affliction-resistance sourcing was "deliberately parked" — park it in the digital
+game too, or want a proposal?
+- Ruling:
 
 ---
 

@@ -51,7 +51,10 @@ of the next Clock. Order of operations at each tick:
   Hide's "first melee attack against you misses" = that attack resolves with no effect).
   There is no universal dodge roll. The live table's homebrewed **Dodge Threshold** d6
   becomes an *enemy ability pattern* (used by agile bosses like Incineradile), not a
-  universal rule.
+  universal rule. *Compendium refinement:* specific boss attacks carry **Reflexes-gated
+  player counters** (e.g. vs Dash: Reflexes 7 = auto-dodge + 1-space move, Reflexes 9 =
+  auto-dodge + counterattack, below = roll 4+ to dodge) — authored per-ability, still not
+  a universal mechanic.
 - **PROVISIONAL (numbers).** Reactions: a reactive skill declares a **trigger**; when it
   fires, the reaction resolves immediately, out of schedule. Its Moment cost is added to
   the reactor's `next_action_tick` (you pay by acting later). **Max one reaction per
@@ -69,8 +72,12 @@ of the next Clock. Order of operations at each tick:
   interaction of a combat is free (consumes the free slot); every later one costs 1 Moment.
   The book's "resets upon using a different action" clause is **deleted**. An item's own
   listed Moment cost *replaces* the interaction cost when higher (one cost, never two).
-- **SETTLED.** Cooldowns exist (F5): "Cooldown: N Moments" = N ticks from resolution;
-  "1 Clock" = 10 ticks; tracked on the absolute timeline, unaffected by Clock resets.
+- **CONTESTED (was SETTLED — reopened by the Master Compendium).** The compendium records
+  "cooldowns removed from the system entirely" `[EXECUTED]`, but July's live skill data
+  still uses them (Tactical Roll, Acrobatic Save, "-4 Moment cooldown" threshold text).
+  Owner ruling requested (questionnaire NQ1). The engine keeps cooldown *support* (harmless
+  when no skill defines one); semantics if kept: "Cooldown: N Moments" = N ticks from
+  resolution, "1 Clock" = 10 ticks, absolute timeline, unaffected by Clock resets.
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -129,6 +136,9 @@ of the next Clock. Order of operations at each tick:
   Reflexes `/12` → +1 allocatable physical resistance (Bleed/Crush/Burn);
   Mind `/15` → +1 psychic resistance tier; Charm `/20` → +1 Camera Call stack.
   The "rated 1–5" scale is **creation-only** (now stated explicitly).
+  *(The compendium's `[OPEN]` "app seeds Mind /10" is stale — verified 2026-07-14: the app
+  computes /15, matching the doc. Closed.)* Creation allocation confirmed by compendium +
+  party data: **7 points across Body traits + 7 across Core traits**.
 - **SETTLED (app rule wins over the book's N — C4).** Skill points per trait =
   `max(0, traitTotal - 1 - spent)`; multi-stat skills cost 1 point from **each** listed
   stat; refunds follow the instance's `traitCosts` history.
@@ -237,6 +247,38 @@ Not yet implemented (scoped to later epics, hooks in place): poison spread topol
 dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
 phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call behavior,
 token economy, Lounge/session mechanics.
+
+## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
+
+Source: `docs/GPT_Master_Compendium.md` (design record through ~May 5). These are owner
+designs, adopted as canon; engine/content implementation lands with their epics.
+
+- **Weapon tiers → modifier slots:** Crude 0/0 · Basic 1/0 · Quality 1/1 · Superior 2/1 ·
+  Exceptional 2/2 (prefix/suffix). **Modifier-tier access gates on weapon tier:** Basic →
+  Lesser only; Quality → up to Normal; Superior → up to Higher; Exceptional → up to
+  Legendary. Progression = access, not just slots.
+- **Extraction friction (Enchantment Altar):** Lesser/Normal extractable with a
+  destroy-the-modifier chance (odds improved by Lounge upgrades/skills); Higher+ extraction
+  drops the weapon one tier; Legendary+ extraction destroys the weapon.
+- **Lesser modifier working list:** Poisoned, Serrated, Weighted, Spiked, Hollow Point,
+  Chilling, Explosive Tip, Barbed; Padded/Reinforced flagged out (candidates: Wrapped,
+  Balanced, Sure-grip); Draining capped once per Clock per target.
+- **Enemy mental resistance is FLAT** (not tiered), and exceeding it by a significant
+  margin grants the attacker a bonus (viewer spike / secondary effect).
+- **Noise/absorption:** noisy combat attracts nearby encounters — when a Clock completes,
+  eligible area encounters can be absorbed into the ongoing fight. The audience clock and
+  absorption clock may be one system. (Adopted into DIRECTION; KAN-5 implements.)
+- **Death model (game):** checkpoint rewind — full world-state reset on death; character +
+  Lounge upgrades persist. Non-PC party members can permanently die.
+- **Character-exclusive skills exist** (Full Potential, Heroic Punch → Mario): the skills
+  schema needs an `exclusive_to` lock field (content pass).
+- **Dissolution encounter pattern:** noble presence starts the Mind timer + a personal
+  emotional "song"; embrace = removed-from-play (ghoul persists as story object); escape =
+  survive with a permanent scar (one emotion amplified near demons). Matches R5's
+  mind-collapse event model.
+- **Tank-kit drafts** (Intercept: take an adjacent ally's hit, 0-Moment, Physique-based;
+  Iron Stance: declare, don't move, adjacent-ally-targeting attacks retarget to you,
+  Physique 5): PENDING finalization (questionnaire), then seed as skills.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

@@ -47,7 +47,7 @@
     "id": 3,
     "key": "incinedile",
     "name": "Incinedile",
-    "description": "Tutorial-floor boss ('Incineradile' in the GDD). Fire-wreathed crocodilian whose true health is a mycelium Network hidden behind surface immunity — open it up before the explosions find you. Fully play-tested at the live table.",
+    "description": "Tutorial-floor boss ('Incineradile' in the GDD/compendium). Apparent giant flamethrower reptile — actually a mycelium puppet: a network inside controls the body, reattaches limbs, and vents pressure by exploding. Pre-breach damage is cosmetic only; the party must discover the breach. Fully play-tested at the live table. Boss music: God Shattering Star. Cinematic intro: gates close, freeze, 'Party vs Boss' announcement, caged band above the arena.",
     "category": "Boss",
     "size": "Huge",
     "body_parts": [
@@ -65,17 +65,20 @@
       "surface_immunity": {
         "health_part": "network",
         "breach_conditions": [
-          { "type": "condition_tier", "condition": "bleeding", "tier": 2, "on": "any_part" },
-          { "type": "burst_damage", "amount": 7, "window": "tick" }
-        ]
+          { "type": "condition_tier", "condition": "bleeding", "tier": 2, "on": "any_part", "note": "the wound exposes the mycelium network" },
+          { "type": "burst_damage", "amount": 7, "window": "single_hit", "note": "compendium says single HIT; DB notes said single turn — owner ruling NQ2, compendium wording adopted" }
+        ],
+        "breach_resets_after_phase": 2
       },
-      "dodge_threshold": {
-        "note": "live-table mechanic, adopted per rules-addendum R2 as an enemy ability: roll d6 vs incoming melee; source Forced Action - Body",
-        "5": "dodge",
-        "7": "dodge + 1 space reposition",
-        "9": "dodge + counterattack"
+      "reflexes_counters": {
+        "note": "per-ability player counters (rules-addendum R2 refinement), applies to Dash",
+        "reflexes_7": "auto-dodge + move 1 space",
+        "reflexes_9": "auto-dodge + counterattack",
+        "below": "roll 4+ on d6 to dodge"
       },
-      "crush_2_disables_part": true
+      "crush_2_disables_part": true,
+      "left_hand_disable_removes_flamethrower": true,
+      "arena_hexes": [41, 60]
     },
     "abilities": [
       { "key": "flamethrower", "name": "Flamethrower", "moment_cost": 2, "area": "cone 10", "damage": [{ "type": "burn", "amount": 2 }], "note": "trash cans explode at Burn 5 (3 spaces, 2 Burn)" },
@@ -84,11 +87,11 @@
     ],
     "phases": [
       { "phase_number": 1, "name": "Threshold 1", "trigger_condition": "network 50-36 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"] }, "effects": [] },
-      { "phase_number": 2, "name": "Explosion 1", "trigger_condition": "network at 35 HP", "behavior": { "explosion": { "radius": 5, "escape_moments": 2, "result": "instant knockout" } }, "effects": [] },
+      { "phase_number": 2, "name": "Explosion 1 (Pressure Valve I)", "trigger_condition": "network at 35 HP", "behavior": { "explosion": { "radius": 5, "escape_moments": 2, "result": "instant knockout", "telegraph": "visible steam 1 Moment before" }, "after": "network retreats deeper - breach threshold resets" }, "effects": [] },
       { "phase_number": 3, "name": "Threshold 2", "trigger_condition": "network 35-18 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"], "upgrades": ["flamethrower pops trash cans instantly", "dash bounces between walls up to 2 bounces", "death spin grab range +1"] }, "effects": [] },
       { "phase_number": 4, "name": "Explosion 2", "trigger_condition": "network at 18 HP", "behavior": { "explosion": { "radius": 7, "escape_moments": 2, "result": "instant knockout" }, "upgrades": ["network fully exposed", "dash can change direction mid-run"] }, "effects": [] },
       { "phase_number": 5, "name": "Threshold 3", "trigger_condition": "network 18-0 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"], "upgrades": ["flamethrower tracks closest target", "death spin costs 2 moments"] }, "effects": [] },
-      { "phase_number": 6, "name": "Explosion 3", "trigger_condition": "network at 0 HP (death)", "behavior": { "explosion": { "radius": 19, "escape_moments": 5, "result": "instant kill" } }, "effects": [] }
+      { "phase_number": 6, "name": "Explosion 3", "trigger_condition": "network at 0 HP (death)", "behavior": { "explosion": { "radius": 19, "escape_moments": 5, "result": "instant kill" }, "note": "phases 5-6 exist in the live DB but not the compendium's 4-phase design - owner ruling NQ3" }, "effects": [] }
     ],
     "reward_table": [
       { "type": "boss_token", "tier": "bronze", "count": 1 },
