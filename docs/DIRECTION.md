@@ -146,8 +146,21 @@ staged-feasible**, with these binding constraints:
 3. **Speech scoring = LLM-judge with fixed rubric** + deterministic combiner (Charm, tags,
    audience state). Guard against prompt injection and munchkining (schema-clamped scores,
    speech costs camera time, the audience reacting to manipulation is itself content).
-4. **Consequences must be broadcast-explained** (announcer tells the world WHY town Y
-   marched) — readability and the UX are the same problem, solved diegetically.
+4. **Two information planes (owner refinement, 2026-07-14).** Contestants are INSIDE the
+   show — they never hear the announcer. Consequences reach each plane differently:
+   - **Broadcast plane** (spectators, replays, dead-teammate spectating, Stage-2 viewers):
+     the announcer explains everything. Dramatic irony is the product — the audience knows
+     town Y is marching on player X before X does.
+   - **Diegetic plane** (contestants): consequences arrive as *world manifestations* (a
+     hunting party on the road, closed gates, bounty posters, NPC whispers) and — for
+     uninvolved players inside the blast radius — as a **sudden quest**: intercept it,
+     profit from it, or get out of the way. The Corporation's System messages (directives/
+     goals) are the one legitimate in-fiction "HUD" channel and can carry director output
+     when the Corporation would plausibly say it.
+   Director command menu therefore includes `quest_spawn(scope, offer, urgency)`,
+   `world_manifest(entities, behavior, location)`, `system_message(recipients)` — all
+   schema-bound like everything else. Note the Stage-2 payoff: another party's actions
+   ripple into *your* run as a sudden quest — cross-party consequence without shared space.
 5. **Staging:** Stage 1–2 ships deterministic social scoring behind the director interface;
    the mother brain replaces the policy at Stage 2+ without engine changes. This is exactly
    why the command-stream contract exists.
