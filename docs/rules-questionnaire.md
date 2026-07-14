@@ -399,20 +399,23 @@ already covers most of them.)
 
 ## L. New questions raised by the Master Compendium (2026-07-14)
 
-**NQ1.** = Q16 above (cooldowns: removed vs still-in-content).
+**NQ1.** ~~cooldowns~~ **RULED (2026-07-14): no cooldowns — priming instead.** Powerful
+skills require preparation conditions (channels, stacks, stances) before use, not
+wait-after-use timers; high-tier items may skip specific primes. Priming vocabulary gets
+designed during the owner's skill passover (cooldown-texted skills re-expressed then).
+Recorded in addendum R3 + DIRECTION. Closed at the rules level; content pass open.
 
-**NQ2.** Incineradile breach B: "7+ damage in a single **hit**" (compendium) or "single
-**turn**" (DB boss notes — closest Moment-clock reading: one tick)? `[seeded: single_hit]`
-- Ruling:
+**NQ2.** ~~breach wording~~ **RULED (2026-07-14): single hit.** The DB's "single turn" was
+tuning wording. Seeded accordingly. Closed.
 
-**NQ3.** Incineradile phases: the compendium designs 4 (ends at Pressure Valve II, network
-exposed); the live DB has 6 (adds Threshold 3 + a 19-space lethal Explosion 3 at death).
-Which ran at the table / which is canon for the game? `[seeded: 6, with a note]`
-- Ruling:
+**NQ3.** ~~phase count~~ **RULED (2026-07-14): DB is correct — 6 phases** (fight,
+explosion, fight, explosion, fight, large explosion). Seeded accordingly. Closed.
 
-**NQ4.** Party size: compendium says 4 players; the DB has 5 characters (Frod joined
-later?). Canonical party size for encounter budgets — and does Frod exist going forward?
-- Ruling:
+**NQ4.** ~~party size~~ **RULED (2026-07-14): no max party in the video game.** Live-party
+count is a TTRPG concern only. Recruitment is the economy: better allies are a hassle to
+recruit, worse ones are short-lived — "a thousand grunts if you can use them well."
+Per-fight bounds come from arena deployment + exhaustion, never a cap. Recorded in
+DIRECTION. Closed.
 
 **NQ5.** Tutorial HP tuning (compendium open item #7): you were weighing boosting all
 body-part HP vs easier max-HP acquisition, because it's "hard to hurt without killing."

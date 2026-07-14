@@ -7,12 +7,37 @@
     "category": "Mob",
     "size": "Small",
     "body_parts": [
-      { "key": "carapace", "name": "Carapace", "hp": 1, "lethal": true }
+      {
+        "key": "carapace",
+        "name": "Carapace",
+        "hp": 1,
+        "lethal": true
+      }
     ],
-    "stat_block": { "physique": 1, "reflexes": 2, "mind": 0, "charm": 0 },
-    "resistances": { "Physical": 0, "Affliction": 0, "Psychic": 0 },
+    "stat_block": {
+      "physique": 1,
+      "reflexes": 2,
+      "mind": 0,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 0,
+      "Psychic": 0
+    },
     "abilities": [
-      { "key": "bite", "name": "Bite", "moment_cost": 1, "range": 1, "damage": [{ "type": "bleeding", "amount": 1 }] }
+      {
+        "key": "bite",
+        "name": "Bite",
+        "moment_cost": 1,
+        "range": 1,
+        "damage": [
+          {
+            "type": "bleeding",
+            "amount": 1
+          }
+        ]
+      }
     ],
     "reward_table": []
   },
@@ -24,22 +49,104 @@
     "category": "Elite",
     "size": "Large",
     "body_parts": [
-      { "key": "head", "name": "Head", "hp": 5, "lethal": true },
-      { "key": "torso", "name": "Torso", "hp": 15, "lethal": true },
-      { "key": "top_left_hand", "name": "Top Left Hand", "hp": 6, "lethal": false },
-      { "key": "top_right_hand", "name": "Top Right Hand", "hp": 6, "lethal": false },
-      { "key": "bottom_left_hand", "name": "Bottom Left Hand", "hp": 6, "lethal": false },
-      { "key": "bottom_right_hand", "name": "Bottom Right Hand", "hp": 6, "lethal": false },
-      { "key": "left_leg", "name": "Left Leg", "hp": 10, "lethal": false },
-      { "key": "right_leg", "name": "Right Leg", "hp": 10, "lethal": false }
+      {
+        "key": "head",
+        "name": "Head",
+        "hp": 5,
+        "lethal": true
+      },
+      {
+        "key": "torso",
+        "name": "Torso",
+        "hp": 15,
+        "lethal": true
+      },
+      {
+        "key": "top_left_hand",
+        "name": "Top Left Hand",
+        "hp": 6,
+        "lethal": false
+      },
+      {
+        "key": "top_right_hand",
+        "name": "Top Right Hand",
+        "hp": 6,
+        "lethal": false
+      },
+      {
+        "key": "bottom_left_hand",
+        "name": "Bottom Left Hand",
+        "hp": 6,
+        "lethal": false
+      },
+      {
+        "key": "bottom_right_hand",
+        "name": "Bottom Right Hand",
+        "hp": 6,
+        "lethal": false
+      },
+      {
+        "key": "left_leg",
+        "name": "Left Leg",
+        "hp": 10,
+        "lethal": false
+      },
+      {
+        "key": "right_leg",
+        "name": "Right Leg",
+        "hp": 10,
+        "lethal": false
+      }
     ],
-    "stat_block": { "physique": 4, "reflexes": 3, "mind": 1, "charm": 0 },
-    "resistances": { "Physical": 0, "Affliction": 1, "Psychic": 0 },
+    "stat_block": {
+      "physique": 4,
+      "reflexes": 3,
+      "mind": 1,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 1,
+      "Psychic": 0
+    },
     "abilities": [
-      { "key": "whip", "name": "Whip", "moment_cost": 1, "range": 7, "damage": [{ "type": "bleeding", "amount": 2 }] },
-      { "key": "awaken_eggs", "name": "Awaken Eggs", "moment_cost": 1, "summon": { "enemy_key": "roach_dog", "count": 4 } },
-      { "key": "seal_wound", "name": "Seal Wound", "moment_cost": 2, "heal": { "amount": 1, "target": "self" } },
-      { "key": "drag_back", "name": "Drag Back", "moment_cost_per_2_spaces": 1, "range": 7, "effect": "pull target toward self" }
+      {
+        "key": "whip",
+        "name": "Whip",
+        "moment_cost": 1,
+        "range": 7,
+        "damage": [
+          {
+            "type": "bleeding",
+            "amount": 2
+          }
+        ]
+      },
+      {
+        "key": "awaken_eggs",
+        "name": "Awaken Eggs",
+        "moment_cost": 1,
+        "summon": {
+          "enemy_key": "roach_dog",
+          "count": 4
+        }
+      },
+      {
+        "key": "seal_wound",
+        "name": "Seal Wound",
+        "moment_cost": 2,
+        "heal": {
+          "amount": 1,
+          "target": "self"
+        }
+      },
+      {
+        "key": "drag_back",
+        "name": "Drag Back",
+        "moment_cost_per_2_spaces": 1,
+        "range": 7,
+        "effect": "pull target toward self"
+      }
     ],
     "reward_table": []
   },
@@ -51,22 +158,73 @@
     "category": "Boss",
     "size": "Huge",
     "body_parts": [
-      { "key": "network", "name": "Network", "hp": 50, "lethal": true, "hidden_until_breach": true },
-      { "key": "head", "name": "Head", "hp": 7, "lethal": false },
-      { "key": "right_hand", "name": "Right Hand", "hp": 8, "lethal": false },
-      { "key": "left_hand", "name": "Left Hand (Flamethrower Arm)", "hp": 30, "lethal": false },
-      { "key": "right_leg", "name": "Right Leg", "hp": 15, "lethal": false },
-      { "key": "left_leg", "name": "Left Leg", "hp": 15, "lethal": false }
+      {
+        "key": "network",
+        "name": "Network",
+        "hp": 50,
+        "lethal": true,
+        "hidden_until_breach": true
+      },
+      {
+        "key": "head",
+        "name": "Head",
+        "hp": 7,
+        "lethal": false
+      },
+      {
+        "key": "right_hand",
+        "name": "Right Hand",
+        "hp": 8,
+        "lethal": false
+      },
+      {
+        "key": "left_hand",
+        "name": "Left Hand (Flamethrower Arm)",
+        "hp": 30,
+        "lethal": false
+      },
+      {
+        "key": "right_leg",
+        "name": "Right Leg",
+        "hp": 15,
+        "lethal": false
+      },
+      {
+        "key": "left_leg",
+        "name": "Left Leg",
+        "hp": 15,
+        "lethal": false
+      }
     ],
-    "stat_block": { "physique": 6, "reflexes": 4, "mind": 1, "charm": 2 },
-    "resistances": { "Physical": 0, "Affliction": 2, "Psychic": 0 },
+    "stat_block": {
+      "physique": 6,
+      "reflexes": 4,
+      "mind": 1,
+      "charm": 2
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 2,
+      "Psychic": 0
+    },
     "traits": {
       "fire_heals": true,
       "surface_immunity": {
         "health_part": "network",
         "breach_conditions": [
-          { "type": "condition_tier", "condition": "bleeding", "tier": 2, "on": "any_part", "note": "the wound exposes the mycelium network" },
-          { "type": "burst_damage", "amount": 7, "window": "single_hit", "note": "compendium says single HIT; DB notes said single turn — owner ruling NQ2, compendium wording adopted" }
+          {
+            "type": "condition_tier",
+            "condition": "bleeding",
+            "tier": 2,
+            "on": "any_part",
+            "note": "the wound exposes the mycelium network"
+          },
+          {
+            "type": "burst_damage",
+            "amount": 7,
+            "window": "single_hit",
+            "note": "RULED single hit (owner 2026-07-14, NQ2); DB's 'single turn' was tuning wording"
+          }
         ],
         "breach_resets_after_phase": 2
       },
@@ -78,24 +236,157 @@
       },
       "crush_2_disables_part": true,
       "left_hand_disable_removes_flamethrower": true,
-      "arena_hexes": [41, 60]
+      "arena_hexes": [
+        41,
+        60
+      ]
     },
     "abilities": [
-      { "key": "flamethrower", "name": "Flamethrower", "moment_cost": 2, "area": "cone 10", "damage": [{ "type": "burn", "amount": 2 }], "note": "trash cans explode at Burn 5 (3 spaces, 2 Burn)" },
-      { "key": "dash", "name": "Dash", "moment_cost": 1, "area": "line", "damage": [{ "type": "crushed", "amount": 3, "part_bias": "torso" }], "effect": "knock aside" },
-      { "key": "death_spin", "name": "Death Spin", "moment_cost": 3, "sequence": ["grab in hand (release if hit for 5)", "chew: 2 crushed to both arms", "spin and kill"] }
+      {
+        "key": "flamethrower",
+        "name": "Flamethrower",
+        "moment_cost": 2,
+        "area": "cone 10",
+        "damage": [
+          {
+            "type": "burn",
+            "amount": 2
+          }
+        ],
+        "note": "trash cans explode at Burn 5 (3 spaces, 2 Burn)"
+      },
+      {
+        "key": "dash",
+        "name": "Dash",
+        "moment_cost": 1,
+        "area": "line",
+        "damage": [
+          {
+            "type": "crushed",
+            "amount": 3,
+            "part_bias": "torso"
+          }
+        ],
+        "effect": "knock aside"
+      },
+      {
+        "key": "death_spin",
+        "name": "Death Spin",
+        "moment_cost": 3,
+        "sequence": [
+          "grab in hand (release if hit for 5)",
+          "chew: 2 crushed to both arms",
+          "spin and kill"
+        ]
+      }
     ],
     "phases": [
-      { "phase_number": 1, "name": "Threshold 1", "trigger_condition": "network 50-36 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"] }, "effects": [] },
-      { "phase_number": 2, "name": "Explosion 1 (Pressure Valve I)", "trigger_condition": "network at 35 HP", "behavior": { "explosion": { "radius": 5, "escape_moments": 2, "result": "instant knockout", "telegraph": "visible steam 1 Moment before" }, "after": "network retreats deeper - breach threshold resets" }, "effects": [] },
-      { "phase_number": 3, "name": "Threshold 2", "trigger_condition": "network 35-18 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"], "upgrades": ["flamethrower pops trash cans instantly", "dash bounces between walls up to 2 bounces", "death spin grab range +1"] }, "effects": [] },
-      { "phase_number": 4, "name": "Explosion 2", "trigger_condition": "network at 18 HP", "behavior": { "explosion": { "radius": 7, "escape_moments": 2, "result": "instant knockout" }, "upgrades": ["network fully exposed", "dash can change direction mid-run"] }, "effects": [] },
-      { "phase_number": 5, "name": "Threshold 3", "trigger_condition": "network 18-0 HP", "behavior": { "abilities": ["flamethrower", "dash", "death_spin"], "upgrades": ["flamethrower tracks closest target", "death spin costs 2 moments"] }, "effects": [] },
-      { "phase_number": 6, "name": "Explosion 3", "trigger_condition": "network at 0 HP (death)", "behavior": { "explosion": { "radius": 19, "escape_moments": 5, "result": "instant kill" }, "note": "phases 5-6 exist in the live DB but not the compendium's 4-phase design - owner ruling NQ3" }, "effects": [] }
+      {
+        "phase_number": 1,
+        "name": "Threshold 1",
+        "trigger_condition": "network 50-36 HP",
+        "behavior": {
+          "abilities": [
+            "flamethrower",
+            "dash",
+            "death_spin"
+          ]
+        },
+        "effects": []
+      },
+      {
+        "phase_number": 2,
+        "name": "Explosion 1 (Pressure Valve I)",
+        "trigger_condition": "network at 35 HP",
+        "behavior": {
+          "explosion": {
+            "radius": 5,
+            "escape_moments": 2,
+            "result": "instant knockout",
+            "telegraph": "visible steam 1 Moment before"
+          },
+          "after": "network retreats deeper - breach threshold resets"
+        },
+        "effects": []
+      },
+      {
+        "phase_number": 3,
+        "name": "Threshold 2",
+        "trigger_condition": "network 35-18 HP",
+        "behavior": {
+          "abilities": [
+            "flamethrower",
+            "dash",
+            "death_spin"
+          ],
+          "upgrades": [
+            "flamethrower pops trash cans instantly",
+            "dash bounces between walls up to 2 bounces",
+            "death spin grab range +1"
+          ]
+        },
+        "effects": []
+      },
+      {
+        "phase_number": 4,
+        "name": "Explosion 2",
+        "trigger_condition": "network at 18 HP",
+        "behavior": {
+          "explosion": {
+            "radius": 7,
+            "escape_moments": 2,
+            "result": "instant knockout"
+          },
+          "upgrades": [
+            "network fully exposed",
+            "dash can change direction mid-run"
+          ]
+        },
+        "effects": []
+      },
+      {
+        "phase_number": 5,
+        "name": "Threshold 3",
+        "trigger_condition": "network 18-0 HP",
+        "behavior": {
+          "abilities": [
+            "flamethrower",
+            "dash",
+            "death_spin"
+          ],
+          "upgrades": [
+            "flamethrower tracks closest target",
+            "death spin costs 2 moments"
+          ]
+        },
+        "effects": []
+      },
+      {
+        "phase_number": 6,
+        "name": "Explosion 3",
+        "trigger_condition": "network at 0 HP (death)",
+        "behavior": {
+          "explosion": {
+            "radius": 19,
+            "escape_moments": 5,
+            "result": "instant kill"
+          },
+          "note": "RULED canon (owner 2026-07-14, NQ3): 6 phases - fight, explosion, fight, explosion, fight, large explosion"
+        },
+        "effects": []
+      }
     ],
     "reward_table": [
-      { "type": "boss_token", "tier": "bronze", "count": 1 },
-      { "type": "loot_box", "tier": "Silver", "count": 1 }
+      {
+        "type": "boss_token",
+        "tier": "bronze",
+        "count": 1
+      },
+      {
+        "type": "loot_box",
+        "tier": "Silver",
+        "count": 1
+      }
     ]
   }
 ]

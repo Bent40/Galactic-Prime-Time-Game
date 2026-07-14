@@ -72,12 +72,16 @@ of the next Clock. Order of operations at each tick:
   interaction of a combat is free (consumes the free slot); every later one costs 1 Moment.
   The book's "resets upon using a different action" clause is **deleted**. An item's own
   listed Moment cost *replaces* the interaction cost when higher (one cost, never two).
-- **CONTESTED (was SETTLED — reopened by the Master Compendium).** The compendium records
-  "cooldowns removed from the system entirely" `[EXECUTED]`, but July's live skill data
-  still uses them (Tactical Roll, Acrobatic Save, "-4 Moment cooldown" threshold text).
-  Owner ruling requested (questionnaire NQ1). The engine keeps cooldown *support* (harmless
-  when no skill defines one); semantics if kept: "Cooldown: N Moments" = N ticks from
-  resolution, "1 Clock" = 10 ticks, absolute timeline, unaffected by Clock resets.
+- **RULED (owner, 2026-07-14 — NQ1): cooldowns do not exist.** Skills are gated by
+  **priming** instead: powerful effects require preparation conditions *before* use
+  (channel/prep actions, consumed stacks, stances, positions), not a wait-after-use timer.
+  High-tier items may **skip specific prime requirements** — deliberate design space.
+  Consequences: (a) the priming vocabulary is designed WITH the owner's pending skill
+  passover — each cooldown-texted skill (Tactical Roll, Acrobatic Save, "-4 Moment
+  cooldown" thresholds) gets re-expressed as primes in that pass; (b) the engine's dormant
+  cooldown support is deprecated and gets removed in the priming implementation pass;
+  (c) acceptance criterion 9 is superseded (see the criteria list). Mechanically, primes
+  are requirement-shaped — the engine's existing requirement checks are the substrate.
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -295,7 +299,9 @@ Each line is a test target; ruling in brackets.
 7. Move of 3 spaces = free once per tick; second move same tick rejected; 7-space move
    costs 1 Moment [R3].
 8. First inventory interaction free, second costs 1 Moment, no reset exploit [R3].
-9. Cooldown "1 Clock" = exactly 10 ticks regardless of Clock boundary [R3].
+9. ~~Cooldown "1 Clock" = exactly 10 ticks~~ SUPERSEDED by the no-cooldowns ruling (R3):
+   replace with — a prime-gated skill is rejected without its prime; a prep action grants
+   the prime; use consumes it. (Test lands with the priming implementation pass.)
 10. Damage = listed − flat resistance, floor 0; applies condition T1; re-application same
     tick does not double-advance; next-tick re-application advances to T2 [R4].
 11. At Clock reset every active condition advances one tier; a Delayed condition skips

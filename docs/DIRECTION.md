@@ -114,7 +114,43 @@ faithful to "there are no turns."
   unlimited 0-cost actions inside a real-time tick would become an APM contest. The digital
   rules addendum must settle actions-per-tick first.
 
-## Design source of truth (order of precedence)
+## Rulings adopted 2026-07-14 (owner)
+
+- **No cooldowns — priming instead** (addendum R3): powerful skills gate on preparation
+  conditions (channels, stacks, stances), never wait-timers; high-tier items may skip
+  specific primes. Priming vocabulary designed with the owner's skill passover.
+- **No party cap.** Recruiting allies is an economy, not a limit: strong allies are hard to
+  recruit, weak ones are short-lived — "a thousand grunts if you can use them well."
+  Per-fight numbers are bounded diegetically by arena deployment + exhaustion rotation
+  (GDD) — never by a menu cap. (Answers the GDD's open "party size cap" question.)
+- Incinedile canon: 6 phases (fight/explosion ×2, fight, large explosion); breach B =
+  7+ damage in a **single hit**.
+
+## Design sketch — the social director ("mother brain", Stage 2+ north star)
+
+Owner-proposed: NPC contestants are ordinary clients running AI policies that **accept
+override commands from a director service**. One central brain (or a few specialized ones)
+watches the event stream and adjudicates social consequences — e.g. a player delivers a
+speech accusing X; persuasiveness = Charm + LLM-judged quality of the *actual words*; the
+director decides town Y turns hostile to X. Feasibility assessment (recorded): **sound and
+staged-feasible**, with these binding constraints:
+
+1. **LLM interprets, sim decides.** The director never mutates state; it emits *schema-bound
+   commands* into the same logged stream as players (`faction_shift`, `npc_stance`,
+   `goal_spawn`… with magnitude caps scaled by Charm). Determinism, replay, and bounded
+   blast radius survive; the LLM picks from a legal-effects menu, it doesn't freewrite.
+2. **One brain over many NPCs, never per-NPC models** (owner's instinct is correct — the
+   proven pattern: deterministic triage picks affected NPCs by reach/graph/geometry, ONE
+   batched adjudication call decides responses; small local model triages, big model only
+   on notable events).
+3. **Speech scoring = LLM-judge with fixed rubric** + deterministic combiner (Charm, tags,
+   audience state). Guard against prompt injection and munchkining (schema-clamped scores,
+   speech costs camera time, the audience reacting to manipulation is itself content).
+4. **Consequences must be broadcast-explained** (announcer tells the world WHY town Y
+   marched) — readability and the UX are the same problem, solved diegetically.
+5. **Staging:** Stage 1–2 ships deterministic social scoring behind the director interface;
+   the mother brain replaces the policy at Stage 2+ without engine changes. This is exactly
+   why the command-stream contract exists.
 
 1. This document (owner-decided direction).
 2. `docs/rules-addendum.md` (canonical digital rulings; R12 = compendium-adopted systems).
