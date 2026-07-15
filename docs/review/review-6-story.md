@@ -101,12 +101,10 @@ measure moral damage. That's a joke and a thesis in one line of set dressing.
   1. **The route assumes compliance.** What happens to a party that refuses to kill the
      NPCs, refuses to feed her, refuses the assassination? Every beat needs a genuine
      refusal fork with a *different cost*, or agency is an illusion.
-  2. **The brand paradox — decide if it's a feature.** The brand (reward for complicity)
-     grants immunity to noble presence — which means branded parties are immune to the
-     Dissolution songs, the route's most powerful content. Mercy costs you safety but buys
-     you the songs; complicity buys safety and *skips the route's soul*. If intentional,
-     that's brilliant — say so in the design. If accidental, fix it (partial immunity: the
-     brand mutes the timer but not the song?).
+  2. **The brand paradox — RULED intentional (owner, 2026-07-15): mercy earns the songs.**
+     And the mechanism is now canon: the brand is a contract that works by *dulling the
+     branded* — massive EQ loss, pragmatic perception, less of you to influence. Full
+     design + digital implementation directions: `docs/story-canon.md`.
   3. **Continuity bug:** the F3 human-farm leader is "the surviving F1 NPC" — a mortal
      human, ~170 years later. He needs a longevity mechanism (descendant carrying the
      grudge? demon-touched? the girl-queen keeps him alive as a pet cruelty?). The symmetry
