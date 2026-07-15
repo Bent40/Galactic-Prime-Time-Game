@@ -4,6 +4,10 @@
 
 ## Next actions
 
+0. **Work from `docs/ISSUES.md`** — the ranked issue register compiled from reviews 1-6
+   (F/B/T scoring, efficiency grades, four-wave execution plan). Wave 1 = one owner
+   decision sitting; Wave 2 = the build block; Wave 3 = the slice; Wave 4 = story track.
+
 1. Owner morning review: PROVISIONAL rulings (R2/R3/R4/R8/R9/R10) + R11 engine
    interpretation log in `docs/rules-addendum.md`; promote/adjust, then promote the
    combat-fields SKETCH in `docs/DIRECTION.md` if the tick rulings hold.
