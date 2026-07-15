@@ -5,7 +5,11 @@
 # below (see CLAUDE.md "Running tests" + memory/open-risks.md).
 set -euo pipefail
 
-VERSION="4.5-stable"
+# 4.5.2 = final bugfix patch of the 4.5 line (project targets 4.5 features).
+# NOTE: the SourceForge mirror retains only the ~5 most recent releases; if this
+# version vanishes, check https://sourceforge.net/projects/godot-engine.mirror/files/
+# and pick the closest 4.5.x/4.x patch.
+VERSION="4.5.2-stable"
 BIN_DIR="${HOME}/.local/bin"
 DEST="${BIN_DIR}/godot"
 
@@ -19,8 +23,11 @@ if [ -x "${DEST}" ]; then
 	exit 0
 fi
 
+# SourceForge mirror first — VERIFIED WORKING through the session proxy 2026-07-15
+# (downloads.godotengine.org is only a redirector; GitHub release assets are
+# blocked unless the env allowlists the githubusercontent asset domains).
 URLS=(
-	"https://downloads.godotengine.org/godot/4.5/Godot_v${VERSION}_linux.x86_64.zip"
+	"https://sourceforge.net/projects/godot-engine.mirror/files/${VERSION}/Godot_v${VERSION}_linux.x86_64.zip/download"
 	"https://github.com/godotengine/godot-builds/releases/download/${VERSION}/Godot_v${VERSION}_linux.x86_64.zip"
 	"https://github.com/godotengine/godot/releases/download/${VERSION}/Godot_v${VERSION}_linux.x86_64.zip"
 )

@@ -15,11 +15,11 @@
 
 ## In progress
 
-- KAN-2 is **code-complete but NOT validated live**: all 12 sim/test files gdparse-clean,
-  tests written for all 20 acceptance criteria, but no Godot 4 binary exists in the session
-  container — `scripts/run_sim_tests.sh` exits 3 SKIP. First real run must happen on the
-  owner's machine (`godot` on PATH or `$GODOT_BIN`, then `bash scripts/run_sim_tests.sh`).
-  Expect first-run failures; that's normal for an unexecuted suite.
+- **KAN-2 is VALIDATED LIVE (2026-07-15): 22/22 tests green under Godot 4.5.2** — first
+  real execution of the suite, zero failures, determinism suite included. `wf validate`
+  fully green (seed data + sim tests). Godot installs in-container via
+  `bash scripts/setup_godot.sh` (SourceForge mirror; env domain allowlist enabled it).
+  Next engine work: the priming pass (replaces deprecated cooldown support, NQ1 ruling).
 
 ## Next
 
