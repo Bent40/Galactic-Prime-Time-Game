@@ -284,6 +284,42 @@ designs, adopted as canon; engine/content implementation lands with their epics.
   Iron Stance: declare, don't move, adjacent-ally-targeting attacks retarget to you,
   Physique 5): PENDING finalization (questionnaire), then seed as skills.
 
+## R13 — Shock, resolved model (owner facts 2026-07-15 + proposed digital form)
+
+**SETTLED (owner):** Shock is a pain response, mostly narrative pressure; it **resets fully
+at combat end**. Table practice: accumulates per organ; owner open to direct-status,
+non-escalating form.
+
+**PROPOSED (PROVISIONAL — awaiting owner nod):** model Shock as **events, not an
+accumulating stat**:
+- A shock source applies its **stated tier directly** (the book already says "works at the
+  tier specified"); escalation is the exception, not the rule.
+- The combatant stores only a **high-water mark** for the combat. A source that "elevates"
+  applies `highest_this_combat + 1`.
+- **Per-organ flavor without a per-organ ledger:** a shock source hitting a part that
+  already produced shock this combat elevates +1 (repeated abuse of the same wound).
+- Tier effects are **momentary events**: T1 Shout (noise/stealth break), T2 Stutter
+  (current action fails), T3 Faint (Helpless 1 Clock, drop items), T4 Helpless/Exposed for
+  the rest of combat.
+- Full reset at combat end. This dissolves the "how does Shock decay" gap (Q21) — it
+  doesn't decay; it's not a pool.
+
+## R14 — Damage quantization & the numbers rework (owner direction, 2026-07-15)
+
+**RULED (owner): the whole numbers system gets a video-game rework pass.** Founding
+principles, canon now:
+- **1 damage = a hit that causes LASTING harm** — and it is the basic unit. An untrained,
+  unarmed contestant with basic hitting ability deals 1.
+- **0 damage is a real outcome.** A slap between equal-physique combatants may deal nothing:
+  insufficient force = no lasting wound.
+- Consequence: below the damage number sits a **force-vs-robustness gate** (to be designed:
+  attack force from physique+weapon vs target robustness from physique/armor; force not
+  exceeding robustness → 0 damage, possibly still conditions/shock). Design pass with the
+  owner decides the exact function.
+- **All currently seeded damage/HP numbers are placeholders pending this pass** (weapon
+  values, part HP, resistances, enemy budgets). Supersedes/absorbs NQ5 (tutorial HP tuning)
+  — the "hard to hurt without killing" problem gets solved by the rework, not a patch.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

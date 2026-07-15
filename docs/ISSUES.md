@@ -14,12 +14,12 @@ it stop the next piece of work) · T = time cost 1–5 (5 = weeks) ·
 
 | # | Issue | Source | 🔑 | F | B | T | **E** |
 |---|---|---|---|---|---|---|---|
-| I-1 | **Shock has no recovery rule** — engine never decays Shock in combat; certainly wrong | Q21 (post-review-1 gap) | 🔑 | 4 | 3 | 1 | **11.0** |
+| I-1 | ~~Shock recovery~~ **ANSWERED (owner): resets per combat; event-model proposed as R13, awaiting nod** | Q21 → R13 | 🔑nod | 4 | 3 | 1 | ~~11.0~~ |
 | I-2 | **Spine naming** — adopt "what cures corruption, and what does it cost" (or your version) as the stated theme; audit beats against it | rev-6 §pri-2 | 🔑 | 4 | 1 | 1 | **9.0** |
 | I-3 | **Slice premade contestants** — IP split means the slice needs 2 original contestants designed (concept, stats, 3 skills each) | rev-6 IP ruling + rev-4 §5 | 🔑 | 3 | 3 | 1 | **9.0** |
 | I-4 | **PROVISIONAL rulings sign-off batch** — R2 dodge, R3 caps, R4 Burn-Shock, R8 RPM, R9 grapple, R10 halving, R11 log; = questionnaire C/D sections in one sitting | rev-1/addendum | 🔑 | 3 | 2 | 1 | **8.0** |
-| I-5 | **IP split final call** — are players' characters in the game at all (with buy-in), or game-original cast only? | rev-6 / story-canon | 🔑 | 3 | 2 | 1 | **8.0** |
-| I-6 | **Tutorial HP tuning** — "hard to hurt without killing"; 2-dmg weapons one-shot 2-HP arms; decide boost-part-HP vs easier-HP-gain, then reseed numbers | NQ5 / compendium #7 | 🔑 | 5 | 3 | 2 | **6.5** |
+| I-5 | ~~IP split~~ **RULED: players' characters parked; game gets an original cast** | story-canon | ✅ | 3 | 2 | 1 | done |
+| I-6 | **→ absorbed into R14: full numbers rework** (owner-ruled principles: 1 dmg = lasting harm, baseline unarmed untrained = 1, 0-damage outcomes real via force-vs-robustness gate; all seeded numbers now placeholders). Design pass with owner pending | NQ5 → R14 | 🔑 | 5 | 3 | 3 | **4.3** |
 | I-7 | **Schema completion pass** — items rpm/magazine fields, skills `exclusive_to` lock, 3-stat support decision (Camouflage), validator updates | rev-5, R8, R12 | 🔑(3-stat) | 2 | 2 | 1 | **6.0** |
 | I-8 | **Tag descriptions port** — the rich tag text lives in the rulebook docx; DB/seeds have empty strings | rev-5 stale-items | | 2 | 1 | 1 | **5.0** |
 | I-9 | **Spectacle/hype engine v1** — deterministic audience meter, crowd-goal select, camera-call effect; the differentiator; slice-mandatory; Stage-2 foundation | rev-2 §2, rev-4 §5 | | 5 | 4 | 3 | **4.7** |

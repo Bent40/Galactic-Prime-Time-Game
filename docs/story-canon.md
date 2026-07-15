@@ -34,12 +34,11 @@ emotional. You are harder to influence because there is less of you to reach.
 3. **The contract cuts both ways:** attacking demons should breach it — define breach
    consequences when the Medium-route fork pass happens.
 
-## Character IP split (owner, 2026-07-15)
+## Character IP split (owner, 2026-07-15 — RULED same day)
 
-- Most party characters (Filipe, XQUEZ/T, Mario, Sasha-as-played, Frod) are the **players'
-  characters** — whether they appear in the video game or remain TTRPG-session-only is
-  **UNDECIDED**. Do not build the game's premade contestants on them without an explicit
-  owner decision (and, courteously, player buy-in).
+- **RULED: players' characters stay OUT of the game for now** — parked aside as concepts
+  that may be drawn on later if wanted. The game gets an **original cast**; the vertical
+  slice's two premade contestants are new characters (drafts pending owner approval).
 - **The Nikita & Sasha story is KEEPER content** — the owner wants it in the game even if
   the characters must be rebranded/renamed. Treat the *story shape* (inherited fear, the
   two-state veteran, the reversion song, the scarf, the recognition asymmetry) as the
