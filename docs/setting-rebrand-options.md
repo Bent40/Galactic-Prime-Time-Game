@@ -4,7 +4,8 @@
 roughly Dungeon Crawler Carl's silhouette, and a mycelium-Corporation with a clear evil
 motive is too on the nose. Keep: the dungeon (mostly fine), sci-fi-ish flavor, the
 philosophical angle, possibly a running-out timer. Candidate source: the owner's own novel
-world — **the Cosmic Casino** (*A Day of Ruin*, V0.3 + story bible).
+world — **the Cosmic Casino** (*A Day of Ruin*, V0.3 + story bible). Full world inventory
++ owner's 2026-07-16 canon corrections: **`cosmic-casino-canon.md`**.
 
 ## What the new frame MUST preserve (mechanical load-bearing)
 
@@ -101,6 +102,43 @@ of them — the verdict decides what kind.**
 Incinedile), the Moment clock, all combat rules, per-part HP, the addendum, the engine and
 its 22 green tests, Sasha & Nikita, the brand contract, the question architecture, the
 verdict. This is a FRAME swap, not a redesign — the engine doesn't know who's watching.
+
+## Update 2026-07-16 — owner canon corrections, impact on Option A
+
+The owner's corrected cosmology (`cosmic-casino-canon.md` §1–§4) strengthens A on every
+axis, and changes one conclusion:
+
+1. **The TV frame doesn't have to die — it becomes diegetic.** VIP tables are *"special
+   games designed around what the gods have seen throughout the quarter-millennium and
+   found interesting — mostly human pop culture."* A reality-TV dungeon crawler is
+   exactly what gods who binge-watched humanity would build. **GPT becomes a VIP table
+   whose in-fiction skin is a human reality show.** Every broadcast mechanic (announcer,
+   tags, camera calls, ratings) survives untouched — the DCC separation comes from who
+   runs it and why (a gods' casino with a divinity economy), not from deleting the
+   broadcast. This also softens Open Decision 5: **"Galactic Prime Time" can survive as
+   the show's in-world name.**
+2. **Ascension is canon, near-verbatim:** *"winners of games can get some of the currency
+   being bet around, allowing them to gain divinity, and join the table as gamblers."*
+   GPT's retire-into-Patron loop maps 1:1 with zero invention.
+3. **The verdict ending is canon, literalized:** *"the final winner of the tables gets to
+   decide the way history will be shaped for the next 250 years, as well as how the
+   apocalypse will be remembered"* — the source of every legend humanity ever created.
+   "What kind of RULER you'll be" is no longer a metaphor; it's the tables' actual prize.
+4. **The LLM-GM north star gets a diegetic identity:** the games are run **by fallen
+   gods — bankrupt, forgotten religions** — with explicit "anything goes" license. The
+   future LLM director *is* a forgotten god in-fiction; the deterministic v1 director is
+   the same god on a tighter script. The mother-brain architecture needs no reframing.
+5. **Directives/Goals = tips to the dealer** (boons, buffs, items, trials, monsters,
+   curses) — the patron-influence mechanic now has exact house vocabulary.
+6. **Coupling proposal upgraded (Open Decision 2):** instead of "different special,
+   different realm," the cleaner default is **same Earth special, different table**. The
+   novel occupies the Forsaken table (Marcus), a fleet war game (Viola), and a
+   million-player zombie game (#3); the game occupies the GPT dungeon-show table. Shared
+   cosmology and event, zero plot overlap **by construction** — the table structure
+   exists to host differently-shaped games inside one apocalypse.
+7. **Future mode hooks for free:** VVIP/Forsaken = a hardcore-solo mode template;
+   Viola's game shows house-directed NPC actors targeting a player; the zombie game
+   shows a hidden-traitor mass format (Stage 2/3 material, not slice scope).
 
 ## Open decisions (owner)
 
