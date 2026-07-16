@@ -1,9 +1,13 @@
 # Galactic Prime Time — Game (Godot) — Claude Code Context
 
 2.5D tactical RPG conversion of the owner's live TTRPG campaign (reality-TV dungeon
-crawler — abducted contestants fight on an alien broadcast). **Read this first, then
-`docs/DIRECTION.md`** — it is the committed product direction and supersedes older
-assumptions in the PDFs where they conflict.
+crawler). **Setting frame RULED 2026-07-16 (DIRECTION.md D3–D5):** the show is a table in
+the **Cosmic Casino** — the owner's own novel world (gods wager on contestants; patron
+gods; divinity economy) — adopted **game-first**: world rules yes, the novel's story no,
+and gameplay stays GPT-shaped. The reality-show skin survives diegetically (a VIP table
+themed on human pop culture). **Read this first, then `docs/DIRECTION.md`** — it is the
+committed product direction and supersedes older assumptions in the PDFs where they
+conflict.
 
 ## Orient yourself (any new session, in this order)
 

@@ -165,6 +165,25 @@ staged-feasible**, with these binding constraints:
    the mother brain replaces the policy at Stage 2+ without engine changes. This is exactly
    why the command-stream contract exists.
 
+## Rulings adopted 2026-07-16 (owner) — the setting frame
+
+- **D3 — The frame is the Cosmic Casino, taken game-first.** The show is a table in the
+  gods' casino (the owner's own novel world — *A Day of Ruin*; inventory:
+  `cosmic-casino-canon.md`). **We take the game, not the story:** Marcus/Viola/the third
+  protagonist are examples of how games look, never game content. Mix-and-match license is
+  explicit — where casino canon and GPT differ on *gameplay*, **the dungeon/tables work
+  closer to GPT's way**. (Options record: `setting-rebrand-options.md`.)
+- **D4 — Cast structure:** the player is an **OC** (their own created contestant); NPCs
+  are **predesigned characters with story arcs** (Sasha & Nikita are the first two —
+  recruitable, `story-canon.md`).
+- **D5 — Patron gods:** a roster of patron gods assigned **randomly** to contestants, with
+  stats for **generosity, power, buff domains, and favor conditions** (what you must do to
+  win more favor). Design sketch: `design/patron-gods.md` (PROPOSED, builds in KAN-7).
+- Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
+  title, the timer (see `setting-rebrand-options.md` open decisions).
+
+## Source-of-truth precedence
+
 1. This document (owner-decided direction).
 2. `docs/rules-addendum.md` (canonical digital rulings; R12 = compendium-adopted systems).
 3. **`docs/GPT_Master_Compendium.md`** (consolidated design record through ~May 5: system

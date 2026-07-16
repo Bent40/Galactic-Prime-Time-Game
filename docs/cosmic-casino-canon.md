@@ -1,9 +1,11 @@
 # Cosmic Casino — world canon inventory (*A Day of Ruin* universe)
 
-*Status: REFERENCE for the setting-rebrand decision (`setting-rebrand-options.md`).
+*Status: REFERENCE — the frame was **adopted game-first on 2026-07-16** (DIRECTION.md
+D3–D5): the game takes the *world rules* below, never the novel's story — Marcus, Viola,
+and the third protagonist are examples only, and gameplay stays closer to GPT's way than
+Day of Ruin's way ("mix and match as we see fit").
 Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bible
-(V0.2-era) > V0.3 chapter text. The novel's PLOT and protagonists are the novel's —
-listed here for world-rules and coupling design only, never for reuse as game plot.*
+(V0.2-era) > V0.3 chapter text.*
 
 ## 1. Cosmology (owner-corrected, 2026-07-16)
 

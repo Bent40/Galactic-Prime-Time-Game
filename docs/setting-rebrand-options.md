@@ -1,4 +1,4 @@
-# Setting Rebrand — Brainstorm & Options (status: OPEN, owner deciding)
+# Setting Rebrand — Brainstorm & Options (status: DECIDED 2026-07-16 — Option A adopted **game-first**; residual decisions below)
 
 **Problem (owner, 2026-07-15):** "aliens abduct humans into a broadcast dungeon show" is
 roughly Dungeon Crawler Carl's silhouette, and a mycelium-Corporation with a clear evil
@@ -142,12 +142,16 @@ axis, and changes one conclusion:
 
 ## Open decisions (owner)
 
-1. **Adopt A (or A+E)?** Or another direction from above / a hybrid.
-2. **Novel–game coupling policy.** Recommended: same cosmology, different table — the
-   novel keeps Earth's quarter-millennial special (Marcus's story stays free); the game is
-   a different special on a purpose-built/host fantasy realm with champions imported from
-   Earth (which is exactly what GPT's dungeon already looks like). Shared: framework,
-   patron system, Momus-or-sibling host, relic logic. Never shared: plot, protagonist.
+1. ~~**Adopt A (or A+E)?**~~ **RULED 2026-07-16: A adopted, game-first.** The game takes
+   the casino *world* (patron gods, tables, divinity economy, fallen-god runners), not the
+   novel's story; gameplay stays closer to GPT's way than Day of Ruin's way; mix and match
+   as we see fit. Player = OC; NPCs = predesigned characters with arcs. (Recorded:
+   `story-canon.md`, DIRECTION.md D3–D5; patron-god sketch: `design/patron-gods.md`.
+   E — the starving pantheon — not yet ruled on; folded into decision 6.)
+2. ~~**Novel–game coupling policy.**~~ **RULED 2026-07-16: hard decoupling.** "Separate
+   the story from the game. We only take the game, not the full story." Marcus/Viola/#3
+   are examples only. (Whether the game's table sits in the same Earth special or its own
+   is now a flavor call, not a coupling risk — default: unspecified until it matters.)
 3. **Does the live TTRPG campaign re-skin too**, or does the table keep the Corporation
    while the game goes Casino?
 4. **Momus: shared host across both**, or the game gets a sibling host (same franchise,

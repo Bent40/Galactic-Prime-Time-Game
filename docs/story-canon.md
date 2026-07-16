@@ -90,6 +90,23 @@ emotional. You are harder to influence because there is less of you to reach.
    sub-theme** of the F1–F3 set — which fits: it reads as that floor-set's question,
    roughly *"will you cure what's corrupted, and at what cost?"* — pending owner shaping.
 
+## The Setting — Cosmic Casino frame, game-first (owner, 2026-07-16)
+
+- **RULED: the game adopts the Cosmic Casino frame, decoupled from the novel's story.**
+  "Separate the story from the game. We only take the game, not the full story." —
+  Marcus, Viola, and the third protagonist are *examples* of how games look, not game
+  content.
+- **RULED: the player is an OC** (own created contestant). **NPCs are predesigned
+  characters with story arcs** — Sasha & Nikita remain the first two.
+- **RULED: gameplay stays GPT-shaped.** "The way the dungeon/tables work is something I
+  want closer to GPT's way than Day of Ruin's way in regards to the gameplay itself. We
+  can mix and match as we see fit."
+- **RULED (direction): patron gods, randomly assigned,** with stats for generosity, power,
+  buff types, and favor conditions. Sketch: `design/patron-gods.md`.
+- World-rules reference: `cosmic-casino-canon.md` (owner corrections 2026-07-16 recorded
+  there, incl. Normal/VIP/VVIP-Forsaken tables, divinity economy, fallen-god game
+  runners).
+
 ## Open story threads the owner wants to go through (queued)
 
 The review-6 notes are marked "good — more to discuss": pending walkthrough of the
