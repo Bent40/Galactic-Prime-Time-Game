@@ -5,15 +5,49 @@ Frame source: `../cosmic-casino-canon.md` · ruling record: `../story-canon.md` 
 Build epic: **KAN-7** (progression/audience) — nothing here is implemented early; only the
 seed-data schema stub may land with the W2 schema pass.*
 
-**Owner's ruling (verbatim intent):** implement a bunch of patron gods you can get
-randomly, with random stats on how generous they are, how powerful they are, what type of
-buffs they give, and what you need to do to win more favor with them.
+**Owner's ruling (verbatim intent):** implement a bunch of patron gods, with stats on how
+generous they are, how powerful they are, what type of buffs they give, and what you need
+to do to win more favor with them.
+
+## The two-tier structure (owner, 2026-07-16 — adopted)
+
+- **patrons** (plural, the exposure tier's top rung): **gods who buy you things** —
+  donators. Any number of them; they tip the dealer on your behalf, gift comps, place side
+  bets. This IS the existing Viewers → Followers → Patrons ladder with gods at the top.
+  *(Resolves former Q1.)*
+- **THE patron god** (singular slot): the one god who **escorts you through the
+  campaign** — directs the *types of bets* running on you, shapes your run's wager
+  profile, and is usually your **biggest donator**. One per contestant (or none — see
+  Forsaken, below).
+
+## Assignment — background-driven bidding (owner-proposed 2026-07-16, PROPOSED synthesis)
+
+Owner: *maybe not random — matched by **keywords in the player-written character
+background**; gods can maybe **buy out** champions; or ORV-style, **only those without a
+patron can choose a patron**.* Proposed synthesis of all three:
+
+1. **The background is the audition tape.** OC creation includes a short background —
+   freeform text plus a few structured picks (origin, vice, virtue, what you want back
+   home). The structured picks map deterministically to god affinities in v1; the freeform
+   text is LLM-read for keywords later (same staging as the social director — deterministic
+   first, model-augmented behind the same interface).
+2. **Interested gods bid.** Affinity match + seeded variance produces 2–3 suitor offers,
+   each shown as a deal sheet: domains, generosity, temperament, favor demands.
+3. **The player chooses — because only the patron-less can choose** (the ORV rule). Once
+   bound, the player cannot swap; the relationship changes only from the god side.
+4. **Refusing every offer = the Forsaken run.** No escort, no tips, higher payout
+   multipliers — the hardcore mode stops being a menu toggle and becomes a *roleplay
+   decision at creation*.
+5. **Buy-outs are god-side drama (⟨open⟩):** a richer god can buy your contract from your
+   patron god mid-campaign — triggered by performance (hype/favor thresholds), arriving
+   diegetically as new bet types and a changed comp style. Rare, event-worthy, and it
+   makes the player *feel traded*, which is exactly the spine.
 
 ## Where it sits in the existing machine
 
 | Existing GPT system | Patron-god layer |
 |---|---|
-| Exposure tiers Viewers → Followers → **Patrons** | Viewers/Followers stay the mortal-ish crowd; the **Patron tier becomes gods at the table** ⟨open Q1⟩ |
+| Exposure tiers Viewers → Followers → **Patrons** | Viewers/Followers stay the mortal-ish crowd; the **Patrons tier = donator gods**; THE patron god is a singular slot above it |
 | Directives (quests from the power that runs the show) | **The house/dealer speaks** — the fallen god running the table |
 | Goals (crowd challenges) | Side bets from the gallery (unchanged mechanically) |
 | Camera Call | The odds board turns to you (unchanged mechanically) |
@@ -42,9 +76,9 @@ Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip 
 
 ## Rules of the layer (v1, deterministic — no LLM required)
 
-1. **Assignment is random but seeded.** Roster in seed data; the run seed draws the patron
-   (and any per-run stat jitter) → replay/determinism preserved. Random stats can be
-   per-god fixed values, per-run jitter, or both — owner's call ⟨open Q3⟩.
+1. **Assignment is background-driven bidding** (section above), seeded where variance
+   enters → replay/determinism preserved. Stat randomness shape still open ⟨Q3⟩: fixed
+   roster / per-run jitter / fixed cores + small jitter (recommended).
 2. **Favor is a pure function of the event log.** Favor conditions are declarative
    predicates over sim events (kills by damage type, mercy events, retreat events, hype
    beats…). No hidden state; the same run always earns the same favor.
@@ -62,13 +96,16 @@ Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip 
 
 ## Open questions (owner)
 
-- **Q1** — Do patron gods *replace* the Patrons exposure tier (recommended: simplest, and
-  the name already matches) or sit above it as a separate layer?
+- ~~**Q1**~~ — RESOLVED 2026-07-16: Patrons tier = donator gods; THE patron god = singular
+  escort slot above it (two-tier structure).
 - **Q2** — Are epithets (patron-granted titles) a subset of the existing tag system or a
   new parallel track?
 - **Q3** — Random stats: fixed-per-god roster (gods feel like characters), per-run jitter
   (roguelike variance), or fixed cores + small jitter (recommended)?
-- **Q4** — Can a contestant lose/anger a patron into abandonment mid-run (and does a rival
-  god poach)? Adds drama; adds state.
+- **Q4** *(reshaped)* — Adopt the **buy-out** mechanic (god-side contract transfer,
+  performance-triggered)? And can a displeased patron god *abandon* a contestant, leaving
+  them patron-less (able to choose again, per the ORV rule) or Forsaken-locked?
 - **Q5** — Do rival patrons tip *against* the player's party in co-op (trials targeting a
   teammate), or only against enemies/the environment in Stages 1–2?
+- **Q6** — Confirm the bidding synthesis: structured background picks (v1, deterministic)
+  + freeform text (LLM-read later); 2–3 suitor offers; refusal of all = Forsaken run.

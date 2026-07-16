@@ -176,9 +176,14 @@ staged-feasible**, with these binding constraints:
 - **D4 — Cast structure:** the player is an **OC** (their own created contestant); NPCs
   are **predesigned characters with story arcs** (Sasha & Nikita are the first two —
   recruitable, `story-canon.md`).
-- **D5 — Patron gods:** a roster of patron gods assigned **randomly** to contestants, with
-  stats for **generosity, power, buff domains, and favor conditions** (what you must do to
-  win more favor). Design sketch: `design/patron-gods.md` (PROPOSED, builds in KAN-7).
+- **D5 — Patron gods** (amended same day): a roster of gods with stats for **generosity,
+  power, buff domains, and favor conditions**. Two tiers: **patrons** (plural — donator
+  gods who buy you things; the exposure ladder's top rung) vs **THE patron god** (singular
+  escort who directs the types of bets on you; usually your biggest donator). Assignment
+  is **background-driven** (keywords from the player-written OC background draw god bids;
+  only the patron-less can choose — ORV rule; refusing all offers = Forsaken run), not
+  purely random. Buy-outs (god-side contract transfer) proposed. Design sketch:
+  `design/patron-gods.md` (builds in KAN-7).
 - Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
   title, the timer (see `setting-rebrand-options.md` open decisions).
 
