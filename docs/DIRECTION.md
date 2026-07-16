@@ -184,8 +184,11 @@ staged-feasible**, with these binding constraints:
   only the patron-less can choose — ORV rule), not purely random. **Forsaken runs are
   god-initiated, not refusal:** the gods' way of going all-in — a champion *chosen* for a
   trial bigger than others; patron intact, all help sealed, higher divinity/payout.
-  Buy-outs (god-side contract transfer) proposed. Design sketch: `design/patron-gods.md`
-  (builds in KAN-7).
+  Buy-outs (god-side contract transfer) proposed. **Boon economy = the multiplier model:**
+  the patron decides how much/which type/how strong — domain-tagged actions raise buff
+  chances and tier odds, diffusely across related gods when patron-less, focused and
+  amplified (patron domain top multiplier, faction spill-over, directed affection gains)
+  under a patron. Design sketch: `design/patron-gods.md` (builds in KAN-7).
 - Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
   title, the timer (see `setting-rebrand-options.md` open decisions).
 
