@@ -82,6 +82,18 @@ The shape this implies:
    gains are amplified and directed toward the patron's faction. The patron is the
    pantheon's attention, *focused*.
 
+**Buff taxonomy (owner, 2026-07-16 — Q8 resolved).** "Buffs" cover BOTH surfaces:
+**conditional blessings** and **loot/affix roll quality**. Duration classes:
+
+- **temporary** — expires on its own;
+- **continuous on a condition** — active while a condition holds (same design language as
+  R3 priming: power gated on conditions, never timers);
+- **permanent** — sometimes, depending on the buff.
+
+**What non-patron affection buys (owner, Q8 resolved):** a higher chance those gods give
+you things (donator tips), and it **raises buy-out interest** — the god your deeds keep
+feeding is the god most likely to bid for your contract.
+
 ## The data model (seed data, JSON — schema stub only until KAN-7)
 
 ```
@@ -160,7 +172,7 @@ layer is strictly a modifier on top.
 - **Q7** — Forsaken designation: meta-level it's presumably the player opting into
   hardcore at creation — confirm the fiction frames it as *the god choosing them* (and
   whether a patron god can also trigger it mid-campaign as a true all-in, Marcus-style).
-- **Q8** — What are "buffs" concretely in the multiplier model: temporary combat
-  blessings, loot/affix roll quality (the existing tier ladder), or both? And what does
-  accumulated *affection with non-patron gods* buy — donator tips, epithets, recruitment
-  as THE patron next run, buy-out interest?
+- ~~**Q8**~~ — RESOLVED 2026-07-16: buffs = conditional blessings AND loot/affix roll
+  quality; duration classes temporary / continuous-on-a-condition / sometimes permanent.
+  Non-patron affection → higher chance of gifts from those gods + raises buy-out
+  interest. (See "Buff taxonomy" above.)
