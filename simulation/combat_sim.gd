@@ -33,6 +33,7 @@ var clock: Clock
 var combatants: Dictionary = {}  # id -> CombatantState (shared with helpers)
 var cond: ConditionEngine
 var resolver: ActionResolver
+var hype: HypeEngine
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -48,6 +49,7 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	cond.setup(static_data.get("conditions", []), combatants)
 	resolver = ActionResolver.new()
 	resolver.setup(clock, combatants, cond, rng)
+	hype = HypeEngine.new()
 	_rebuild_snapshot()
 
 
@@ -109,6 +111,7 @@ func _post(events: Array[Dictionary]) -> void:
 					part["hidden"] = false
 			events.append({"type": "breach_opened", "combatant": c.id})
 		events.append_array(ExposureEngine.refresh(c, clock.tick))
+	events.append_array(hype.ingest(events))
 	for event: Dictionary in events:
 		if not event.has("tick"):
 			event["tick"] = clock.tick
@@ -290,6 +293,7 @@ func to_dict() -> Dictionary:
 		"combatants": combatant_dicts,
 		"tick_snapshot": tick_snapshot.duplicate(true),
 		"static_data": static_data.duplicate(true),
+		"hype": hype.to_dict(),
 	}
 
 
@@ -301,6 +305,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	for id: Variant in combatant_dicts:
 		sim.combatants[String(id)] = CombatantState.from_dict(combatant_dicts[id])
 	sim.tick_snapshot = (data.get("tick_snapshot", {}) as Dictionary).duplicate(true)
+	sim.hype = HypeEngine.from_dict(data.get("hype", {}))
 	# Re-wire helper references (clock instance was replaced above).
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
