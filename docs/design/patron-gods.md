@@ -1,6 +1,8 @@
 # Patron Gods — system design sketch
 
-*Status: **PROPOSED** (drafted 2026-07-16 from the owner's ruling; awaiting owner shaping).
+*Status: **DESIGNED** — all core questions (Q1–Q8) RULED by the owner 2026-07-16; numbers
+remain placeholders (R14 discipline); bidding-flow details and marked ⟨PROPOSED⟩ items
+still open for shaping.
 Frame source: `../cosmic-casino-canon.md` · ruling record: `../story-canon.md` "The Setting".
 Build epic: **KAN-7** (progression/audience) — nothing here is implemented early; only the
 seed-data schema stub may land with the W2 schema pass.*
@@ -35,13 +37,20 @@ patron can choose a patron**.* Proposed synthesis of all three:
    each shown as a deal sheet: domains, generosity, temperament, favor demands.
 3. **The player chooses — because only the patron-less can choose** (the ORV rule). Once
    bound, the player cannot swap; the relationship changes only from the god side.
-4. **Refusing every offer leaves you undrafted, NOT Forsaken** ⟨open, part of Q6⟩ — a
-   patron-less run: no escort, no directed bets, at most stray donator tips. Whether
-   refusal is even allowed, and what an undrafted run is worth, is open.
-5. **Buy-outs are god-side drama (⟨open⟩):** a richer god can buy your contract from your
-   patron god mid-campaign — triggered by performance (hype/favor thresholds), arriving
-   diegetically as new bet types and a changed comp style. Rare, event-worthy, and it
-   makes the player *feel traded*, which is exactly the spine.
+4. **Refusing every offer is allowed (RULED 2026-07-16, Q6):** it is simply a
+   **patron-less run** — nothing else. Baseline diffuse gains, no escort, no directed
+   bets, no special multipliers. Explicitly NOT Forsaken.
+5. **Buy-outs (RULED 2026-07-16, Q4):** a buy-out means a god is willing to **overrule
+   another god's divinity** — paying your patron god to take you, driven by the affection
+   the rival has accumulated in you (boon economy, below). The champion receives a
+   **notice of replacement** — showing **whether the current god agrees or not** — and
+   may **accept or decline the new contract**. Diegetically: new bet types, a changed
+   comp style; the player *feels traded*, which is exactly the spine.
+6. **Abandonment (RULED 2026-07-16, Q4) — not a contract exit.** A displeased patron god
+   doesn't release you; they change what you're *for*: either **extractive mode** —
+   "I'll give you trials to max out on you even if you break, because you have no other
+   use" (the god monetizes your breaking) — or **total neglect** (nothing, ever). The
+   contract remains; the escort stops escorting.
 
 ## Where it sits in the existing machine
 
@@ -51,7 +60,7 @@ patron can choose a patron**.* Proposed synthesis of all three:
 | Directives (quests from the power that runs the show) | **The house/dealer speaks** — the fallen god running the table |
 | Goals (crowd challenges) | Side bets from the gallery (unchanged mechanically) |
 | Camera Call | The odds board turns to you (unchanged mechanically) |
-| Tags | Crowd labels; **epithets** are the patron-granted subset at favor milestones ⟨open Q2⟩ |
+| Tags | Crowd labels (unchanged); **epithets** are a separate traits/myth-recreation track (see Epithets section) |
 | Ascension (retire → patron) | Canon: winners take winnings → divinity → join the table as gamblers |
 | Loot boxes / comps | The vehicle patron boons arrive in (see diegesis, below) |
 
@@ -94,6 +103,25 @@ The shape this implies:
 you things (donator tips), and it **raises buy-out interest** — the god your deeds keep
 feeding is the god most likely to bid for your contract.
 
+## Epithets — traits and myth recreation (owner, 2026-07-16 — Q2 resolved)
+
+Epithets are not crowd tags; they run on a **traits** track — **the champions are
+compared to previous legends.**
+
+- **Traits are the vocabulary:** you start with trait-words (*courageous, strong,
+  hateful, avenger, …*) — seeded from the background picks — and earn more through deeds.
+- **Myth templates are the goal state:** a legend's pattern, expressed as traits +
+  signature deeds. When your accumulated pattern **recreates someone's myth, you gain an
+  epithet from it.**
+- **Canon synergy:** legends are literally artifacts of previous games (canon §3 — the
+  winner decides how the apocalypse is remembered). Recreating a myth is re-walking a
+  past champion's shape.
+- **Stage-2 hook ⟨PROPOSED, later⟩:** an ascended player character's run compiles into a
+  myth template — other players can then recreate *their* myth and wear their epithet.
+  Cross-player content at zero authoring cost.
+- Crowd **tags** stay the audience's labels; **epithets** are the pantheon's comparisons.
+  Two tracks, deliberately separate — the label/essence tension the spine wants.
+
 ## The data model (seed data, JSON — schema stub only until KAN-7)
 
 ```
@@ -118,9 +146,12 @@ patron_god {
 ```
 
 Contestant-side state: `patron_id`, **`affection` per god (or per faction)** — not a
-single favor score — plus running buff-chance/tier-odds accumulators per domain, and tip
-history. Baseline (patron-less) rates live in one global config block, so the patron
-layer is strictly a modifier on top.
+single favor score — plus running buff-chance/tier-odds accumulators per domain, a
+**`traits` list** (starting traits from background picks + deed-earned), earned epithets,
+and tip history. Additional seed tables: **`traits`** (vocabulary) and
+**`myth_templates`** (trait/deed patterns → epithet grants). Baseline (patron-less) rates
+live in one global config block, so the patron layer is strictly a modifier on top.
+Per-run god stats: **fixed cores + small seeded jitter** (RULED, Q3).
 
 ## Rules of the layer (v1, deterministic — no LLM required)
 
@@ -148,31 +179,35 @@ layer is strictly a modifier on top.
    god, everything is solved alone, the divinity involved is much higher, and the
    sponsoring god's payout is much larger. Mechanically: `forsaken = true` on the run;
    patron relationship intact, assistance disabled, payout/divinity multipliers up.
-   Game translation ⟨PROPOSED⟩: the *player* opts into a Forsaken run at creation
-   (hardcore mode) — but the *fiction* frames it as the god choosing them; diegetically
-   nobody volunteers. (Marcus is the template: Plutus went all-in — consent not
-   included.)
+   Game translation (RULED 2026-07-16, Q7): **opting into hardcore** — the god offers
+   you the chance **randomly, for higher stakes**. **Never on a first run; possible from
+   the 2nd run onwards.** Can also be **triggered manually after winning with a character
+   once** ⟨PROVISIONAL — owner's "I think"⟩. **No switching into Forsaken mid-campaign.**
+   (Marcus is the template: Plutus went all-in — consent not included.)
+6. **Rival gods can bless or curse your party (RULED 2026-07-16, Q5):** cross-party tips
+   are gated on affection — **blessings require higher affection** with that god,
+   **curses require lower**. Co-op griefing self-balances: a god that hates your party
+   enough to curse it is a god your party starved.
 
-## Open questions (owner)
+## Question resolutions (all closed 2026-07-16)
 
-- ~~**Q1**~~ — RESOLVED 2026-07-16: Patrons tier = donator gods; THE patron god = singular
-  escort slot above it (two-tier structure).
-- **Q2** — Are epithets (patron-granted titles) a subset of the existing tag system or a
-  new parallel track?
-- **Q3** — Random stats: fixed-per-god roster (gods feel like characters), per-run jitter
-  (roguelike variance), or fixed cores + small jitter (recommended)?
-- **Q4** *(reshaped)* — Adopt the **buy-out** mechanic (god-side contract transfer,
-  performance-triggered)? And can a displeased patron god *abandon* a contestant, leaving
-  them patron-less (able to choose again, per the ORV rule) or Forsaken-locked?
-- **Q5** — Do rival patrons tip *against* the player's party in co-op (trials targeting a
-  teammate), or only against enemies/the environment in Stages 1–2?
-- **Q6** — Confirm the bidding synthesis: structured background picks (v1, deterministic)
-  + freeform text (LLM-read later); 2–3 suitor offers. And: can the player refuse all
-  offers at all — and if so, what is an *undrafted* (patron-less, non-Forsaken) run worth?
-- **Q7** — Forsaken designation: meta-level it's presumably the player opting into
-  hardcore at creation — confirm the fiction frames it as *the god choosing them* (and
-  whether a patron god can also trigger it mid-campaign as a true all-in, Marcus-style).
-- ~~**Q8**~~ — RESOLVED 2026-07-16: buffs = conditional blessings AND loot/affix roll
-  quality; duration classes temporary / continuous-on-a-condition / sometimes permanent.
-  Non-patron affection → higher chance of gifts from those gods + raises buy-out
-  interest. (See "Buff taxonomy" above.)
+- **Q1** — Two-tier structure: Patrons tier = donator gods; THE patron god = singular
+  escort slot above it.
+- **Q2** — Epithets run on the **traits track**: champions compared to previous legends;
+  recreating a myth grants its epithet (see Epithets section).
+- **Q3** — God stats: **fixed cores + small seeded jitter.**
+- **Q4** — **Buy-outs adopted**: overruling another god's divinity; notice of replacement;
+  player accepts/declines; shows whether the current god agrees. **Abandonment** is not a
+  contract exit: extractive mode ("trials to max out on you even if you break") or total
+  neglect.
+- **Q5** — Rival gods **can bless or curse the party**, gated on higher/lower affection
+  respectively.
+- **Q6** — Refusing all offers is allowed: **simply a patron-less run, nothing else.**
+  (Bidding flow details — structured picks, 2–3 offers, deal sheets — remain PROPOSED
+  shaping.)
+- **Q7** — Forsaken = **hardcore opt-in**: the god offers it randomly for higher stakes,
+  never on a first run, from the 2nd run onwards; manual trigger after winning with a
+  character once ⟨PROVISIONAL⟩; never mid-campaign.
+- **Q8** — Buffs = conditional blessings AND loot/affix roll quality; temporary /
+  continuous-on-a-condition / sometimes permanent. Non-patron affection → gift chance +
+  buy-out interest.
