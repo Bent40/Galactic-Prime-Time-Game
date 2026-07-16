@@ -1,0 +1,85 @@
+{
+  "classification": {
+    "risk": [
+      "l",
+      "o",
+      "w"
+    ],
+    "size": "small",
+    "type": "validation"
+  },
+  "ended_ts": "2026-07-15T16:03:52Z",
+  "id": "kan2-first-live-run",
+  "label": "unverified",
+  "label_reason": "passing signals but trajectory incomplete (missing stage: implement,report)",
+  "signals": [
+    {
+      "cmd": "bash scripts/run_sim_tests.sh",
+      "exit_code": 0,
+      "kind": "tests",
+      "summary": "22/22 tests green under Godot 4.5.2 (first live run of the suite)",
+      "ts": "2026-07-15T16:03:52Z"
+    },
+    {
+      "cmd": "python3 scripts/validate_seeds.py",
+      "exit_code": 0,
+      "kind": "eval",
+      "summary": "seed data green, 141 rows",
+      "ts": "2026-07-15T16:03:52Z"
+    }
+  ],
+  "stages": [
+    {
+      "artifacts": [],
+      "content": "Env network allowlist opened for downloads.godotengine.org - turned out to be a redirector, not a file host. GitHub assets still blocked; add_repo cross-owner unsupported. Found SourceForge godot-engine.mirror reachable through the proxy; mirror retains ~5 recent releases; used 4.5.2-stable (final 4.5-line patch).",
+      "stage": "explore",
+      "ts": "2026-07-15T16:03:52Z"
+    },
+    {
+      "artifacts": [
+        "s",
+        "c",
+        "r",
+        "i",
+        "p",
+        "t",
+        "s",
+        "/",
+        "r",
+        "u",
+        "n",
+        "_",
+        "s",
+        "i",
+        "m",
+        "_",
+        "t",
+        "e",
+        "s",
+        "t",
+        "s",
+        ".",
+        "s",
+        "h",
+        ",",
+        "t",
+        "e",
+        "s",
+        "t",
+        "s",
+        "/"
+      ],
+      "content": "bash scripts/run_sim_tests.sh under Godot 4.5.2: 22 passed, 0 failed (incl. determinism: identical hash over 100+ mixed commands; snapshot-restore-replay-tail). wf validate: all 2 commands passed (seed data + sim tests).",
+      "stage": "test",
+      "ts": "2026-07-15T16:03:52Z"
+    },
+    {
+      "artifacts": [],
+      "content": "scripts/setup_godot.sh updated: SourceForge mirror as primary verified source, version 4.5.2-stable, retention caveat documented.",
+      "stage": "fix",
+      "ts": "2026-07-15T16:03:52Z"
+    }
+  ],
+  "task": "First live execution of the KAN-2 sim test suite after Godot became installable",
+  "ts": "2026-07-15T16:03:52Z"
+}

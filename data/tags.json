@@ -3,111 +3,900 @@
     "id": 1,
     "key": "documentary",
     "name": "Documentary",
-    "description": "Everyday life turned cinema.",
-    "category": "identity",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Performance": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 2,
     "key": "playa",
     "name": "Playa",
-    "description": "Flirting with danger for the camera.",
-    "category": "performance",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Risk": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 3,
     "key": "absolute_cinema",
     "name": "Absolute Cinema",
-    "description": "A moment dramatic enough to silence the table.",
-    "category": "performance",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Spectacle": 2
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 4,
     "key": "edgy",
     "name": "Edgy",
-    "description": "Dark choices with a steady face.",
-    "category": "identity",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Subversion": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 5,
     "key": "anime",
     "name": "Anime",
-    "description": "Big reactions, bigger backstory energy.",
-    "category": "performance",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Spectacle": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 6,
     "key": "leeroy_jenkins",
     "name": "LEEROY JENKINS",
-    "description": "Charge first, let everyone else react.",
-    "category": "risk",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Risk": 2
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 7,
     "key": "scrub",
     "name": "Scrub",
-    "description": "A memorable mistake under pressure.",
-    "category": "identity",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Performance": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 8,
-    "key": "vengeful",
-    "name": "Vengeful",
-    "description": "Repay harm with deliberate action.",
-    "category": "identity",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Subversion": 1,
-      "Risk": 1
-    }
+    "key": "stinker",
+    "name": "Stinker",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 9,
-    "key": "fan_favorite",
-    "name": "Fan Favorite",
-    "description": "The crowd roots for you specifically.",
-    "category": "audience",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Performance": 2
-    }
+    "key": "pinky_promise",
+    "name": "Pinky Promise",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   },
   {
     "id": 10,
+    "key": "unkillable",
+    "name": "Unkillable",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 11,
+    "key": "oops",
+    "name": "Oops",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 12,
+    "key": "vengeful",
+    "name": "Vengeful",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 13,
+    "key": "menace",
+    "name": "Menace",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 14,
+    "key": "animal_planet",
+    "name": "Animal Planet",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 15,
+    "key": "fan_favorite",
+    "name": "Fan Favorite",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 16,
     "key": "corporate_asset",
     "name": "Corporate Asset",
-    "description": "Complete the directive exactly as issued.",
-    "category": "corporate",
-    "unlock_conditions": {},
-    "goal_modifier_weights": {
-      "Spectacle": 1
-    }
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 17,
+    "key": "tragic",
+    "name": "Tragic",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 18,
+    "key": "bolivian_army_ending",
+    "name": "Bolivian Army Ending",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 19,
+    "key": "chunky_salsa_rule",
+    "name": "Chunky Salsa Rule",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 20,
+    "key": "coconut_superpowers",
+    "name": "Coconut Superpowers",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 21,
+    "key": "protagonist",
+    "name": "Protagonist",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 22,
+    "key": "antagonist",
+    "name": "Antagonist",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 23,
+    "key": "anti_hero",
+    "name": "Anti-Hero",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 24,
+    "key": "incorrigible",
+    "name": "Incorrigible",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 25,
+    "key": "no_cure_for_evil",
+    "name": "No Cure For Evil",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 26,
+    "key": "munchkin",
+    "name": "Munchkin",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 27,
+    "key": "little_dead_rising_hood",
+    "name": "Little Dead Rising Hood",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 28,
+    "key": "mascot",
+    "name": "Mascot",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 29,
+    "key": "butcher",
+    "name": "Butcher",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 30,
+    "key": "survivor",
+    "name": "Survivor",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 31,
+    "key": "spy",
+    "name": "Spy",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 32,
+    "key": "liability",
+    "name": "Liability",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 33,
+    "key": "method_actor",
+    "name": "Method Actor",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 34,
+    "key": "understudy",
+    "name": "Understudy",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 35,
+    "key": "typecast",
+    "name": "Typecast",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 36,
+    "key": "prima_donna",
+    "name": "Prima Donna",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 37,
+    "key": "scene_stealer",
+    "name": "Scene Stealer",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 38,
+    "key": "the_monologue",
+    "name": "The Monologue",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 39,
+    "key": "fourth_wall",
+    "name": "Fourth Wall",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 40,
+    "key": "box_office_bomb",
+    "name": "Box Office Bomb",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 41,
+    "key": "director_s_cut",
+    "name": "Director's Cut",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 42,
+    "key": "certified_fresh",
+    "name": "Certified Fresh",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 43,
+    "key": "sag_dispute",
+    "name": "SAG Dispute",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 44,
+    "key": "direct_to_dvd",
+    "name": "Direct to DVD",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 45,
+    "key": "callback",
+    "name": "Callback",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 46,
+    "key": "nepotism_hire",
+    "name": "Nepotism Hire",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 47,
+    "key": "one_star_review",
+    "name": "One Star Review",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 48,
+    "key": "student_film",
+    "name": "Student Film",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 49,
+    "key": "craft_services",
+    "name": "Craft Services",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 50,
+    "key": "resting_loser_face",
+    "name": "Resting Loser Face",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 51,
+    "key": "applause_machine",
+    "name": "Applause Machine",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 52,
+    "key": "unlikely_menace",
+    "name": "Unlikely Menace",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 53,
+    "key": "adorable_threat",
+    "name": "Adorable Threat",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 54,
+    "key": "waddled_into_frame",
+    "name": "Waddled Into Frame",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 55,
+    "key": "the_bit",
+    "name": "The Bit",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 56,
+    "key": "bark_bark_bark",
+    "name": "Bark Bark Bark",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 57,
+    "key": "sea_world_reject",
+    "name": "Sea World Reject",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 58,
+    "key": "flipper_mode",
+    "name": "Flipper Mode",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 59,
+    "key": "crowd_s_baby",
+    "name": "Crowd's Baby",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 60,
+    "key": "nine_lives",
+    "name": "Nine Lives",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 61,
+    "key": "knock_it_off_the_table",
+    "name": "Knock It Off The Table",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 62,
+    "key": "feral_consultant",
+    "name": "Feral Consultant",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 63,
+    "key": "witnessed",
+    "name": "Witnessed",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 64,
+    "key": "murder_mittens",
+    "name": "Murder Mittens",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 65,
+    "key": "dead_drop",
+    "name": "Dead Drop",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 66,
+    "key": "vet_visit",
+    "name": "Vet Visit",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 67,
+    "key": "territory_marked",
+    "name": "Territory Marked",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 68,
+    "key": "3am_energy",
+    "name": "3am Energy",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 69,
+    "key": "indoor_cat",
+    "name": "Indoor Cat",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 70,
+    "key": "birdwatcher",
+    "name": "Birdwatcher",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 71,
+    "key": "main_vocalist",
+    "name": "Main Vocalist",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 72,
+    "key": "visual",
+    "name": "Visual",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 73,
+    "key": "maknae",
+    "name": "Maknae",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 74,
+    "key": "rap_line",
+    "name": "Rap Line",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 75,
+    "key": "formation",
+    "name": "Formation",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 76,
+    "key": "comeback_stage",
+    "name": "Comeback Stage",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 77,
+    "key": "internal_dispute",
+    "name": "Internal Dispute",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 78,
+    "key": "solo_debut",
+    "name": "Solo Debut",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 79,
+    "key": "parasocial",
+    "name": "Parasocial",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 80,
+    "key": "all_kill",
+    "name": "All-Kill",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 81,
+    "key": "disbandment_arc",
+    "name": "Disbandment Arc",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 82,
+    "key": "fan_service",
+    "name": "Fan Service",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 83,
+    "key": "blue_screen",
+    "name": "Blue Screen",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 84,
+    "key": "legacy_code",
+    "name": "Legacy Code",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 85,
+    "key": "corrupted_file",
+    "name": "Corrupted File",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 86,
+    "key": "unpatched",
+    "name": "Unpatched",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 87,
+    "key": "404",
+    "name": "404",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 88,
+    "key": "out_of_memory",
+    "name": "Out of Memory",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 89,
+    "key": "safe_mode",
+    "name": "Safe Mode",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 90,
+    "key": "null_pointer",
+    "name": "Null Pointer",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 91,
+    "key": "overclock",
+    "name": "Overclock",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 92,
+    "key": "peer_review",
+    "name": "Peer Review",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 93,
+    "key": "technical_difficulties",
+    "name": "Technical Difficulties",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 94,
+    "key": "off_script",
+    "name": "Off Script",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 95,
+    "key": "crossover_event",
+    "name": "Crossover Event",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 96,
+    "key": "genre_shift",
+    "name": "Genre Shift",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 97,
+    "key": "background_character",
+    "name": "Background Character",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 98,
+    "key": "the_recast",
+    "name": "The Recast",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 99,
+    "key": "blooper_reel",
+    "name": "Blooper Reel",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 100,
+    "key": "post_credits_scene",
+    "name": "Post-Credits Scene",
+    "description": "",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
   }
 ]

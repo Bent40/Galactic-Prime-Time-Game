@@ -1,38 +1,245 @@
 [
   {
     "id": 1,
-    "key": "barbed",
-    "name": "Barbed",
-    "description": "Placeholder modifier for extra bleeding pressure.",
-    "modifier_type": "weapon",
-    "tier": "common",
-    "effects": []
+    "key": "serrated",
+    "name": "Serrated",
+    "description": "Applicable to: Bladed Weapons",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "+1 Bleed Damage"
   },
   {
     "id": 2,
     "key": "weighted",
     "name": "Weighted",
-    "description": "Placeholder modifier for heavier impact.",
-    "modifier_type": "weapon",
-    "tier": "common",
-    "effects": []
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "+1 Crush Damage"
   },
   {
     "id": 3,
-    "key": "insulated",
-    "name": "Insulated",
-    "description": "Placeholder modifier for environmental protection.",
-    "modifier_type": "armor",
-    "tier": "common",
-    "effects": []
+    "key": "barbed",
+    "name": "Barbed",
+    "description": "Applicable to: Armors, Shields",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "Hitting the item causes 1 bleed"
   },
   {
     "id": 4,
-    "key": "camera_ready",
-    "name": "Camera Ready",
-    "description": "Placeholder modifier for audience-facing gear.",
-    "modifier_type": "utility",
-    "tier": "common",
-    "effects": []
+    "key": "spiked",
+    "name": "Spiked",
+    "description": "Applicable to: Crush Weapons of 2+ damage",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "Split original damage between crush and bleed and add 1 damage to 1 of them"
+  },
+  {
+    "id": 5,
+    "key": "chilling",
+    "name": "Chilling",
+    "description": "Applicable  to: Any",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "Tier 1 Chill on hit"
+  },
+  {
+    "id": 6,
+    "key": "poisoned",
+    "name": "Poisoned",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "lesser",
+    "effects": "Tier 1 Poison on hit"
+  },
+  {
+    "id": 7,
+    "key": "grip_wrap",
+    "name": "Grip Wrap",
+    "description": "Applicable to: Weapons",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "Item is undroppable"
+  },
+  {
+    "id": 8,
+    "key": "sharpened",
+    "name": "Sharpened",
+    "description": "Applicable to: Bladed weapons",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "Reduces moment use cost of weapon attack by 1, up to a minimum of 1."
+  },
+  {
+    "id": 9,
+    "key": "extended",
+    "name": "Extended",
+    "description": "Applicable to: Weapons.",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "+1 Range"
+  },
+  {
+    "id": 10,
+    "key": "lightweight",
+    "name": "Lightweight",
+    "description": "Applicable to: Any",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "Requires three fourths of the Physique to use."
+  },
+  {
+    "id": 11,
+    "key": "steady",
+    "name": "Steady",
+    "description": "Applicable to: Armor, Shields.",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "Reduces next action moment by 1 if took a hit last moment."
+  },
+  {
+    "id": 12,
+    "key": "sure_grip",
+    "name": "Sure-grip",
+    "description": "Applicable to: Any",
+    "modifier_type": "suffix",
+    "tier": "lesser",
+    "effects": "Weapon cannot be stolen by enemy mobs or elites."
+  },
+  {
+    "id": 13,
+    "key": "serrated_ii",
+    "name": "Serrated II",
+    "description": "Applicable to: Bladed Weapons",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "+2 Bleed Damage"
+  },
+  {
+    "id": 14,
+    "key": "weighted_ii",
+    "name": "Weighted II",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "+2 Crush Damage"
+  },
+  {
+    "id": 15,
+    "key": "venomous",
+    "name": "Venomous",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "Applies Tier 1 Poison of type: Neurotoxin"
+  },
+  {
+    "id": 16,
+    "key": "burning",
+    "name": "Burning",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "Applies tier 1 Burn"
+  },
+  {
+    "id": 17,
+    "key": "infectious",
+    "name": "Infectious",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "Applies Infected on open wounds"
+  },
+  {
+    "id": 18,
+    "key": "sundering",
+    "name": "Sundering",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "Crush Damage have a 1/6 chance of stunning the target"
+  },
+  {
+    "id": 19,
+    "key": "volatile",
+    "name": "Volatile",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "On kill, Target explodes for 1 bleed on adjacent enemies"
+  },
+  {
+    "id": 20,
+    "key": "draining",
+    "name": "Draining",
+    "description": "Applicable to: Any",
+    "modifier_type": "prefix",
+    "tier": "normal",
+    "effects": "Hits that cause conditions restore 1 hp to the wielder"
+  },
+  {
+    "id": 21,
+    "key": "sharpened_ii",
+    "name": "Sharpened II",
+    "description": "Applicable to: Any",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "Reduces moment cost by 1 to skills usable with item, to a minimum of 1."
+  },
+  {
+    "id": 22,
+    "key": "reaching",
+    "name": "Reaching",
+    "description": "Applicable to: Weapons",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "+2 Range"
+  },
+  {
+    "id": 23,
+    "key": "returning",
+    "name": "Returning",
+    "description": "Applicable to: Throwing weapons",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "Thrown weapon returns to hand at end of action"
+  },
+  {
+    "id": 24,
+    "key": "balanced",
+    "name": "Balanced",
+    "description": "Applicable to: Martial Weapons",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "Removes exposed when using an exposing skill with this item"
+  },
+  {
+    "id": 25,
+    "key": "reactive",
+    "name": "Reactive",
+    "description": "Applicable to: Weapons, Tools",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "First Forced action - Tool per clock is ignored"
+  },
+  {
+    "id": 26,
+    "key": "swift",
+    "name": "Swift",
+    "description": "Applicable to: Any",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "Once per clock, Can do an action as if done 1 moment sooner. The user still has to wait until the moments end."
+  },
+  {
+    "id": 27,
+    "key": "penetrating",
+    "name": "Penetrating",
+    "description": "Applicable to: Any",
+    "modifier_type": "suffix",
+    "tier": "normal",
+    "effects": "Ignores 1 Physical Resist"
   }
 ]

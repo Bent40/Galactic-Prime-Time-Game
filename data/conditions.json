@@ -2,150 +2,121 @@
   {
     "id": "bleeding",
     "name": "Bleeding",
-    "description": "Placeholder physical condition; advances toward lethal blood loss.",
+    "description": "Open wounds that worsen every Clock. Untreated bleeding opens the door to poison and infection (rulebook, Damage Types).",
     "resistance_type": "Physical",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "advances_on_clock_reset": true,
-      "max_tier": 4
-    }
+    "target_body_parts": ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"],
+    "spread_rules": { "advances_on_clock_reset": true, "max_tier": 4 },
+    "tiers": [
+      { "tier": 1, "name": "Open Wound", "description": "Bleeding established; vulnerable to poison/infection entry.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": ["poison_entry_open", "infection_entry_open"] },
+      { "tier": 2, "name": "Heavy Bleed", "description": "Forced Action - Body on actions with this part; Shock Tier 1.", "clock_advance": 1, "shock_tier": 1, "forced_action_type": "Body", "effects": [] },
+      { "tier": 3, "name": "Part Death", "description": "The part dies off — lethal on torso or head; all actions are Forced Action - Body.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": "Body", "effects": ["part_destroyed", "lethal_if_vital"] },
+      { "tier": 4, "name": "Death", "description": "Bled out.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["death"] }
+    ]
   },
   {
     "id": "crushed",
     "name": "Crushed",
-    "description": "Placeholder physical condition; disables limbs and threatens lethal parts.",
+    "description": "Structural trauma. Breaks, shatters, then destroys. Tiers 3-4 added by rules-addendum R4 (book stopped at 2).",
     "resistance_type": "Physical",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "advances_on_clock_reset": true,
-      "max_tier": 2
-    }
+    "target_body_parts": ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"],
+    "spread_rules": { "advances_on_clock_reset": true, "max_tier": 4 },
+    "tiers": [
+      { "tier": 1, "name": "Break", "description": "Forced Action - Body on actions using this part.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": "Body", "effects": [] },
+      { "tier": 2, "name": "Shatter", "description": "Limbs: part disabled. Torso: internal trauma. Head: lethal if targetable.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": "Body", "effects": ["part_disabled_if_limb", "lethal_if_head"] },
+      { "tier": 3, "name": "Destroyed", "description": "Part destroyed — lethal on torso/head, permanent loss on limbs (addendum R4).", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": ["part_destroyed", "lethal_if_vital"] },
+      { "tier": 4, "name": "Death", "description": "Crushed beyond recovery (torso/head only).", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["death"] }
+    ]
   },
   {
     "id": "suffocation",
     "name": "Suffocation",
-    "description": "Placeholder torso death-timer condition.",
+    "description": "Torso only; ignores limb HP. A death timer, not a tiered condition. Items referencing 'Suffocation Tier 1' read as 'delay 1 Clock' (addendum R4).",
     "resistance_type": "None",
-    "target_body_parts": [
-      "torso"
-    ],
-    "spread_rules": {
-      "clock_timer": 2,
-      "timer_resets_on_reapply": false
-    }
+    "target_body_parts": ["torso"],
+    "spread_rules": { "clock_timer": 2, "timer_resets_on_reapply": false },
+    "tiers": []
   },
   {
     "id": "chilled",
     "name": "Chilled",
-    "description": "Placeholder affliction condition; slows and can disable affected parts.",
+    "description": "Cold seizing a specific part. No HP damage. Resolves at Clock reset if not re-applied during the Clock (addendum R4/E2).",
     "resistance_type": "Affliction",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "advances_on_clock_reset": true,
-      "max_tier": 3
-    }
+    "target_body_parts": ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"],
+    "spread_rules": { "advances_on_clock_reset": false, "advances_on_reapply": true, "resolves_if_not_reapplied": true, "max_tier": 3 },
+    "tiers": [
+      { "tier": 1, "name": "Numb", "description": "Resolves at next Clock reset without re-application.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": [] },
+      { "tier": 2, "name": "Seizing", "description": "Forced Action - Body on actions using this part.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": "Body", "effects": [] },
+      { "tier": 3, "name": "Frozen", "description": "Part disabled; on the head, incapacitating.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["part_disabled", "incapacitated_if_head"] }
+    ]
   },
   {
     "id": "exhausted",
     "name": "Exhausted",
-    "description": "Placeholder whole-body condition; increases moment costs.",
+    "description": "Whole-body fatigue. Tier numbers are rules-addendum R4 PROVISIONAL (book had no tiers). Recovers one tier per Clock spent taking no scheduled actions.",
     "resistance_type": "None",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "whole_body": true
-    }
+    "target_body_parts": ["torso"],
+    "spread_rules": { "advances_on_clock_reset": false, "recovers_when_resting": true, "max_tier": 3 },
+    "tiers": [
+      { "tier": 1, "name": "Winded", "description": "+1 Moment cost on actions costing 2 or more.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["moment_cost_penalty_heavy_actions:1"] },
+      { "tier": 2, "name": "Drained", "description": "+1 Moment cost on all actions; Exposure occurs on body hits.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["moment_cost_penalty_all:1", "exposed_on_body_hit"] },
+      { "tier": 3, "name": "Spent", "description": "Every action is a Forced Action - Body.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": "Body", "effects": [] }
+    ]
   },
   {
     "id": "infected",
     "name": "Infected",
-    "description": "Placeholder whole-body affliction; prevents healing and worsens other conditions.",
+    "description": "Whole-body sepsis. Prevents healing, accelerates everything else, then starts killing (T3 timer per addendum R4).",
     "resistance_type": "Affliction",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "whole_body": true,
-      "accelerates_other_conditions": true
-    }
+    "target_body_parts": ["torso"],
+    "spread_rules": { "advances_on_clock_reset": true, "max_tier": 3 },
+    "tiers": [
+      { "tier": 1, "name": "Festering", "description": "Prevents healing and resolution of other conditions.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": ["prevents_healing"] },
+      { "tier": 2, "name": "Septic", "description": "All other active conditions advance one extra tier at Clock reset.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": ["prevents_healing", "accelerates_conditions:1"] },
+      { "tier": 3, "name": "Terminal", "description": "Starts a 2-Clock death timer.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["prevents_healing", "death_timer_clocks:2"] }
+    ]
   },
   {
     "id": "burn",
     "name": "Burn",
-    "description": "Placeholder physical condition; cauterizes at low tiers and destroys at high tiers.",
+    "description": "Fire damage to a specific part. Cauterizes (stops Bleeding, removes Chill) but costs Shock (addendum R4 closes the free-cure exploit).",
     "resistance_type": "Physical",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
-    "spread_rules": {
-      "advances_on_clock_reset": true,
-      "max_tier": 3
-    }
+    "target_body_parts": ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"],
+    "spread_rules": { "advances_on_clock_reset": true, "max_tier": 4 },
+    "tiers": [
+      { "tier": 1, "name": "Seared", "description": "Stops Bleeding and removes Chill on this part; applies Shock Tier 1 (addendum cost).", "clock_advance": 1, "shock_tier": 1, "forced_action_type": null, "effects": ["cures:bleeding", "cures:chilled"] },
+      { "tier": 2, "name": "Charred", "description": "Stops Poison, clears Infection; Forced Action - Body.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": "Body", "effects": ["cures:poison", "cures:infected"] },
+      { "tier": 3, "name": "Immolated", "description": "Part disabled (book: loss of part of limb) + Shock Tier 3; on torso/head starts a 1-Clock death timer (addendum R4).", "clock_advance": 1, "shock_tier": 3, "forced_action_type": null, "effects": ["part_disabled", "death_timer_clocks_if_vital:1"] },
+      { "tier": 4, "name": "Consumed", "description": "Burned beyond recovery.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["death"] }
+    ]
   },
   {
     "id": "poison",
     "name": "Poison",
-    "description": "Placeholder delayed affliction condition.",
+    "description": "Typed toxins (neurotoxin/hemotoxin/myotoxin/pneumotoxin/cytotoxin) with entry conditions and activation delays. Different types are incompatible -> Poison Soup (burst capped at part max HP - 1 on vitals, addendum R10).",
     "resistance_type": "Affliction",
-    "target_body_parts": [
-      "head",
-      "torso",
-      "left_arm",
-      "right_arm",
-      "left_leg",
-      "right_leg"
-    ],
+    "target_body_parts": ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"],
     "spread_rules": {
-      "activation_delay": true,
-      "poison_soup": true
-    }
+      "advances_on_clock_reset": true,
+      "max_tier": 3,
+      "entry_conditions": ["open_wound", "orifice", "injection_or_bite", "helpless_target"],
+      "activation_delay_clocks_default": 2,
+      "spread_topology": { "limb": "torso", "torso": ["head", "limbs"] },
+      "types": ["neurotoxin", "hemotoxin", "myotoxin", "pneumotoxin", "cytotoxin"],
+      "incompatible_types_soup": true
+    },
+    "tiers": [
+      { "tier": 1, "name": "Disruptive", "description": "Debilitating effects; no lethal clock; can be fought through.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": [] },
+      { "tier": 2, "name": "Crippling", "description": "Disables parts; introduces clocks; requires adaptation.", "clock_advance": 1, "shock_tier": 0, "forced_action_type": null, "effects": ["part_disabled"] },
+      { "tier": 3, "name": "Catastrophic", "description": "Introduces a lethal clock; must be actively delayed or cured.", "clock_advance": 0, "shock_tier": 0, "forced_action_type": null, "effects": ["death_timer_clocks:2"] }
+    ]
   },
   {
     "id": "dissolution",
     "name": "Dissolution",
-    "description": "Placeholder psychic condition; threatens mind collapse.",
+    "description": "Suffocation of the Mind. A 2-Clock timer to mind-collapse (KO/removed-from-play, never engine 'death' — addendum R5). Psychic resistance tiers slow the timer +1 Clock per tier (addendum R6). Requires an explicit source; never from standard attacks.",
     "resistance_type": "Psychic",
-    "target_body_parts": [],
-    "spread_rules": {
-      "clock_timer": 2,
-      "timer_pauses_when_source_removed": true
-    }
+    "target_body_parts": ["head"],
+    "spread_rules": { "clock_timer": 2, "timer_resets_on_reapply": false, "pause_when_cause_removed": true, "psychic_resist_slows_per_tier": 1 },
+    "tiers": []
   }
 ]
