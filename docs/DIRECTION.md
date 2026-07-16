@@ -181,9 +181,11 @@ staged-feasible**, with these binding constraints:
   gods who buy you things; the exposure ladder's top rung) vs **THE patron god** (singular
   escort who directs the types of bets on you; usually your biggest donator). Assignment
   is **background-driven** (keywords from the player-written OC background draw god bids;
-  only the patron-less can choose — ORV rule; refusing all offers = Forsaken run), not
-  purely random. Buy-outs (god-side contract transfer) proposed. Design sketch:
-  `design/patron-gods.md` (builds in KAN-7).
+  only the patron-less can choose — ORV rule), not purely random. **Forsaken runs are
+  god-initiated, not refusal:** the gods' way of going all-in — a champion *chosen* for a
+  trial bigger than others; patron intact, all help sealed, higher divinity/payout.
+  Buy-outs (god-side contract transfer) proposed. Design sketch: `design/patron-gods.md`
+  (builds in KAN-7).
 - Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
   title, the timer (see `setting-rebrand-options.md` open decisions).
 

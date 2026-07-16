@@ -24,6 +24,11 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
 | **VIP** | Champions + regular human "actors" | **Special games designed around what the gods found interesting during the quarter-millennium — mostly human pop culture.** 1 to a billion contestants, set by game type | Higher-stakes wagering; dealer tipping active |
 | **VVIP** — nicknamed **Forsaken / Doomed games** | A lone champion | No help from the gods at all; everything solved alone | Much higher divinity involved; higher realms of power reachable; the sponsoring god's payout is much higher — but the champion is **doomed to complete the game fully alone** |
 
+- **Forsaken games are god-initiated (owner, 2026-07-16):** story-wise the champion is
+  **chosen by the gods to overcome a trial bigger than others** — it is *the gods' way of
+  going all-in*, never the champion's refusal of patronage. (Marcus: Plutus went all-in;
+  consent not included.)
+
 - **Tipping the dealer:** at every non-Forsaken table, gods can tip the dealer to help
   their luck — **boons, buffs, items**, or hindering others with **trials, monsters,
   curses**. (This is the wager/patron-influence mechanism.)
