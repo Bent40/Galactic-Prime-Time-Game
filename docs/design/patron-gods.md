@@ -55,14 +55,47 @@ patron can choose a patron**.* Proposed synthesis of all three:
 | Ascension (retire → patron) | Canon: winners take winnings → divinity → join the table as gamblers |
 | Loot boxes / comps | The vehicle patron boons arrive in (see diegesis, below) |
 
+## The boon economy — the multiplier model (owner, 2026-07-16 — adopted direction)
+
+**The patron decides how much, which type, and how strong.** Every domain-relevant action
+you take generates buff *chances*; a patron god is a **multiplier profile** laid over that
+stream — skewing which buff types you're offered, their tier odds, and where your rising
+affection lands. *(All numbers below are the owner's illustrative placeholders — R14
+discipline applies: seeded numbers are placeholders until tuning.)*
+
+**Worked example (owner's, Ares — domain: melee weapons).** Action: you kill a boss with
+a melee weapon.
+
+| | melee-buff chance | tier-2 chance | related lesser gods | affection |
+|---|---|---|---|---|
+| **With Ares as patron god** | **+0.12x** | **+12%** | +0.08x to *their* buffs | rises with a god-specific modifier — gains channeled toward Ares/his faction |
+| **Without a patron** | +0.10x | +5% | (same +0.10x spread across *every* related god) | rises neutrally — no relation to any god faction |
+
+The shape this implies:
+
+1. **Actions emit domain-tagged impressions** (melee boss kill → war/melee), derived from
+   sim events — deterministic, replayable.
+2. **Patron-less baseline:** the impression raises buff chance and tier odds *diffusely*
+   across all gods related to that domain; affection rises unfocused.
+3. **With a patron:** the patron's own domains get the top multiplier and better tier
+   odds; the patron's **related lesser gods** (faction) get a middle multiplier; affection
+   gains are amplified and directed toward the patron's faction. The patron is the
+   pantheon's attention, *focused*.
+
 ## The data model (seed data, JSON — schema stub only until KAN-7)
 
 ```
 patron_god {
   id, name, origin,            # forgotten religion or invented — "anything goes" (canon §4)
-  domains: [..],               # e.g. fire, fortune, hearth, war, storms, vermin, debt
+  faction,                     # pantheon/relatedness group (drives "related lesser gods")
+  related: [god_id..],         # or derived from faction + shared domains
+  domains: [..],               # e.g. melee, fire, fortune, hearth, war, storms, vermin, debt
   generosity: 1-5,             # how often/much they tip the dealer for you
   power: 1-5,                  # magnitude of boons (their bankroll/divinity)
+  buff_multiplier,             # patron-domain buff-chance bonus        (ex: +0.12x)
+  tier_up_bonus,               # chance bump for higher-tier buffs      (ex: +12% T2)
+  related_multiplier,          # spill-over to faction gods' buffs      (ex: +0.08x)
+  affection_modifier,          # how strongly deeds convert to affection, and toward whom
   temperament,                 # flavor + curse/trial style when displeased
   favor_conditions: [..],      # what wins favor — behavioral demands, e.g.
                                #   "finish fights with their domain", "show mercy",
@@ -72,16 +105,21 @@ patron_god {
 }
 ```
 
-Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip history.
+Contestant-side state: `patron_id`, **`affection` per god (or per faction)** — not a
+single favor score — plus running buff-chance/tier-odds accumulators per domain, and tip
+history. Baseline (patron-less) rates live in one global config block, so the patron
+layer is strictly a modifier on top.
 
 ## Rules of the layer (v1, deterministic — no LLM required)
 
 1. **Assignment is background-driven bidding** (section above), seeded where variance
    enters → replay/determinism preserved. Stat randomness shape still open ⟨Q3⟩: fixed
    roster / per-run jitter / fixed cores + small jitter (recommended).
-2. **Favor is a pure function of the event log.** Favor conditions are declarative
-   predicates over sim events (kills by damage type, mercy events, retreat events, hype
-   beats…). No hidden state; the same run always earns the same favor.
+2. **Affection is a pure function of the event log.** Favor conditions and domain
+   impressions are declarative predicates over sim events (kills by damage type/weapon
+   class, mercy events, retreat events, hype beats…), feeding the per-god affection
+   ledger through the multiplier model above. No hidden state; the same run always earns
+   the same affection.
 3. **Patron actions are dealer tips, entering the sim as schema-bound commands** — exactly
    the social-director discipline (DIRECTION.md contract §4): `patron_tip(boon|trial,
    magnitude, target)` emitted by the director interface, never direct state mutation.
@@ -122,3 +160,7 @@ Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip 
 - **Q7** — Forsaken designation: meta-level it's presumably the player opting into
   hardcore at creation — confirm the fiction frames it as *the god choosing them* (and
   whether a patron god can also trigger it mid-campaign as a true all-in, Marcus-style).
+- **Q8** — What are "buffs" concretely in the multiplier model: temporary combat
+  blessings, loot/affix roll quality (the existing tier ladder), or both? And what does
+  accumulated *affection with non-patron gods* buy — donator tips, epithets, recruitment
+  as THE patron next run, buy-out interest?
