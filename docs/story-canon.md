@@ -44,6 +44,41 @@ emotional. You are harder to influence because there is less of you to reach.
   two-state veteran, the reversion song, the scarf, the recognition asymmetry) as the
   protected asset; names/species/surface details are changeable.
 
+## The Spine & the Question Architecture (owner, 2026-07-15)
+
+**The campaign's defining question:**
+> **"How much can we break your essence down in the name of entertainment?"**
+
+**Structure — the campaign is built of questions:**
+- Floors do **not** end at 6 — design *paused* there. The goal reaches much further,
+  potentially **floor 20**.
+- **Each SET of floors asks one question** that determines who you are, staged in the most
+  entertaining way possible. Examples of the question shape: *will you do what's necessary
+  or what's right? · safety or justice? · power for yourself or power for many?* — each
+  classifies your actions as a person.
+- **Each answered question unlocks the next** — and unlocks are *path-dependent*: depending
+  on your previous routes, you can unlock routes unavailable to others.
+- **The ending is a verdict:** at the end of the campaign, the game tells the player **what
+  kind of person they were — and what kind of RULER they will be.**
+
+**Design consequences (recorded, to be built):**
+1. **The verdict system is a data structure:** a set of axes (necessary/right,
+   safety/justice, self/many, …), each floor-set scores one axis from in-game choices, an
+   unlock graph keyed on prior answers, and a final verdict function. This is what the
+   convergence matrix (rev-6 item) actually feeds — it's not just world-state, it's the
+   instrument that measures the player.
+2. **The essence/identity duality falls out of existing systems:** Tags = how the AUDIENCE
+   labels you (public identity, performable, fakeable). The question axes = what your
+   choices reveal you to BE (essence, not performable). The show breaks essence down while
+   the audience applauds the label — that tension IS the spine made mechanical. The two
+   systems should be kept deliberately separate and occasionally contradictory (crowd
+   favorite whose verdict is damning; hated contestant whose essence is noble).
+3. **The finale's shape is now known** (the verdict + what "ruler" means); the *staging* of
+   the last episode remains to design (rev-6 I-18, reduced in scope).
+4. My earlier proposed spine ("what cures corruption…") is demoted to a **route-level
+   sub-theme** of the F1–F3 set — which fits: it reads as that floor-set's question,
+   roughly *"will you cure what's corrupted, and at what cost?"* — pending owner shaping.
+
 ## Open story threads the owner wants to go through (queued)
 
 The review-6 notes are marked "good — more to discuss": pending walkthrough of the

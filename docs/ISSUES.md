@@ -15,7 +15,7 @@ it stop the next piece of work) · T = time cost 1–5 (5 = weeks) ·
 | # | Issue | Source | 🔑 | F | B | T | **E** |
 |---|---|---|---|---|---|---|---|
 | I-1 | ~~Shock recovery~~ **ANSWERED (owner): resets per combat; event-model proposed as R13, awaiting nod** | Q21 → R13 | 🔑nod | 4 | 3 | 1 | ~~11.0~~ |
-| I-2 | **Spine naming** — adopt "what cures corruption, and what does it cost" (or your version) as the stated theme; audit beats against it | rev-6 §pri-2 | 🔑 | 4 | 1 | 1 | **9.0** |
+| I-2 | ~~Spine~~ **RULED (owner): "How much can we break your essence down in the name of entertainment?" — question-set architecture + verdict ending recorded in story-canon** | story-canon | ✅ | 4 | 1 | 1 | done |
 | I-3 | **Slice premade contestants** — IP split means the slice needs 2 original contestants designed (concept, stats, 3 skills each) | rev-6 IP ruling + rev-4 §5 | 🔑 | 3 | 3 | 1 | **9.0** |
 | I-4 | **PROVISIONAL rulings sign-off batch** — R2 dodge, R3 caps, R4 Burn-Shock, R8 RPM, R9 grapple, R10 halving, R11 log; = questionnaire C/D sections in one sitting | rev-1/addendum | 🔑 | 3 | 2 | 1 | **8.0** |
 | I-5 | ~~IP split~~ **RULED: players' characters parked; game gets an original cast** | story-canon | ✅ | 3 | 2 | 1 | done |
@@ -31,9 +31,9 @@ it stop the next piece of work) · T = time cost 1–5 (5 = weeks) ·
 | I-15 | **Priming vocabulary + skill passover** — levels 1–4 semantics (Q7), upgrade-vs-mutate (Q8), re-express cooldown-texted skills as primes; unblocks I-11 fully | NQ1, Q7–Q8 | 🔑 | 4 | 3 | 3 | **3.7** |
 | I-16 | **Enemy AI v1** — mob/elite behavior, Incinedile phase machine + dodge-threshold ability (breach hooks already in engine) | rev-3 gaps, seeds | | 4 | 3 | 3 | **3.7** |
 | I-17 | **Story patch bundle** — Nullrot motive, mask rules, Medium continuity bug (farm leader's 170 years), faction points definition | rev-6 §3 | 🔑 | 3 | 1 | 2 | **3.5** |
-| I-18 | **Finale design** — what the last episode IS; decide before F3 content locks | rev-6 §6 | 🔑 | 3 | 1 | 2 | **3.5** |
+| I-18 | **Finale staging** — shape now known (the VERDICT: what kind of person you were, what kind of ruler you will be); remaining work = staging the last episode + defining "ruler" | rev-6 §6 → story-canon | 🔑 | 2 | 1 | 2 | **2.5** |
 | I-19 | **Vertical slice assembly** — arena scene, 2 contestants, Incinedile P1, hype meter, broadcast win/lose (consumes I-3, I-9, I-10, I-16) | rev-4 §5 | | 5 | 3 | 4 | **3.3** |
-| I-20 | **Convergence matrix** — routes × offscreen resolutions → capital state; the route system's payoff | rev-6 §pri-1 | 🔑 | 4 | 1 | 3 | **3.0** |
+| I-20 | **Convergence matrix / verdict system** — routes × offscreen resolutions → capital state, now ALSO the axis-scoring instrument feeding the verdict ending (story-canon) | rev-6 §pri-1 + spine | 🔑 | 5 | 1 | 3 | **3.7** |
 | I-21 | SessionStart hook: auto-install Godot each session (`.claude/settings.json` — needs your approval) | infra | 🔑 | 1 | 1 | 1 | **3.0** |
 | I-22 | Song licensing plan — originals/soundalikes for the Dissolution songs (plan only, no production) | rev-6 §4 | | 1 | 1 | 1 | **3.0** |
 | I-23 | **Medium refusal forks + brand-breach rules** — genuine refusal paths per beat; contract breach consequences | rev-6 §3, story-canon | 🔑 | 3 | 1 | 3 | **2.3** |
