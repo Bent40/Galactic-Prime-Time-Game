@@ -38,12 +38,18 @@ emotional. You are harder to influence because there is less of you to reach.
 
 - **RULED: players' characters stay OUT of the game for now** — parked aside as concepts
   that may be drawn on later if wanted.
-- **AMENDED same day (owner): the slice premades are SASHA and NIKITA, names kept** — the
-  protected keeper thread becomes the playable pair. (Sasha's played-character overlap
-  acknowledged by the owner as fine; player courtesy noted once, owner's call made.)
-  Character pages: `docs/characters/sasha.md`, `docs/characters/nikita.md` — canon fields
-  locked, ⟨PROPOSED⟩ fields awaiting owner edit. Nikita becomes PLAYABLE; his Reversion is
-  the priming system's showcase (the song = the prime).
+- **AMENDED same day (owner): SASHA and NIKITA enter the game as RECRUITABLE NPCs, names
+  kept** — "Look Outside" style: found in the world, recruited through an encounter, join
+  the party as controllable companions, permanently losable (GDD's non-PC-permadeath rule).
+  The player's own contestant is created/chosen separately. (Sasha's played-character
+  overlap acknowledged by the owner as fine.) Character pages:
+  `docs/characters/sasha.md`, `docs/characters/nikita.md` — canon fields locked, ⟨PROPOSED⟩
+  fields awaiting owner edit. Nikita's **Reversion** remains the priming system's showcase
+  (the song = the prime) — now as a companion kit.
+- **Slice shape consequence ⟨PROPOSED⟩:** slice party = one simple player contestant
+  (default build or 60-second creation) + Sasha & Nikita as the tutorial's two recruitment
+  encounters — the slice then demos creation-lite, recruitment, the priming showcase, AND
+  the keeper thread. Incinedile P1 balanced for a party of 3.
 - **The Nikita & Sasha story is KEEPER content** — the owner wants it in the game even if
   the characters must be rebranded/renamed. Treat the *story shape* (inherited fear, the
   two-state veteran, the reversion song, the scarf, the recognition asymmetry) as the

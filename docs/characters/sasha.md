@@ -1,7 +1,8 @@
 # Contestant Page — Sasha
 
-*Status: cast by owner (2026-07-15, names kept). Fields marked ⟨PROPOSED⟩ are my drafts —
-edit freely. Canon source: compendium §4.5–4.6, §5; story-canon (keeper thread).*
+*Status: **RECRUITABLE NPC** (owner, 2026-07-15 — 'Look Outside' style: found in the
+world, earned via an encounter, joins the party, can permanently die). Names kept.
+Fields marked ⟨PROPOSED⟩ are my drafts — edit freely. Canon source: compendium §4.5–4.6, §5; story-canon (keeper thread).*
 
 ## Identity
 - **Name:** Sasha

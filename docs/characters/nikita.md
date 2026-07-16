@@ -1,7 +1,8 @@
 # Contestant Page — Nikita
 
-*Status: cast by owner (2026-07-15, names kept). Fields marked ⟨PROPOSED⟩ are my drafts —
-edit freely. Canon source: compendium §4.5 (protected keeper thread); story-canon.*
+*Status: **RECRUITABLE NPC** (owner, 2026-07-15 — 'Look Outside' style: found in the
+world, earned via an encounter, joins the party, can permanently die). Names kept.
+Fields marked ⟨PROPOSED⟩ are my drafts — edit freely. Canon source: compendium §4.5 (protected keeper thread); story-canon.*
 *Note: this makes Nikita PLAYABLE — his Old/War oscillation becomes a player mechanic; the
 floors-4–6 NPC encounter design remains available for the campaign as-is or adapted.*
 
