@@ -27,6 +27,8 @@ CONDITION_IDS = {
     "infected", "burn", "poison", "dissolution",
 }
 FORCED_ACTION_TYPES = {None, "Body", "Tool"}
+ITEM_TYPES = {"consumable", "equipment", "weapon", "system_item", "misc", "key_item", "tool"}
+PATRON_DOMAINS_MIN = 1  # sketch: docs/design/patron-gods.md — every god needs at least one domain
 
 failures: list[str] = []
 
@@ -82,9 +84,14 @@ def main() -> int:
     conditions = load("conditions.json") or []
     skills = load("skills.json") or []
     thresholds = load("skill_thresholds.json") or []
-    load("items.json")
+    items = load("items.json") or []
     load("modifiers.json")
     load("tags.json")
+    # Optional stub until KAN-7 (docs/design/patron-gods.md): validate only if present.
+    patrons = load("patron_gods.json") if (DATA / "patron_gods.json").is_file() else []
+    if not isinstance(patrons, list):
+        fail("patron_gods.json", "top level must be a list")
+        patrons = []
 
     # races
     check_unique("races.json", races, "key")
@@ -156,12 +163,54 @@ def main() -> int:
                 if not isinstance(t.get("shock_tier"), int) or t["shock_tier"] < 0:
                     fail("conditions.json", f"{cid} T{t.get('tier')}: shock_tier must be int >= 0")
 
+    # items — rpm/magazine are FLAT fields; that is the contract the engine
+    # already consumes (action_resolver.gd R8: item.get("rpm"), item.has("magazine")).
+    check_unique("items.json", items, "key")
+    for i in items:
+        k = i.get("key", "?")
+        if i.get("item_type") not in ITEM_TYPES:
+            fail("items.json", f"{k}: item_type {i.get('item_type')!r} not in {sorted(ITEM_TYPES)}")
+        if "rpm" in i and (not isinstance(i["rpm"], int) or i["rpm"] < 1):
+            fail("items.json", f"{k}: rpm must be int >= 1 (rounds per 1-Moment attack, R8)")
+        if "magazine" in i and (not isinstance(i["magazine"], int) or i["magazine"] < 1):
+            fail("items.json", f"{k}: magazine must be int >= 1 (capacity; reload refills it, R8)")
+        if "magazine" in i and i.get("item_type") != "weapon":
+            fail("items.json", f"{k}: magazine only makes sense on weapons")
+
+    # patron gods (stub schema — docs/design/patron-gods.md)
+    check_unique("patron_gods.json", patrons, "key")
+    for g in patrons:
+        k = g.get("key", "?")
+        for f_ in ("key", "name", "origin", "faction", "temperament"):
+            if not isinstance(g.get(f_), str) or not g.get(f_):
+                fail("patron_gods.json", f"{k}: {f_} must be a non-empty string")
+        doms = g.get("domains")
+        if not isinstance(doms, list) or len(doms) < PATRON_DOMAINS_MIN \
+                or not all(isinstance(d, str) for d in doms):
+            fail("patron_gods.json", f"{k}: domains must be a non-empty list of strings")
+        for f_ in ("generosity", "power"):
+            if not isinstance(g.get(f_), int) or not (1 <= g[f_] <= 5):
+                fail("patron_gods.json", f"{k}: {f_} must be int in 1..5")
+        for f_ in ("buff_multiplier", "tier_up_bonus", "related_multiplier", "affection_modifier"):
+            v = g.get(f_)
+            if not isinstance(v, (int, float)) or v < 0:
+                fail("patron_gods.json", f"{k}: {f_} must be a number >= 0")
+        for f_ in ("favor_conditions", "boon_table", "trial_table", "related"):
+            if not isinstance(g.get(f_), list):
+                fail("patron_gods.json", f"{k}: {f_} must be a list")
+        for rel in g.get("related", []):
+            if rel not in {p.get("key") for p in patrons}:
+                fail("patron_gods.json", f"{k}: related god {rel!r} is not a patron key")
+
     # skills
     check_unique("skills.json", skills, "key")
     skill_ids = set()
     for s in skills:
         skill_ids.add(s.get("id"))
         k = s.get("key", "?")
+        excl = s.get("exclusive_to")
+        if excl is not None and (not isinstance(excl, str) or not excl):
+            fail("skills.json", f"{k}: exclusive_to must be a non-empty string (character key) or null")
         if s.get("primary_stat") not in STATS:
             fail("skills.json", f"{k}: primary_stat invalid")
         if s.get("secondary_stat") is not None and s.get("secondary_stat") not in STATS:
@@ -194,10 +243,10 @@ def main() -> int:
         print("\n".join(failures))
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
-    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds))
+    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
-          f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds "
-          f"— {n} rows checked).")
+          f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
+          f"{len(items)} items, {len(patrons)} patron gods — {n} rows checked).")
     return 0
 
 

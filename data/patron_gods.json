@@ -1,0 +1,73 @@
+[
+  {
+    "id": 1,
+    "key": "ares",
+    "name": "Ares",
+    "origin": "Greek",
+    "faction": "olympian_war",
+    "related": ["enyo"],
+    "domains": ["melee", "war"],
+    "generosity": 3,
+    "power": 4,
+    "buff_multiplier": 0.12,
+    "tier_up_bonus": 0.12,
+    "related_multiplier": 0.08,
+    "affection_modifier": 1.2,
+    "temperament": "glory-hungry; rewards escalation, punishes retreat with sullen silence",
+    "favor_conditions": [
+      "kill a Boss with a melee weapon",
+      "finish a fight without retreating",
+      "win while outnumbered"
+    ],
+    "boon_table": ["melee_buff", "tier_up_melee", "war_trophy_drop"],
+    "trial_table": ["champion_duel", "no_retreat_curse"],
+    "notes": "SCHEMA STUB — owner's worked example (docs/design/patron-gods.md). All numbers PLACEHOLDER per R14."
+  },
+  {
+    "id": 2,
+    "key": "enyo",
+    "name": "Enyo",
+    "origin": "Greek",
+    "faction": "olympian_war",
+    "related": ["ares"],
+    "domains": ["war", "carnage"],
+    "generosity": 2,
+    "power": 2,
+    "buff_multiplier": 0.08,
+    "tier_up_bonus": 0.06,
+    "related_multiplier": 0.04,
+    "affection_modifier": 1.0,
+    "temperament": "delights in chaos; boons arrive mid-crisis, never before",
+    "favor_conditions": [
+      "fight while at Shock tier 2 or higher",
+      "trigger three forced actions in one combat"
+    ],
+    "boon_table": ["frenzy_buff", "chaos_drop"],
+    "trial_table": ["swarm_call"],
+    "notes": "SCHEMA STUB — lesser related god exercising the faction spill-over path. PLACEHOLDER."
+  },
+  {
+    "id": 3,
+    "key": "hestia",
+    "name": "Hestia",
+    "origin": "Greek",
+    "faction": "olympian_hearth",
+    "related": [],
+    "domains": ["hearth", "protection", "mercy"],
+    "generosity": 5,
+    "power": 2,
+    "buff_multiplier": 0.10,
+    "tier_up_bonus": 0.05,
+    "related_multiplier": 0.02,
+    "affection_modifier": 1.4,
+    "temperament": "quietly constant; small gifts often, grand gestures never; neglects no one",
+    "favor_conditions": [
+      "stabilize an ally's lethal body part",
+      "show mercy to a defeated enemy",
+      "share a consumable with a party member"
+    ],
+    "boon_table": ["healing_comp", "ward_buff", "supply_drop"],
+    "trial_table": ["protect_the_weak"],
+    "notes": "SCHEMA STUB — contrast profile (high generosity / low power; mercy-aligned favor). PLACEHOLDER."
+  }
+]

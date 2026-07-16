@@ -1,0 +1,12 @@
+{
+  "classification": {
+    "risk": [],
+    "size": "",
+    "type": ""
+  },
+  "id": "w2-build-block",
+  "signals": [],
+  "stages": [],
+  "task": "W2 build block: schema completion pass (#10) + spectacle/hype engine v1 (#11)",
+  "ts": "2026-07-16T18:52:43Z"
+}

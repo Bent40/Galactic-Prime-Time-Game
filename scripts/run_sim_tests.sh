@@ -17,9 +17,11 @@ fi
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Fresh clones have no .godot/ cache; build it so class_name lookups
-# (CombatSim, SimTestBase, ...) resolve in headless -s mode.
-if [ ! -f "$PROJECT_DIR/.godot/global_script_class_cache.cfg" ]; then
+# Fresh clones have no .godot/ cache, and a STALE cache silently breaks
+# class_name lookups for scripts added since it was built (parse errors +
+# a hung runner). Re-import when the cache is missing OR any .gd is newer.
+CACHE="$PROJECT_DIR/.godot/global_script_class_cache.cfg"
+if [ ! -f "$CACHE" ] || [ -n "$(find "$PROJECT_DIR/simulation" "$PROJECT_DIR/tests" "$PROJECT_DIR/controller" -name '*.gd' -newer "$CACHE" -print -quit 2>/dev/null)" ]; then
 	"$GODOT" --headless --path "$PROJECT_DIR" --import >/dev/null 2>&1 || true
 fi
 
