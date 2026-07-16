@@ -1,0 +1,120 @@
+# Setting Rebrand — Brainstorm & Options (status: OPEN, owner deciding)
+
+**Problem (owner, 2026-07-15):** "aliens abduct humans into a broadcast dungeon show" is
+roughly Dungeon Crawler Carl's silhouette, and a mycelium-Corporation with a clear evil
+motive is too on the nose. Keep: the dungeon (mostly fine), sci-fi-ish flavor, the
+philosophical angle, possibly a running-out timer. Candidate source: the owner's own novel
+world — **the Cosmic Casino** (*A Day of Ruin*, V0.3 + story bible).
+
+## What the new frame MUST preserve (mechanical load-bearing)
+
+1. An audience whose attention is an economy (Viewers→Followers→Patrons, Camera Call, Goals).
+2. A power that issues Directives and runs the game.
+3. Dungeon floors with route exclusivity and **time skips between floors**.
+4. The spine: *"how much can we break your essence down in the name of entertainment?"* +
+   the verdict/"what kind of ruler" ending.
+5. Permadeath + Ascension (the retired become patrons).
+6. Tags = identity assigned by watchers.
+7. The two information planes (watchers hear the announcer; contestants live the world).
+
+## Options
+
+### A — The Cosmic Casino merge (owner's own world) ★ RECOMMENDED
+The show isn't alien TV — it's **a table in the gods' casino**. A framework, not a villain;
+realms get selected as hosts; champions are wagered on by a divine audience.
+
+**Why the mapping is uncanny (word-for-word in places):**
+| GPT today | Under the Casino |
+|---|---|
+| Viewers / Followers / **Patrons** | Spectator gods / devotees / **patron gods** — the mechanic already has the right name |
+| Directives (corporate quests) | **Wagers & divine challenges** — the bible's patron system verbatim |
+| Goals (crowd challenges) | Side bets from the gallery |
+| Camera Call | The odds board turns to you — all stakes on you double |
+| The announcer we needed (rev-6 gap) | **Momus already exists** — pink tuxedo, never breathes between sentences |
+| Loot boxes / tiers | Jackpots & comps; Lounge box-opening = the prize floor |
+| The Lounge (corporate base) | **The comp suite** — the house always comps your room; surveillance = the house watching its assets |
+| Boss/Upgrade tokens | House markers & chips |
+| Tags (TVTropes dependency — flagged debt) | **EPITHETS** — gods grant epithets ("Sasha the Nine-Lived"); mythology-native, self-owned, kills the TVTropes debt |
+| Time skips between floors | The framework fast-forwards the host realm between acts — gods skip the boring parts |
+| Ascension (retire → patron) | **The pipeline to godhood** — see the ending, below |
+| Cross-party patronage (Stage 2 async) | Cross-party **wagering** — other players' patrons bet on your run |
+| Enemy content pool | Mythology-sourced monsters (Asag template) + the dungeon's existing demons/Loong unchanged |
+
+**The ending this unlocks (the big one):** the verdict — *what kind of person you were,
+what kind of ruler you'll be* — becomes literal: **winning doesn't free you; it promotes
+you into the audience.** The verdict decides what kind of god you become. The spine
+sharpens into: *whatever survives the breaking-down is what gets deified.* Nobody in the
+DCC lane — or anywhere adjacent — has that ending.
+
+**Answers the "too evil" complaint:** the bible's hard rule is gods are **morally alien,
+not evil** — addicted, bored, starving for spectacle; the casino is a framework with no
+motive at all. Nothing to twirl a mustache.
+
+**DCC separation: strong.** Gods/gambling/myth/faith-economy vs aliens/TV/corporation.
+What overlap remains (HUD voice, achievements, loot) is genre-wide LitRPG furniture, not
+DCC-specific.
+
+**Costs / risks:**
+- Novel–game coupling needs a policy (see Open Decisions).
+- The live TTRPG campaign runs Corporation lore — fork or re-skin, owner's call.
+- Corporate-satire item copy gets re-voiced (house merchants, "the house claims no
+  responsibility…") — modest rewrite, same joke engine.
+- The name "Galactic Prime Time" may not survive the frame change.
+
+### E — A's motive-deepener (compatible add-on): the starving pantheon
+Gods aren't cruel, they're **starving** — belief died, attention is nutrition, and mortal
+essence-under-pressure is the last food source in a faithless age. The casino is a famine
+economy; Momus's cheer is a starving thing's showmanship; "the timer is running out"
+becomes cosmological (when the last game ends, so do they). Deepens A's philosophy and
+gives the audience a tragic complicity instead of a motive.
+
+### B — The descendants' simulation
+The "show" is run by whatever inherited Earth, re-running ancestors under pressure; the
+verdict = how history judges you. Philosophically clean, tonally somber; loses the live
+audience's greed texture and most of the comedy. Weakest mechanical fit.
+
+### C — The essence-harvest corporation
+Keep the show; replace the motive: the audience species lost the capacity to feel, and
+consumes human choice-under-pressure as the only stimulus that still registers. Patrons
+literally buy pieces of you. Good philosophy, keeps all mechanics — but the silhouette
+stays "aliens run a deadly broadcast show" (moderate DCC separation only).
+
+### D — The last-seats lifeboat
+Earth is ending on a visible timer; the dungeon is the selection process for who deserves
+the future — and **the audience voting is the rest of humanity**. Patrons = wealthy
+survivors sponsoring champions. Brutal and philosophical, strong separation from DCC — but
+it walks into Hunger Games' sponsor economy, trades away the comedy, and time skips get
+awkward.
+
+## Recommendation
+
+**A + E.** It is the owner's own IP (differentiation you can't be sued out of, plus
+cross-media value with the novel), the mechanical mapping is nearly 1:1 with what's already
+built and seeded, it fills the production-cast gap with an existing character, converts the
+tag system's worst dependency into its most flavorful feature (epithets), keeps both
+information planes and both tones (Momus carries the comedy; the grief plane is untouched —
+gods wagering on Nikita's song is *more* devastating than a corporation doing it), and it
+upgrades the ending into the pitch line: **survive the casino and the house makes you one
+of them — the verdict decides what kind.**
+
+**What stays untouched:** the dungeon itself (floors, routes, time skips, demons, Loong,
+Incinedile), the Moment clock, all combat rules, per-part HP, the addendum, the engine and
+its 22 green tests, Sasha & Nikita, the brand contract, the question architecture, the
+verdict. This is a FRAME swap, not a redesign — the engine doesn't know who's watching.
+
+## Open decisions (owner)
+
+1. **Adopt A (or A+E)?** Or another direction from above / a hybrid.
+2. **Novel–game coupling policy.** Recommended: same cosmology, different table — the
+   novel keeps Earth's quarter-millennial special (Marcus's story stays free); the game is
+   a different special on a purpose-built/host fantasy realm with champions imported from
+   Earth (which is exactly what GPT's dungeon already looks like). Shared: framework,
+   patron system, Momus-or-sibling host, relic logic. Never shared: plot, protagonist.
+3. **Does the live TTRPG campaign re-skin too**, or does the table keep the Corporation
+   while the game goes Casino?
+4. **Momus: shared host across both**, or the game gets a sibling host (same franchise,
+   different voice)?
+5. **The title.** "Galactic Prime Time" is TV-frame; the casino frame wants its own name
+   (working candidates can wait — the repo name doesn't need to move yet).
+6. **The timer.** Adopt the running-out clock as the campaign's cosmological frame (E) or
+   as a season mechanic (the special has a fixed run)?
