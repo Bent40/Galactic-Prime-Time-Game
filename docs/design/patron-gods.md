@@ -35,9 +35,9 @@ patron can choose a patron**.* Proposed synthesis of all three:
    each shown as a deal sheet: domains, generosity, temperament, favor demands.
 3. **The player chooses — because only the patron-less can choose** (the ORV rule). Once
    bound, the player cannot swap; the relationship changes only from the god side.
-4. **Refusing every offer = the Forsaken run.** No escort, no tips, higher payout
-   multipliers — the hardcore mode stops being a menu toggle and becomes a *roleplay
-   decision at creation*.
+4. **Refusing every offer leaves you undrafted, NOT Forsaken** ⟨open, part of Q6⟩ — a
+   patron-less run: no escort, no directed bets, at most stray donator tips. Whether
+   refusal is even allowed, and what an undrafted run is worth, is open.
 5. **Buy-outs are god-side drama (⟨open⟩):** a richer god can buy your contract from your
    patron god mid-campaign — triggered by performance (hype/favor thresholds), arriving
    diegetically as new bet types and a changed comp style. Rare, event-worthy, and it
@@ -91,8 +91,17 @@ Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip 
    a System message the house would plausibly send ("a benefactor smiles on you").
    Spectators/replays get the announcer naming the god and the size of the tip — the
    dramatic irony is the product.
-5. **Forsaken hook (later, free):** a run with `patron_id = null` — no tips either way,
-   higher payout multipliers. A hardcore mode the fiction already names.
+5. **Forsaken runs are god-initiated — the gods' way of going ALL-IN (owner ruling,
+   2026-07-16).** Not a refusal and not patron-less: a Forsaken champion is **chosen by
+   the gods to overcome a trial bigger than others.** Your patron god sponsors the run,
+   but **no help is permitted** (canon §2, VVIP): the tip channel is sealed for every
+   god, everything is solved alone, the divinity involved is much higher, and the
+   sponsoring god's payout is much larger. Mechanically: `forsaken = true` on the run;
+   patron relationship intact, assistance disabled, payout/divinity multipliers up.
+   Game translation ⟨PROPOSED⟩: the *player* opts into a Forsaken run at creation
+   (hardcore mode) — but the *fiction* frames it as the god choosing them; diegetically
+   nobody volunteers. (Marcus is the template: Plutus went all-in — consent not
+   included.)
 
 ## Open questions (owner)
 
@@ -108,4 +117,8 @@ Contestant-side state: `patron_id`, `favor` (a score the favor rules move), tip 
 - **Q5** — Do rival patrons tip *against* the player's party in co-op (trials targeting a
   teammate), or only against enemies/the environment in Stages 1–2?
 - **Q6** — Confirm the bidding synthesis: structured background picks (v1, deterministic)
-  + freeform text (LLM-read later); 2–3 suitor offers; refusal of all = Forsaken run.
+  + freeform text (LLM-read later); 2–3 suitor offers. And: can the player refuse all
+  offers at all — and if so, what is an *undrafted* (patron-less, non-Forsaken) run worth?
+- **Q7** — Forsaken designation: meta-level it's presumably the player opting into
+  hardcore at creation — confirm the fiction frames it as *the god choosing them* (and
+  whether a patron god can also trigger it mid-campaign as a true all-in, Marcus-style).
