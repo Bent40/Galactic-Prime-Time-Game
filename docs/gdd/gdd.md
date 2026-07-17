@@ -171,7 +171,9 @@ player always sees the gamble they're taking.
 ### Character System
 - **Traits:** Physique / Reflexes (Body pillar), Mind / Charm (Core pillar).
   `total = base + bonus + levelBonus`. Creation: 7 across Body + 7 across Core, max 5
-  per trait at creation (canon, matches live campaign data).
+  per trait at creation (canon, matches live campaign data). **Charm = presentability
+  (R18)** — objective aesthetics compared to others, the camera-facing stat; never
+  charisma (likability lives in the audience systems).
 - **Races (R16, owner 2026-07-16):** any living thing on Earth — **Human** and
   **Animal** only; **the Robot race is removed**. Per-race body plans in
   `data/races.json`; animals get an authored part layout at creation.
