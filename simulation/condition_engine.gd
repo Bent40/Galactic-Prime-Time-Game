@@ -132,10 +132,18 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 		events.append({"type": "condition_ignored", "combatant": c.id, "condition": condition_id, "reason": "unknown_condition"})
 		return events
 
-	# Remap to a legal target part (whole-body conditions live on the torso).
+	# S2.6: remap to a part the TARGET actually has. Empty target_body_parts = any
+	# existing part is legal; a restricted list (suffocation/exhausted/infected →
+	# torso, dissolution → head) routes to the combatant's closest equivalent —
+	# never to a template key the combatant lacks (non-human part plans).
 	var legal_parts: Array = def.get("target_body_parts", [])
-	if not legal_parts.is_empty() and not legal_parts.has(part_key):
-		part_key = String(legal_parts[0])
+	var valid_target: bool = c.parts.has(part_key) \
+		and (legal_parts.is_empty() or legal_parts.has(part_key))
+	if not valid_target:
+		part_key = _equivalent_part(c, legal_parts)
+		if part_key == "":
+			events.append({"type": "condition_ignored", "combatant": c.id, "condition": condition_id, "reason": "no_valid_part"})
+			return events
 
 	if is_timer_condition(condition_id):
 		return _apply_timer_condition(c, part_key, condition_id, def, events)
@@ -327,6 +335,24 @@ func treat(c: CombatantState, part_key: String, condition_id: String, mode: Stri
 
 
 ## Shock stacking (R7/E5): fresh Shock lands at the source tier; a new source
+## S2.6 fallback chain: first listed legal part the combatant HAS, else its torso,
+## else its first lethal part (sorted), else its first part (sorted), else "".
+func _equivalent_part(c: CombatantState, legal_parts: Array) -> String:
+	for legal: Variant in legal_parts:
+		if c.parts.has(String(legal)):
+			return String(legal)
+	if c.parts.has("torso"):
+		return "torso"
+	var keys: Array = c.parts.keys()
+	keys.sort()
+	for key: Variant in keys:
+		if bool((c.parts[key] as Dictionary).get("lethal", false)):
+			return String(key)
+	if not keys.is_empty():
+		return String(keys[0])
+	return ""
+
+
 ## while already Shocked escalates one above current (never below the source
 ## tier). T3 (Faint) = Helpless for 1 Clock + drop held items.
 func apply_shock(c: CombatantState, source_tier: int, tick: int) -> Array[Dictionary]:
