@@ -27,6 +27,10 @@ hype engine v1, determinism + save/resume tests.
   damage table, re-seed placeholders; mutation pass (`wf mutate`) after.
 - ⬜ **S2.4 Free-action/actions-per-tick audit** — verify addendum rulings hold under
   real-time declare windows (APM-contest guard).
+- ⬜ **S2.5 Combined actions (R15)** — linked same-tick declarations; assists as
+  requirement-providers; merged-hit resolution (breach/force thresholds); degraded-combo
+  cascade on partner Forced Actions; ally-targeted verbs + item handoff; hype
+  choreography bonus. Tests: acceptance criterion 21.
 
 ## KAN-3 — Scaffolding ⬜ (next)
 

@@ -320,6 +320,33 @@ principles, canon now:
   values, part HP, resistances, enemy budgets). Supersedes/absorbs NQ5 (tutorial HP tuning)
   — the "hard to hurt without killing" problem gets solved by the rework, not a patch.
 
+## R15 — Multi-character combined actions (owner direction, 2026-07-16)
+
+**RULED (owner): characters acting on the same Moment can act TOGETHER** — combined
+attacks, boosting an ally into a jump attack, buffing another, handing items across.
+Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the skills passover):
+
+- **Timing:** a combined action is a set of **linked declarations resolving on the same
+  tick** — R2's simultaneity is the substrate; nothing new in the clock. All linked
+  actors pay their own Moment costs.
+- **Assists provide requirements** (the priming philosophy applied to teamwork): a
+  partner's assist can satisfy an otherwise-unmet requirement — a brace supplies "steady
+  ground," a boost supplies the height for a jump attack, a feint supplies the opening.
+  Teamwork's primary power is *unlocking*, not just adding numbers.
+- **Combined attacks merge force ⟨PROPOSED⟩:** merged damage counts as **one hit** for
+  thresholds — the party's designed path to 7+ single-hit breaches, and (once the R14
+  force-vs-robustness gate lands) the intended counter to robustness no single attacker
+  can clear. The R14 design pass must treat force-combination as a first-class input.
+- **Support verbs:** ally-targeted buffs/heals and item handoffs are legal combo
+  members; handoffs ride the existing inventory-interaction economy (R3).
+- **Failure cascades together ⟨PROPOSED⟩:** if a linked actor's requirement fails or a
+  Forced Action fires on them, the combo resolves *degraded* — their contribution drops
+  out, their d6 consequences land normally, the partners' parts still resolve.
+  Coordination risk is drama, never a veto.
+- **Spectacle:** combined actions earn a hype bonus (the crowd loves choreography) —
+  PLACEHOLDER weight in the hype engine.
+- Enemy pack-combos become possible by the same mechanism (Mob synergy) — not v1.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.
@@ -357,6 +384,10 @@ Each line is a test target; ruling in brackets.
     commands; snapshot → restore → replay tail ⇒ same hash [DIRECTION contract].
 20. Forced Action: unmet requirements halve effect and roll the correct d6 table; "always
     allowed" preserved [R10/book].
+21. Combined action: two linked same-tick attacks merge into a single hit for breach
+    checks (7+); an assist satisfies a partner's requirement; a Forced Action on one
+    partner degrades but does not cancel the others' contributions [R15 — test lands
+    with the combined-actions implementation pass].
 
 ---
 
