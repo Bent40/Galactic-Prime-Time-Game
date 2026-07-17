@@ -76,6 +76,52 @@ func state_hash() -> String:
 	return "" if sim == null else sim.state_hash()
 
 
+## Read-only VIEW API (KAN3-S3): plain-Dictionary projections of sim state so
+## scenes can render without importing simulation classes. Sorted, primitive,
+## and safe to call every frame.
+func view_combatants() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if sim == null:
+		return out
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = sim.combatants[id]
+		var parts: Array[Dictionary] = []
+		var part_keys: Array = c.parts.keys()
+		part_keys.sort()
+		for part_key: Variant in part_keys:
+			var part: Dictionary = c.parts[part_key]
+			var conds: Dictionary = {}
+			var on_part: Dictionary = c.conditions.get(part_key, {})
+			for cond_id: Variant in on_part:
+				conds[String(cond_id)] = int((on_part[cond_id] as Dictionary).get("tier", 1))
+			parts.append({
+				"key": String(part_key),
+				"hp": int(part.get("hp", 0)),
+				"max_hp": c.max_hp(String(part_key)),
+				"lethal": bool(part.get("lethal", false)),
+				"disabled": bool(part.get("disabled", false)),
+				"conditions": conds,
+			})
+		out.append({
+			"id": String(id),
+			"name": c.display_name,
+			"position": [c.position.x, c.position.y],
+			"alive": c.alive,
+			"shock": c.shock,
+			"exposed": c.exposed_cache,
+			"parts": parts,
+		})
+	return out
+
+
+func view_clock() -> Dictionary:
+	if sim == null:
+		return {}
+	return {"tick": sim.clock.tick, "moment": sim.clock.moment()}
+
+
 func save_game(save_name: String) -> bool:
 	if sim == null:
 		return false
