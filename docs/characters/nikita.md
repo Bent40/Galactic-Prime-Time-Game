@@ -69,13 +69,15 @@ inconsistent, some skills incomplete, catalog needs major expansion.)*
 - **Sasha is his cat.** War Nikita **may not recognize her** — the recognition asymmetry
   is the keeper thread's climax. In the slice it surfaces small: she is the only one who
   can safely approach War Nikita.
-- Plan-system behavior ⟨PROPOSED⟩: Old Nikita approves cautious steps, substitutes
-  toward protection duties, and **rejects any step that spends Sasha as bait** (reason
-  written in-character). War Nikita rejects defensive steps.
-- Patron angle ⟨PROPOSED flavor⟩: war-domain gods bid hard the first time the song
+- Plan-system behavior (APPROVED 2026-07-16): Old Nikita approves cautious steps,
+  substitutes toward protection duties, and **rejects any step that spends Sasha as
+  bait** (reason written in-character). War Nikita rejects defensive steps.
+- Patron angle (APPROVED 2026-07-16): war-domain gods bid hard the first time the song
   lands; Hestia-shaped gods bid on the *old man*, not the weapon.
 
+*Sheet APPROVED in full (owner, 2026-07-16) — all proposals ruled in, including
+war-state skill behavior: same skills, brutal use patterns.*
+
 ## OPEN on this sheet
-War-state numbers (tuning) · target-discrimination rule shape · whether War Nikita
-gains war-only skill uses ⟨PROPOSED: same skills, brutal use patterns⟩ · his two key
+War-state numbers (tuning pass) · target-discrimination rule shape · his two key
 authored scenes (queued walkthrough).

@@ -39,8 +39,12 @@ only cat speak.** Presentation: her lower-third shows the chat rendering while t
 audio is meows/chirps — the gap between the two is a running gag AND a quiet horror
 (the System understands her perfectly; it understands everyone perfectly).
 
-- Voice in chat ⟨PROPOSED⟩: terse, precise, cat-logic priorities ("Exit: vent, left.
-  Two breaths away. You are all standing in the open like prey.").
+- **Voice in chat (RULED 2026-07-16): a Russian cat — quite intellectual, sharp tongue,
+  very practical, very street smart.** Dry, cutting, economical; Russian-inflected
+  phrasing; the intelligence shows in what she chooses not to waste words on.
+  - *"Vent, left. Two breaths. Or keep posing for the cameras — the roach is not
+    impressed, and neither am I."*
+  - *"This plan has one exit and three heroes. The mathematics is not on our side."*
 - **Signature bit:** appearing from somewhere the camera didn't know existed — the
   crowd starts watching vents when she's off-screen.
 
@@ -54,16 +58,19 @@ audio is meows/chirps — the gap between the two is a running gag AND a quiet h
 - **She is Nikita's cat** — the only one who can tell **which Nikita is present** at a
   glance, and the only thing both of him protects. Managing his states is partly her
   job (the slice's party glue).
-- Plan-system behavior ⟨PROPOSED⟩: rejects any step that puts her far from an exit
-  (reason in chat, in character); substitutes toward flanking/vent routes; approves
-  bait roles ONLY when the escape line is explicit in the plan.
-- Patron angle ⟨PROPOSED flavor⟩: trickster/hunt-domain gods adore her; hearth gods
+- Plan-system behavior (APPROVED 2026-07-16): rejects any step that puts her far from
+  an exit (reason in chat, in character); substitutes toward flanking/vent routes;
+  approves bait roles ONLY when the escape line is explicit in the plan.
+- Patron angle (APPROVED 2026-07-16): trickster/hunt-domain gods adore her; hearth gods
   bid to keep the pair together.
 
 ## Silhouette
 Small quadruped, steel glints at the paws; moves low; ears do the emoting the face
 won't.
 
+*Sheet APPROVED (owner, 2026-07-16) — voice sharpened per ruling; all other proposals
+ruled in.*
+
 ## OPEN on this sheet
-Chat voice register · her part layout (authored cat body plan — needed before she's
-playable) · the maze encounter's placement in the campaign.
+Her part layout (authored cat body plan — needed before she's playable) · the maze
+encounter's placement in the campaign.
