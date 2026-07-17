@@ -118,7 +118,11 @@ Subjects B/C: adapt the Kit-1 texts into tag form the same way.
 
 ## Judging rubric (owner-scored as results land)
 
-| Criterion | ChatGPT (scored 2026-07-17) | Claude Design | ComfyUI |
+> **ComfyUI: ELIMINATED (owner, 2026-07-17)** — results lacked coherence and the owner
+> disliked them. The bake-off is now GPT (strong across all rows) vs Claude Design
+> (results pending).
+
+| Criterion | ChatGPT (scored 2026-07-17) | Claude Design | ~~ComfyUI~~ OUT |
 |---|---|---|---|
 | Same-person test (A: two poses read as one man) | ✅ yes | | |
 | Style consistency across subjects | ✅ consistent — but NO memory across images: consistency only holds if every prompt restates the canon block | | |
