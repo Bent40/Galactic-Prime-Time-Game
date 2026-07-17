@@ -141,6 +141,12 @@ Target Players; market grounding in review-4.)
   hooks; statuses (prone/slowed/overwhelmed); exposure states drive targetability.
 - **Resistances ✅** — flat reduction by class (Physical/Affliction/Psychic), tier
   immunity distinct from reduction (R6); boss hooks: fire-heals, surface-immunity.
+- **Combined actions (R15, owner 2026-07-16)** — same-Moment allies link declarations:
+  **assists satisfy requirements** (a boost supplies the jump attack's height), merged
+  attacks count as **one hit** for breach/force thresholds (the party's path past what
+  no single attacker can clear), buffs and item handoffs join the same economy, and a
+  partner's Forced Action degrades — never vetoes — the combo. Choreography earns a
+  hype bonus.
 
 ### Controls & Input ⟨PROPOSED⟩
 Mouse-first declare UI: click combatant → action palette with requirement badges (met /
