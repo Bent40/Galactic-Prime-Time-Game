@@ -1,3 +1,7 @@
+> **Owner rulings on this report (2026-07-17):** `kunai` dev-chat description is
+> **KEPT deliberately** ("it's funny") — reclassify that row's verdict from FIX to
+> KEEP-AS-IS; it is now intentional comedy canon, not a leak.
+
 # Items & Modifiers Audit — full pass, no sampling
 
 **Date:** 2026-07-17 · **Subjects:** `data/items.json` (28 rows) + `data/modifiers.json` (27 rows) —

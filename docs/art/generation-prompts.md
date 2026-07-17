@@ -115,16 +115,32 @@ Settings to start: CFG 6–7, 28–32 steps, DPM++ 2M Karras; batch 4 and pick. 
 low denoise preserves identity; this is the workflow's weak point we're probing.
 Subjects B/C: adapt the Kit-1 texts into tag form the same way.
 
-## Judging rubric (fill after generation)
+## Judging rubric (owner-scored as results land)
 
-| Criterion | ChatGPT | Claude code-gen | ComfyUI |
+| Criterion | ChatGPT (scored 2026-07-17) | Claude Design | ComfyUI |
 |---|---|---|---|
-| Same-person test (A: two poses read as one man) | | | |
-| Style consistency across subjects | | | |
-| Silhouette/readability at game size | | | |
-| Motion-frame identity survival (the 48-rung test) | | | |
-| Rework cost (can we edit the result?) | | | |
-| Volume cost (what does 50 more assets cost?) | | | |
+| Same-person test (A: two poses read as one man) | ✅ yes | | |
+| Style consistency across subjects | ✅ consistent — but NO memory across images: consistency only holds if every prompt restates the canon block | | |
+| Silhouette/readability at game size | ✅ readable | | |
+| Motion-frame identity survival (the 48-rung test) | ✅ pretty good (smear frame landed) | | |
+| Rework cost (can we edit the result?) | ✅ easy via prompt iteration | | |
+| Volume cost (what does 50 more assets cost?) | 50 prompts | | |
+| **Weakness** | **Output is an image, not a game asset** — no true alpha, arbitrary sizing, not sprite-sheet aligned, not palette-locked | | |
+
+### GPT results — notes & mitigations (2026-07-17)
+
+- Generated set: Nikita two-pose sheet (same-person ✅), War-Nikita smear-frame swing,
+  Sasha crouch sprite, arena vignette w/ full broadcast chrome. **The arena frame is
+  promoted to KAN-6 style-frame candidate** — Momus booth, odds board, hype meter all
+  read.
+- **Mitigation 1 (cross-image memory):** each subject gets a CANON BLOCK (fixed
+  description paragraph, stored in this file) pasted verbatim into every prompt —
+  consistency by discipline since the tool has none.
+- **Mitigation 2 (image ≠ asset):** the in-container **asset-ification pass** closes
+  the gap — background/checkerboard removal to true alpha, palette quantization,
+  nearest-neighbor downscale to game sizes, sprite-sheet alignment (Python/PIL +
+  Chromium). GPT-route = GPT stills + this pass. Drop source PNGs in
+  `docs/art/samples/gpt/` when convenient.
 
 **Decision rule (GDD, canon):** the ceiling is set by ANIMATION cost, not still-frame
 beauty. The hybrid 64/48 technique is approved for testing: key poses at full fidelity,
