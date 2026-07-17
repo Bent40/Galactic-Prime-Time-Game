@@ -79,9 +79,11 @@ Target Players; market grounding in review-4.)
 
 ### Core loop
 - **Moment-to-moment (combat field):** enter field → bound to the field's Moment clock
-  (10 ticks per Clock; Moment counts 10→1; Clock resets are the reorganization beat) →
-  declare actions in the declare window (drivers: paused-on-decision solo / timed ~3–5s
-  co-op / wall-clock broadcast — sim never self-advances) → requirements auto-succeed;
+  (10 ticks per Clock; Moment counts 10→1; **one tick ≈ 0.5s of in-game time** — a
+  Clock is ~5 fictional seconds; combat is diegetically hyper-fast and the real-time
+  interface is the broadcast's slow-motion) → declare actions in the declare window
+  (drivers: paused-on-decision solo / timed co-op at **5s default**,
+  accelerate-on-all-committed / wall-clock broadcast — sim never self-advances) → requirements auto-succeed;
   unmet requirements halve effect and roll the **Tool d6**; wounded parts force the
   **Body d6** → damage lands on parts, conditions start/advance their clocks → spectacle
   moves the hype meter; gods react → deaths trade simultaneously within a tick (R2).
@@ -95,6 +97,9 @@ Target Players; market grounding in review-4.)
   (architecture rule; Incinedile P1's breach teaches it).
 - **Contestant death:** lethal parts (head, torso) at 0 → death; delayable conditions →
   bleed-out window (R5: any further damage kills; stabilization is the clutch save).
+  **Mind collapse (R5 amendment, RULED 2026-07-17): Dissolution completion removes the
+  character from play PERMANENTLY — they become, forever, a puppet of whatever
+  collapsed them.** No Ascension, no body to mourn; the party may meet what's left.
   Recruited NPCs are **permanently losable** (canon, every mode). **Player-OC death is
   run-type dependent (R17, RULED 2026-07-16):** softcore = normal respawn (the humane
   default; diegetic framing TBD), hardcore = permadeath (owner-preferred), Forsaken =
@@ -187,9 +192,12 @@ player always sees the gamble they're taking.
   levelBonus on any trait; Physique threshold crossings raise every part's max HP ✅.
   Over-10 stat caps (canon): Physique /5 → +1 part HP · Reflexes /12 → +1 Physical
   Resistance (allocated) · Mind /15 → +1 Psychic Resistance · Charm /20 → +1 Camera
-  Call stack.
+  Call stack. **XP approved in principle (R6 amendment, 2026-07-17)** — level points
+  may flow from XP rules; amounts are tuning.
 - **Skill points:** per trait = traitTotal − 1 (first point earns nothing); multi-stat
-  skills cost 1 from **each** listed stat; refunds tracked for level-down.
+  skills cost 1 from **each** listed stat; refunds tracked for level-down. **Respec
+  (Q6, RULED 2026-07-17): never free — only via certain items or Lounge upgrades,
+  always at a cost.**
 - **Skills:** 43 seeded (jokes cut 2026-07-17; `reversion` seeded, exclusive to
   Nikita), thresholds at L5+ (78 rows); **level architecture RULED (R19): 0 =
   untrained, 1 = effect works, 1–5 = stat scaling, 6–10 = each level GENERALIZES the
