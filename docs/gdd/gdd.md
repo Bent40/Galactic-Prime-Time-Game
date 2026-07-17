@@ -171,9 +171,9 @@ player always sees the gamble they're taking.
 - **Traits:** Physique / Reflexes (Body pillar), Mind / Charm (Core pillar).
   `total = base + bonus + levelBonus`. Creation: 7 across Body + 7 across Core, max 5
   per trait at creation (canon, matches live campaign data).
-- **Races:** Human (4 free skills; may trade 1 skill for +1 cap on another), Animal
-  (2 race-bound + 2 free), Robot (chassis & AI defined per character). Per-race body
-  plans in `data/races.json`.
+- **Races (R16, owner 2026-07-16):** any living thing on Earth — **Human** and
+  **Animal** only; **the Robot race is removed**. Per-race body plans in
+  `data/races.json`; animals get an authored part layout at creation.
 - **Leveling (R6):** **the system grants level points automatically** (owner 2026-07-16:
   the TTRPG's admin role is automated in the video game — progression rules issue
   `grant_level`, no human in the loop); points land in a single pool; a point buys +1
@@ -187,8 +187,10 @@ player always sees the gamble they're taking.
   rows), caps ≤ 10; `exclusive_to` supports character-bound kits (Nikita's Reversion is
   the priming showcase). **Effects/growth passover OPEN (owner).**
 - **Background (OC creation):** structured picks (origin, vice, virtue, want) + freeform
-  text → seeds starting **traits** (epithet track) and drives **patron-god bidding**
-  (patron-gods.md). ⟨PROPOSED structure; system canon⟩
+  text → **grants the 4 starting skills** (R16 — humans free-ranging, animals biased
+  toward race skills; any granted skill tradeable for +1 cap), seeds starting **traits**
+  (epithet track), and drives **patron-god bidding** (patron-gods.md). The background is
+  the single creation surface. ⟨picks structure PROPOSED; the rest canon⟩
 
 ### Inventory & Equipment
 - Item types: weapon / equipment / consumable / tool / misc / key_item / system_item
