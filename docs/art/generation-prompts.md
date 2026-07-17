@@ -118,9 +118,14 @@ Subjects B/C: adapt the Kit-1 texts into tag form the same way.
 
 ## Judging rubric (owner-scored as results land)
 
-> **ComfyUI: ELIMINATED (owner, 2026-07-17)** — results lacked coherence and the owner
-> disliked them. The bake-off is now GPT (strong across all rows) vs Claude Design
-> (results pending).
+> ## 🏆 VERDICT (owner, 2026-07-18): **GPT WINS.**
+> ComfyUI eliminated (incoherent); Claude Design eliminated (not good enough for this).
+> **The art pipeline is: GPT stills (canon blocks for consistency) → in-container
+> asset-ification (`scripts/spritify.py`: alpha-extract, palette-quantize,
+> nearest-neighbor resize) → game-ready sprites.** Hybrid 64/48 fidelity technique
+> applies (key poses full detail, motion frames simplified). Owner may layer hand-made
+> art on top over time — the pipeline outputs editable sprites, so hand-editing
+> generated frames is the on-ramp, not a separate track.
 
 | Criterion | ChatGPT (scored 2026-07-17) | Claude Design | ~~ComfyUI~~ OUT |
 |---|---|---|---|

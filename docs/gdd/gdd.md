@@ -327,6 +327,11 @@ priming; status effects = the condition clocks; party composition = no-cap recru
 
 ## Art & Audio Direction (visual-investment RULED 2026-07-16; style via mockup gate)
 
+**ART ROUTE RULED (owner, 2026-07-18): GPT-generated stills + asset-ification pipeline**
+(`docs/art/generation-prompts.md` — canon blocks for consistency; `scripts/spritify.py`
+for alpha/palette/size; hybrid 64/48 fidelity). ComfyUI and Claude Design eliminated in
+the bake-off. Owner hand-made art may layer on over time.
+
 **Owner commitment: visuals get serious work even though they're our weaker side** —
 quality bar over ambition bar. **16-bit pixel style is explicitly ACCEPTED as the
 floor** if it buys consistency, good animation, and strong visual identity: a concise
