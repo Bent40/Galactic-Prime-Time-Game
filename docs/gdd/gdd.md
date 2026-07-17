@@ -148,12 +148,15 @@ Target Players; market grounding in review-4.)
   partner's Forced Action degrades — never vetoes — the combo. Choreography earns a
   hype bonus.
 - **Propose-a-Plan (owner 2026-07-16, sketch: `../design/propose-a-plan.md`)** — the
-  party huddle as a mechanic: opt-in flowchart of steps with per-step y/n votes and
-  explicit assumptions; executes as a **prefired run that halts on deviation**, with
-  linked **backup plans** at failure points; broadcast shows the called shot (full
-  execution = hype multiplier); later, the **Tactician** trait authors steps using
-  allies' skills. Controller-layer only — plans compile to declarations; the sim never
-  knows.
+  party huddle as a mechanic: opt-in flowchart of steps; **per-step consent with
+  written reasons** — an involved actor's rejection is an absolute conditional veto
+  (step turns red, deletes, lands on the **refusal list** to replan around); **NPCs
+  never propose — approve/reject/substitute only** ("I'll use skill X instead");
+  executes as a **prefired run**; **branch from any step** (manual, or automatic when
+  the plan is no longer possible) and **reconverge into previous plans** (a DAG);
+  broadcast shows the called shot (full execution = hype multiplier); the **Tactician**
+  selects NPC skills directly with condition visibility. Controller-layer only — plans
+  compile to declarations; the sim never knows.
 
 ### Controls & Input ⟨PROPOSED⟩
 Mouse-first declare UI: click combatant → action palette with requirement badges (met /
@@ -171,7 +174,9 @@ player always sees the gamble they're taking.
 - **Races:** Human (4 free skills; may trade 1 skill for +1 cap on another), Animal
   (2 race-bound + 2 free), Robot (chassis & AI defined per character). Per-race body
   plans in `data/races.json`.
-- **Leveling (R6):** admin/system grants level points to a single pool; a point buys +1
+- **Leveling (R6):** **the system grants level points automatically** (owner 2026-07-16:
+  the TTRPG's admin role is automated in the video game — progression rules issue
+  `grant_level`, no human in the loop); points land in a single pool; a point buys +1
   levelBonus on any trait; Physique threshold crossings raise every part's max HP ✅.
   Over-10 stat caps (canon): Physique /5 → +1 part HP · Reflexes /12 → +1 Physical
   Resistance (allocated) · Mind /15 → +1 Psychic Resistance · Charm /20 → +1 Camera

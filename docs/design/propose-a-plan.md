@@ -12,26 +12,43 @@ that lets you propose plans using other people's skills.*
 Turn the party huddle into a mechanic: agree on a flowchart, let it fire itself — and
 let reality interrupt it.
 
-## How it works (player-facing)
+## How it works (owner-concretized 2026-07-16)
 
 1. **Propose.** Any party member opens a plan and invites teammates; joining is opt-in.
 2. **Build the flowchart.** Steps are declarations-to-be (moves, attacks, combos (R15),
-   item handoffs, waits) with **explicit assumptions** per step ("the roach is still on
-   the bridge," "Nikita is primed," "B reaches the ledge"). Participants add/edit steps
-   for their own characters; anyone can propose steps for anyone (see Tactician for who
-   can *finalize* others' steps).
-3. **Vote.** Each participant y/n's each step; a step fires only with the consent of
-   its actor (always) plus the plan's vote rule ⟨PROPOSED: simple majority of
-   participants; actor veto absolute⟩.
-4. **Run.** The plan **auto-declares** each member's agreed actions tick by tick — a
+   item handoffs, waits) with **explicit assumptions** per step. The proposer drafts
+   steps — including steps for other characters.
+3. **Consent, per step, with written reasons.** Every participant marks each step
+   **V / X**. Rejection can be for ANY reason; players write theirs, NPCs generate
+   theirs in character. **A rejected step turns red, deletes, and lands on the
+   REFUSAL LIST with its reason** — the visible planning aid you replan around.
+4. **Veto semantics (RULED):** an acting player or NPC rejecting an action proposed
+   *for them* is an absolute veto — "not gonna be done under whatever conditions they
+   decide, stated in the reason." The reason carries the conditions (e.g. *"Player
+   should stay behind as ranged dealer; npc2 should do this instead"*). A rejection
+   from a participant NOT used by the step is a flagged objection ⟨PROPOSED:
+   non-binding, visible on the chart⟩.
+5. **NPCs never propose — they substitute or reject.** An NPC called to act can
+   counter-offer within the call's intent: told "attack melee," it may answer
+   *"I'll use skill X instead"* when conditions fit. Approve / reject-with-reason /
+   substitute is the complete NPC vocabulary.
+6. **Run.** The plan **auto-declares** each member's agreed actions tick by tick — a
    prefired run. No menus mid-execution; the party performs the choreography.
-5. **Deviate → stop.** Before each step fires, its assumptions are checked against live
-   state. Any failure **halts the plan** (control instantly back to players) — or, if a
-   **backup plan** is linked to that failure point, execution switches to the backup's
-   flowchart instead.
-6. **Backups.** Any step can carry a fallback edge → an alternate sub-plan ("if the
-   breach doesn't open: scatter to marks and re-group"). Backups are built/voted the
-   same way, before the run starts.
+7. **Branch anywhere, reconverge anytime (RULED).** From ANY step you can open a new
+   plan diverging from that point — switched to **manually** at will, or
+   **automatically** when the previous plan is no longer possible. Any number of
+   branches; branches can **reconverge back into previous plans** (the structure is a
+   DAG with merge points, not a tree). With no live branch, deviation halts the run
+   and returns control.
+
+### Worked example (owner's, verbatim shape — 1 player, 2 NPCs)
+
+| # | Step | Consent | Outcome |
+|---|---|---|---|
+| 1 | Player: throw a knife | npc1 V · npc2 V | locked |
+| 2 | npc1: charge with hammer | player V · npc2 V | locked |
+| 3 | Player: hop on npc1, jump attack | **npc1 X** — *"Player should stay behind as ranged dealer; npc2 should do it"* | red → deleted → refusal list |
+| 4 | npc2: hop on npc1, jump attack | player V · npc1 V | locked (the replan around the refusal) |
 
 ## Why it fits this game specifically
 
@@ -67,12 +84,14 @@ let reality interrupt it.
 
 ## The Tactician trait (later, owner-flagged)
 
-Gates the *authoring power*, not the feature: anyone can propose for themselves; a
-**Tactician** can propose steps **using other people's skills** (slot allies' abilities
-into the flowchart pre-vote, see their requirements/primes while planning) ⟨PROPOSED:
-and eventually pre-authorize backup switching without a re-vote — the shot-caller
-fantasy⟩. Natural home: the skills passover / traits track (epithet vocabulary already
-includes tactician-shaped words). NPC-heavy parties make it a leadership progression.
+Gates the *authoring power*, not the feature. Baseline: NPCs substitute-or-reject and
+you plan around them. A **Tactician can select an NPC's skill directly and see its
+conditions** while drafting (owner-stated) — skipping the substitution dance, planning
+with the whole party's kit visible. ⟨PROPOSED extensions: pre-authorize automatic branch
+switching without re-consent; the shot-caller fantasy.⟩ Natural home: the skills
+passover / traits track (the epithet vocabulary already includes tactician-shaped
+words). NPC-heavy parties make it a leadership progression. Consent still binds: a
+Tactician-authored step remains vetoable by its actor (their reason, their conditions).
 
 ## Scope & placement ⟨PROPOSED⟩
 
@@ -83,13 +102,17 @@ includes tactician-shaped words). NPC-heavy parties make it a leadership progres
 - **KAN-6:** the flowchart overlay + broadcast rendering (mockup gate applies).
 - **KAN-7:** hype multiplier, patron plan-conditions, NPC in-character voting.
 
-## Open questions (owner)
+## Question resolutions & remaining opens
 
-- **Q1** — Vote rule: majority + absolute actor-veto (recommended), or unanimous?
-- **Q2** — Deviation default: halt-everyone (recommended for drama/clarity) or
-  halt-only-affected-actors (plans partially survive)?
+- ~~Q1 vote rule~~ — **RULED 2026-07-16:** per-step consent with written reasons;
+  involved-actor rejection = absolute conditional veto (red → delete → refusal list).
+  Remaining sliver: is an *uninvolved* participant's X binding or a flagged objection
+  ⟨PROPOSED: objection only⟩?
+- ~~Q2 deviation default~~ — **RULED:** manual divergence anytime; automatic divergence
+  to a linked branch when the current plan is no longer possible; halt when no branch.
 - **Q3** — Plan authoring cost: free out-of-combat + a Moment cost to (re)plan
   mid-combat ⟨recommended⟩, or always free?
-- **Q4** — NPC in-character voting: in from v1 (it's characterization gold) or
-  co-op-first?
-- **Q5** — Tactician: a trait, a skill line, or an epithet-earned title?
+- ~~Q4 NPC voting~~ — **RULED:** NPCs participate from the start — approve /
+  reject-with-reason / substitute; never propose.
+- **Q5** — Tactician: a trait, a skill line, or an epithet-earned title? (Power now
+  defined: direct skill selection + condition visibility.)
