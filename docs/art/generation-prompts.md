@@ -51,15 +51,45 @@ Paste as-is; generate each subject separately. Ask for PNG, request a plain back
 > arms, HALF the pixel detail of the previous image (chunkier pixels, simplified
 > shading) but identical palette and silhouette weight. Same style.
 
-## Kit 2 — Claude (honest note + the code-gen route)
+## Kit 2 — Claude Design (claude.ai/design — HTML/React/SVG route)
 
-Claude has **no native raster image generator** — if "Claude design" in your toolchain
-wraps one, the Kit-1 prompts work verbatim there too. The genuinely Claude-native
-route is **code-generated pixel art** (deterministic, version-controlled, animation
-frames as transformations): I build subjects A/B/C as programmatic sprites in-container
-(PIL/SVG → PNG). That entry in the comparison is produced by me on request — its
-strengths are consistency and editability, its ceiling is stylization rather than
-painterly detail.
+Claude Design outputs designs as HTML/React/SVG, not image files. **The pipeline:**
+design there → export standalone HTML → hand the file to this session → **the container
+rasterizes it via headless Chromium at exact sprite sizes** (96px key pose / 48-rung
+motion frames, nearest-neighbor) → judged on the same rubric. Its structural edge:
+**component reuse makes consistency free** — both Nikita poses built from the same
+parts ARE the same man by construction.
+
+**A (paste into Claude Design):**
+> Build an SVG pixel-art-style character sprite sheet as a React component. Define a
+> design-token palette first (mutedOlive, wornBrown, scarfRed, skinWarm, outlineDark —
+> max 12 colors) and build reusable body-part components: Coat, Scarf, Head, Arms,
+> Legs. Compose TWO poses of the SAME elderly man side by side from those SAME
+> components: pose 1 "OLD" — stooped, coat hanging loose, tired kind face, leaning
+> forward; pose 2 "WAR" — identical parts re-posed: full height, shoulders squared,
+> coat sitting like a 1940s uniform, cold stare. Crisp hard-edged shapes only (no
+> gradients, no blur), chunky geometry that reads like modern HD pixel art, single
+> dark outline. ViewBox sized so each figure is 96 units tall on a transparent
+> background. The two poses must obviously be one person transformed.
+
+**B:**
+> Design a game HUD mock as an HTML page, 16:9: a dark hexagonal-grid arena floor
+> (CSS/SVG hexes, three small character markers, one large boss marker with fire
+> accents) with BROADCAST TV chrome layered on top as separate React components: a
+> neon odds board showing "1:259", a sports-TV lower-third caption bar, a vertical
+> hype meter that transitions cold blue → hot pink, a small "LIVE" bug in the corner.
+> Reality-show-meets-casino: magenta/gold spotlights over grim stone. Design tokens
+> for the chrome palette so the components stay consistent.
+
+**C:**
+> Same design system as the character sheet (reuse outlineDark + palette): an SVG
+> sprite of a small grey-brown cat, low prowling stance, steel claw covers on the
+> front paws (one steelBlue accent token), large expressive ears, 48 units tall,
+> crisp hard-edged pixel-art-style shapes, transparent background.
+
+**Motion-frame test:** ask it to re-pose the WAR components into a mid-swing frame
+with simplified detail (drop interior shading, keep silhouette + palette) — component
+reuse should make this its strongest event.
 
 ## Kit 3 — ComfyUI (local box)
 
