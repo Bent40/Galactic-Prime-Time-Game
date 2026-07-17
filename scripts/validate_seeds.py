@@ -188,7 +188,7 @@ def main() -> int:
         if not isinstance(doms, list) or len(doms) < PATRON_DOMAINS_MIN \
                 or not all(isinstance(d, str) for d in doms):
             fail("patron_gods.json", f"{k}: domains must be a non-empty list of strings")
-        for f_ in ("generosity", "power"):
+        for f_ in ("generosity", "power", "influence"):
             if not isinstance(g.get(f_), int) or not (1 <= g[f_] <= 5):
                 fail("patron_gods.json", f"{k}: {f_} must be int in 1..5")
         for f_ in ("buff_multiplier", "tier_up_bonus", "related_multiplier", "affection_modifier"):

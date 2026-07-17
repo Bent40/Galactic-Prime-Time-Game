@@ -238,9 +238,10 @@ player always sees the gamble they're taking.
 - **Social consequences:** deterministic v1 behind the director interface; the
   mother-brain LLM upgrade (Stage 2+) emits schema-bound commands only (faction_shift,
   quest_spawn, world_manifest, system_message) — LLM interprets, sim decides.
-- Dialogue presentation ⟨PROPOSED⟩: lower-third broadcast framing; barks + short trees;
-  no full VN layer in v1. (Dual-prose brand presentation: **post-MVP, set aside** —
-  owner 2026-07-16.)
+- Dialogue presentation (RULED 2026-07-16): lower-third broadcast framing; barks + short
+  trees; no VN layer, no cutscenes in v1. Animals cannot speak human — they talk to
+  humans **through the chat function** (the System's comms channel renders their meaning;
+  audibly it stays animal). (Dual-prose brand presentation: **post-MVP, set aside**.)
 
 ### Combat System
 Covered in Game Mechanics — tactical, turnless, deterministic; ability system = skills +

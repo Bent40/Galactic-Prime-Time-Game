@@ -1,61 +1,69 @@
-# Contestant Page — Sasha
+# CHARACTER SHEET — SASHA
 
-*Status: **RECRUITABLE NPC** (owner, 2026-07-15 — 'Look Outside' style: found in the
-world, earned via an encounter, joins the party, can permanently die). Names kept.
-Fields marked ⟨PROPOSED⟩ are my drafts — edit freely. Canon source: compendium §4.5–4.6, §5; story-canon (keeper thread).*
+*Status: RECRUITABLE NPC (canon, 2026-07-15 — 'Look Outside' style: found in the world,
+earned via an encounter, joins the party, can permanently die). Names kept. Draft sheet
+for owner iteration (2026-07-16). Numbers PLACEHOLDER per R14.*
 
 ## Identity
-- **Name:** Sasha
-- **Race:** Animal — cat
-- **Age / origin (one line):** former stray; chose the safety of an old man's house over
-  the freedom of the streets — and has been living with that trade ever since.
-- **Why the Corporation picked them:** ⟨PROPOSED⟩ demographic gold — the smallest
-  contestant on the roster, expressive, photogenic, and the pre-abduction surveillance
-  flagged an "anomalous attachment pair" (see other page). The show loves a mascot it can
-  put in danger.
+| | |
+|---|---|
+| **Name** | Sasha |
+| **Race** | Animal — cat (R16: authored part layout at creation) |
+| **Origin** | former stray; chose the safety of an old man's house over the freedom of the streets — and has been living with that trade ever since |
+| **Role** | recruitable companion; striker/scout; the party's exit-calculus |
+| **Why the show picked her** | demographic gold — smallest contestant on the roster, expressive, photogenic; pre-abduction surveillance flagged an "anomalous attachment pair" (see the other sheet). The show loves a mascot it can put in danger. |
 
-## The Fantasy (one sentence)
-⟨PROPOSED⟩ The least threatening silhouette in the arena and the most dangerous thing in
-it — being underestimated, weaponized.
+## Stats (live-campaign creation values — canon)
 
-## The Question They Embody
-⟨PROPOSED, from canon⟩ **Safety or strength?** She chose safety once — the house over the
-streets — and the show keeps re-offering the same choice in crueler costumes. Underneath:
-the fear driving her isn't even hers (inherited from Nikita — the maze encounter's truth).
-Her fault line: she runs *toward* the door the fear picks for her.
-
-## Stats (creation: 7 Body / 7 Core — live campaign creation values)
 | Physique | Reflexes | Mind | Charm |
 |---|---|---|---|
 | 3 | 4 | 4 | 3 |
 
-## Skills (from data/skills.json)
-1. `slice_n_dice` — the striker core (dual claw strike)
-2. `nightlurking` — always aware of the nearest exit/gap/vent; cat-plausible spaces
-3. `pounce` — gap-closer
-4. ⟨PROPOSED⟩ trade the 4th skill slot per the Animal rule (2 race-bound + 2 free covered
-   above) — or add `acrobatics`. Owner's call.
+## Skills (R16: background-granted, high race-skill bias — hers are race-flavored)
+1. **`slice_n_dice`** — the striker core (dual claw strike).
+2. **`nightlurking`** — always aware of the nearest exit/gap/vent; cat-plausible spaces.
+3. **`pounce`** — gap-closer.
+4. **`acrobatics`** ⟨PROPOSED 4th⟩ — or trade this slot for +1 cap per R16. Owner's call.
 
-## Starting Gear
-- `metal_claw_coverings` (her steel claws, +bleed)
-- ⟨PROPOSED⟩ `bandage` ×1
+*(Subject to the general skills audit — owner 2026-07-16.)*
 
-## Voice & Quirk
-- **How they talk:** ⟨PROPOSED⟩ barely — single words, mostly action; the camera does her
-  talking (subtitled cat-logic inner monologue as UI flavor?).
-- **Signature bit:** ⟨PROPOSED⟩ appearing from somewhere the camera didn't know existed —
-  the crowd starts watching vents when she's off-screen.
+## Gear
+- **`metal_claw_coverings`** (her steel claws, +bleed) — canon.
+- `bandage` ×1 ⟨PROPOSED⟩ — carried, not self-applied; someone seals wounds for her.
 
-## Audience First-Read
+## Speech (RULED 2026-07-16)
+**Sasha cannot speak human.** She talks to humans **through the CHAT FUNCTION** — the
+System's comms channel renders her meaning in text the party can read. **Audibly, it is
+only cat speak.** Presentation: her lower-third shows the chat rendering while the
+audio is meows/chirps — the gap between the two is a running gag AND a quiet horror
+(the System understands her perfectly; it understands everyone perfectly).
+
+- Voice in chat ⟨PROPOSED⟩: terse, precise, cat-logic priorities ("Exit: vent, left.
+  Two breaths away. You are all standing in the open like prey.").
+- **Signature bit:** appearing from somewhere the camera didn't know existed — the
+  crowd starts watching vents when she's off-screen.
+
+## Audience Read
 - **Crowd sees:** the mascot. Tag drift: Adorable Threat, Murder Mittens, Indoor Cat,
   Crowd's Baby.
-- **Actually is:** a survivor doing constant exit-calculus, carrying someone else's war.
+- **Actually is:** a survivor doing constant exit-calculus, carrying someone else's war
+  (the maze truth: the fear driving her isn't hers — inherited from Nikita).
 
-## Appearance / Silhouette
-⟨PROPOSED⟩ small quadruped silhouette, steel glints at the paws; moves low; ears do the
-emoting the face won't.
+## Party & Story Hooks
+- **She is Nikita's cat** — the only one who can tell **which Nikita is present** at a
+  glance, and the only thing both of him protects. Managing his states is partly her
+  job (the slice's party glue).
+- Plan-system behavior ⟨PROPOSED⟩: rejects any step that puts her far from an exit
+  (reason in chat, in character); substitutes toward flanking/vent routes; approves
+  bait roles ONLY when the escape line is explicit in the plan.
+- Patron angle ⟨PROPOSED flavor⟩: trickster/hunt-domain gods adore her; hearth gods
+  bid to keep the pair together.
 
-## Relationship to the other premade
-She is Nikita's cat. She's the only one who can tell **which Nikita is present** at a
-glance — and the only thing both of him protects. (This is the slice's co-op/party glue:
-managing his states is partly her job.)
+## Silhouette
+Small quadruped, steel glints at the paws; moves low; ears do the emoting the face
+won't.
+
+## OPEN on this sheet
+4th skill (acrobatics vs trade-for-cap) · bandage yes/no · chat voice register ·
+her part layout (authored cat body plan — needed before she's playable) · the maze
+encounter's placement in the campaign.

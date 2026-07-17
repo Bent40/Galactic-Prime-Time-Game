@@ -55,6 +55,23 @@ patron can choose a patron**.* Proposed synthesis of all three:
    use" (the god monetizes your breaking) — or **total neglect** (nothing, ever). The
    contract remains; the escort stops escorting.
 
+## Divine influence hierarchy (owner, 2026-07-16 — RULED)
+
+- **Influence follows modern belief and attention.** The gods of **modern religions hold
+  the most influence — the biggest investors** at the tables. **Story-pantheons** (Zeus,
+  Ares, the Greek roster and kin) come next: beloved as *characters humanity builds
+  stories on*, not as living belief systems. Lower and forgotten deities trail down the
+  curve.
+- **Casting consequence (the production-cast ruling):** the big investors and the
+  story-pantheons form the **recurring patron cast** — the gods players see again and
+  again across runs, with shuffling among them. **Lower deities appear at higher rarity,
+  or at lower tables.** The patron roster IS the show's recurring ensemble; authoring a
+  god's temperament, dos/don'ts, and voice is casting an episode regular.
+- **Data:** `influence` (1–5) on each god — drives bid frequency, table assignment, and
+  appearance rarity. PLACEHOLDER values until the roster pass.
+- ⟨Shipping note: depictions of modern religions carry rating/controversy weight — a
+  deliberate handling decision for the roster pass, owner's IP call.⟩
+
 ## Where it sits in the existing machine
 
 | Existing GPT system | Patron-god layer |
