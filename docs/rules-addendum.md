@@ -347,6 +347,22 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
   PLACEHOLDER weight in the hype engine.
 - Enemy pack-combos become possible by the same mechanism (Mob synergy) — not v1.
 
+## R16 — Races: Earth-life only; background-granted skills (owner, 2026-07-16)
+
+- **RULED: the Robot race is REMOVED entirely.** Playable contestants are any living
+  thing on Earth — **Humans and Animals**. Seed data updated; the rulebook's Robot entry
+  becomes TTRPG-only history.
+- **RULED: the background grants the starting skills.** Humans: the background gives
+  **4 skills**, and any of them may be given up for **+1 cap on another** (the trade
+  rule survives, now background-sourced). **Animals work the same, with a higher bias
+  toward race skills** in what the background offers.
+- **RULED (same day): the system grants level/skill points automatically** — the
+  TTRPG's admin role is automated in the video game; progression rules issue
+  `grant_level`, no human in the loop.
+- Consequence: the **background is now the single creation surface** — skills (this
+  ruling) + starting traits (epithet track) + patron-god bidding all flow from who you
+  were before the show. Creation flow: KAN-4 S4.1.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

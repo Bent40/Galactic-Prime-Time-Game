@@ -3,7 +3,7 @@
     "id": 1,
     "key": "human",
     "name": "Human",
-    "description": "Baseline abducted contestant. Head, torso, two arms, two legs. Starts with 4 skills of choice at level 1; may sacrifice one skill for +1 cap on another (rulebook, Races).",
+    "description": "Baseline abducted contestant. Head, torso, two arms, two legs. The BACKGROUND grants 4 skills at creation; any number may be given up for +1 cap on another (owner ruling 2026-07-16, supersedes rulebook free-choice).",
     "body_parts": [
       { "key": "head", "name": "Head", "hp": 2, "lethal": true },
       { "key": "torso", "name": "Torso", "hp": 5, "lethal": true },
@@ -14,14 +14,14 @@
     ],
     "size": "Medium",
     "racial_traits": {},
-    "starter_skills": { "free_choice": 4, "race_bound": 0 },
+    "starter_skills": { "background_granted": 4, "trade_skill_for_cap": true, "race_skill_bias": "none" },
     "unlocked": 1
   },
   {
     "id": 2,
     "key": "animal",
     "name": "Animal",
-    "description": "Any Earth animal; morphology varies per creature (live campaign example: sea lion). Parts below are the default template — animal characters get an authored part layout at creation. Starts with 4 skills, 2 race-bound (rulebook, Races).",
+    "description": "Any Earth animal; morphology varies per creature (live campaign example: sea lion). Parts below are the default template — animal characters get an authored part layout at creation. The BACKGROUND grants 4 skills with a high bias toward race skills; trade-for-cap works the same as humans (owner ruling 2026-07-16).",
     "body_parts": [
       { "key": "head", "name": "Head", "hp": 2, "lethal": true },
       { "key": "torso", "name": "Torso", "hp": 5, "lethal": true },
@@ -32,25 +32,7 @@
     ],
     "size": "Medium",
     "racial_traits": { "variable_morphology": true },
-    "starter_skills": { "free_choice": 2, "race_bound": 2 },
-    "unlocked": 1
-  },
-  {
-    "id": 3,
-    "key": "robot",
-    "name": "Robot",
-    "description": "Any body formation serving the robot's purpose; must carry at least a basic AI. Starts with physical resistance 1 and 3 skills, 1 robot-bound (rulebook, Races). Default chassis below.",
-    "body_parts": [
-      { "key": "head", "name": "Sensor Head", "hp": 2, "lethal": true },
-      { "key": "torso", "name": "Core Chassis", "hp": 5, "lethal": true },
-      { "key": "left_arm", "name": "Left Manipulator", "hp": 2, "lethal": false },
-      { "key": "right_arm", "name": "Right Manipulator", "hp": 2, "lethal": false },
-      { "key": "left_leg", "name": "Left Actuator", "hp": 3, "lethal": false },
-      { "key": "right_leg", "name": "Right Actuator", "hp": 3, "lethal": false }
-    ],
-    "size": "Medium",
-    "racial_traits": { "physical_resistance": 1 },
-    "starter_skills": { "free_choice": 2, "race_bound": 1 },
+    "starter_skills": { "background_granted": 4, "trade_skill_for_cap": true, "race_skill_bias": "high" },
     "unlocked": 1
   }
 ]

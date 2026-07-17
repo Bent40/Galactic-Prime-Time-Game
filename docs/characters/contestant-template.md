@@ -5,7 +5,7 @@
 
 ## Identity
 - **Name:**
-- **Race:** (Human / Animal — which animal / Robot — what chassis & AI)
+- **Race:** (Human / Animal — which animal; R16: Earth-life only, Robot removed)
 - **Age / origin (one line):**
 - **Why the Corporation picked them** (what makes them good TV):
 
