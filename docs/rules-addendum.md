@@ -14,6 +14,11 @@ that makes the system computable.
 
 ## R0 — Timeline vocabulary (foundation for everything below)
 
+**AMENDED (owner, 2026-07-17):** canonically, **one tick ≈ 0.5 seconds of in-game
+time** — a full Clock is ~5 fictional seconds. Diegetically everything happens
+*really, really fast*; the real-time declare windows and paused drivers are the
+broadcast's slow-motion, not the fiction's pace.
+
 **SETTLED.** Internally the sim runs a **monotonic absolute tick counter** starting at 0.
 "Moment" is presentation: `moment = 10 - (tick % 10)` (so ticks 0..9 display as Moments
 10..1). A **Clock** is one full lap of 10 ticks; "Clock reset" happens after the tick
@@ -118,6 +123,12 @@ of the next Clock. Order of operations at each tick:
 
 ## R5 — Death, bleed-out, KO (answers A1, A2)
 
+- **AMENDED (owner, 2026-07-17) — MIND COLLAPSE:** a character whose mind collapses
+  (Dissolution completion) is **gone from this play and can never be played again — it
+  is now, forever, a puppet of the one who collapsed it.** Worse than death: no
+  Ascension, no body to bury, and the collapser gains the puppet (an enemy asset the
+  party may meet again). Supersedes the earlier PROVISIONAL fiction call on Dissolution
+  completion.
 - **SETTLED.** Death: head or torso at 0 HP (book).
 - **SETTLED (fixes the contradictory list).** Bleed-out: if head/torso hit 0 via a
   *delayable condition* (Bleeding, Poison, Infection, Burn timer), the character enters a
@@ -131,6 +142,9 @@ of the next Clock. Order of operations at each tick:
 
 ## R6 — Advancement & the stat economy (answers B1, C3, C4)
 
+- **AMENDED (owner, 2026-07-17):** an **XP system is approved in principle** ("just a
+  matter of how much") — level points may flow from XP rules rather than pure grants;
+  amounts are a tuning-pass concern.
 - **SETTLED (codifies what the live table already does via the char-sheet app).** Levels
   are **awarded by the game** at authored milestones (bosses, floors, major achievements) —
   no XP curve. Each level grants **1 level point** into a pool; a level point buys +1
@@ -422,6 +436,16 @@ passover; the generalization ladder 6–10 is the authoring template for every s
   PLUS pattern 6: tags GATE unlocks — items, actions, and skills may require tags as
   obtain/use conditions.**
 - **Animal part layouts deferred** (Q61) — dedicated sitting later.
+- **Q72 — THE PROVISIONAL BUNDLE IS APPROVED (owner, 2026-07-17)** with three
+  amendments now recorded in place: R0 tick ≈ 0.5s in-game · R5 mind-collapse =
+  permanent loss + puppet of the collapser · R6 XP approved in principle. All other
+  PROVISIONAL markers (R2 miss model, R3 cap numbers, R4 Burn-Shock, R8 RPM defaults,
+  R9 grapple gates, R10 requirements-halving, R11 items 1–12) are **RULED as written,
+  pending playtest tuning only**.
+- **Respec (Q6, RULED):** no free refund or respec, ever — available **only via certain
+  items or Lounge upgrades, and always at a cost.**
+- **Declare window (Q71, RULED):** co-op default **5 seconds**, accelerate-on-all-
+  committed; revisit on first co-op playtest feel.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

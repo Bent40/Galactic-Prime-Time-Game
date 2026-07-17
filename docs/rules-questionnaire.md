@@ -44,7 +44,7 @@ what were the six occasions?) `[assumed R6: game-awarded at authored milestones]
 
 **Q6.** Can players respec — unlearn a skill and refund points outside of level-down?
 - TTRPG:
-- Decision:
+- Decision: **RULED 2026-07-17: no free respec/refund ever — only via certain items or Lounge upgrades, always at a cost.**
 
 ## B. Skills — effects & growth (you flagged an unfinished passover)
 
@@ -384,13 +384,13 @@ softer for the slice (restart at checkpoint only)?
 
 **Q71.** Declare-window length for the co-op tick driver (DIRECTION sketch suggests
 3–5s/Moment): starting value?
-- Decision:
+- Decision: **RULED 2026-07-17: 5s default declare window, accelerate-on-all-committed; revisit on co-op playtest feel.**
 
 **Q72.** The addendum's remaining PROVISIONAL bundle — R2 miss model, R3 cap numbers, R4
 Burn-Shock, R8 RPM defaults, R9 grapple gates, R10 requirements-halving, R11 items 1–12:
 approve wholesale pending playtest, or itemized review? (Answering the C/D questions above
 already covers most of them.)
-- Decision:
+- Decision: **RULED 2026-07-17: bundle APPROVED with 3 amendments — R0 tick=0.5s in-game; R5 mind collapse = permanent loss, character becomes the collapser's puppet forever; R6 XP approved in principle (amounts = tuning). Everything else ruled as written pending playtest.**
 
 ---
 
