@@ -20,12 +20,14 @@ emotional. You are harder to influence because there is less of you to reach.
 
 ### Digital implementation directions (sketch, not yet scoped)
 
-1. **Presentation-layer effect (the flagship move):** branded characters literally *read a
-   different game*. Same events, same facts — drier prose, emotional cues stripped from
-   descriptions, NPC distress rendered clinically ("the vendor is upset" vs the unbranded
-   player's full pleading dialogue). Dual-text content costs authoring effort but is
-   mechanically cheap and thematically devastating. The player chose safety; the game
-   quietly stops letting them *feel* the world.
+1. **Presentation-layer effect (the flagship move) — RULED post-MVP (owner, 2026-07-16:
+   "the brand writing duplication can be set aside, as it is NOT important for the
+   MVP"):** branded characters literally *read a different game*. Same events, same
+   facts — drier prose, emotional cues stripped from descriptions, NPC distress rendered
+   clinically ("the vendor is upset" vs the unbranded player's full pleading dialogue).
+   Dual-text content costs authoring effort but is mechanically cheap and thematically
+   devastating. The player chose safety; the game quietly stops letting them *feel* the
+   world. Stays canon as direction; no MVP work depends on it.
 2. **Mechanical hooks (numbers later):** slowed/immune Dissolution timers (existing rule);
    empathy-flavored tags (Fan Favorite, Mascot, Crowd's Baby…) drift faded / harder to
    earn; cold-read tags (Edgy, Menace, Corporate Asset) easier; audience reads the

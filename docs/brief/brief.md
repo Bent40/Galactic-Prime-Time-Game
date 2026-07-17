@@ -1,6 +1,6 @@
 ---
 title: "Game Brief — Galactic Prime Time (working title)"
-status: draft — owner checkpoint
+status: APPROVED (owner, 2026-07-16) — with one note: dual-prose brand presentation is set aside as post-MVP
 created: 2026-07-16
 updated: 2026-07-16
 ---
@@ -133,10 +133,11 @@ coherence + the owner's own IP world (novel-shared cosmology), not a technical m
 
 ## Risks & Open Questions
 
-- **Design risks:** two-plane authoring cost (dual prose for branded characters — flagship
-  but expensive); floor-content volume at 20 floors (mitigation: director interface +
+- **Design risks:** floor-content volume at 20 floors (mitigation: director interface +
   question-set structure; LLM augmentation later); hybrid audience risk — tactics players
-  vs litRPG readers may want different pacing (slice will tell).
+  vs litRPG readers may want different pacing (slice will tell). ~~Two-plane authoring
+  cost (dual prose for branded characters)~~ — **RULED post-MVP, set aside (owner,
+  2026-07-16)**: stays canon as design direction, out of MVP scope entirely.
 - **Technical risks:** co-op netcode at Stage 1.5 (mitigated by command-stream design);
   LLM director cost/safety at Stage 2+ (schema-bound commands, deterministic v1 first).
 - **Open owner decisions:** title (this working title is TV-frame); Momus vs sibling host;
