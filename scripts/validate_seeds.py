@@ -195,7 +195,7 @@ def main() -> int:
             v = g.get(f_)
             if not isinstance(v, (int, float)) or v < 0:
                 fail("patron_gods.json", f"{k}: {f_} must be a number >= 0")
-        for f_ in ("favor_conditions", "boon_table", "trial_table", "related"):
+        for f_ in ("favor_conditions", "taboos", "boon_table", "trial_table", "related"):
             if not isinstance(g.get(f_), list):
                 fail("patron_gods.json", f"{k}: {f_} must be a list")
         for rel in g.get("related", []):

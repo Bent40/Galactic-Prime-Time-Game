@@ -5,8 +5,13 @@
     "name": "Ares",
     "origin": "Greek",
     "faction": "olympian_war",
-    "related": ["enyo"],
-    "domains": ["melee", "war"],
+    "related": [
+      "enyo"
+    ],
+    "domains": [
+      "melee",
+      "war"
+    ],
     "generosity": 3,
     "power": 4,
     "buff_multiplier": 0.12,
@@ -19,9 +24,20 @@
       "finish a fight without retreating",
       "win while outnumbered"
     ],
-    "boon_table": ["melee_buff", "tier_up_melee", "war_trophy_drop"],
-    "trial_table": ["champion_duel", "no_retreat_curse"],
-    "notes": "SCHEMA STUB — owner's worked example (docs/design/patron-gods.md). All numbers PLACEHOLDER per R14."
+    "boon_table": [
+      "melee_buff",
+      "tier_up_melee",
+      "war_trophy_drop"
+    ],
+    "trial_table": [
+      "champion_duel",
+      "no_retreat_curse"
+    ],
+    "notes": "SCHEMA STUB \u2014 owner's worked example (docs/design/patron-gods.md). All numbers PLACEHOLDER per R14.",
+    "taboos": [
+      "retreat from a winnable fight",
+      "refuse a duel challenge"
+    ]
   },
   {
     "id": 2,
@@ -29,8 +45,13 @@
     "name": "Enyo",
     "origin": "Greek",
     "faction": "olympian_war",
-    "related": ["ares"],
-    "domains": ["war", "carnage"],
+    "related": [
+      "ares"
+    ],
+    "domains": [
+      "war",
+      "carnage"
+    ],
     "generosity": 2,
     "power": 2,
     "buff_multiplier": 0.08,
@@ -42,9 +63,18 @@
       "fight while at Shock tier 2 or higher",
       "trigger three forced actions in one combat"
     ],
-    "boon_table": ["frenzy_buff", "chaos_drop"],
-    "trial_table": ["swarm_call"],
-    "notes": "SCHEMA STUB — lesser related god exercising the faction spill-over path. PLACEHOLDER."
+    "boon_table": [
+      "frenzy_buff",
+      "chaos_drop"
+    ],
+    "trial_table": [
+      "swarm_call"
+    ],
+    "notes": "SCHEMA STUB \u2014 lesser related god exercising the faction spill-over path. PLACEHOLDER.",
+    "taboos": [
+      "end a fight in under one Clock",
+      "de-escalate a brawl"
+    ]
   },
   {
     "id": 3,
@@ -53,10 +83,14 @@
     "origin": "Greek",
     "faction": "olympian_hearth",
     "related": [],
-    "domains": ["hearth", "protection", "mercy"],
+    "domains": [
+      "hearth",
+      "protection",
+      "mercy"
+    ],
     "generosity": 5,
     "power": 2,
-    "buff_multiplier": 0.10,
+    "buff_multiplier": 0.1,
     "tier_up_bonus": 0.05,
     "related_multiplier": 0.02,
     "affection_modifier": 1.4,
@@ -66,8 +100,18 @@
       "show mercy to a defeated enemy",
       "share a consumable with a party member"
     ],
-    "boon_table": ["healing_comp", "ward_buff", "supply_drop"],
-    "trial_table": ["protect_the_weak"],
-    "notes": "SCHEMA STUB — contrast profile (high generosity / low power; mercy-aligned favor). PLACEHOLDER."
+    "boon_table": [
+      "healing_comp",
+      "ward_buff",
+      "supply_drop"
+    ],
+    "trial_table": [
+      "protect_the_weak"
+    ],
+    "notes": "SCHEMA STUB \u2014 contrast profile (high generosity / low power; mercy-aligned favor). PLACEHOLDER.",
+    "taboos": [
+      "execute a surrendered enemy",
+      "let an ally bleed out unattended"
+    ]
   }
 ]

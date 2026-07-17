@@ -95,9 +95,10 @@ Target Players; market grounding in review-4.)
   (architecture rule; Incinedile P1's breach teaches it).
 - **Contestant death:** lethal parts (head, torso) at 0 → death; delayable conditions →
   bleed-out window (R5: any further damage kills; stabilization is the clutch save).
-  Recruited NPCs are **permanently losable** (canon). Player-OC death: run ends —
-  campaign consequence OPEN (retire-into-patron / new-contestant-same-season are the
-  candidates; GDD v0.2's Ascension NG+ is the base until ruled).
+  Recruited NPCs are **permanently losable** (canon, every mode). **Player-OC death is
+  run-type dependent (R17, RULED 2026-07-16):** softcore = normal respawn (the humane
+  default; diegetic framing TBD), hardcore = permadeath (owner-preferred), Forsaken =
+  hardcore by nature.
 - **Campaign win:** clear the final floor-set; the verdict names your ruler-shape;
   Ascension = buying into the table with divinity (canon §3, cosmic-casino-canon).
 
@@ -217,8 +218,15 @@ player always sees the gamble they're taking.
   loud fights pull eligible neighbor encounters in at reset beats (anti-grind pillar).
 - **Overworld time:** coarse ambient clock (Clocks tick on wall time) so conditions keep
   meaning between fields.
-- **The Lounge** (comp suite): base/downtime layer — Stage-1 scope is menus-over-scenes
-  ⟨PROPOSED⟩; shared space is Stage 3.
+- **The Lounge (RULED 2026-07-16 — a walkable stage, not menus):** the comp suite you
+  physically enter, and the EXCLUSIVE place where you **open loot**, **review contract
+  changes** (patron deal updates, buy-out notices), and **tinker your character and
+  run** — no field-side respecs or box-opening. Entering the Lounge also **triggers
+  resets for ROAMING monsters** (see below). Multiplayer/shared Lounge remains Stage 3.
+- **Roaming monsters (RULED 2026-07-16):** random encounters roam BETWEEN non-completed
+  neighbourhoods; their state **resets when you visit the Lounge** — retreating to
+  tinker repopulates the map. Retreat has a price; loitering has a price; the Lounge
+  visit is a real decision.
 
 ### NPC & Dialogue
 - **Recruitable NPCs with authored arcs** (canon): found in-world, earned via encounter,
@@ -258,7 +266,10 @@ priming; status effects = the condition clocks; party composition = no-cap recru
   mechanic; Charm-cap stacks). Numbers PLACEHOLDER.
 - **Tags vs epithets:** tags = audience labels (100 seeded; drift by behavior);
   **epithets** = trait-track myth recreation (traits from background + deeds; matching a
-  legend's pattern grants its epithet; legends are artifacts of past games). Deliberately
+  legend's pattern grants its epithet; legends are artifacts of past games). **The myth
+  catalog is real mythology, graded by level of myth — ORV-style (RULED 2026-07-16):**
+  folk tale < local legend < heroic epic < world myth; ascended players' runs join the
+  catalog at Stage 2. Deliberately
   separate systems; their divergence is the spine made mechanical.
 - **Verdict system:** axes (necessary/right · safety/justice · self/many · …), each
   floor-set scores one axis from in-game choices; path-dependent unlock graph; final
@@ -277,8 +288,9 @@ priming; status effects = the condition clocks; party composition = no-cap recru
 - All numeric tuning is a dedicated pass after the R14 force-gate ruling; the tuning
   authority is live data from slice playtests, not theorycraft (small project — no
   spreadsheet economy yet).
-- Difficulty: no difficulty menu in v1 ⟨PROPOSED⟩ — patron choice, Forsaken runs, and
-  route selection are the difficulty dials the fiction already owns.
+- Difficulty (RULED 2026-07-16): **no difficulty menu** — run types (softcore/hardcore/
+  Forsaken, R17), patron choice, and route selection are the difficulty surface the
+  fiction already owns.
 
 ## Level Design Framework
 
