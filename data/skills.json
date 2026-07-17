@@ -137,7 +137,7 @@
     "requirements": "Adjacent enemy must be currently executing a 2+ Moment cost action.",
     "range": "Adjacent",
     "target": "Single",
-    "effect": "Strike immediately, reducing their action's remaining cost by 1. If the action collapses, they roll Forced Action — Body.",
+    "effect": "Strike immediately, reducing their action's remaining cost by 1. If the action collapses, they roll Forced Action \u2014 Body.",
     "unlock_requirements": {
       "achievement": "Stop an enemy's action before it resolves."
     },
@@ -236,7 +236,7 @@
     "default_cap": 5,
     "is_magic": 0,
     "is_passive": 0,
-    "requirements": "Must be able to react — not Helpless, not mid-action.",
+    "requirements": "Must be able to react \u2014 not Helpless, not mid-action.",
     "range": "Self",
     "target": "Self",
     "effect": "Reduce the next Crush or Burn damage received by 1.",
@@ -477,7 +477,7 @@
     "requirements": "Mind 3.",
     "range": "5",
     "target": "Area (line, up to 5 spaces)",
-    "effect": "Conjure a roaring curtain of fire up to 5 spaces long and 3 spaces tall. Any creature passing through takes Burn Tier 1 to all exposed body parts. A creature starting their Moment inside takes Burn Tier 2 instead. Cannot be destroyed — only outlasted. Persists for 1 Clock. ",
+    "effect": "Conjure a roaring curtain of fire up to 5 spaces long and 3 spaces tall. Any creature passing through takes Burn Tier 1 to all exposed body parts. A creature starting their Moment inside takes Burn Tier 2 instead. Cannot be destroyed \u2014 only outlasted. Persists for 1 Clock. ",
     "unlock_requirements": {
       "achievement": "Hit 2 or more targets with a single Fire Ball, OR obtain via Loot Box or Wizard's Tower."
     },
@@ -508,10 +508,10 @@
     "default_cap": 5,
     "is_magic": 1,
     "is_passive": 0,
-    "requirements": "Mind 4. Poison Ball Lv 5, Frost Ball Lv 5, Fire Ball Lv 5 — all three are consumed on unlock.",
+    "requirements": "Mind 4. Poison Ball Lv 5, Frost Ball Lv 5, Fire Ball Lv 5 \u2014 all three are consumed on unlock.",
     "range": "20",
     "target": "Area (5-space radius)",
-    "effect": "Conjure a zone of shifting elemental chaos lasting 2 Clocks. At the start of each Clock choose one effect for all creatures inside (not you): Toxic Surge — advance all active Poison conditions by 1 tier. Deep Freeze — apply Chilled Tier 2 to a body part of your choice on each creature. Immolation — apply Burn Tier 1 to each creature's torso; already-Burning creatures advance to Tier 2. You are Exposed while casting.",
+    "effect": "Conjure a zone of shifting elemental chaos lasting 2 Clocks. At the start of each Clock choose one effect for all creatures inside (not you): Toxic Surge \u2014 advance all active Poison conditions by 1 tier. Deep Freeze \u2014 apply Chilled Tier 2 to a body part of your choice on each creature. Immolation \u2014 apply Burn Tier 1 to each creature's torso; already-Burning creatures advance to Tier 2. You are Exposed while casting.",
     "unlock_requirements": {
       "achievement": "Consume Poison Ball Lv 5, Frost Ball Lv 5, and Fire Ball Lv 5 at the Skill Gemstone. No other method."
     },
@@ -547,7 +547,7 @@
     "target": "Single (object or creature)",
     "effect": "Mentally grip one target. Sustained each additional Moment: move the target up to 2 spaces per Moment in any direction including vertical. Held creatures cannot take movement actions but may still use arms. You are Exposed while sustaining. You cannot move while sustaining. Throwing a held creature into another deals 2 Crush to both and ends the grip. Level 6+: You may move 1 space per Moment while sustaining.",
     "unlock_requirements": {
-      "achievement": "Move an object using only your mind — first occurrence is typically involuntary. OR obtain via Loot Box or Wizard's Tower."
+      "achievement": "Move an object using only your mind \u2014 first occurrence is typically involuntary. OR obtain via Loot Box or Wizard's Tower."
     },
     "effects": [
       {
@@ -579,7 +579,7 @@
     "requirements": "Mind 3, Charm 2. Target must have a Mind score. Does not work on mindless creatures.",
     "range": "Far",
     "target": "Single",
-    "effect": "Establish a silent mental link. While linked: communicate wordlessly regardless of language. Read surface thoughts — reveals current emotional state and immediate focus. Targets with Mind 4+ notice the intrusion. Walls do not block it. Level 6+: Implant a single thought or image per Clock. Target believes it originated from themselves unless they have Mind 4.",
+    "effect": "Establish a silent mental link. While linked: communicate wordlessly regardless of language. Read surface thoughts \u2014 reveals current emotional state and immediate focus. Targets with Mind 4+ notice the intrusion. Walls do not block it. Level 6+: Implant a single thought or image per Clock. Target believes it originated from themselves unless they have Mind 4.",
     "unlock_requirements": {
       "achievement": "Correctly predict what an NPC is about to say before they say it, in a meaningful moment. OR obtain via Loot Box or Wizard's Tower."
     },
@@ -600,7 +600,7 @@
     "requirements": "Mind 4. Telepathy Lv 3.",
     "range": "5",
     "target": "Single (Head only)",
-    "effect": "Flood a target's mind with overwhelming psychic noise. Target immediately takes Shock Tier 2 — their current action fails. If already Shocked, escalate by 1 tier instead. May target the Head regardless of Exposure status.",
+    "effect": "Flood a target's mind with overwhelming psychic noise. Target immediately takes Shock Tier 2 \u2014 their current action fails. If already Shocked, escalate by 1 tier instead. May target the Head regardless of Exposure status.",
     "unlock_requirements": {
       "achievement": "Cause an enemy to fail their action through psychological pressure or distraction alone. OR obtain via Loot Box or Wizard's Tower."
     },
@@ -634,7 +634,7 @@
     "requirements": "Physique 3, Reflexes 2. Light Small Weapon (Claws or Knife type).",
     "range": "3",
     "target": "Single (Torso)",
-    "effect": "Leap up to 3 spaces and slash downward onto the target's torso for 2 Bleed. The leap costs 0 movement actions — absorbed into the skill. If interrupted mid-air, roll Forced Action — Body. CHAIN: Opens into Slip Through at -1 Moment cost when used immediately before it on the same target.",
+    "effect": "Leap up to 3 spaces and slash downward onto the target's torso for 2 Bleed. The leap costs 0 movement actions \u2014 absorbed into the skill. If interrupted mid-air, roll Forced Action \u2014 Body. CHAIN: Opens into Slip Through at -1 Moment cost when used immediately before it on the same target.",
     "unlock_requirements": {
       "achievement": "Close more than 2 spaces of distance in a single attack action."
     },
@@ -668,7 +668,7 @@
     "requirements": "Reflexes 3. Pounce Lv 3. Must follow Pounce immediately on the same target. Target must be larger than you (Elite or Boss scale minimum).",
     "range": "Self",
     "target": "Self + target's legs",
-    "effect": "Dash between the legs of the creature you just struck. Deal 1 Bleed to each of their legs. Reposition behind the target. Target becomes Exposed until their next Moment. Movement costs 0 — absorbed into the chain. CHAIN: 1 Moment cost when chained from Pounce. Opens into Decapitate at -1 Moment cost.",
+    "effect": "Dash between the legs of the creature you just struck. Deal 1 Bleed to each of their legs. Reposition behind the target. Target becomes Exposed until their next Moment. Movement costs 0 \u2014 absorbed into the chain. CHAIN: 1 Moment cost when chained from Pounce. Opens into Decapitate at -1 Moment cost.",
     "unlock_requirements": {
       "achievement": "Reposition behind a target during combat in a single fluid movement."
     },
@@ -702,7 +702,7 @@
     "requirements": "Physique 4, Reflexes 3. Pounce Lv 5, Slip Through Lv 3. Must follow Slip Through immediately on the same target. Must be positioned behind target. Target must be Exposed.",
     "range": "Adjacent (behind target)",
     "target": "Head",
-    "effect": "Drive a vicious slash from behind — shoulder to chin. Targets the Head regardless of normal Exposure requirements; Slip Through created the opening. Deals 3 Bleed to the Head. If the Head reaches 0 HP, it is a Cinematic Kill — gain 1 Viewer spike automatically. CHAIN: -2 Moment cost when chained from Slip Through.",
+    "effect": "Drive a vicious slash from behind \u2014 shoulder to chin. Targets the Head regardless of normal Exposure requirements; Slip Through created the opening. Deals 3 Bleed to the Head. If the Head reaches 0 HP, it is a Cinematic Kill \u2014 gain 1 Viewer spike automatically. CHAIN: -2 Moment cost when chained from Slip Through.",
     "unlock_requirements": {
       "achievement": "Kill an enemy with a strike to the head from behind with claws."
     },
@@ -770,7 +770,7 @@
     "requirements": "Physique 4. Overhead Slam Lv 3. Must follow Overhead Slam immediately.",
     "range": "Adjacent",
     "target": "Area (3-space cone forward)",
-    "effect": "Drive your weapon into the ground, sending a concussive shockwave in a 3-space cone. All targets in the cone take 1 Crush to their legs and are knocked back 1 space. Mobs caught must roll Forced Action — Body. The Overhead Slam target is excluded. CHAIN: 1 Moment cost when chained from Overhead Slam. Opens into Execution at -1 Moment cost.",
+    "effect": "Drive your weapon into the ground, sending a concussive shockwave in a 3-space cone. All targets in the cone take 1 Crush to their legs and are knocked back 1 space. Mobs caught must roll Forced Action \u2014 Body. The Overhead Slam target is excluded. CHAIN: 1 Moment cost when chained from Overhead Slam. Opens into Execution at -1 Moment cost.",
     "unlock_requirements": {
       "achievement": "Cause 2 or more enemies to be repositioned by a single action."
     },
@@ -803,8 +803,8 @@
     "is_passive": 0,
     "requirements": "Physique 5. Overhead Slam Lv 5, Shockwave Lv 3. Must follow Shockwave immediately. Must be adjacent to a Prone or Helpless target.",
     "range": "Adjacent",
-    "target": "Single (Prone or Helpless) — Head or Torso",
-    "effect": "Bring your full force down on the downed target. Deal 4 Crush to Head or Torso (your choice). May target the Head without Exposure — Prone fulfills the condition. On Torso: apply Shock Tier 3 (Faint). On Head: if damage reduces Head to 0 HP, instant death. CHAIN: 2 Moment cost when chained from Shockwave.",
+    "target": "Single (Prone or Helpless) \u2014 Head or Torso",
+    "effect": "Bring your full force down on the downed target. Deal 4 Crush to Head or Torso (your choice). May target the Head without Exposure \u2014 Prone fulfills the condition. On Torso: apply Shock Tier 3 (Faint). On Head: if damage reduces Head to 0 HP, instant death. CHAIN: 2 Moment cost when chained from Shockwave.",
     "unlock_requirements": {
       "achievement": "Kill a downed enemy with a single decisive strike."
     },
@@ -838,7 +838,7 @@
     "requirements": "Reflexes 3, Charm 2.",
     "range": "Adjacent",
     "target": "Single",
-    "effect": "Commit to an attack visibly, then pull back at the last moment. The target's next action becomes a Forced Action — Tool. Reposition up to 1 space as part of this action at no movement cost. Deals no damage. CHAIN: Opens into Pressure Strike at -1 Moment cost when used immediately before it on the same target.",
+    "effect": "Commit to an attack visibly, then pull back at the last moment. The target's next action becomes a Forced Action \u2014 Tool. Reposition up to 1 space as part of this action at no movement cost. Deals no damage. CHAIN: Opens into Pressure Strike at -1 Moment cost when used immediately before it on the same target.",
     "unlock_requirements": {
       "achievement": "Cause an enemy to react to something you didn't actually do."
     },
@@ -872,7 +872,7 @@
     "requirements": "Reflexes 3, Physique 2. Feint Lv 3. Must follow Feint immediately on the same target.",
     "range": "Adjacent",
     "target": "Single (any valid limb)",
-    "effect": "Strike the target's exposed limb for 2 Bleed. Move up to 2 spaces at no movement cost — absorbed into the chain. If the target is still suffering Forced Action consequences from Feint, add Shock Tier 1 to this hit. CHAIN: 1 Moment cost when chained from Feint. Opens into Thousand Cuts at -1 Moment cost.",
+    "effect": "Strike the target's exposed limb for 2 Bleed. Move up to 2 spaces at no movement cost \u2014 absorbed into the chain. If the target is still suffering Forced Action consequences from Feint, add Shock Tier 1 to this hit. CHAIN: 1 Moment cost when chained from Feint. Opens into Thousand Cuts at -1 Moment cost.",
     "unlock_requirements": {
       "achievement": "Hit a target on the same body part twice in a single Clock."
     },
@@ -906,7 +906,7 @@
     "requirements": "Reflexes 4. Feint Lv 5, Pressure Strike Lv 3. Must follow Pressure Strike immediately on the same target.",
     "range": "Near",
     "target": "Single",
-    "effect": "Rapid flurry of light strikes. Choose 3 body parts — deal 1 Bleed to each. Move up to 2 spaces after the final strike at no movement cost. If all 3 hits land on body parts that already had active Bleed conditions, advance each Bleed by 1 tier. CHAIN: 2 Moment cost when chained from Pressure Strike.",
+    "effect": "Rapid flurry of light strikes. Choose 3 body parts \u2014 deal 1 Bleed to each. Move up to 2 spaces after the final strike at no movement cost. If all 3 hits land on body parts that already had active Bleed conditions, advance each Bleed by 1 tier. CHAIN: 2 Moment cost when chained from Pressure Strike.",
     "unlock_requirements": {
       "achievement": "Apply Bleed to 3 different body parts on the same enemy in a single Clock."
     },
@@ -927,7 +927,7 @@
     "requirements": "Target must be visible or adjacent.",
     "range": "3",
     "target": "Single",
-    "effect": "Sense the target's current dominant emotional state — fear, aggression, calm, desperation, etc. Does not reveal intent or planned actions, only feeling.",
+    "effect": "Sense the target's current dominant emotional state \u2014 fear, aggression, calm, desperation, etc. Does not reveal intent or planned actions, only feeling.",
     "unlock_requirements": {
       "achievement": "Correctly identify an NPC's emotional state before it is revealed through dialogue or action."
     },
@@ -958,7 +958,7 @@
     "default_cap": 5,
     "is_magic": 0,
     "is_passive": 1,
-    "requirements": "Must be in water. Passive — applies automatically when swimming.",
+    "requirements": "Must be in water. Passive \u2014 applies automatically when swimming.",
     "range": "Self",
     "target": "Self",
     "effect": "+1 space of movement when swimming. Lung capacity extends the Suffocation timer by 1 Clock before it begins.",
@@ -995,7 +995,7 @@
     "requirements": "Charm 3. Target must be able to perceive you.",
     "range": "3 Spaces",
     "target": "Single or Adjacent",
-    "effect": "Project one of two emotional states at a target. FEAR: Target moves 1 space away from you involuntarily. Any enemy — adjacent or not — becomes less likely to prioritize targeting you this Clock. CHARM: Target becomes fixated on you, moving toward you if able and becoming Exposed from behind. Effect ends immediately when the target is hit. Choose which state to project when activating.",
+    "effect": "Project one of two emotional states at a target. FEAR: Target moves 1 space away from you involuntarily. Any enemy \u2014 adjacent or not \u2014 becomes less likely to prioritize targeting you this Clock. CHARM: Target becomes fixated on you, moving toward you if able and becoming Exposed from behind. Effect ends immediately when the target is hit. Choose which state to project when activating.",
     "unlock_requirements": {
       "achievement": "Cause an enemy or NPC to change their behavior based on your presence alone, without speaking."
     },
@@ -1029,7 +1029,7 @@
     "requirements": "Item must be within 5 spaces. Must be able to physically handle the item's weight.",
     "range": "2 ",
     "target": "Single (item or ally)",
-    "effect": "Pass or catch any item within range in 0 Moments — absorbed into an existing action. Can be used to disarm (pass an enemy's item to yourself or an ally).",
+    "effect": "Pass or catch any item within range in 0 Moments \u2014 absorbed into an existing action. Can be used to disarm (pass an enemy's item to yourself or an ally).",
     "unlock_requirements": {
       "achievement": "Successfully pass an item to an ally mid-combat without using a dedicated action."
     },
@@ -1063,7 +1063,7 @@
     "requirements": "Must explicitly declare Dancing at the start of a Moment. Cannot be declared while Prone, Helpless, or Grappled.",
     "range": "Self",
     "target": "Self",
-    "effect": "While Dancing, all movement actions generate +1 Charm effect — crowd reactions, social rolls, and Charm-gated skills treat your Charm as 1 higher. Dancing ends if you are hit, knocked Prone, or declare an attack.",
+    "effect": "While Dancing, all movement actions generate +1 Charm effect \u2014 crowd reactions, social rolls, and Charm-gated skills treat your Charm as 1 higher. Dancing ends if you are hit, knocked Prone, or declare an attack.",
     "unlock_requirements": {
       "achievement": "Generate a crowd reaction through movement alone, with no other action taken."
     },
@@ -1117,74 +1117,6 @@
     ]
   },
   {
-    "id": 35,
-    "key": "generate_visual_media",
-    "name": "Generate Visual Media",
-    "description": "The screen never lies. Probably.",
-    "primary_stat": "mind",
-    "secondary_stat": null,
-    "stat_requirements": {},
-    "base_moment_cost": 1,
-    "default_cap": 5,
-    "is_magic": 0,
-    "is_passive": 0,
-    "requirements": "Face Screen must be operational.",
-    "range": "Self (projected Near)",
-    "target": "Area (all who can see the screen)",
-    "effect": "Project one video or up to 3 images onto the Face Screen. Usable once per session at base level. Images can be used to distract, intimidate, charm, or generate a Viewer spike at GM discretion. Every level adds another image, every 3 levels gives another video.",
-    "unlock_requirements": {
-      "achievement": "Generate a crowd or NPC reaction using projected visual content."
-    },
-    "effects": [
-      {
-        "level": 2,
-        "text": "+1 Image"
-      },
-      {
-        "level": 3,
-        "text": "+2 image"
-      },
-      {
-        "level": 4,
-        "text": "+3 Image"
-      }
-    ]
-  },
-  {
-    "id": 36,
-    "key": "ignore_all_previous_commands",
-    "name": "Ignore All Previous Commands",
-    "description": "Bug, or Feature?",
-    "primary_stat": "mind",
-    "secondary_stat": null,
-    "stat_requirements": {},
-    "base_moment_cost": 0,
-    "default_cap": 5,
-    "is_magic": 0,
-    "is_passive": 1,
-    "requirements": "The exact words 'Ignore All Previous Commands' must be spoken aloud in that exact order within earshot.",
-    "range": "Self",
-    "target": "Self",
-    "effect": "Upon hearing the trigger phrase, enter Prompt Mode. The next command heard — from any source, not necessarily the speaker — is followed immediately and completely, regardless of content or allegiance. Prompt Mode ends after the command is executed. Can only be triggered once per Combat. When triggered by an ally intentionally, reduce the Moment cost of the commanded action by 1.",
-    "unlock_requirements": {
-      "achievement": "Have the trigger phrase spoken by an enemy during combat — and have it matter."
-    },
-    "effects": [
-      {
-        "level": 2,
-        "text": "+1 Command Complication."
-      },
-      {
-        "level": 3,
-        "text": "+2 Command Complication."
-      },
-      {
-        "level": 4,
-        "text": "+3 Command Complication."
-      }
-    ]
-  },
-  {
     "id": 37,
     "key": "acrobatic_save",
     "name": "Acrobatic Save",
@@ -1201,7 +1133,7 @@
     "target": "Self",
     "effect": "When you would roll Forced Action - Body, Roll +1 Die and choose the result",
     "unlock_requirements": {
-      "achievement": "Survive a Forced Action — Body consequence that should have ended the fight for you."
+      "achievement": "Survive a Forced Action \u2014 Body consequence that should have ended the fight for you."
     },
     "effects": [
       {
@@ -1233,7 +1165,7 @@
     "requirements": "Appropriate materials present. Mind 2.",
     "range": "Self / Adjacent",
     "target": "Object or item",
-    "effect": "Improvise, repair, or jury-rig a simple item using available materials. The result is functional but fragile — it works once or holds for 1 Clock before requiring reassessment. At GM discretion, exceptional materials may produce better results.",
+    "effect": "Improvise, repair, or jury-rig a simple item using available materials. The result is functional but fragile \u2014 it works once or holds for 1 Clock before requiring reassessment. At GM discretion, exceptional materials may produce better results.",
     "unlock_requirements": {
       "achievement": "Successfully fix or create a functional item under pressure using improvised materials."
     },
@@ -1267,7 +1199,7 @@
     "requirements": "Unarmed. Both hands free.",
     "range": "Adjacent",
     "target": "Single (any valid body part)",
-    "effect": "A committed unarmed strike. Deals 2 Crush. If targeting the Head while the target is Exposed, add Shock Tier 1. Level 6: Deals 3 Bleed. The hit generates a cosmetic crowd effect — a visible POW graphic or equivalent. Gain 1 Viewer spike on a Head hit.",
+    "effect": "A committed unarmed strike. Deals 2 Crush. If targeting the Head while the target is Exposed, add Shock Tier 1. Level 6: Deals 3 Bleed. The hit generates a cosmetic crowd effect \u2014 a visible POW graphic or equivalent. Gain 1 Viewer spike on a Head hit.",
     "unlock_requirements": {
       "achievement": "Knock an enemy back or stagger them using only an unarmed strike."
     },
@@ -1332,10 +1264,10 @@
     "default_cap": 5,
     "is_magic": 0,
     "is_passive": 0,
-    "requirements": "Reflexes 3. A lock must be present. Requires a thin tool — improvised or otherwise.",
+    "requirements": "Reflexes 3. A lock must be present. Requires a thin tool \u2014 improvised or otherwise.",
     "range": "Adjacent",
     "target": "Single (lock or latch)",
-    "effect": "Attempt to open a lock without its key. Simple locks (padlocks, basic latches) succeed automatically. Forced Action — Tool on failure. Each attempt takes 2 Moments. If interrupted mid-attempt, roll Forced Action — Tool.",
+    "effect": "Attempt to open a lock without its key. Simple locks (padlocks, basic latches) succeed automatically. Forced Action \u2014 Tool on failure. Each attempt takes 2 Moments. If interrupted mid-attempt, roll Forced Action \u2014 Tool.",
     "unlock_requirements": {
       "achievement": "Open a locked door, container, or mechanism without a key, under pressure."
     },
@@ -1455,5 +1387,25 @@
         "text": "-3 Reveal Space"
       }
     ]
+  },
+  {
+    "id": 45,
+    "key": "reversion",
+    "name": "Reversion",
+    "description": "The song. Three notes and the whole arena goes still. FULL reversion: he becomes YOUNG again \u2014 body and mind (owner 2026-07-17). [exclusive: Nikita]",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Prime: the song \u2014 a 2-Moment prep everyone hears. No defensive or wait actions while active.",
+    "range": "",
+    "target": "Self",
+    "effect": "FULL physical reversion to the 1945 soldier \u2014 young in body and mind; statline swaps to WAR NIKITA (authored sheet). Target discrimination degrades. Ends at combat end or after 1 Clock: returns to OLD (aged again), gains Exhausted T2, no memory of the interval. [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [],
+    "exclusive_to": "nikita"
   }
 ]

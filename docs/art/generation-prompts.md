@@ -7,10 +7,11 @@ in-motion frames ("48-bit") — motion masks detail loss; key poses carry the be
 
 ## The three standard subjects (identical across all methods)
 
-- **A — Nikita, two-posture sprite** (the acid test): same character, two stances —
-  OLD: stooped old man in a long worn coat, scarf, gentle tired face · WAR: the same
-  man squared and terrifying, coat like a uniform, stoop gone. If a method can't make
-  these read as the SAME person transformed, it fails.
+- **A — Nikita, two-posture sprite** (the acid test, UPDATED per full-reversion ruling
+  2026-07-17): same character across sixty years — OLD: stooped old man in a long worn
+  coat, red scarf, gentle tired face · WAR: **the same man YOUNG** — the 1945 soldier,
+  full height, same coat sitting as a uniform, same scarf, same facial features de-aged.
+  If a method can't make these read as the SAME person at two ages, it fails.
 - **B — Combat vignette**: 2.5D three-quarter top-down hex arena slice with broadcast
   chrome (odds board, lower-third caption bar, hype meter as an on-air graphic).
 - **C — Sasha sprite**: small cat, steel claw coverings glinting, low stance, big

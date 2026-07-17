@@ -558,42 +558,6 @@
     "effects": []
   },
   {
-    "id": 63,
-    "skill_id": 35,
-    "level": 5,
-    "threshold_name": "+ 3 Image, +1 Video",
-    "description": "+ 3 Image, +1 Video",
-    "stat_requirements": {},
-    "effects": []
-  },
-  {
-    "id": 64,
-    "skill_id": 35,
-    "level": 6,
-    "threshold_name": "Threshold 6",
-    "description": "Projected media can substitute for a Charm-based social action once per Clock.",
-    "stat_requirements": {},
-    "effects": []
-  },
-  {
-    "id": 65,
-    "skill_id": 36,
-    "level": 5,
-    "threshold_name": "+4 Command Complication",
-    "description": "+4 Command Complication.",
-    "stat_requirements": {},
-    "effects": []
-  },
-  {
-    "id": 66,
-    "skill_id": 36,
-    "level": 6,
-    "threshold_name": "+4 command Complication",
-    "description": "+4 command Complication. Can change directions as long as the command is active.",
-    "stat_requirements": {},
-    "effects": []
-  },
-  {
     "id": 67,
     "skill_id": 37,
     "level": 5,
