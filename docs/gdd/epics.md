@@ -50,6 +50,10 @@ hype engine v1, determinism + save/resume tests.
 - **S4.3** Sasha & Nikita kits: data + `exclusive_to` skills (Reversion = first real
   prime, after S2.1); recognition-asymmetry hook (Sasha reads Nikita's state).
 - **S4.4** Permadeath handling for recruits (loss states, roster continuity).
+- **S4.5** Propose-a-Plan, solo-lite core (design/propose-a-plan.md): plan-runner beside
+  the clock driver (assumption predicates, halt-on-deviation, one backup edge); UI
+  overlay lands with KAN-6; vote flow + NPC in-character voting + Tactician are
+  co-op/KAN-7 scope.
 
 ## KAN-5 — Exploration ⬜
 

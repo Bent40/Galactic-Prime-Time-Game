@@ -147,6 +147,13 @@ Target Players; market grounding in review-4.)
   no single attacker can clear), buffs and item handoffs join the same economy, and a
   partner's Forced Action degrades — never vetoes — the combo. Choreography earns a
   hype bonus.
+- **Propose-a-Plan (owner 2026-07-16, sketch: `../design/propose-a-plan.md`)** — the
+  party huddle as a mechanic: opt-in flowchart of steps with per-step y/n votes and
+  explicit assumptions; executes as a **prefired run that halts on deviation**, with
+  linked **backup plans** at failure points; broadcast shows the called shot (full
+  execution = hype multiplier); later, the **Tactician** trait authors steps using
+  allies' skills. Controller-layer only — plans compile to declarations; the sim never
+  knows.
 
 ### Controls & Input ⟨PROPOSED⟩
 Mouse-first declare UI: click combatant → action palette with requirement badges (met /
