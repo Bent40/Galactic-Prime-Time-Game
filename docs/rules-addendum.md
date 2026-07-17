@@ -367,6 +367,15 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
   authored NPCs ignore both. Old Nikita may sit at 2s; War Nikita may run 10s or 20s if
   it fits. Profile over process.
 
+## R18 — Charm semantics (owner clarification, 2026-07-16)
+
+**Charm is NOT charisma.** It measures **how PRESENTABLE you are — objectively
+aesthetic as compared to others.** The camera-facing stat: photogenics, striking looks,
+visual impressiveness. Warmth, likability, and parasocial pull live in the AUDIENCE
+systems (tags, hype, crowd reads), never in the Charm number. Existing formulas stay
+coherent under this reading (Charm /20 → Camera Call stacks: the camera seeks the
+aesthetic; speech scoring's Charm term: presentability shapes how words land).
+
 ## R17 — Run types & death (owner, 2026-07-16)
 
 - **Death rules depend on the RUN TYPE.** Owner's stance: permadeath-favored, but a

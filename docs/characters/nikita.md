@@ -19,11 +19,13 @@ character demands it. All numbers PLACEHOLDER per R14 until the tuning pass.*
 
 | State | Physique | Reflexes | Mind | Charm | Notes |
 |---|---|---|---|---|---|
-| **OLD Nikita** (default) | **2** | **3** | **3** | **4** | a worn body; the reflexes die last; lucid warmth the crowd adores |
-| **WAR Nikita** (Reversion) | **12** | **14** | **6** | **1** | the 1945 peak of a legendary soldier — beyond anything a contestant can build to; tunnel-clear mind; nothing warm on camera |
+| **OLD Nikita** (default) | **2** | **3** | **3** | **2** | a worn body; the reflexes die last; the crowd's adoration is parasocial (tags/hype), not aesthetic |
+| **WAR Nikita** (Reversion) | **12** | **14** | **6** | **5** | the 1945 peak of a legendary soldier — and objectively STRIKING on camera (Charm = presentability, R18) |
 
 *The War statline deliberately crosses the over-10 thresholds (part-HP, physical
-resistance) — he is briefly a different class of being. Exact values = tuning pass.*
+resistance) — he is briefly a different class of being. Note the Charm INVERSION under
+R18: the song makes him more presentable, not less — one more reason the show plays it.
+Exact values = tuning pass.*
 
 ## Skills
 1. **`reversion`** ⟨exclusive_to: nikita⟩ — **the centerpiece prime:**
@@ -43,9 +45,8 @@ resistance) — he is briefly a different class of being. Exact values = tuning 
 inconsistent, some skills incomplete, catalog needs major expansion.)*
 
 ## Gear
-- **The scarf** ⟨keepsake — mechanic OPEN⟩: option A — pure story weight, no mechanics;
-  option B (gentlest): while worn, the first Reversion each session ends one Moment
-  early (*someone once called him back*). Owner's call pending.
+- **The scarf** (RULED 2026-07-16): **pure story weight — no mechanics.** A keepsake he
+  can't return; the game never touches it with numbers.
 - `bandage` ×1
 
 ## Voice & Presentation
@@ -75,6 +76,6 @@ inconsistent, some skills incomplete, catalog needs major expansion.)*
   lands; Hestia-shaped gods bid on the *old man*, not the weapon.
 
 ## OPEN on this sheet
-Scarf mechanic (A/B) · War-state numbers (tuning) · target-discrimination rule shape ·
-whether War Nikita gains war-only skill uses ⟨PROPOSED: same skills, brutal use
-patterns⟩ · his two key authored scenes (queued walkthrough).
+War-state numbers (tuning) · target-discrimination rule shape · whether War Nikita
+gains war-only skill uses ⟨PROPOSED: same skills, brutal use patterns⟩ · his two key
+authored scenes (queued walkthrough).

@@ -23,13 +23,14 @@ for owner iteration (2026-07-16). Numbers PLACEHOLDER per R14.*
 1. **`slice_n_dice`** — the striker core (dual claw strike).
 2. **`nightlurking`** — always aware of the nearest exit/gap/vent; cat-plausible spaces.
 3. **`pounce`** — gap-closer.
-4. **`acrobatics`** ⟨PROPOSED 4th⟩ — or trade this slot for +1 cap per R16. Owner's call.
+4. **`acrobatics`** (RULED 2026-07-16 — kept).
 
 *(Subject to the general skills audit — owner 2026-07-16.)*
 
 ## Gear
 - **`metal_claw_coverings`** (her steel claws, +bleed) — canon.
-- `bandage` ×1 ⟨PROPOSED⟩ — carried, not self-applied; someone seals wounds for her.
+- `bandage` ×1 (RULED 2026-07-16 — kept) — carried, not self-applied; someone seals
+  wounds for her.
 
 ## Speech (RULED 2026-07-16)
 **Sasha cannot speak human.** She talks to humans **through the CHAT FUNCTION** — the
@@ -64,6 +65,5 @@ Small quadruped, steel glints at the paws; moves low; ears do the emoting the fa
 won't.
 
 ## OPEN on this sheet
-4th skill (acrobatics vs trade-for-cap) · bandage yes/no · chat voice register ·
-her part layout (authored cat body plan — needed before she's playable) · the maze
-encounter's placement in the campaign.
+Chat voice register · her part layout (authored cat body plan — needed before she's
+playable) · the maze encounter's placement in the campaign.
