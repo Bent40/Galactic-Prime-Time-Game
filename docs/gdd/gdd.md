@@ -142,6 +142,10 @@ Target Players; market grounding in review-4.)
   hooks; statuses (prone/slowed/overwhelmed); exposure states drive targetability.
 - **Resistances ✅** — flat reduction by class (Physical/Affliction/Psychic), tier
   immunity distinct from reduction (R6); boss hooks: fire-heals, surface-immunity.
+- **Friendly fire: ON (RULED 2026-07-17)** — spectacle wins; positioning is real.
+- **Healing economy (RULED 2026-07-17):** applying a healing item costs a Moment; **no
+  item regenerates HP** — items treat/delay conditions only; HP recovery is scarce by
+  design (sources TBD: Lounge/rest candidates).
 - **Combined actions (R15, owner 2026-07-16)** — same-Moment allies link declarations:
   **assists satisfy requirements** (a boost supplies the jump attack's height), merged
   attacks count as **one hit** for breach/force thresholds (the party's path past what
@@ -186,9 +190,11 @@ player always sees the gamble they're taking.
   Call stack.
 - **Skill points:** per trait = traitTotal − 1 (first point earns nothing); multi-stat
   skills cost 1 from **each** listed stat; refunds tracked for level-down.
-- **Skills:** 44 seeded (canon content), levels with thresholds from L5+ (82 threshold
-  rows), caps ≤ 10; `exclusive_to` supports character-bound kits (Nikita's Reversion is
-  the priming showcase). **Effects/growth passover OPEN (owner).**
+- **Skills:** 43 seeded (jokes cut 2026-07-17; `reversion` seeded, exclusive to
+  Nikita), thresholds at L5+ (78 rows); **level architecture RULED (R19): 0 =
+  untrained, 1 = effect works, 1–5 = stat scaling, 6–10 = each level GENERALIZES the
+  function to more situations while stats keep scaling** (Explosion example in R19).
+  Detailed effects/growth passover still OPEN (owner) — R19 is its authoring template.
 - **Background (OC creation):** structured picks (origin, vice, virtue, want) + freeform
   text → **grants the 4 starting skills** (R16 — humans free-ranging, animals biased
   toward race skills; any granted skill tradeable for +1 cap), seeds starting **traits**
@@ -267,7 +273,11 @@ priming; status effects = the condition clocks; party composition = no-cap recru
   hype_spike / hype_band_changed into the broadcast stream.
 - **Camera Call:** the odds board turns to you — stakes double, spotlight duty (canon
   mechanic; Charm-cap stacks). Numbers PLACEHOLDER.
-- **Tags vs epithets:** tags = audience labels (100 seeded; drift by behavior);
+- **Tags vs epithets:** tags = audience labels (84 live after the 2026-07-17 pass;
+  drift by behavior). **Tag effects RULED: 5 declarative patterns (hype resonance,
+  goal-weight bias, patron-impression lens, lifecycle dial, ≤10 flagship riders) + a
+  6th — tags GATE unlocks: items, actions, and skills may require tags as obtain/use
+  conditions.**
   **epithets** = trait-track myth recreation (traits from background + deeds; matching a
   legend's pattern grants its epithet; legends are artifacts of past games). **The myth
   catalog is real mythology, graded by level of myth — ORV-style (RULED 2026-07-16):**

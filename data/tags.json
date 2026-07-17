@@ -46,12 +46,13 @@
   },
   {
     "id": 6,
-    "key": "leeroy_jenkins",
-    "name": "LEEROY JENKINS",
+    "key": "reckless",
+    "name": "Reckless",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from leeroy_jenkins \u2014 owner 2026-07-17]"
   },
   {
     "id": 7,
@@ -81,27 +82,9 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 10,
-    "key": "unkillable",
-    "name": "Unkillable",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 11,
     "key": "oops",
     "name": "Oops",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 12,
-    "key": "vengeful",
-    "name": "Vengeful",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
@@ -118,12 +101,13 @@
   },
   {
     "id": 14,
-    "key": "animal_planet",
-    "name": "Animal Planet",
+    "key": "what_a_beaut",
+    "name": "What a Beaut",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from animal_planet \u2014 owner 2026-07-17]"
   },
   {
     "id": 15,
@@ -136,12 +120,13 @@
   },
   {
     "id": 16,
-    "key": "corporate_asset",
-    "name": "Corporate Asset",
+    "key": "shill",
+    "name": "Shill",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from corporate_asset \u2014 owner 2026-07-17]"
   },
   {
     "id": 17,
@@ -153,31 +138,14 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 18,
-    "key": "bolivian_army_ending",
-    "name": "Bolivian Army Ending",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 19,
-    "key": "chunky_salsa_rule",
-    "name": "Chunky Salsa Rule",
+    "key": "gorefest",
+    "name": "Gorefest",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 20,
-    "key": "coconut_superpowers",
-    "name": "Coconut Superpowers",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from chunky_salsa_rule \u2014 owner 2026-07-17]"
   },
   {
     "id": 21,
@@ -207,15 +175,6 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 24,
-    "key": "incorrigible",
-    "name": "Incorrigible",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 25,
     "key": "no_cure_for_evil",
     "name": "No Cure For Evil",
@@ -234,27 +193,9 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 27,
-    "key": "little_dead_rising_hood",
-    "name": "Little Dead Rising Hood",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 28,
     "key": "mascot",
     "name": "Mascot",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 29,
-    "key": "butcher",
-    "name": "Butcher",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
@@ -370,21 +311,23 @@
   },
   {
     "id": 42,
-    "key": "certified_fresh",
-    "name": "Certified Fresh",
+    "key": "heart_melter",
+    "name": "Heart Melter",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from certified_fresh \u2014 owner 2026-07-17]"
   },
   {
     "id": 43,
-    "key": "sag_dispute",
-    "name": "SAG Dispute",
+    "key": "not_my_job",
+    "name": "Not My Job",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from sag_dispute \u2014 owner 2026-07-17]"
   },
   {
     "id": 44,
@@ -505,12 +448,13 @@
   },
   {
     "id": 57,
-    "key": "sea_world_reject",
-    "name": "Sea World Reject",
+    "key": "winter_sheep",
+    "name": "Winter Sheep",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
-    "goal_modifier_weights": {}
+    "goal_modifier_weights": {},
+    "notes": " [renamed from sea_world_reject \u2014 owner 2026-07-17]"
   },
   {
     "id": 58,
@@ -525,15 +469,6 @@
     "id": 59,
     "key": "crowd_s_baby",
     "name": "Crowd's Baby",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 60,
-    "key": "nine_lives",
-    "name": "Nine Lives",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
@@ -630,15 +565,6 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 71,
-    "key": "main_vocalist",
-    "name": "Main Vocalist",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 72,
     "key": "visual",
     "name": "Visual",
@@ -648,36 +574,9 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 73,
-    "key": "maknae",
-    "name": "Maknae",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 74,
-    "key": "rap_line",
-    "name": "Rap Line",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 75,
     "key": "formation",
     "name": "Formation",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 76,
-    "key": "comeback_stage",
-    "name": "Comeback Stage",
     "description": "",
     "effect": "",
     "unlock_conditions": "",
@@ -747,24 +646,6 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 84,
-    "key": "legacy_code",
-    "name": "Legacy Code",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 85,
-    "key": "corrupted_file",
-    "name": "Corrupted File",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 86,
     "key": "unpatched",
     "name": "Unpatched",
@@ -801,27 +682,9 @@
     "goal_modifier_weights": {}
   },
   {
-    "id": 90,
-    "key": "null_pointer",
-    "name": "Null Pointer",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
     "id": 91,
     "key": "overclock",
     "name": "Overclock",
-    "description": "",
-    "effect": "",
-    "unlock_conditions": "",
-    "goal_modifier_weights": {}
-  },
-  {
-    "id": 92,
-    "key": "peer_review",
-    "name": "Peer Review",
     "description": "",
     "effect": "",
     "unlock_conditions": "",

@@ -52,7 +52,7 @@ what were the six occasions?) `[assumed R6: game-awarded at authored milestones]
 raising a skill from 1→4 actually change at your table (nothing? reliability/scope by GM
 feel? a default numeric bump)?
 - TTRPG:
-- Decision:
+- Decision: **RULED 2026-07-17 (R19): skills 0-10; 0 untrained, 1 effect works, 1-5 stat scaling, 6-10 generalize the function (Explosion example in addendum R19).**
 
 **Q8.** At a level-5+ threshold, does the player **choose** between "upgrade" and "mutate"?
 Where do mutation options come from (GM-authored per skill, player pitch, list)?
@@ -125,7 +125,7 @@ scheduled action; max one reaction per tick]`
 **Q21.** How does **Shock go down**? The book defines tiers 1–4 but no recovery. (Gap found
 after the addendum — the engine currently never decays Shock within a combat.)
 - TTRPG:
-- Decision:
+- Decision: **RULED 2026-07-17: no shock decay in combat; combat-end reset only. R13 approved.**
 
 **Q22.** Exhausted's Moment-cost increase: by how much, at your table? `[assumed R4
 PROVISIONAL: T1 +1 on 2+-cost actions, T2 +1 on all, T3 all actions Forced-Body]`
@@ -171,7 +171,7 @@ practice just Bleeding? `[assumed R4: universal advancement]` ⚙
 **Q29.** Treatments (bandages, antitoxins): limited uses per item? Moment cost to apply to
 self vs ally?
 - TTRPG:
-- Decision:
+- Decision: **RULED 2026-07-17: healing items cost a Moment to apply; NO item regenerates HP (items treat/delay conditions only); HP recovery deliberately scarce.**
 
 **Q30.** Has anyone self-cauterized (Burn T1 to stop bleeding)? What did it cost them?
 `[assumed R4 PROVISIONAL: HP damage + Shock T1]`
@@ -264,7 +264,7 @@ regardless of damage?  `[seeded Roach-dog at 1 HP]` ⚙
 **Q47.** Typical encounter shape: how many mobs/elites per fight for your party of 5, and
 should the digital slice (2 contestants) scale that down linearly?
 - TTRPG:
-- Decision:
+- Decision: **RULED 2026-07-17: table party of 5 handled 12/room easily; assume party of 3 handles ~12/room as tuning baseline.**
 
 **Q48.** What makes a **Super Boss** mechanically different from a Boss beyond bigger
 numbers?
@@ -337,12 +337,12 @@ scale).
 **Q61.** Filipe the sea lion: what body parts + HP did you actually give him? (Real example
 = the Animal-race template for the digital game.)
 - TTRPG:
-- Decision:
+- Decision: **DEFERRED 2026-07-17: animal part layouts need a dedicated sitting.**
 
 **Q62.** XQUEZ/T is race "AI": what body did it get, and does an AI/robot take Shock,
 bleed, get infected — which conditions apply to machines?
 - TTRPG:
-- Decision:
+- Decision: **OBSOLETE 2026-07-16 (R16): robot race removed.**
 
 **Q63.** Severed/destroyed parts: what's the recovery path (Surgeon's Table? prosthetics?
 permanent)?
@@ -373,14 +373,14 @@ Kitchen/Farm/Forge actually do mechanically)?
 
 **Q68.** Slice party: 2 premade contestants controlled by one player `[per review-4 §5]` —
 OK, or do you want your five campaign characters as the premades?
-- Decision:
+- Decision: **RULED 2026-07-17: slice + premades approved (player OC + Sasha & Nikita recruitment, party of 3). (Owner wrote '58' — content unambiguously matches this question.)**
 
 **Q69.** Friendly fire: on (spectacle!) or off?
-- Decision:
+- Decision: **RULED 2026-07-17: friendly fire ON.**
 
 **Q70.** Death in digital co-op: full permadeath + Ascension (as designed) from day one, or
 softer for the slice (restart at checkpoint only)?
-- Decision:
+- Decision: **RULED 2026-07-16 (R17): run types — softcore respawn / hardcore permadeath / Forsaken hardcore.**
 
 **Q71.** Declare-window length for the co-op tick driver (DIRECTION sketch suggests
 3–5s/Moment): starting value?

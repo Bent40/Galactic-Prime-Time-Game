@@ -145,6 +145,9 @@ compared to previous legends.**
   Cross-player content at zero authoring cost.
 - Crowd **tags** stay the audience's labels; **epithets** are the pantheon's comparisons.
   Two tracks, deliberately separate — the label/essence tension the spine wants.
+- **Epithet backlog (migrated from tags, owner 2026-07-17):** `nine_lives` ("Sasha the
+  Nine-Lived" — the canonical example), `unkillable`, `vengeful`, `butcher`,
+  `incorrigible` — first five entries for the myth-template/epithet vocabulary pass.
 
 ## The data model (seed data, JSON — schema stub only until KAN-7)
 

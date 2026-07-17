@@ -284,7 +284,8 @@ designs, adopted as canon; engine/content implementation lands with their epics.
   Iron Stance: declare, don't move, adjacent-ally-targeting attacks retarget to you,
   Physique 5): PENDING finalization (questionnaire), then seed as skills.
 
-## R13 — Shock, resolved model (owner facts 2026-07-15 + proposed digital form)
+## R13 — Shock — **RULED/APPROVED (owner, 2026-07-17: "R13 is approved"; no shock decay
+in combat — combat-end reset is the only recovery)**
 
 **SETTLED (owner):** Shock is a pain response, mostly narrative pressure; it **resets fully
 at combat end**. Table practice: accumulates per organ; owner open to direct-status,
@@ -386,6 +387,41 @@ aesthetic; speech scoring's Charm term: presentability shapes how words land).
   in every mode (canon).
 - No difficulty menu (RULED same day): run types + patron choice + route selection ARE
   the difficulty surface.
+
+## R19 — Skill level architecture (owner, 2026-07-17)
+
+**RULED.** Skills run **0–10**:
+- **0** = untrained (skill known but unusable).
+- **1** = the effect works.
+- **1–5** = **normal modifiers** — the basic stats scale (damage, range, etc.).
+- **6–10** = each level **changes the basic function to apply to MORE SITUATIONS**,
+  while the basic stats keep scaling.
+
+**Owner's canonical example — Explosion:** 1–5 decide damage and range · 6 makes it
+**cluster** · 7 adds **sub-damage of a chosen type** (poison/fire/…) · 8 lets it
+**originate away from the caster** · 9 **enhances activation range and conditions** ·
+10 unlocks **psychic/radiant-class damage** — each of 6–10 still increasing range and
+damage. (Existing L5+ threshold rows get re-read under this architecture in the skills
+passover; the generalization ladder 6–10 is the authoring template for every skill.)
+
+## Rulings batch 2026-07-17 (owner, in chat)
+
+- **Friendly fire: ON** (Q69) — spectacle wins.
+- **R13 approved as written; no in-combat shock decay** (Q21).
+- **Healing economy (Q29):** applying a healing item costs **a Moment**; **no healing
+  item regenerates HP** — items treat/delay conditions only; HP recovery is deliberately
+  scarce (recovery sources TBD — Lounge/rest candidates).
+- **Encounter baseline (Q47):** live table's party of 5 cleared 12 enemies/room without
+  trouble → assume a **party of 3 handles ~12/room** as the tuning starting point.
+- **Slice + premades approved** (Q68): player OC + Sasha & Nikita recruitment
+  encounters, party of 3.
+- **Joke skills cut** (ignore_all_previous_commands, generate_visual_media — robot
+  orphans; kunai's dev-chat stays as intentional comedy).
+- **Tags:** renames/cuts/migrations applied per owner list (84 live tags; 5 words moved
+  to the epithet track; K-pop cluster removed). **Effect model = the 5 audit patterns
+  PLUS pattern 6: tags GATE unlocks — items, actions, and skills may require tags as
+  obtain/use conditions.**
+- **Animal part layouts deferred** (Q61) — dedicated sitting later.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

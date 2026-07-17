@@ -20,7 +20,7 @@ character demands it. All numbers PLACEHOLDER per R14 until the tuning pass.*
 | State | Physique | Reflexes | Mind | Charm | Notes |
 |---|---|---|---|---|---|
 | **OLD Nikita** (default) | **2** | **3** | **3** | **2** | a worn body; the reflexes die last; the crowd's adoration is parasocial (tags/hype), not aesthetic |
-| **WAR Nikita** (Reversion) | **12** | **14** | **6** | **5** | the 1945 peak of a legendary soldier — and objectively STRIKING on camera (Charm = presentability, R18) |
+| **WAR Nikita** (Reversion) | **12** | **14** | **6** | **5** | **FULL reversion (RULED 2026-07-17): he becomes YOUNG again — body and mind.** The 1945 soldier, physically present — and objectively STRIKING on camera (R18) |
 
 *The War statline deliberately crosses the over-10 thresholds (part-HP, physical
 resistance) — he is briefly a different class of being. Note the Charm INVERSION under
@@ -32,9 +32,10 @@ Exact values = tuning pass.*
    - **Prime:** *the song* — a 2-Moment prep action. He starts humming; **everyone
      hears it** — party, enemies, audience. The telegraph IS the drama; hype spikes on
      the first note.
-   - **Effect:** statline swaps to WAR NIKITA (table above). Wartime logic binds him:
-     **no defensive or wait actions**, and **target discrimination degrades** ⟨exact
-     constraint: design pass⟩.
+   - **Effect:** **full physical reversion — young again, body and mind (RULED
+     2026-07-17)**; statline swaps to WAR NIKITA (table above). Wartime logic binds
+     him: **no defensive or wait actions**, and **target discrimination degrades**
+     ⟨exact constraint: design pass⟩.
    - **End:** at combat end or after 1 Clock — returns to OLD, takes **Exhausted T2**,
      and **keeps no memory of the interval.**
 2. **`read_the_pattern`** — the veteran reads the fight (Mind-driven intel/prediction).
@@ -55,8 +56,10 @@ inconsistent, some skills incomplete, catalog needs major expansion.)*
   "comrade"; the lower-thirds go terse.
 - **Signature bit:** the hum — three notes and the whole arena goes still, because
   everyone knows what's coming.
-- **Silhouette:** one sprite, two postures — Old stoops in a long coat, scarf visible;
-  War squares the coat, the stoop vanishes. The posture swap IS the transformation VFX.
+- **Silhouette (updated per full reversion):** two sprites of one man across sixty
+  years — Old stoops in a worn long coat, scarf visible; War is the YOUNG soldier, the
+  same coat sitting as a uniform, the same scarf. The de-aging IS the transformation
+  VFX — the crowd watches sixty years fall off him on the first three notes.
 
 ## Audience Read
 - **Crowd sees:** grandpa mascot → then WAR HERO; the whiplash is the highest-rated
@@ -66,9 +69,10 @@ inconsistent, some skills incomplete, catalog needs major expansion.)*
   embodied.
 
 ## Party & Story Hooks
-- **Sasha is his cat.** War Nikita **may not recognize her** — the recognition asymmetry
-  is the keeper thread's climax. In the slice it surfaces small: she is the only one who
-  can safely approach War Nikita.
+- **Sasha is his cat.** War Nikita **may not recognize her** — and under full reversion
+  the asymmetry becomes LITERAL CHRONOLOGY: in 1945 she didn't exist yet. The young man
+  has never met his own cat. The recognition asymmetry is the keeper thread's climax;
+  in the slice it surfaces small: she is the only one who can safely approach him.
 - Plan-system behavior (APPROVED 2026-07-16): Old Nikita approves cautious steps,
   substitutes toward protection duties, and **rejects any step that spends Sasha as
   bait** (reason written in-character). War Nikita rejects defensive steps.
