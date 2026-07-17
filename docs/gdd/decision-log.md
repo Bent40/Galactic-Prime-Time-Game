@@ -25,7 +25,21 @@
    scope re-derived from the casino adoption (patron gods, epithets, verdict). Stories
    shaped for gds-create-story with EARS criteria at creation time (clears `wf audit`
    SETUP-NEEDED).
-8. **Finalize degradations (honest):** input-reconciliation and discipline-pass
+8. **Decision slate RULED (owner, 2026-07-16, in chat):** R15 merged-one-hit ✓ ·
+   degraded combos ✓ · plan objections non-binding for uninvolved ✓ · planning free at
+   combat start, Moment cost mid-combat ✓ · Tactician = trait, capstone pre-auth ✓ ·
+   bidding flow as written + gods' explicit dos/don'ts (taboos) ✓ · Forsaken manual
+   trigger CONFIRMED · no difficulty menu ✓ (run types are the surface) · audience
+   faucet widest ✓ · declare UI + consequence preview ✓ · 60 FPS/2015 laptop ✓ ·
+   **Lounge = walkable exclusive hub (loot/contracts/tinkering) + roaming-monster
+   resets** (overrides menus-over-scenes) · **death rules per run type (R17):
+   softcore respawn / hardcore permadeath / Forsaken hardcore** · episode beats ✓ ·
+   found documents ✓ · arena-as-psyche floor-set 3+ ✓ · never-moralize principle ✓ ·
+   myth catalog = real mythology graded ORV-style + Stage-2 player myths ✓ · title kept
+   for now · Momus shared host · TTRPG re-skins to casino · starving-pantheon REJECTED
+   (bankruptcy-by-debauchery lore instead). Pending explanation before ruling: dialogue
+   delivery (#14), production-cast-via-patrons (#20), Sasha/Nikita page details (#22).
+9. **Finalize degradations (honest):** input-reconciliation and discipline-pass
    subagents unavailable (container classifier outage) — both applied inline by the
    drafting agent instead (brief cross-checked section-by-section; template/genre-guide
    sections all present; density and no-engine-leakage rules self-audited). Re-run

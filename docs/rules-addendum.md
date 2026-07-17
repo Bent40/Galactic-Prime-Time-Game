@@ -333,13 +333,13 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
   partner's assist can satisfy an otherwise-unmet requirement — a brace supplies "steady
   ground," a boost supplies the height for a jump attack, a feint supplies the opening.
   Teamwork's primary power is *unlocking*, not just adding numbers.
-- **Combined attacks merge force ⟨PROPOSED⟩:** merged damage counts as **one hit** for
+- **Combined attacks merge force (RULED 2026-07-16):** merged damage counts as **one hit** for
   thresholds — the party's designed path to 7+ single-hit breaches, and (once the R14
   force-vs-robustness gate lands) the intended counter to robustness no single attacker
   can clear. The R14 design pass must treat force-combination as a first-class input.
 - **Support verbs:** ally-targeted buffs/heals and item handoffs are legal combo
   members; handoffs ride the existing inventory-interaction economy (R3).
-- **Failure cascades together ⟨PROPOSED⟩:** if a linked actor's requirement fails or a
+- **Failure cascades together (RULED 2026-07-16):** if a linked actor's requirement fails or a
   Forced Action fires on them, the combo resolves *degraded* — their contribution drops
   out, their d6 consequences land normally, the partners' parts still resolve.
   Coordination risk is drama, never a veto.
@@ -362,6 +362,17 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
 - Consequence: the **background is now the single creation surface** — skills (this
   ruling) + starting traits (epithet track) + patron-god bidding all flow from who you
   were before the show. Creation flow: KAN-4 S4.1.
+
+## R17 — Run types & death (owner, 2026-07-16)
+
+- **Death rules depend on the RUN TYPE.** Owner's stance: permadeath-favored, but a
+  **softcore mode with normal respawn** exists so the bar to entry stays humane.
+- Shape: **softcore** = respawn on death ⟨diegetic framing of the respawn TBD⟩;
+  **hardcore** = permadeath (the owner-preferred way to play); **Forsaken** runs are
+  hardcore by nature (the gods went all-in). Recruited NPCs remain permanently losable
+  in every mode (canon).
+- No difficulty menu (RULED same day): run types + patron choice + route selection ARE
+  the difficulty surface.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

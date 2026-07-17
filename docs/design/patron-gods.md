@@ -34,7 +34,10 @@ patron can choose a patron**.* Proposed synthesis of all three:
    text is LLM-read for keywords later (same staging as the social director — deterministic
    first, model-augmented behind the same interface).
 2. **Interested gods bid.** Affinity match + seeded variance produces 2–3 suitor offers,
-   each shown as a deal sheet: domains, generosity, temperament, favor demands.
+   each shown as a deal sheet: domains, generosity, temperament — and the god's
+   **EXPECTATIONS: the explicit dos and don'ts of this god** (RULED 2026-07-16). Dos =
+   favor conditions; don'ts = taboos that cost affection (or worse) when crossed. You
+   sign knowing exactly what pleases and what offends.
 3. **The player chooses — because only the patron-less can choose** (the ORV rule). Once
    bound, the player cannot swap; the relationship changes only from the god side.
 4. **Refusing every offer is allowed (RULED 2026-07-16, Q6):** it is simply a
@@ -113,6 +116,10 @@ compared to previous legends.**
 - **Myth templates are the goal state:** a legend's pattern, expressed as traits +
   signature deeds. When your accumulated pattern **recreates someone's myth, you gain an
   epithet from it.**
+- **The myth catalog is REAL mythology, graded by level of myth (RULED 2026-07-16 —
+  ORV-style):** folk tale < local legend < heroic epic < world myth — higher-grade myths
+  demand rarer patterns and grant stronger epithets. Ascended players' runs compile into
+  new templates at Stage 2 (they enter the catalog at an earned grade).
 - **Canon synergy:** legends are literally artifacts of previous games (canon §3 — the
   winner decides how the apocalypse is remembered). Recreating a myth is re-walking a
   past champion's shape.
@@ -137,9 +144,11 @@ patron_god {
   related_multiplier,          # spill-over to faction gods' buffs      (ex: +0.08x)
   affection_modifier,          # how strongly deeds convert to affection, and toward whom
   temperament,                 # flavor + curse/trial style when displeased
-  favor_conditions: [..],      # what wins favor — behavioral demands, e.g.
+  favor_conditions: [..],      # the DOS — what wins favor, e.g.
                                #   "finish fights with their domain", "show mercy",
                                #   "never retreat", "make the crowd laugh", "hoard nothing"
+  taboos: [..],                # the DON'TS — what costs affection when crossed (RULED:
+                               #   shown on the deal sheet at bidding)
   boon_table: [..],            # domain-aligned buffs/items/heals (tip outcomes)
   trial_table: [..],           # what displeasure/rival-tips look like (trials, curses, spawns)
 }
@@ -182,7 +191,7 @@ Per-run god stats: **fixed cores + small seeded jitter** (RULED, Q3).
    Game translation (RULED 2026-07-16, Q7): **opting into hardcore** — the god offers
    you the chance **randomly, for higher stakes**. **Never on a first run; possible from
    the 2nd run onwards.** Can also be **triggered manually after winning with a character
-   once** ⟨PROVISIONAL — owner's "I think"⟩. **No switching into Forsaken mid-campaign.**
+   once** (CONFIRMED 2026-07-16). **No switching into Forsaken mid-campaign.**
    (Marcus is the template: Plutus went all-in — consent not included.)
 6. **Rival gods can bless or curse your party (RULED 2026-07-16, Q5):** cross-party tips
    are gated on affection — **blessings require higher affection** with that god,

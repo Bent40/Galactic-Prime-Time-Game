@@ -152,11 +152,13 @@ axis, and changes one conclusion:
    the story from the game. We only take the game, not the full story." Marcus/Viola/#3
    are examples only. (Whether the game's table sits in the same Earth special or its own
    is now a flavor call, not a coupling risk — default: unspecified until it matters.)
-3. **Does the live TTRPG campaign re-skin too**, or does the table keep the Corporation
-   while the game goes Casino?
-4. **Momus: shared host across both**, or the game gets a sibling host (same franchise,
-   different voice)?
-5. **The title.** "Galactic Prime Time" is TV-frame; the casino frame wants its own name
-   (working candidates can wait — the repo name doesn't need to move yet).
-6. **The timer.** Adopt the running-out clock as the campaign's cosmological frame (E) or
-   as a season mechanic (the special has a fixed run)?
+3. ~~**Does the live TTRPG campaign re-skin too?**~~ **RULED 2026-07-16: RE-SKIN TO
+   CASINO** — the live table adopts the casino frame alongside the game.
+4. ~~**Momus?**~~ **RULED 2026-07-16: MOMUS, shared host** across the novel and the game.
+5. ~~**The title.**~~ **RULED 2026-07-16: keep "Galactic Prime Time" for now** (it
+   survives diegetically as the show's in-world name; revisit only if a rename earns it).
+6. ~~**The timer / add-on E.**~~ **RULED 2026-07-16: E REJECTED — the gods are NOT
+   starving.** Replacement lore (canon): debaucherous casino spending bankrupts certain
+   gods and costs them standing; they are powerful beings expanding influence in their
+   petty ways. Ruin is self-inflicted status-loss, not cosmic famine. (The campaign
+   timer, where used, is a season mechanic — the special has a run — not cosmology.)

@@ -51,6 +51,11 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
   **forgotten religions**. Explicit owner note: *"we can make up whatever we want here —
   relics, shapes, ideas, names, anything goes."* (Free design space; no
   mythology-accuracy debt.)
+- **How gods fall (RULED 2026-07-16 — supersedes the "starving pantheon" pitch):** the
+  gods are NOT running out. **Debaucherous casino spending bankrupts certain gods,
+  costing them standing.** They are powerful beings expanding their own influence **in
+  their petty ways** — a human approach, not a cosmic famine. The stakes are status and
+  reach, and ruin is self-inflicted.
 - **Momus** hosts/announces (bible): pink tuxedo "as if a flamingo decided it wanted to
   be human," never breathes between sentences, unseen laughing audience, sign-off
   *"This is Momus. Stay tuned!"*

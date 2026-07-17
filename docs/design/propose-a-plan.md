@@ -102,17 +102,17 @@ Tactician-authored step remains vetoable by its actor (their reason, their condi
 - **KAN-6:** the flowchart overlay + broadcast rendering (mockup gate applies).
 - **KAN-7:** hype multiplier, patron plan-conditions, NPC in-character voting.
 
-## Question resolutions & remaining opens
+## Question resolutions (ALL CLOSED 2026-07-16)
 
-- ~~Q1 vote rule~~ — **RULED 2026-07-16:** per-step consent with written reasons;
-  involved-actor rejection = absolute conditional veto (red → delete → refusal list).
-  Remaining sliver: is an *uninvolved* participant's X binding or a flagged objection
-  ⟨PROPOSED: objection only⟩?
-- ~~Q2 deviation default~~ — **RULED:** manual divergence anytime; automatic divergence
-  to a linked branch when the current plan is no longer possible; halt when no branch.
-- **Q3** — Plan authoring cost: free out-of-combat + a Moment cost to (re)plan
-  mid-combat ⟨recommended⟩, or always free?
-- ~~Q4 NPC voting~~ — **RULED:** NPCs participate from the start — approve /
-  reject-with-reason / substitute; never propose.
-- **Q5** — Tactician: a trait, a skill line, or an epithet-earned title? (Power now
-  defined: direct skill selection + condition visibility.)
+- **Q1 vote rule** — per-step consent with written reasons; involved-actor rejection =
+  absolute conditional veto (red → delete → refusal list). An *uninvolved* participant's
+  X is a **non-binding flagged objection** (RULED).
+- **Q2 deviation default** — manual divergence anytime; automatic divergence to a linked
+  branch when the current plan is no longer possible; halt when no branch (RULED).
+- **Q3 planning cost** — **free at the START of combat; mid-combat planning or changes
+  cost a Moment** (RULED).
+- **Q4 NPC voting** — NPCs participate from the start — approve / reject-with-reason /
+  substitute; never propose (RULED).
+- **Q5 Tactician** — a **TRAIT** (RULED); capstone: may pre-authorize automatic branch
+  switching without re-consent (RULED). Power: direct selection of allies' skills with
+  condition visibility; actor veto still binds.
