@@ -7,9 +7,9 @@ extends Node
 ##   is re-emitted as a signal: a typed signal for the catalog's combat events
 ##   plus the generic sim_event for everything (scenes may subscribe to either).
 ## - Constructor-friendly: no _ready dependency, so headless tests can drive it.
-##
-## TODO-S2: static data currently loads straight from data/*.json here; KAN3-S2
-## replaces this with the DAL as the single data owner.
+## - Owns the COMMAND LOG (the sim is the reducer; the caller owns the log) and
+##   the save/load flow via SaveManager (KAN3-S2). Static data comes exclusively
+##   from the DAL.
 
 signal sim_event(event: Dictionary)
 signal combatant_added(event: Dictionary)
@@ -44,20 +44,25 @@ const TYPED: Dictionary = {
 }
 
 var sim: CombatSim
+var dal: Dal = Dal.new()
+var saves: SaveManager = SaveManager.new()
+var command_log: Array[Dictionary] = []
 
 
-## Creates a fresh sim. Passing static_data overrides the JSON load (tests).
+## Creates a fresh sim. Passing static_data overrides the DAL load (tests).
 func start_combat(sim_seed: int, static_data: Dictionary = {}) -> void:
 	if static_data.is_empty():
-		static_data = _load_static_data()
+		static_data = dal.static_data_for_sim()
 	sim = CombatSim.new(sim_seed, static_data)
+	command_log = []
 
 
-## The one command funnel. Returns the sim's events after re-emitting them.
+## The one command funnel: logs the command, applies it, re-emits every event.
 func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 	if sim == null:
 		push_error("GameController.apply_command before start_combat")
 		return []
+	command_log.append(cmd.duplicate(true))
 	var events: Array[Dictionary] = sim.apply_command(cmd)
 	for event: Dictionary in events:
 		sim_event.emit(event)
@@ -71,14 +76,17 @@ func state_hash() -> String:
 	return "" if sim == null else sim.state_hash()
 
 
-static func _load_json(path: String) -> Variant:
-	return JSON.parse_string(FileAccess.get_file_as_string(path))
+func save_game(save_name: String) -> bool:
+	if sim == null:
+		return false
+	return saves.save_game(save_name, sim, command_log)
 
 
-static func _load_static_data() -> Dictionary:
-	return {
-		"conditions": _load_json("res://data/conditions.json"),
-		"races": _load_json("res://data/races.json"),
-		"enemies": _load_json("res://data/enemies.json"),
-		"items": _load_json("res://data/items.json"),
-	}
+## Restores sim + log from a save. Returns false (soft) on missing/corrupt file.
+func load_game(save_name: String) -> bool:
+	var envelope: Dictionary = saves.load_game(save_name)
+	if envelope.is_empty():
+		return false
+	sim = CombatSim.from_dict(envelope["snapshot"])
+	command_log.assign(envelope.get("command_log", []))
+	return true
