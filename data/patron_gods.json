@@ -37,7 +37,8 @@
     "taboos": [
       "retreat from a winnable fight",
       "refuse a duel challenge"
-    ]
+    ],
+    "influence": 4
   },
   {
     "id": 2,
@@ -74,7 +75,8 @@
     "taboos": [
       "end a fight in under one Clock",
       "de-escalate a brawl"
-    ]
+    ],
+    "influence": 4
   },
   {
     "id": 3,
@@ -112,6 +114,7 @@
     "taboos": [
       "execute a surrendered enemy",
       "let an ally bleed out unattended"
-    ]
+    ],
+    "influence": 4
   }
 ]

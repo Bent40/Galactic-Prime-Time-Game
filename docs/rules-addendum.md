@@ -362,6 +362,10 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
 - Consequence: the **background is now the single creation surface** — skills (this
   ruling) + starting traits (epithet track) + patron-god bidding all flow from who you
   were before the show. Creation flow: KAN-4 S4.1.
+- **NPC stats fit the CHARACTER, not creation budgets (owner, 2026-07-16):** the 7/7
+  creation spread and the 5-per-trait cap describe an *unchanged human at creation* —
+  authored NPCs ignore both. Old Nikita may sit at 2s; War Nikita may run 10s or 20s if
+  it fits. Profile over process.
 
 ## R17 — Run types & death (owner, 2026-07-16)
 

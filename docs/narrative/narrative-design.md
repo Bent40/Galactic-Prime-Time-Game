@@ -68,7 +68,8 @@ permanently losable). Structure: **question architecture** (canon), not acts.
 ### Story Beats (delivery unit)
 The **episode beat**: every run segment is broadcast-shaped — cold open (Directive),
 rising spectacle (hype), a Camera Call spotlight, a button (verdict-axis touchpoint or
-recruitment). ⟨PROPOSED framing; mechanics all canon⟩
+recruitment). (Owner 2026-07-16: **adopted provisionally — try it, evaluate fit** during
+floor authoring; drop if it fights the dungeon.)
 
 ### Pacing and Flow
 Time skips between floors (the framework fast-forwards the host realm — gods skip the
@@ -154,7 +155,7 @@ vocabulary (100 seeded) as pop-culture noise; casino diegesis for all economy la
 ## Dialogue Framework
 
 ### Dialogue Style
-⟨PROPOSED⟩ Broadcast lower-thirds + short trees + barks; no full VN layer in v1. Two
+(RULED 2026-07-16) Broadcast lower-thirds + short trees + barks; no VN layer in v1. Two
 registers per scene where planes diverge: what the audience hears (announcer) vs what
 contestants experience. **Dual-prose for branded characters: post-MVP, set aside (owner
 2026-07-16)** — the design remains canon (EQ loss = drier text) for later.
@@ -170,10 +171,11 @@ that classify the player feed verdict axes; social-director consequences arrive 
 manifestations and sudden quests (two-planes rule), not dialogue lectures.
 
 ### Voice and Characterization
-Owner voices ruled so far: Sasha barely talks (the camera does it; subtitled cat-logic
-⟨PROPOSED⟩); Old Nikita slow/precise/warm, apologizes to enemies; War Nikita clipped
-imperatives, wrong decade's vocabulary, "comrade." Host voice: OPEN (Momus's register —
-never breathes between sentences — is available if shared).
+Owner voices ruled so far: **Sasha cannot speak human — she talks to humans through the
+CHAT FUNCTION** (the System's comms channel carries her meaning; audibly it's cat speak —
+owner 2026-07-16); Old Nikita slow/precise/warm, apologizes to enemies; War Nikita clipped
+imperatives, wrong decade's vocabulary, "comrade." Host: **Momus, shared with the novel
+(RULED)** — never breathes between sentences.
 
 ## Environmental Storytelling
 
