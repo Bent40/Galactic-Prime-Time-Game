@@ -307,14 +307,25 @@ priming; status effects = the condition clocks; party composition = no-cap recru
 - Fields/absorption make level geometry tactical: encounter placement is a noise-budget
   problem for the player.
 
-## Art & Audio Direction ⟨PROPOSED — mockup gate applies before production⟩
+## Art & Audio Direction (visual-investment RULED 2026-07-16; style via mockup gate)
 
-2.5D sprites over hex terrain; readability first (condition/part states visible at
-glance); two-posture silhouettes as transformation language (Nikita). Broadcast UI
-chrome (odds boards, lower-thirds, hype bar as an on-air graphic). Audio: announcer VO
-is the flagship want (host voice pending Momus decision — OPEN); diegetic crowd;
-tip/achievement stingers. Every art/UI direction ships a mockup for approval before
-build (working rule).
+**Owner commitment: visuals get serious work even though they're our weaker side** —
+quality bar over ambition bar. **16-bit pixel style is explicitly ACCEPTED as the
+floor** if it buys consistency, good animation, and strong visual identity: a concise
+style executed well beats an ambitious style executed raggedly. **Fidelity ceiling is an
+open question (owner 2026-07-16: "maybe 16-bit is too little")** — the style-frame pass
+tests a fidelity ladder (16-bit era → 32px → large-sprite "HD pixel" / 64-bit-era) and
+the rule for choosing is: **the ceiling is set by ANIMATION cost, not still-frame
+beauty** — we pick the highest fidelity we can animate consistently, not the prettiest
+single frame. Direction: 2.5D sprites over hex terrain;
+readability first (condition/part states visible at a glance); **animation is where the
+budget goes** (the posture-swap transformations, hit reactions, the crowd's visual
+temperature); two-posture silhouettes as transformation language (Nikita). Broadcast UI
+chrome (odds boards, lower-thirds, hype bar as an on-air graphic) carries theme cheaply
+at any fidelity. Audio: announcer VO is the flagship want (**Momus**, shared host —
+RULED); diegetic crowd; tip/achievement stingers. Every art/UI direction ships a mockup
+for approval before build (working rule) — the style decision itself goes through style
+frames at the KAN-6 gate.
 
 ## Technical Specifications (GDD-level)
 
