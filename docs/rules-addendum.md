@@ -260,11 +260,41 @@ overturning one is a code change, not a rewrite.
     classes; the ported items.json rows don't carry rpm/magazine yet (content pass open).
 12. **Bleeding T4 kills from any part** (tier table as authored — you can bleed out from a
     limb wound).
+13. **Camera Call (spectacle engine v1):** stacks per R6's Charm over-cap formula, spent
+    per use (`camera_call` command); the "doubled gains AND losses" canon is read as
+    *spectacle points attributed to the spotlit combatant are doubled* — cross-referencing
+    who CAUSED the spotlit combatant's drama is v2. The spotlight ends at the end of the
+    spotlit combatant's current-or-next action (resolved or invalidated), at their death,
+    or after a 2-Clock fallback so it can never dangle; one spotlight at a time. The caller
+    passes the same actor gates as declared actions (alive → not removed → not Helpless): a
+    Helpless contestant cannot call the camera. Session reset of spent stacks (B9: session
+    = one deployment) is controller scope, not sim.
+14. **Crowd Goals (spectacle engine v1):** ONE active goal, offered at Clock resets (the
+    book's reorganization beat) from `data/crowd_goals.json`; selection draws from a
+    dedicated RNG stream seeded off the sim seed (so goal draws never perturb Forced-Action
+    rolls); expiry costs a small hype penalty; completion pays the goal's hype payout
+    (doubled when the completing event is the spotlit combatant's). Kinds implemented:
+    takedown / overkill / part_break / exposed_strike. Goals pay HYPE only — the Patron
+    conversion + Patron-Token reward channel (R10) is KAN-7 scope. Recorded v1 limits:
+    - **Deferred to v2:** weighted / audience-state-driven goal selection (v1 draws
+      uniformly) and the compendium's Solo Action template.
+    - **PROVISIONAL — takedown side-blindness:** takedown completes on ANY death,
+      including a friendly one, and the payout is credited per attribution v1 (the
+      combatant the event is about). The owner may want a side-filter (enemy-only kills)
+      once teams exist in the sim.
+    - **PROVISIONAL — same-batch completion:** a goal offered at a clock_reset can be
+      completed by later events in that SAME batch (e.g. condition-advancement damage that
+      follows the reset in the event order). Open question for the owner: should a fresh
+      goal only be completable from the next command on?
+    - **Pre-I9 saves:** envelopes without `goal_rng_state` resume with state 0, which
+      diverges from a full log replay. Pre-release saves are declared disposable; no
+      migration shim.
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
-phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call behavior,
-token economy, Lounge/session mechanics.
+phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call's
+Viewership/Follower/Patron counters (hype meter stands in — KAN-7), token economy,
+Lounge/session mechanics.
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
