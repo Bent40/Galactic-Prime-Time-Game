@@ -365,3 +365,22 @@ func test_controller_run_enemy_turn() -> void:
 	assert_eq(game.command_log.back().get("type", ""), "ai_decide", "ai_decide entered the command log")
 	assert_true(game.run_enemy_turn().is_empty(), "no ready enemies -> second call is a no-op")
 	game.free()
+
+
+func test_dodge_salt_diverges_from_the_action_stream() -> void:
+	# The salt's PURPOSE is statistical independence from the action RNG, which
+	# CombatSim seeds at the bare sim_seed (combat_sim.gd: rng.seed = sim_seed).
+	# If AI_RNG_SALT were 0 the two streams would be identical. This pins the
+	# salt VALUE, not just its isolation — gate-2 mutation M3 (salt -> 0).
+	var EnemyAI: GDScript = load("res://simulation/enemy_ai.gd")
+	var ai: RefCounted = EnemyAI.new()
+	ai.setup({}, null, 4242)
+	var action_rng := RandomNumberGenerator.new()
+	action_rng.seed = 4242
+	var ai_draws: Array[int] = []
+	var action_draws: Array[int] = []
+	for i: int in range(12):
+		ai_draws.append(ai.ai_rng.randi_range(1, 6))
+		action_draws.append(action_rng.randi_range(1, 6))
+	assert_true(ai_draws != action_draws,
+		"salted AI stream must diverge from the same-seed action stream (AI_RNG_SALT != 0)")
