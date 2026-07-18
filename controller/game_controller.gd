@@ -24,6 +24,9 @@ signal clock_moment_changed(event: Dictionary)
 signal clock_reset(event: Dictionary)
 signal hype_band_changed(event: Dictionary)
 signal hype_spike(event: Dictionary)
+signal ai_decision(event: Dictionary)
+signal boss_phase_changed(event: Dictionary)
+signal attack_dodged(event: Dictionary)
 signal command_rejected(event: Dictionary)
 
 ## event type -> typed signal name (generic sim_event fires for every event).
@@ -40,6 +43,9 @@ const TYPED: Dictionary = {
 	"clock_reset": "clock_reset",
 	"hype_band_changed": "hype_band_changed",
 	"hype_spike": "hype_spike",
+	"ai_decision": "ai_decision",
+	"boss_phase_changed": "boss_phase_changed",
+	"attack_dodged": "attack_dodged",
 	"command_rejected": "command_rejected",
 }
 
@@ -74,6 +80,19 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 
 func state_hash() -> String:
 	return "" if sim == null else sim.state_hash()
+
+
+## The enemy side of a tick (R11 #15): feeds one ai_decide per ready
+## AI-controlled combatant (sorted) into the command log. The driver calls
+## this before advancing the tick; each decision recomputes deterministically
+## on replay, so the log stays the single source of truth.
+func run_enemy_turn() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if sim == null:
+		return events
+	for id: String in sim.ai_ready_ids():
+		events.append_array(apply_command({"type": "ai_decide", "actor": id}))
+	return events
 
 
 ## Read-only VIEW API (KAN3-S3): plain-Dictionary projections of sim state so

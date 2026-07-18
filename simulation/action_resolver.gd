@@ -18,13 +18,15 @@ var clock: Clock
 var combatants: Dictionary = {}
 var cond: ConditionEngine
 var rng: RandomNumberGenerator
+var ai: EnemyAI
 
 
-func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngine, rng_ref: RandomNumberGenerator) -> void:
+func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngine, rng_ref: RandomNumberGenerator, ai_ref: EnemyAI) -> void:
 	clock = clock_ref
 	combatants = combatants_ref
 	cond = cond_ref
 	rng = rng_ref
+	ai = ai_ref
 
 
 static func _reject(reason: String, detail: Dictionary = {}) -> Array[Dictionary]:
@@ -521,6 +523,19 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 				"part": acting_part, "damage": maxi(1, amount), "target": first_target,
 			}})
 
+	# Self-heal payload (enemy abilities like Seal Wound, I-16): applied at
+	# resolution — a multi-Moment heal is interruptible like any windup — to
+	# the actor's most-damaged part at that time. Halved when requirements
+	# were unmet (R10); negated by Whiff like every other effect.
+	var heal: Dictionary = action.get("heal", {})
+	if not heal.is_empty() and not whiffed:
+		var heal_amount: int = maxi(0, int(heal.get("amount", 0)))
+		if unmet:
+			heal_amount = floori(heal_amount / 2.0)
+		var heal_part: String = _most_damaged_part(actor)
+		if heal_part != "" and heal_amount > 0:
+			events.append_array(cond.heal_part(actor, heal_part, heal_amount))
+
 	if whiffed or targets.is_empty() or damage.is_empty():
 		events.append({
 			"type": "action_resolved", "actor": actor.id, "kind": kind,
@@ -581,6 +596,25 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 	return ""
 
 
+## Deterministic self-heal location: the not-destroyed part with the largest
+## HP deficit (tie: first in sorted key order). "" when nothing is wounded.
+static func _most_damaged_part(c: CombatantState) -> String:
+	var best: String = ""
+	var best_deficit: int = 0
+	var keys: Array = c.parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		var key := String(part_key)
+		var part: Dictionary = c.parts[key]
+		if bool(part.get("destroyed", false)):
+			continue
+		var deficit: int = c.max_hp(key) - int(part.get("hp", 0))
+		if deficit > best_deficit:
+			best = key
+			best_deficit = deficit
+	return best
+
+
 func _requirements_unmet(actor: CombatantState, requirements: Dictionary) -> bool:
 	for stat_key: String in STAT_REQUIREMENT_KEYS:
 		if requirements.has(stat_key) and actor.trait_total(stat_key) < int(requirements[stat_key]):
@@ -601,6 +635,22 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		part["hp"] = mini(target.max_hp(part_key), int(part["hp"]) + amount)
 		events.append({"type": "healed", "combatant": target.id, "part": part_key, "amount": amount, "source": "fire_heals"})
 		return events
+	# Boss hook: dodge threshold (I-16, R11 #17) — an aimed round against an
+	# agile boss rolls the AI d6 stream; roll >= threshold negates the round.
+	# Never fires while the boss is Exposed/Helpless (punish windows); the roll
+	# is always emitted (no unlogged randomness).
+	var dodge: Dictionary = ai.try_dodge(target, clock.tick)
+	if not dodge.is_empty():
+		if bool(dodge.get("dodged", false)):
+			events.append({
+				"type": "attack_dodged", "combatant": target.id, "part": part_key,
+				"roll": int(dodge.get("roll", 0)), "threshold": int(dodge.get("threshold", 0)),
+			})
+			return events
+		events.append({
+			"type": "dodge_failed", "combatant": target.id,
+			"roll": int(dodge.get("roll", 0)), "threshold": int(dodge.get("threshold", 0)),
+		})
 	if Resistance.part_blocked_by_surface_immunity(target, part_key):
 		events.append({"type": "attack_blocked", "combatant": target.id, "part": part_key, "reason": "surface_immunity"})
 		return events
