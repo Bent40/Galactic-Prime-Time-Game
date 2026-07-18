@@ -213,6 +213,12 @@ Per-run god stats: **fixed cores + small seeded jitter** (RULED, Q3).
    the 2nd run onwards.** Can also be **triggered manually after winning with a character
    once** (CONFIRMED 2026-07-16). **No switching into Forsaken mid-campaign.**
    (Marcus is the template: Plutus went all-in — consent not included.)
+   **Amendment (owner ruling, 2026-07-18): all-in is not reserved for the
+   influential.** Any god can initiate a Forsaken game — including a god with
+   nothing left, staking its own **existence** on the outcome. A god that loses
+   its all-in can be erased/bankrupted, and that loss can **unlock new stages**
+   (the erasure opens content). Desperate low-table gods are Forsaken hosts as
+   much as the high-rollers.
 6. **Rival gods can bless or curse your party (RULED 2026-07-16, Q5):** cross-party tips
    are gated on affection — **blessings require higher affection** with that god,
    **curses require lower**. Co-op griefing self-balances: a god that hates your party

@@ -44,3 +44,14 @@
    drafting agent instead (brief cross-checked section-by-section; template/genre-guide
    sections all present; density and no-engine-leakage rules self-audited). Re-run
    `gds-gdd` validate intent as a fresh-context pass any time for a second opinion.
+10. **Mythology research spec RULED (owner, 2026-07-18, in chat):** all four decision
+    points approved with caveats — sensitivity policy ✓ with **messenger carve-out**
+    (Metatron/Gabriel-tier depictable as corporate staff of investor institutions;
+    sacred core never depicted) + **Abrahamic-holding-company lore approved** (three
+    brands, one company, segmented fronts for sales/gambling volume) · volume targets ✓
+    (26-family census, ~150 entities, ~120 myths, 24-god MVP roster) · internet folklore
+    AND cosmic horror (Cthulhu mythos, outer gods) **researched but `ship_status:
+    deferred`** · historical figures OUT (deified included, revisitable) · **Forsaken
+    amendment: ANY god can all-in regardless of influence, existence can be the stake,
+    a god's loss can unlock new stages.** Spec: `docs/design/mythology-research-spec.md`;
+    propagated to `docs/design/patron-gods.md` §5 + `docs/cosmic-casino-canon.md` §3/§4.
