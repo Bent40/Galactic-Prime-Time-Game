@@ -1,8 +1,8 @@
 # Mythology Research Spec — criteria, schema, and conduct plan
 
-Status: **DRAFT for owner review** (2026-07-18). Open decision points are marked
-🔶 OWNER. Everything else is proposed-and-ready: a research session can execute
-this spec as written once the 🔶 items are ruled.
+Status: **RULED — executable** (owner, 2026-07-18: "all four approved, with
+caveats"; amendments folded in below, see §8). A research session can execute
+this spec as written.
 
 ## 1. Purpose — what the data must feed
 
@@ -68,7 +68,8 @@ regular entity records).
 ```json
 {
   "id": "norse_odin",
-  "entity_class": "god",        // god | fiend | hero | villain | beast | folk | artifact
+  "entity_class": "god",        // god | fiend | hero | villain | beast | folk | spirit | artifact
+                                 // spirit = angels, jinn, divine servitors, messengers
   "names": {
     "primary": "Odin",
     "variants": ["Óðinn", "Wotan", "Woden"],
@@ -101,7 +102,9 @@ regular entity records).
     "blessing_style": "cryptic pre-run intelligence; boons front-loaded as information, not stats"
   },
   "casino_roles": ["patron", "investor", "forsaken_host"],
-  // patron | investor | dealer | forsaken_host | table_boss | vip_audience | contestant_legend
+  // patron | investor | dealer | forsaken_host | table_boss | vip_audience |
+  // contestant_legend | messenger (corporate agent of an investor institution, §3.3)
+  "ship_status": "greenlit",     // greenlit | deferred (researched now, added later) | excluded
   "table_tier_hint": "vip",      // normal | vip | vvip — from influence + recognition, §3.5
 
   "relations": [
@@ -198,10 +201,20 @@ thrill when one bids on you.
   widely-published trickster tale variants already in the public sphere) may
   be collected with `depiction_risk: restricted` noted for owner review.
 
-🔶 **OWNER D-1:** confirm this policy — modern majors participate as *abstract
-investor institutions* (their influence-5 money moves markets, buys out
-champions, funds tables) while their sacred figures never appear as characters;
-`living` figures owner-gated one by one; `restricted` figures never depicted.
+**RULED (owner, 2026-07-18) — policy approved with the messenger carve-out:**
+modern majors participate as *investor institutions* (large corporations whose
+influence-5 money moves markets, buys out champions, funds tables); their
+sacred core (God, prophets, founders) never appears as characters; `living`
+figures owner-gated one by one; `restricted` material never depicted.
+**Carve-out: messenger-tier figures (Metatron, Gabriel, beings of that level)
+ARE depictable — as people inside the corporation, staff acting on the boss's
+requests.** Corporate presentation (suits, badges, org-chart rank), never
+religious iconography — the office is the protective abstraction layer.
+Research these as `entity_class: spirit`, `casino_roles: ["messenger"]`.
+**Canon lore (owner-approved, same ruling):** the three Abrahamic brands are
+fronts of ONE holding company — a market-segmentation play to sell more product
+and multiply gambling opportunities (recorded in
+`docs/cosmic-casino-canon.md` §3).
 
 ### 3.4 `source_quality` (1–5) — per tradition
 
@@ -258,7 +271,15 @@ The five personality numbers are *generator inputs*, not flavor:
 | pettiness | rival-curse chance when you court other gods |
 | wrath | punishment escalation speed after a taboo breach |
 | fidelity | buy-out resistance; low fidelity = abandons/sells your contract sooner |
-| risk_appetite | bet exoticness; ≥4 = candidate Forsaken host |
+| risk_appetite | bet exoticness; ≥4 = eager Forsaken host |
+
+**Forsaken hosting is NOT influence-gated (owner ruling, 2026-07-18):** any god
+can go all-in — including a god with nothing left, staking its own existence on
+the table. A god that loses its all-in can be erased/bankrupted, and that loss
+can **unlock new stages** (content the erasure opens). Research implication:
+flag desperate, declining, or nothing-to-lose deities as Forsaken-host
+candidates *alongside* the high-rollers; note any myth where a god wagers its
+existence or is unmade (`game_hooks`).
 
 ## 6. Conduct — the wave plan
 
@@ -298,19 +319,26 @@ Greek/Roman · Norse/Germanic · Egyptian · Mesopotamian · Hindu† · Buddhis
 cosmology† · Chinese (folk/Taoist)† · Japanese/Shinto† · Korean · Mesoamerican
 · Andean · Yoruba/West African† · Vodou† · Slavic · Celtic · Finnish/Baltic ·
 Polynesian/Māori‡ · Aboriginal Australian‡ · Inuit‡ · Native North American‡ ·
-Abrahamic folk corpus† (angels, demons, saints, golem — figures, not the
-sacred core) · Zoroastrian · Arthurian/medieval legend · global folklore
-corpus (fairy-tale types, widely-known cryptids).
+Abrahamic folk corpus† (angels/messengers, demons, saints, golem — figures,
+not the sacred core; messenger tier depictable per §3.3) · Zoroastrian ·
+Arthurian/medieval legend · global folklore corpus (fairy-tale types,
+widely-known cryptids) · **cosmic horror**◊ (Lovecraft circle + public-domain
+mythos: outer gods, great old ones; per-entity `ip_status` — Derleth-era and
+later additions flagged) · **internet folklore**◊ (creepypasta, SCP-class,
+Slenderman-class; per-entity license/IP flags — SCP is CC BY-SA, Slenderman is
+claimed IP).
 
 † = expect many `living` entries · ‡ = expect `restricted` screening; census
-still runs — it *reports* what's closed rather than assuming.
+still runs — it *reports* what's closed rather than assuming ·
+◊ = **researched now, `ship_status: deferred`** (owner ruling 2026-07-18: in
+scope for research, not necessarily added immediately).
 
 ### Volume targets (Wave-1 census may revise)
 
-Census: all ~24 · Extraction: ~150 entities (≈60 patron-capable gods, 30
-heroes, 30 beasts/fiends, 30 folk/artifacts) · Myths: ~120 · **MVP patron
-roster: 24 gods** spread across influence tiers and ≥8 traditions.
-🔶 **OWNER D-2:** confirm or resize.
+Census: all ~26 (incl. the two ◊ deferred families) · Extraction: ~150
+entities (≈60 patron-capable gods, 30 heroes, 30 beasts/fiends, 30
+folk/spirits/artifacts) · Myths: ~120 · **MVP patron roster: 24 gods** spread
+across influence tiers and ≥8 traditions. **APPROVED (owner, 2026-07-18).**
 
 ## 7. Source rules & honesty bars
 
@@ -319,27 +347,41 @@ roster: 24 gods** spread across influence tiers and ≥8 traditions.
   never as sole source.
 - **No invention.** Unknown = `null` + a note, never a plausible guess. A myth
   that can't be sourced doesn't exist. Small honest entries beat padded ones.
-- **IP boundary:** traditional material and public-domain literature only.
-  Modern fictional pantheons (Lovecraft excepted where genuinely PD) are
-  `modern_ip_excluded` — listed in the census so we know we skipped them,
-  never extracted. 🔶 **OWNER D-3:** internet-era folklore (creepypasta,
-  Slenderman-class) — proposal: OUT for MVP (IP murk + tonal drift), the
-  traditional cryptid layer (Mothman-class reported legends) IN via the
-  folklore corpus.
+- **IP boundary (RULED 2026-07-18):** traditional material and public-domain
+  literature ship freely. Cosmic horror and internet-era folklore ARE
+  researched (census + extraction) but land as `ship_status: deferred` — the
+  owner decides per entity/wave when they enter the game. Every non-traditional
+  entity carries an honest `ip_status`:
+  `traditional | public_domain_literary | cc_licensed | modern_ip_flagged` —
+  `cc_licensed` records the exact license (SCP = CC BY-SA 3.0, share-alike
+  obligations noted), `modern_ip_flagged` records who claims it
+  (Slenderman-class). Nothing `modern_ip_flagged` ships without a separate
+  clearance decision; researching it is legal, shipping it is the gate.
+  Traditional cryptids (Mothman-class reported legends) are ordinary folklore:
+  `greenlit`.
 - **Acceptance criteria (gate for each Wave-2/3 batch):** every record
   validates against schema; every patron-capable god has ≥3 favor_conditions,
   ≥2 taboos, ≥1 myth ref, complete personality axes; every rating has
   `rating_notes`; every entity resolves to a dossier citation; calibration-set
   scores within ±1 of frozen values, else the batch is re-run, not hand-patched.
 
-## 8. Open decision points (owner)
+## 8. Decision points — ALL RULED (owner, 2026-07-18)
 
-- **D-1** (§3.3): sensitivity policy — abstract-investor frame for modern
-  majors; per-figure gate for `living`; never depict `restricted`.
-- **D-2** (§6): volume targets — 24-tradition census, ~150 entities, ~120
-  myths, 24-god MVP roster.
-- **D-3** (§7): internet-era folklore OUT for MVP; traditional cryptids IN.
-- **D-4:** real historical humans who entered myth (Guan Yu — deified;
-  Charlemagne, El Cid — legendary cycles). Proposal: IN when a genuine
-  worship/legend tradition exists (Guan Yu is a real god of war and wealth,
-  `living`), OUT for merely-famous historical figures.
+- **D-1 APPROVED + amended** (§3.3): investor-institution frame for modern
+  majors; per-figure gate for `living`; never depict `restricted` —
+  **carve-out: messenger-tier figures (Metatron, Gabriel, that level) are
+  depictable as corporate staff acting on the boss's requests.** Plus the
+  approved lore: the three Abrahamic brands = one holding company running
+  segmented fronts for sales and gambling volume.
+- **D-2 APPROVED** (§6): volume targets as written.
+- **D-3 AMENDED** (§6/§7): internet-era folklore AND cosmic horror
+  (Cthulhu mythos, outer gods and the like) are IN for research, shipped
+  `deferred` — researched now, added when the owner says so.
+- **D-4 APPROVED as exclusion:** real historical humans are OUT — including
+  the deified ones (Guan Yu-class) for now. Their *legend cycles* may still be
+  censused as stories under their tradition; the person doesn't become an
+  entity. (Interpretation note: the owner's "historical figures can be out"
+  is recorded as a full exclusion; cheap to revisit if Guan Yu-class deities
+  were meant to survive.)
+- **Forsaken amendment** (§5): all-in hosting is open to ANY god, existence
+  can be the stake, and a god's loss can unlock new stages.

@@ -44,6 +44,16 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
 - **The final winner of the tables decides how history is shaped for the next 250 years
   and how the apocalypse is remembered.** That is the source of **every legend, idea,
   and imagination humanity ever created** — it all stems from these games.
+- **Modern major religions = investor institutions (RULED 2026-07-18,
+  mythology-research-spec §3.3).** The biggest bankrolls at the casino are living
+  religions, present as **large corporations**: their sacred core (God, prophets,
+  founders) is never depicted; **messenger-tier figures (Metatron, Gabriel, beings of
+  that level) appear as corporate staff** — suits and org-chart rank, acting on the
+  boss's requests, never religious iconography.
+- **Approved lore bit (owner, 2026-07-18): the three Abrahamic brands are fronts of ONE
+  holding company** — a market-segmentation front to sell more product and multiply
+  gambling opportunities. Play it deadpan-corporate, diegetic satire in the casino's
+  register (consistent with §4's morally-alien rule — pettiness, not preaching).
 
 ## 4. Who runs the games
 
@@ -56,6 +66,10 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
   costing them standing.** They are powerful beings expanding their own influence **in
   their petty ways** — a human approach, not a cosmic famine. The stakes are status and
   reach, and ruin is self-inflicted.
+- **Any god can go all-in (RULED 2026-07-18):** initiating a Forsaken game is not
+  gated on influence — a god with nothing left can stake its **existence** on one
+  table. Losing can erase the god, **and that loss can unlock new stages.** (Full rule:
+  `docs/design/patron-gods.md` §5-amendment.)
 - **Momus** hosts/announces (bible): pink tuxedo "as if a flamingo decided it wanted to
   be human," never breathes between sentences, unseen laughing audience, sign-off
   *"This is Momus. Stay tuned!"*
