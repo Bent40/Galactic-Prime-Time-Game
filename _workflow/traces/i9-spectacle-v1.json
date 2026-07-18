@@ -4,10 +4,10 @@
     "size": "",
     "type": ""
   },
-  "ended_ts": "2026-07-18T10:07:38Z",
+  "ended_ts": "2026-07-18T10:36:09Z",
   "id": "i9-spectacle-v1",
   "label": "verified",
-  "label_reason": "1 passing executable signal(s) (tests); required stages present",
+  "label_reason": "3 passing executable signal(s) (mutate,tests); required stages present",
   "signals": [
     {
       "cmd": "bash scripts/run_sim_tests.sh",
@@ -15,6 +15,20 @@
       "kind": "tests",
       "summary": "60 passed, 0 failed (Godot 4.5.2 headless; baseline 49) + validate_seeds 170 rows OK",
       "ts": "2026-07-18T10:07:28Z"
+    },
+    {
+      "cmd": "bash scripts/run_sim_tests.sh",
+      "exit_code": 0,
+      "kind": "tests",
+      "summary": "66 passed, 0 failed after fixes",
+      "ts": "2026-07-18T10:36:09Z"
+    },
+    {
+      "cmd": "manual mutation probes M1/M3/M4/M6",
+      "exit_code": 0,
+      "kind": "mutate",
+      "summary": "all four previously-surviving mutations now CAUGHT (M1 rescore 80->160; M3 equal sequences; M4 equal sequences + frozen rng state; M6 mirror empty + goal never completes)",
+      "ts": "2026-07-18T10:36:09Z"
     }
   ],
   "stages": [
@@ -50,6 +64,18 @@
       "content": "Delivered to review: branch i9-spectacle-v1, commit 1356d21. Deferred: viewer/follower/patron counters + patron conversion rewards (KAN-7), attacker attribution cross-ref, tag-weighted goal selection, goal categories beyond 4 kinds. Open: does the slice premade get a Camera Call stack (charm>=30 or an owner base-stack ruling)?",
       "stage": "report",
       "ts": "2026-07-18T10:07:38Z"
+    },
+    {
+      "artifacts": [],
+      "content": "Strict-side adjudication applied (commit 61b4a71): part_break+exposed_strike completion tests, non-empty exposed-mirror roundtrip, goal-RNG teeth test, load-bearing re-entry guard via spectacle_points self-description, hype_camera_call_started rename, helpless/removed actor gates + reason vocabulary, hype_goal_completed attribution, validator non-dict-row hardening, R11 13/14 honesty notes",
+      "stage": "fix",
+      "ts": "2026-07-18T10:36:09Z"
+    },
+    {
+      "artifacts": [],
+      "content": "Fix round delivered: commit 61b4a71 on i9-spectacle-v1; suite 66/66; mutation table M1/M3/M4/M6 all caught; worktree clean",
+      "stage": "report",
+      "ts": "2026-07-18T10:36:09Z"
     }
   ],
   "task": "I-9 spectacle engine v1: crowd Goals + Camera Call on the deterministic hype meter",
