@@ -67,3 +67,11 @@
     confirmation:** named Islamic prophets (recommend OUT — the line precedent media
     itself holds) · culturally closed ceremonial material (recommend exclusion stands).
     Propagated: spec §3.3 v2 + `cosmic-casino-canon.md` §4.
+12. **Wave-2 shortlist + carve-outs RULED (owner, 2026-07-18, in chat):** extraction
+    GO on the 14 wave-1 traditions at **up to 15 entities per tradition** (~210,
+    revising ~150 upward). Both depiction carve-outs **confirmed as recommended**:
+    named Islamic prophets OUT; closed-ceremonial-material collection exclusion
+    stands. Also clarified: **"OC" = player-created character in character creation**
+    (KAN-4 S4.1) — the two drafted slice "premades" exist only as a slice-scoping
+    device; their final role (demo/quick-start loadouts vs creation-first slice)
+    awaiting owner pick.

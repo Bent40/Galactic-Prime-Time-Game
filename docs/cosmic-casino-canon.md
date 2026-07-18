@@ -93,10 +93,9 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
   the one holding company (§3). Extend per pantheon during roster design.
 - Parody-religion figures (owner floated the Flying Spaghetti Monster) are eligible in
   principle; IP-check per figure before use.
-- Two carve-outs pending explicit owner confirmation (see
-  `docs/design/mythology-research-spec.md` §3.3 v2): named Islamic prophets
-  (recommended OUT) and culturally closed ceremonial material (recommended: exclusion
-  stands).
+- Two carve-outs RULED as recommended (owner, 2026-07-18): named Islamic prophets
+  stay OUT; the closed-ceremonial-material collection exclusion stands (see
+  `docs/design/mythology-research-spec.md` §3.3 v2).
 
 ## 5. The novel's three protagonists (plot-protected — context only)
 

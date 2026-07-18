@@ -9,13 +9,15 @@
 
 ### ⏸️ Owner decision queue (rough priority order)
 
-1. **Wave-2 extraction shortlist** — approve/edit the 14-tradition proposal in
-   `docs/research/mythology/census-summary.md`. Gates research Waves 2→3→4→5.
-2. **Depiction v2 carve-outs** (ruling otherwise recorded + propagated, decision log
-   #11): (a) named Islamic prophets — recommend OUT; (b) culturally closed ceremonial
-   material — recommend exclusion stands. Confirm or override.
-3. **Slice contestants** — approve/edit Imani + Dario
-   (`docs/design/slice-contestants-proposal.md`, 8 open questions).
+1. ~~Wave-2 shortlist~~ **RULED: GO, 14 traditions × up to 15 entities** (decision
+   log #12) — Wave 2 extraction fan-out launched.
+2. ~~Depiction v2 carve-outs~~ **RULED: confirmed as recommended** — prophets OUT,
+   closed-material exclusion stands.
+3. **Slice cast shape (reframed by owner's OC correction):** OC = player-created
+   character (KAN-4 S4.1). Pick the slice's cast model: (a) Imani/Dario demoted to
+   demo/quick-start loadouts + test fixtures (recommended — slice doesn't wait on
+   KAN-4 + R19), or (b) creation-first slice (pulls S4.1 + skills passover forward,
+   delays slice). The 8 open questions in the proposal doc apply only if (a).
 4. **Slice tag set** — approve/edit the 10 tags
    (`docs/design/slice-tags-proposal.md`, 9 open questions; zero new sim events).
 5. **Camera Call base-stack** — R6 needs charm ≥30 for stack 1; slice premades can't

@@ -232,19 +232,16 @@ style; Roman = food-obsessed; the three Abrahamic brands = managers vying for
 dominance of one company). Parody-religion figures (owner floated the Flying
 Spaghetti Monster) are eligible in principle — census + IP-check before use.
 
-**Two carve-outs held for explicit owner confirmation (nothing else blocks on
-them):**
-- **Named Islamic prophets (Muhammad above all): recommend keeping OUT.** This
-  is the one line the owner's own precedent media does not cross, and it
-  carries real-world safety risk beyond ordinary offense. Everything else in
-  the Abrahamic corpus (God-figure, angels, demons, saints, golem) is open per
-  this ruling.
+**Both carve-outs RULED (owner, 2026-07-18): confirmed as recommended.**
+- **Named Islamic prophets (Muhammad above all) stay OUT** — the one line
+  precedent media itself holds, and a real-world safety issue beyond taste.
+  Everything else in the Abrahamic corpus (God-figure, angels, demons, saints,
+  golem) is open per this ruling.
 - **Culturally closed ceremonial material** (Aboriginal sacred lore, Native
-  nations' ceremonial stories): **recommend keeping the collection exclusion**
-  — this is the "racist kind of way" axis the ruling itself excludes;
-  respectfully depicting a public deity ≠ collecting stories a community
-  itself restricts. Public-sphere folk material stays in per the census
-  screening.
+  nations' ceremonial stories): **the collection exclusion stands** — the
+  "racist kind of way" axis; respectfully depicting a public deity ≠ collecting
+  stories a community itself restricts. Public-sphere folk material stays in
+  per the census screening.
 
 ### 3.4 `source_quality` (1–5) — per tradition
 
@@ -369,6 +366,15 @@ Census: all ~26 (incl. the two ◊ deferred families) · Extraction: ~150
 entities (≈60 patron-capable gods, 30 heroes, 30 beasts/fiends, 30
 folk/spirits/artifacts) · Myths: ~120 · **MVP patron roster: 24 gods** spread
 across influence tiers and ≥8 traditions. **APPROVED (owner, 2026-07-18).**
+
+**Wave-2 shortlist RULED (owner, 2026-07-18): the 14 wave-1 traditions,
+extended to UP TO 15 entities per tradition** (~210 total, revising the ~150
+target upward; per-tradition mix still ≈6–7 patron-capable gods, 2–3 heroes,
+2–3 beasts/fiends, 2–3 folk/spirits/artifacts, honestly capped by
+source_quality). Shortlist: greek_roman · norse_germanic · egyptian ·
+mesopotamian · hindu · buddhist · chinese · japanese_shinto · mesoamerican ·
+yoruba_west_african · celtic · polynesian_maori · abrahamic_folk ·
+arthurian_medieval.
 
 ## 7. Source rules & honesty bars
 
