@@ -504,7 +504,7 @@ func _phase_entry(actor: CombatantState, phase_number: int) -> Dictionary:
 ## fires boss_phase_changed. Entering the breach_resets_after_phase phase
 ## applies the canonical retreat NOW (v1 collapses the explosion beat into the
 ## transition — choreography deferred): breach closes, the health part
-## re-hides, active conditions purge, the burst counter clears.
+## re-hides, the burst counter clears; wounds (conditions + part damage) PERSIST.
 func phase_events(c: CombatantState, cond: ConditionEngine) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if c.boss_phases.is_empty() or not c.alive:
@@ -537,21 +537,18 @@ func phase_events(c: CombatantState, cond: ConditionEngine) -> Array[Dictionary]
 
 
 ## The pressure-valve reset ("network retreats deeper — breach threshold
-## resets", canon; purge scope PROVISIONAL, R11 #18).
-func _retreat(c: CombatantState, health_part: String, cond: ConditionEngine) -> Array[Dictionary]:
+## resets", canon). Wounds PERSIST across the valve (owner-ruled, R11 #18).
+func _retreat(c: CombatantState, health_part: String, _cond: ConditionEngine) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	c.breached = false
 	var part: Dictionary = c.parts[health_part]
 	part["hidden"] = true
 	c.damage_taken_this_tick = 0
-	var part_keys: Array = c.conditions.keys()
-	part_keys.sort()
-	for part_key: Variant in part_keys:
-		var on_part: Dictionary = c.conditions.get(part_key, {})
-		var cond_ids: Array = on_part.keys()
-		cond_ids.sort()
-		for cond_id: Variant in cond_ids:
-			events.append_array(cond.resolve(c, String(part_key), String(cond_id), "boss_retreat"))
+	# Wounds PERSIST across the retreat (owner-ruled 2026-07-18): active
+	# conditions and part damage carry over the pressure valve — only the breach
+	# threshold resets (network re-hides + burst counter clears), never the
+	# accumulated harm. Clearing the burst counter still blocks a same-tick
+	# re-breach; the Bleeding-T2 path re-fires only on a fresh advancement.
 	events.append({"type": "breach_reset", "combatant": c.id, "part": health_part})
 	return events
 

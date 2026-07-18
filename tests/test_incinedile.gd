@@ -222,10 +222,11 @@ func test_burst_breach_then_phase_two_resets_it() -> void:
 	assert_eq(int(changed.get("to_phase", 0)), 2, "entered the first pressure valve")
 	assert_eq(String(changed.get("name", "")), "Explosion 1 (Pressure Valve I)", "seeded phase name")
 	assert_event(phase_events, "breach_reset", "the network retreats deeper — breach resets (canon)")
-	assert_event(phase_events, "condition_resolved", "the retreat purges the boss's conditions")
 	assert_false(boss_state(sim).breached, "breach closed again")
 	assert_true(bool(boss_state(sim).parts["network"]["hidden"]), "the network re-hid")
-	assert_true(boss_state(sim).conditions.is_empty(), "no lingering wounds to instantly re-breach")
+	# Wounds PERSIST across the valve (owner-ruled 2026-07-18): the bleeding the
+	# boss took is still on it after the retreat — only the breach threshold reset.
+	assert_false(boss_state(sim).conditions.is_empty(), "wounds persist across the retreat (owner ruling)")
 	# The party must re-discover the way in.
 	assert_rejected(declare(sim, "h", attack_action("bleeding", 2, "boss", "network")),
 		"part_hidden", "the network is unreachable again")

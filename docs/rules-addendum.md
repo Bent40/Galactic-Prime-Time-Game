@@ -339,10 +339,13 @@ overturning one is a code change, not a rewrite.
     health_part`) dropping to a later explosion phase's `hp_at_or_below` fires
     `boss_phase_changed`. Entering the `breach_resets_after_phase` phase applies
     the canonical retreat IMMEDIATELY (v1 collapses the explosion beat into the
-    transition): breach closes, the network re-hides (`breach_reset`), the
-    boss's active conditions purge (the pressure-valve reset — purge scope
-    PROVISIONAL), and the burst-damage counter clears so the old wound cannot
-    instantly re-breach. Phase-1 behavior: cone sweep when ≥2 targets stand in
+    transition): breach closes, the network re-hides (`breach_reset`), and the
+    burst-damage counter clears so the old wound cannot instantly re-breach.
+    **Wounds PERSIST across the valve (owner-ruled 2026-07-18, was PROVISIONAL):**
+    the boss's active conditions and accumulated part damage carry over — only
+    the breach threshold resets, never the harm. The burst-counter clear still
+    blocks a same-tick re-breach; the Bleeding-T2 path can only re-open on a
+    fresh advancement, not from a lingering already-T2 wound. Phase-1 behavior: cone sweep when ≥2 targets stand in
     reach, else the line charge at the mob-priority target (torso bias), else
     close distance; the ability set is filtered to the phase's `behavior.
     abilities` list. Explosion choreography (telegraph, escape window, KO) and
