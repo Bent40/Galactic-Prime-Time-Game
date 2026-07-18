@@ -1,0 +1,59 @@
+{
+  "classification": {
+    "risk": [],
+    "size": "",
+    "type": ""
+  },
+  "ended_ts": "2026-07-18T11:07:36Z",
+  "id": "i16-enemy-ai-v1",
+  "label": "verified",
+  "label_reason": "1 passing executable signal(s) (tests); required stages present",
+  "signals": [
+    {
+      "cmd": "bash scripts/run_sim_tests.sh",
+      "exit_code": 0,
+      "kind": "tests",
+      "summary": "94 passed, 0 failed (baseline 66 + 28 new: test_enemy_ai 15, test_incinedile 13); python3 scripts/validate_seeds.py exit 0 (170 rows)",
+      "ts": "2026-07-18T11:07:10Z"
+    }
+  ],
+  "stages": [
+    {
+      "artifacts": [],
+      "content": "Read review-3, DIRECTION, addendum R0-R19, enemies.json, full sim engine + tests + validate_seeds. Baseline verified: 66/66 green in worktree.",
+      "stage": "explore",
+      "ts": "2026-07-18T10:47:32Z"
+    },
+    {
+      "artifacts": [],
+      "content": "AI enters the log via an ai_decide command handled INSIDE the sim (EnemyAI RefCounted member, serialized); driver issues one per ready enemy per tick (sim.ai_ready_ids / GameController.run_enemy_turn). Policy is rng-free priorities; the ONLY ai_rng consumer is the dodge-threshold d6 (salted stream, mirror of hype goal_rng). Dodge: per aimed weapon round, roll>=threshold negates; no dodge while Exposed/Helpless. Phase machine v1: phase 1 + transition beat to phase 2 (breach reset), phases 3-6 + explosion choreography deferred.",
+      "stage": "decision",
+      "ts": "2026-07-18T10:47:32Z"
+    },
+    {
+      "artifacts": [
+        "simulation/enemy_ai.gd",
+        "simulation/combat_sim.gd",
+        "simulation/action_resolver.gd",
+        "simulation/combatant.gd",
+        "controller/game_controller.gd",
+        "data/enemies.json",
+        "scripts/validate_seeds.py",
+        "docs/rules-addendum.md",
+        "tests/test_enemy_ai.gd",
+        "tests/test_incinedile.gd"
+      ],
+      "content": "simulation/enemy_ai.gd (EnemyAI: mob/elite/boss policies, dodge threshold, phase machine, serialization) + CombatSim ai_decide/_ai_summon/ai_ready_ids/_breach_and_phase_checks + resolver dodge hook & heal-on-resolution + CombatantState abilities/boss_phases + GameController run_enemy_turn + seeds (dodge_threshold, dash range, hp_at_or_below) + validator coverage + R11 #15-#18. Found+fixed latent engine bug: burst-damage breach could never fire on scheduled resolutions (_advance_tick reset damage_taken_this_tick before _post checked breach).",
+      "stage": "implement",
+      "ts": "2026-07-18T11:07:00Z"
+    },
+    {
+      "artifacts": [],
+      "content": "Built and committed. 94/94 green (real run), seeds validator green. R11 #15-#18 added. Deferred: explosion choreography + phases 3-6, death_spin/drag_back, cone/line geometry, Dash reflexes-counters, pack synergy, AI stances.",
+      "stage": "report",
+      "ts": "2026-07-18T11:07:36Z"
+    }
+  ],
+  "task": "I-16 Enemy AI v1: mob/elite policy + Incinedile Phase 1 machine + dodge-threshold",
+  "ts": "2026-07-18T10:47:07Z"
+}
