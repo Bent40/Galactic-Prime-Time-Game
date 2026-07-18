@@ -28,6 +28,8 @@ CONDITION_IDS = {
 }
 FORCED_ACTION_TYPES = {None, "Body", "Tool"}
 ITEM_TYPES = {"consumable", "equipment", "weapon", "system_item", "misc", "key_item", "tool"}
+# Goal kinds the sim's HypeEngine can evaluate (simulation/hype_engine.gd).
+CROWD_GOAL_KINDS = {"takedown", "overkill", "part_break", "exposed_strike"}
 PATRON_DOMAINS_MIN = 1  # sketch: docs/design/patron-gods.md — every god needs at least one domain
 
 failures: list[str] = []
@@ -92,6 +94,10 @@ def main() -> int:
     if not isinstance(patrons, list):
         fail("patron_gods.json", "top level must be a list")
         patrons = []
+    goals = load("crowd_goals.json") if (DATA / "crowd_goals.json").is_file() else []
+    if not isinstance(goals, list):
+        fail("crowd_goals.json", "top level must be a list")
+        goals = []
 
     # races
     check_unique("races.json", races, "key")
@@ -202,6 +208,27 @@ def main() -> int:
             if rel not in {p.get("key") for p in patrons}:
                 fail("patron_gods.json", f"{k}: related god {rel!r} is not a patron key")
 
+    # crowd goals (spectacle engine v1 — simulation/hype_engine.gd predicates;
+    # every numeric value here is a PLACEHOLDER pending tuning, R14)
+    check_unique("crowd_goals.json", goals, "id")
+    for g in goals:
+        k = g.get("id", "?")
+        for f_ in ("id", "name", "kind"):
+            if not isinstance(g.get(f_), str) or not g.get(f_):
+                fail("crowd_goals.json", f"{k}: {f_} must be a non-empty string")
+        if g.get("kind") not in CROWD_GOAL_KINDS:
+            fail("crowd_goals.json", f"{k}: kind {g.get('kind')!r} not implemented by HypeEngine")
+        if not isinstance(g.get("params"), dict):
+            fail("crowd_goals.json", f"{k}: params must be an object")
+        if not isinstance(g.get("payout"), int) or g.get("payout", 0) <= 0:
+            fail("crowd_goals.json", f"{k}: payout must be int > 0")
+        if not isinstance(g.get("deadline_clocks"), int) or g.get("deadline_clocks", 0) < 1:
+            fail("crowd_goals.json", f"{k}: deadline_clocks must be int >= 1")
+        if g.get("kind") == "overkill":
+            th = g.get("params", {}).get("threshold") if isinstance(g.get("params"), dict) else None
+            if not isinstance(th, int) or th <= 0:
+                fail("crowd_goals.json", f"{k}: overkill needs params.threshold int > 0")
+
     # skills
     check_unique("skills.json", skills, "key")
     skill_ids = set()
@@ -243,10 +270,10 @@ def main() -> int:
         print("\n".join(failures))
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
-    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons))
+    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons, goals))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
-          f"{len(items)} items, {len(patrons)} patron gods — {n} rows checked).")
+          f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals — {n} rows checked).")
     return 0
 
 

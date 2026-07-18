@@ -260,11 +260,26 @@ overturning one is a code change, not a rewrite.
     classes; the ported items.json rows don't carry rpm/magazine yet (content pass open).
 12. **Bleeding T4 kills from any part** (tier table as authored — you can bleed out from a
     limb wound).
+13. **Camera Call (spectacle engine v1):** stacks per R6's Charm over-cap formula, spent
+    per use (`camera_call` command); the "doubled gains AND losses" canon is read as
+    *spectacle points attributed to the spotlit combatant are doubled* — cross-referencing
+    who CAUSED the spotlit combatant's drama is v2. The spotlight ends at the end of the
+    spotlit combatant's current-or-next action (resolved or invalidated), at their death,
+    or after a 2-Clock fallback so it can never dangle; one spotlight at a time. Session
+    reset of spent stacks (B9: session = one deployment) is controller scope, not sim.
+14. **Crowd Goals (spectacle engine v1):** ONE active goal, offered at Clock resets (the
+    book's reorganization beat) from `data/crowd_goals.json`; selection draws from a
+    dedicated RNG stream seeded off the sim seed (so goal draws never perturb Forced-Action
+    rolls); expiry costs a small hype penalty; completion pays the goal's hype payout
+    (doubled when the completing event is the spotlit combatant's). Kinds implemented:
+    takedown / overkill / part_break / exposed_strike. Goals pay HYPE only — the Patron
+    conversion + Patron-Token reward channel (R10) is KAN-7 scope.
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
-phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call behavior,
-token economy, Lounge/session mechanics.
+phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call's
+Viewership/Follower/Patron counters (hype meter stands in — KAN-7), token economy,
+Lounge/session mechanics.
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 

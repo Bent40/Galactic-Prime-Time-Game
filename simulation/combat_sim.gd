@@ -23,6 +23,7 @@ extends RefCounted
 ##            "activation_delay"?}                           environment/GM source
 ##   {"type": "grant_level", "actor"} / {"type": "spend_level_point", "actor", "trait"} (R6)
 ##   {"type": "set_status", "target", "status": "overwhelmed"|"prone"|"slowed", "value"}
+##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -50,7 +51,15 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	resolver = ActionResolver.new()
 	resolver.setup(clock, combatants, cond, rng)
 	hype = HypeEngine.new()
+	hype.setup(_goal_table(), sim_seed)
 	_rebuild_snapshot()
+
+
+## Crowd-goal table from static data; degrades to "no goals" when the key is
+## absent or unparsed (nothing else in the sim depends on it).
+func _goal_table() -> Array:
+	var goals: Variant = static_data.get("crowd_goals", [])
+	return goals if goals is Array else []
 
 
 func apply_command(cmd: Dictionary) -> Array[Dictionary]:
@@ -81,6 +90,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _spend_level_point(cmd)
 		"set_status":
 			events = _set_status(cmd)
+		"camera_call":
+			events = _camera_call(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -242,6 +253,24 @@ func _spend_level_point(cmd: Dictionary) -> Array[Dictionary]:
 	return events
 
 
+## Camera Call (compendium §2.2/§11; stacks per R6's Charm over-cap formula).
+## The sim validates the participants; stack accounting + the spotlight effect
+## live in the HypeEngine (broadcast plane).
+func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor"}]
+	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
+	if target == null:
+		return [{"type": "command_rejected", "reason": "unknown_target"}]
+	if not actor.alive or actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "dead_actor", "combatant": actor.id}]
+	if not target.alive or target.removed_from_play:
+		return [{"type": "command_rejected", "reason": "dead_target", "combatant": target.id}]
+	var stacks: int = int(actor.derived_stats().get("camera_call_stacks", 0))
+	return hype.camera_call(actor.id, target.id, stacks)
+
+
 func _set_status(cmd: Dictionary) -> Array[Dictionary]:
 	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
 	if target == null:
@@ -306,9 +335,11 @@ static func from_dict(data: Dictionary) -> CombatSim:
 		sim.combatants[String(id)] = CombatantState.from_dict(combatant_dicts[id])
 	sim.tick_snapshot = (data.get("tick_snapshot", {}) as Dictionary).duplicate(true)
 	sim.hype = HypeEngine.from_dict(data.get("hype", {}))
-	# Re-wire helper references (clock instance was replaced above).
+	# Re-wire helper references (clock instance was replaced above). The goal
+	# table is static data, never serialized; goal_rng.state was restored above.
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
+	sim.hype.set_goal_table(sim._goal_table())
 	return sim
 
 
