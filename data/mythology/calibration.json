@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "what": "Wave 0 calibration set — 6 hand-scored reference entities spanning the rubrics (mythology-research-spec §6). Shipped VERBATIM in every fan-out prompt so parallel researchers score alike.",
+    "frozen": "2026-07-18",
+    "acceptance_rule": "Wave-2/3 batches must score these within ±1 of the frozen values, else the batch is re-run, not hand-patched (spec §7).",
+    "spread": "influence {1,1,1,2,4,5} · recognition {1,3,4,4,4,5} · depiction_risk {none×4, living×2} · table_tier {normal×3, vip×1, vvip×2}"
+  },
+  "entities": [
+    {
+      "id": "greek_zeus",
+      "name": "Zeus",
+      "entity_class": "god",
+      "tradition": "greek_roman",
+      "influence": 2,
+      "recognition": 5,
+      "depiction_risk": "none",
+      "obscurity_tier": "common",
+      "table_tier_hint": "vip",
+      "rating_notes": "Extinct organized worship with strong cultural continuity = influence 2 (rubric anchor names Greek core figures); global household name = recognition 5. Modern Hellenist revival is tiny and imposes no depiction norms. CALIBRATION LESSON: fame alone does not buy VVIP — worship-wealth dominates table tier, so recognition-5 Zeus still lands VIP at influence 2."
+    },
+    {
+      "id": "hindu_ganesha",
+      "name": "Ganesha",
+      "entity_class": "god",
+      "tradition": "hindu",
+      "influence": 5,
+      "recognition": 4,
+      "depiction_risk": "living",
+      "obscurity_tier": "uncommon",
+      "table_tier_hint": "vvip",
+      "rating_notes": "Principal deity of a living major religion (>100M) = influence 5. Globally recognized image but short of Zeus/Thor household-name tier = recognition 4. LIVING gate: each on-screen patron appearance is owner-gated (precedent: real controversies over Hindu deities in games); safe default = off-screen investor whose boons arrive through intermediaries."
+    },
+    {
+      "id": "shinto_amaterasu",
+      "name": "Amaterasu",
+      "entity_class": "god",
+      "tradition": "japanese_shinto",
+      "influence": 4,
+      "recognition": 4,
+      "depiction_risk": "living",
+      "obscurity_tier": "uncommon",
+      "table_tier_hint": "vvip",
+      "rating_notes": "Living significant practice (Shinto; Ise Grand Shrine) = influence 4, not 5 (adherence scale below the >100M majors). Games/anime staple (Okami, Naruto) = recognition 4. Living gate applies per §3.3."
+    },
+    {
+      "id": "finnish_vainamoinen",
+      "name": "Väinämöinen",
+      "entity_class": "hero",
+      "tradition": "finnish_baltic",
+      "influence": 1,
+      "recognition": 3,
+      "depiction_risk": "none",
+      "obscurity_tier": "uncommon",
+      "table_tier_hint": "normal",
+      "rating_notes": "No surviving worship; Kalevala continuity is literary-national, not cultic = influence 1. Known to mythology-curious audiences (rubric anchor names him) = recognition 3. CALIBRATION LESSON: national-epic fame without worship = a poor god on Normal tables — rare board appearances, collector appeal."
+    },
+    {
+      "id": "slavic_baba_yaga",
+      "name": "Baba Yaga",
+      "entity_class": "folk",
+      "tradition": "slavic",
+      "influence": 1,
+      "recognition": 4,
+      "depiction_risk": "none",
+      "obscurity_tier": "uncommon",
+      "table_tier_hint": "normal",
+      "rating_notes": "Folk-tale being, never an object of worship = influence 1 (folk class ceiling in practice). Known to anyone who's touched games/comics/movies (rubric anchor names her) = recognition 4. Not patron_capable; natural dealer / table_boss / event-NPC material — high recognition makes her strong content despite zero divine wealth."
+    },
+    {
+      "id": "mesopotamian_zababa",
+      "name": "Zababa",
+      "entity_class": "god",
+      "tradition": "mesopotamian",
+      "influence": 1,
+      "recognition": 1,
+      "depiction_risk": "none",
+      "obscurity_tier": "mythic",
+      "table_tier_hint": "normal",
+      "rating_notes": "City god of Kish (war); extinct and remembered by specialists only = influence 1, recognition 1. CALIBRATION LESSON: the honest floor — mythic obscurity means rare boards and a collector's thrill when he bids (canon rule), not padding him up to seem interesting."
+    }
+  ]
+}
