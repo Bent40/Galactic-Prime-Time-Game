@@ -290,11 +290,74 @@ overturning one is a code change, not a rewrite.
       diverges from a full log replay. Pre-release saves are declared disposable; no
       migration shim.
 
+15. **AI commands enter the log as `ai_decide` (enemy AI v1, I-16):** enemy
+    decision-making is a deterministic policy INSIDE the sim
+    (`simulation/enemy_ai.gd`), driven by an explicit `{"type": "ai_decide",
+    "actor"}` command the driver/controller feeds once per ready enemy per tick
+    (`CombatSim.ai_ready_ids()` / `GameController.run_enemy_turn()`), exactly like
+    `advance_tick`. The decision derives from (sorted sim state, salted `ai_rng`)
+    only, so a log replay recomputes the identical decision — the sim stays
+    passive (never self-advances, never self-decides), and the command log stays
+    the single source of truth. `decide()` itself consumes NO rng (pure
+    priorities); the AI stream exists for the dodge d6 (#17) and future
+    variability, salted like the hype engine's goal stream so AI draws never
+    perturb Forced-Action rolls. Actor gates and rejection vocabulary mirror
+    `declare_action` (`not_ai_controlled` added). AI-controlled = category
+    Mob/Elite/Boss/Super Boss; hostility = a differing `team` string (an enemy
+    with an EMPTY team sees no targets and waits — teams are explicit). AI state
+    (rng state, boss phases, summon counts) serializes under `"ai"` and is
+    covered by `state_hash`; pre-I16 saves resume with a fresh salted stream.
+16. **Policy tiers v1 (all numbers PLACEHOLDER, R14):** MOB — nearest target
+    (ties: lowest total HP, then id), torso-line part pick (`part_bias`
+    honored), free-move up to 3 toward the target (greedy hex steps, fixed
+    neighbor order, occupied hexes skipped, only strictly-improving steps),
+    attack when in reach — move-then-attack can share a tick (free + scheduled,
+    R3); a grappled mob bites its grappler. ELITE — summon once per combat when
+    it has a summon ability (brood spawns on the nearest free hexes,
+    deterministic ids `<elite>_brood_N`, acts from the NEXT tick; the summon is
+    a cost-1 instant), self-heal when a lethal part falls below half (the heal
+    resolves on schedule at the actor's then-most-damaged part, halved by unmet
+    requirements, negated by Whiff), otherwise strikes the LOWEST-HP target in
+    reach (ties: nearest, then id) and punishes exposure — head when targetable,
+    else the lowest-HP part. BOSS — see #18. v1 ability model: `damage` +
+    `range`/`area` = strike (first damage entry only), `summon`, `heal`;
+    `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
+    deferred); "cone N"/"line" resolve as plain reach (true area geometry is
+    KAN-5 scope). Targets with no attackable part are skipped.
+17. **Dodge Threshold (the R2 boss-ability pattern; live-table homebrew
+    adopted):** a combatant with `boss_traits.dodge_threshold` (1..6) rolls the
+    d6 from the salted AI stream once per AIMED weapon round against it; roll ≥
+    threshold negates that round entirely — "miss" stays an explicit authored
+    effect, never a universal rule (R2). No dodge while Helpless or Exposed:
+    windups, grapples and prone are the discoverable punish windows. Collateral,
+    condition, forced-action and environment damage are never dodged, and Burn
+    still feeds `fire_heals` instead of being dodged. Every roll is emitted
+    (`attack_dodged` / `dodge_failed`) — no unlogged randomness. Incinedile
+    ships threshold 4 (PLACEHOLDER, R14).
+18. **Incinedile phase machine v1:** per-boss phase number (AI state, starts
+    at 1); while in a fight phase, the health part (`surface_immunity.
+    health_part`) dropping to a later explosion phase's `hp_at_or_below` fires
+    `boss_phase_changed`. Entering the `breach_resets_after_phase` phase applies
+    the canonical retreat IMMEDIATELY (v1 collapses the explosion beat into the
+    transition): breach closes, the network re-hides (`breach_reset`), the
+    boss's active conditions purge (the pressure-valve reset — purge scope
+    PROVISIONAL), and the burst-damage counter clears so the old wound cannot
+    instantly re-breach. Phase-1 behavior: cone sweep when ≥2 targets stand in
+    reach, else the line charge at the mob-priority target (torso bias), else
+    close distance; the ability set is filtered to the phase's `behavior.
+    abilities` list. Explosion choreography (telegraph, escape window, KO) and
+    phases 3–6 are deferred — past phase 1 the boss idles (`ai_decision` wait,
+    `phase_not_implemented`); the phase-2 beat is the slice's win moment
+    (review-4 §5, DIRECTION Stage 1).
+
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
-dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
-phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call's
-Viewership/Follower/Patron counters (hype meter stands in — KAN-7), token economy,
-Lounge/session mechanics.
+dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
+stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
+ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
+phase-2 transition beat; still open there: explosion choreography + phases 3–6,
+death_spin/drag_back (forced movement), true cone/line geometry (KAN-5), the Dash
+Reflexes-counters (player-side), pack synergy (R15 enemy combos), and AI stances for
+`aura_reading` (skills-audit dependency).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 

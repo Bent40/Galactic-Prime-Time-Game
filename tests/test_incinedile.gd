@@ -1,0 +1,302 @@
+extends SimTestBase
+## Incinedile (I-16) — Phase-1 boss policy, the dodge-threshold ability, and
+## the breach win-condition wiring through the existing hooks (rules-addendum
+## R11 #17/#18). The discoverable-win-condition structure is the point: raw
+## damage does nothing until the party breaches, and the phase-2 beat resets
+## the breach exactly as the live table ran it.
+
+
+func add_boss(sim: CombatSim, id: String = "boss", overrides: Dictionary = {}) -> Array[Dictionary]:
+	var spec: Dictionary = {
+		"id": id, "name": id, "enemy": "incinedile",
+		"team": "enemies", "position": [0, 0],
+	}
+	spec.merge(overrides, true)
+	return sim.apply_command({"type": "add_combatant", "combatant": spec})
+
+
+func ai_decide(sim: CombatSim, id: String) -> Array[Dictionary]:
+	return sim.apply_command({"type": "ai_decide", "actor": id})
+
+
+## The seeded Incinedile trait block minus the dodge threshold — breach/phase
+## tests stay pin-exact without consuming the AI d6 stream.
+func traits_without_dodge() -> Dictionary:
+	var enemies: Array = SimTestBase.load_json("res://data/enemies.json")
+	for entry: Variant in enemies:
+		var e: Dictionary = entry
+		if String(e.get("key", "")) == "incinedile":
+			var boss_traits: Dictionary = (e.get("traits", {}) as Dictionary).duplicate(true)
+			boss_traits.erase("dodge_threshold")
+			boss_traits.erase("dodge_threshold_note")
+			return boss_traits
+	return {}
+
+
+func boss_state(sim: CombatSim, id: String = "boss") -> CombatantState:
+	return sim.combatants.get(id)
+
+
+func _fa_rolls(events: Array[Dictionary]) -> Array[int]:
+	var rolls: Array[int] = []
+	for event: Dictionary in events_of(events, "forced_action_triggered"):
+		rolls.append(int(event.get("roll", 0)))
+	return rolls
+
+
+# ---------------------------------------------------------------- P1 policy
+
+func test_boss_dashes_a_lone_target() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [3, 0]})
+	add_boss(sim)
+	var events: Array[Dictionary] = ai_decide(sim, "boss")
+	var decision: Dictionary = assert_event(events, "ai_decision", "boss decided")
+	assert_eq(String(decision.get("tier", "")), "boss", "boss tier")
+	assert_eq(String(decision.get("choice", "")), "attack", "target in reach -> attack")
+	assert_eq(String(decision.get("ability", "")), "dash", "one target -> the line charge, not the cone")
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	var damage: Dictionary = assert_event(resolved, "damage_applied", "dash landed")
+	assert_eq(String(damage.get("part", "")), "torso", "dash honors its torso part_bias")
+	assert_eq(int(damage.get("amount", -1)), 3, "seeded dash damage")
+	assert_event(resolved, "condition_applied", "crushed applied (R4)")
+
+
+func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "ha", {"team": "party", "position": [2, 0]})
+	add_human(sim, "hb", {"team": "party", "position": [0, 2]})
+	add_boss(sim)
+	var events: Array[Dictionary] = ai_decide(sim, "boss")
+	var decision: Dictionary = first_event(events, "ai_decision")
+	assert_eq(String(decision.get("ability", "")), "flamethrower", "two targets in the cone -> sweep")
+	var declared: Dictionary = assert_event(events, "action_declared", "declared through the resolver")
+	assert_eq(int(declared.get("cost", 0)), 2, "seeded 2-Moment cost")
+	assert_true(bool(declared.get("windup", false)), "the sweep is a dodgeable windup (R2)")
+	assert_eq(sim.ai_ready_ids(), [], "a winding-up boss is not ready")
+	advance(sim, 2)
+	# On the resolution tick, before the tick advances: still committed.
+	assert_rejected(ai_decide(sim, "boss"), "winding_up", "no re-decision mid-windup")
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	var hits: Array[Dictionary] = events_of(resolved, "damage_applied")
+	assert_eq(hits.size(), 2, "one round per swept target (v1 cone model)")
+	var burned: Dictionary = {}
+	for hit: Dictionary in hits:
+		burned[String(hit.get("combatant", ""))] = int(hit.get("amount", -1))
+	assert_eq(burned.get("ha", -1), 2, "ha took the seeded 2 Burn")
+	assert_eq(burned.get("hb", -1), 2, "hb took the seeded 2 Burn")
+
+
+func test_boss_closes_distance_when_nothing_in_reach() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [15, 0]})
+	add_boss(sim)
+	var events: Array[Dictionary] = ai_decide(sim, "boss")
+	var decision: Dictionary = first_event(events, "ai_decision")
+	assert_eq(String(decision.get("choice", "")), "move", "out of reach -> close distance")
+	var moved: Dictionary = assert_event(events, "moved", "the free move executed")
+	assert_eq(moved.get("to", []), [3, 0], "greedy hex steps toward the party")
+
+
+func test_phase_behavior_list_filters_the_ability_set() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "ha", {"team": "party", "position": [2, 0]})
+	add_human(sim, "hb", {"team": "party", "position": [0, 2]})
+	add_boss(sim, "boss", {"phases": [
+		{"phase_number": 1, "name": "T1", "trigger_condition": "test", "behavior": {"abilities": ["dash"]}},
+		{"phase_number": 2, "name": "X1", "trigger_condition": "test", "hp_at_or_below": 35,
+			"behavior": {"explosion": {"radius": 5}}},
+	]})
+	var decision: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
+	assert_eq(String(decision.get("ability", "")), "dash",
+		"cone not in the phase's behavior list -> filtered out despite two targets")
+	assert_eq(String(decision.get("target", "")), "ha", "mob-priority target (distance tie -> id)")
+
+
+# ---------------------------------------------------------------- dodge (R11 #17)
+
+func test_dodge_threshold_negates_the_round() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 1}})
+	declare(sim, "h", attack_action("bleeding", 2, "boss", "right_hand"))
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	var dodge: Dictionary = assert_event(resolved, "attack_dodged", "threshold 1 always dodges")
+	assert_eq(String(dodge.get("part", "")), "right_hand", "the dodged part is reported")
+	assert_true(int(dodge.get("roll", 0)) >= 1 and int(dodge.get("roll", 0)) <= 6, "the d6 roll is emitted")
+	assert_no_event(resolved, "damage_applied", "a dodged round deals nothing")
+	assert_no_event(resolved, "condition_applied", "a dodged round applies nothing (explicit miss, R2)")
+	assert_eq(int(boss_state(sim).parts["right_hand"]["hp"]), 8, "HP untouched")
+
+
+func test_dodge_rolls_once_per_aimed_round_and_can_fail() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 6}})
+	var events: Array[Dictionary] = []
+	for i: int in range(12):
+		# Poison without an entry wound: 0 damage, no condition — the dodge
+		# roll itself is the observable (keeps 12 ticks free of tier noise).
+		declare(sim, "h", attack_action("poison", 0, "boss", "right_hand"))
+		events.append_array(advance(sim, 1))
+	var dodged: int = events_of(events, "attack_dodged").size()
+	var failed: int = events_of(events, "dodge_failed").size()
+	assert_eq(dodged + failed, 12, "exactly one dodge roll per aimed round")
+	assert_true(dodged >= 1, "threshold 6 still dodges sometimes (got %d)" % dodged)
+	assert_true(failed >= 1, "threshold 6 usually fails (got %d)" % failed)
+	assert_eq(events_of(events, "damage_applied").size(), failed,
+		"every non-dodged round resolved; every dodged round did not")
+
+
+func test_no_dodge_while_exposed() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 1}})
+	sim.apply_command({"type": "set_status", "target": "boss", "status": "prone", "value": true})
+	declare(sim, "h", attack_action("bleeding", 2, "boss", "right_hand"))
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	assert_no_event(resolved, "attack_dodged", "an Exposed boss cannot dodge (punish window)")
+	assert_no_event(resolved, "dodge_failed", "no roll is even attempted — the stream is untouched")
+	assert_event(resolved, "damage_applied", "the hit lands")
+
+
+func test_burn_feeds_fire_heals_instead_of_being_dodged() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 1, "fire_heals": true}})
+	declare(sim, "h", attack_action("burn", 2, "boss", "right_hand"))
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	var healed: Dictionary = assert_event(resolved, "healed", "fire is food")
+	assert_eq(String(healed.get("source", "")), "fire_heals", "the boss hook fired")
+	assert_no_event(resolved, "attack_dodged", "the boss never dodges its meal")
+	assert_no_event(resolved, "dodge_failed", "no roll consumed")
+
+
+func test_dodge_stream_never_perturbs_forced_action_rolls() -> void:
+	# Same seed, same commands; the only difference is the dodge trait. The
+	# action RNG's Forced-Action roll sequence must be identical — the dodge
+	# d6 lives on the salted AI stream (mutation probe target, R11 #15/#17).
+	var rolls_with: Array[int] = []
+	var rolls_without: Array[int] = []
+	var dodge_attempts: int = 0
+	for variant: int in range(2):
+		var sim: CombatSim = make_sim(4242)
+		add_human(sim, "h", {"team": "party", "position": [1, 0]})
+		var boss_traits: Dictionary = {"dodge_threshold": 6} if variant == 0 else {}
+		add_boss(sim, "boss", {"boss_traits": boss_traits})
+		var events: Array[Dictionary] = []
+		for i: int in range(8):
+			# Unmet requirements: every resolution rolls the Tool d6 (action RNG).
+			declare(sim, "h", attack_action("poison", 0, "boss", "right_hand", {"requirements": {"physique": 99}}))
+			events.append_array(advance(sim, 1))
+		if variant == 0:
+			rolls_with = _fa_rolls(events)
+			dodge_attempts = events_of(events, "attack_dodged").size() + events_of(events, "dodge_failed").size()
+		else:
+			rolls_without = _fa_rolls(events)
+	assert_true(rolls_with.size() >= 4, "the script actually rolled Forced Actions (%d)" % rolls_with.size())
+	assert_true(dodge_attempts >= 1, "the dodge variant actually consumed the AI stream (%d)" % dodge_attempts)
+	assert_eq(rolls_with, rolls_without, "Forced-Action rolls identical with and without dodging")
+
+
+# ---------------------------------------------------------------- breach + phases (R11 #18)
+
+func test_burst_breach_then_phase_two_resets_it() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
+	# The network is hidden: aiming at it is rejected pre-breach.
+	assert_rejected(declare(sim, "h", attack_action("bleeding", 15, "boss", "network")),
+		"part_hidden", "no damage race — the win condition must be discovered")
+	# Breach path B: 7+ damage in a single hit (canon, owner 2026-07-14).
+	declare(sim, "h", attack_action("bleeding", 8, "boss", "right_hand"))
+	var breach_events: Array[Dictionary] = advance(sim, 1)
+	assert_event(breach_events, "breach_opened", "a 7+ single hit punches through")
+	assert_true(boss_state(sim).breached, "breached flag set")
+	assert_false(bool(boss_state(sim).parts["network"]["hidden"]), "the network is exposed")
+	# Hit the network down to the phase-2 threshold (50 -> 35).
+	declare(sim, "h", attack_action("bleeding", 15, "boss", "network"))
+	var phase_events: Array[Dictionary] = advance(sim, 1)
+	var changed: Dictionary = assert_event(phase_events, "boss_phase_changed", "network at 35 fires the beat")
+	assert_eq(int(changed.get("from_phase", 0)), 1, "left phase 1")
+	assert_eq(int(changed.get("to_phase", 0)), 2, "entered the first pressure valve")
+	assert_eq(String(changed.get("name", "")), "Explosion 1 (Pressure Valve I)", "seeded phase name")
+	assert_event(phase_events, "breach_reset", "the network retreats deeper — breach resets (canon)")
+	assert_event(phase_events, "condition_resolved", "the retreat purges the boss's conditions")
+	assert_false(boss_state(sim).breached, "breach closed again")
+	assert_true(bool(boss_state(sim).parts["network"]["hidden"]), "the network re-hid")
+	assert_true(boss_state(sim).conditions.is_empty(), "no lingering wounds to instantly re-breach")
+	# The party must re-discover the way in.
+	assert_rejected(declare(sim, "h", attack_action("bleeding", 2, "boss", "network")),
+		"part_hidden", "the network is unreachable again")
+	# v1 boundary: the boss idles in the unimplemented explosion phase.
+	var idle: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
+	assert_eq(String(idle.get("choice", "")), "wait", "phase >= 2 is a v1 boundary")
+	assert_eq(String(idle.get("reason", "")), "phase_not_implemented", "and says so honestly")
+	advance(sim, 1)
+	assert_false(boss_state(sim).breached, "the old wound never re-breaches on later ticks")
+
+
+func test_bleeding_tier_two_breach_path() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
+	declare(sim, "h", attack_action("bleeding", 1, "boss", "left_leg"))
+	var first: Array[Dictionary] = advance(sim, 1)
+	assert_no_event(first, "breach_opened", "T1 is not enough")
+	declare(sim, "h", attack_action("bleeding", 1, "boss", "left_leg"))
+	var second: Array[Dictionary] = advance(sim, 1)
+	assert_event(second, "condition_advanced", "re-application advanced the tier (R4)")
+	assert_event(second, "breach_opened", "Bleeding T2 anywhere exposes the network (path A, canon)")
+
+
+func test_phase_state_serializes_and_resumes() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
+	declare(sim, "h", attack_action("bleeding", 8, "boss", "right_hand"))
+	advance(sim, 1)
+	declare(sim, "h", attack_action("bleeding", 15, "boss", "network"))
+	advance(sim, 1)
+	assert_eq(sim.ai.current_phase("boss"), 2, "phase advanced in AI state")
+	var snapshot: Dictionary = sim.to_dict()
+	var restored: CombatSim = CombatSim.from_dict(snapshot)
+	assert_eq(restored.state_hash(), sim.state_hash(), "roundtrip hash identical mid-boss-fight")
+	assert_eq(restored.ai.current_phase("boss"), 2, "phase survives the roundtrip")
+	var idle: Dictionary = first_event(ai_decide(restored, "boss"), "ai_decision")
+	assert_eq(String(idle.get("reason", "")), "phase_not_implemented", "restored boss honors its phase")
+
+
+func test_ai_rng_state_is_load_bearing_in_saves() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 6}})
+	for i: int in range(6):
+		declare(sim, "h", attack_action("poison", 0, "boss", "right_hand"))
+		advance(sim, 1)
+	var snapshot: Dictionary = sim.to_dict()
+	var restored: CombatSim = CombatSim.from_dict(snapshot)
+	# Lockstep: the restored stream must reproduce the original's future rolls.
+	var tail_original: Array[Dictionary] = []
+	var tail_restored: Array[Dictionary] = []
+	for i: int in range(6):
+		declare(sim, "h", attack_action("poison", 0, "boss", "right_hand"))
+		declare(restored, "h", attack_action("poison", 0, "boss", "right_hand"))
+		tail_original.append_array(advance(sim, 1))
+		tail_restored.append_array(advance(restored, 1))
+	var fingerprint_original: Array[String] = []
+	var fingerprint_restored: Array[String] = []
+	for event: Dictionary in tail_original:
+		if ["attack_dodged", "dodge_failed"].has(String(event.get("type", ""))):
+			fingerprint_original.append("%s:%d" % [String(event.get("type", "")), int(event.get("roll", 0))])
+	for event: Dictionary in tail_restored:
+		if ["attack_dodged", "dodge_failed"].has(String(event.get("type", ""))):
+			fingerprint_restored.append("%s:%d" % [String(event.get("type", "")), int(event.get("roll", 0))])
+	assert_true(fingerprint_original.size() >= 1, "the tail rolled dodges (%d)" % fingerprint_original.size())
+	assert_eq(fingerprint_restored, fingerprint_original, "restored ai_rng continues the exact roll stream")
+	assert_eq(restored.state_hash(), sim.state_hash(), "lockstep tails end on the same hash")
+	# Mutation teeth: a tampered ai_rng_state must change the hash.
+	var tampered: Dictionary = sim.to_dict()
+	(tampered["ai"] as Dictionary)["ai_rng_state"] = int((tampered["ai"] as Dictionary).get("ai_rng_state", 0)) + 12345
+	assert_ne(CombatSim.from_dict(tampered).state_hash(), sim.state_hash(),
+		"ai_rng_state is covered by the state hash")

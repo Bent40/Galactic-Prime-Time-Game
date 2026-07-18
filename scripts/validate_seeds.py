@@ -112,6 +112,7 @@ def main() -> int:
 
     # enemies
     check_unique("enemies.json", enemies, "key")
+    enemy_keys = {e.get("key") for e in enemies}
     for e in enemies:
         k = e.get("key", "?")
         if e.get("category") not in ENEMY_CATEGORIES:
@@ -125,9 +126,38 @@ def main() -> int:
         res = e.get("resistances", {})
         if not set(res).issubset(RESISTANCE_CLASSES - {"None"}):
             fail("enemies.json", f"{k}: resistance keys {sorted(set(res) - RESISTANCE_CLASSES)} invalid")
-        for d in [d for a in e.get("abilities", []) for d in a.get("damage", [])]:
-            if d.get("type") not in CONDITION_IDS:
-                fail("enemies.json", f"{k}: ability damage type {d.get('type')!r} not a condition id")
+        # abilities — the shapes EnemyAI v1 consumes (simulation/enemy_ai.gd):
+        # damage list (strike), range/area reach, summon, heal.
+        for a in e.get("abilities", []):
+            ak = a.get("key", "?")
+            if "moment_cost" in a and (not isinstance(a["moment_cost"], int) or a["moment_cost"] < 0):
+                fail("enemies.json", f"{k}/{ak}: moment_cost must be int >= 0")
+            if "range" in a and (not isinstance(a["range"], int) or a["range"] < 1):
+                fail("enemies.json", f"{k}/{ak}: range must be int >= 1 (spaces, R10/B8)")
+            area = a.get("area")
+            if area is not None and area.startswith("cone"):
+                parts = area.split(" ")
+                if len(parts) != 2 or not parts[1].isdigit() or int(parts[1]) < 1:
+                    fail("enemies.json", f"{k}/{ak}: cone area must be 'cone <spaces>=1>' (AI v1 reach)")
+            for d in a.get("damage", []):
+                if d.get("type") not in CONDITION_IDS:
+                    fail("enemies.json", f"{k}: ability damage type {d.get('type')!r} not a condition id")
+            if "summon" in a:
+                s = a["summon"]
+                if not isinstance(s, dict) or s.get("enemy_key") not in enemy_keys:
+                    fail("enemies.json", f"{k}/{ak}: summon.enemy_key must reference an enemy key")
+                if not isinstance(s.get("count"), int) or s.get("count", 0) < 1:
+                    fail("enemies.json", f"{k}/{ak}: summon.count must be int >= 1")
+            if "heal" in a:
+                h = a["heal"]
+                if not isinstance(h, dict) or not isinstance(h.get("amount"), int) or h["amount"] < 1:
+                    fail("enemies.json", f"{k}/{ak}: heal.amount must be int >= 1")
+                if h.get("target") not in (None, "self"):
+                    fail("enemies.json", f"{k}/{ak}: heal.target {h.get('target')!r} unsupported (AI v1: self only)")
+        # dodge threshold (boss ability pattern, R2/R11 #17): d6 gate, so 1..6.
+        dt = e.get("traits", {}).get("dodge_threshold")
+        if dt is not None and (not isinstance(dt, int) or not (1 <= dt <= 6)):
+            fail("enemies.json", f"{k}: traits.dodge_threshold must be int 1..6 (d6 roll >= threshold dodges)")
         phases = e.get("phases", [])
         nums = [p.get("phase_number") for p in phases]
         if nums != sorted(nums) or len(nums) != len(set(nums)):
@@ -135,6 +165,21 @@ def main() -> int:
         for p in phases:
             if not p.get("trigger_condition"):
                 fail("enemies.json", f"{k}: phase {p.get('phase_number')} missing trigger_condition")
+        # explosion phases drive the machine (R11 #18): each needs a structured
+        # hp_at_or_below, and the thresholds must strictly descend.
+        explosion_thresholds = []
+        for p in phases:
+            if "explosion" in p.get("behavior", {}):
+                t = p.get("hp_at_or_below")
+                if not isinstance(t, int) or t < 0:
+                    fail("enemies.json", f"{k}: explosion phase {p.get('phase_number')} needs hp_at_or_below int >= 0")
+                else:
+                    explosion_thresholds.append(t)
+            elif "hp_at_or_below" in p:
+                fail("enemies.json", f"{k}: phase {p.get('phase_number')} has hp_at_or_below but no explosion (fight bands derive from the previous threshold)")
+        if explosion_thresholds != sorted(explosion_thresholds, reverse=True) or \
+                len(explosion_thresholds) != len(set(explosion_thresholds)):
+            fail("enemies.json", f"{k}: explosion hp_at_or_below sequence {explosion_thresholds} must strictly descend")
         if e.get("category") in ("Boss", "Super Boss"):
             if not phases:
                 fail("enemies.json", f"{k}: {e.get('category')} must have phases")
