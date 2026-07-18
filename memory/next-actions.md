@@ -34,11 +34,15 @@
 
 ### 🔄 Running now (agent)
 
-- **Wave 2 extraction** — 14 traditions × up to 15 entities. ~2 concurrent (container
-  CPU cap): slow burn, alive. Then Wave 3 myths → Wave 4 dedup → Wave 5 mapping.
-- **I-16 enemy AI v1** — review gates 1+2 → adjudication → fix loop → merge (94/94).
-- **Demo loadouts build** — Imani/Dario as `data/demo_loadouts.json` + archetype god
-  stubs + validator coverage (per decision log #13).
+- **Wave 3 myths** — one agent per tradition, writing the forward-declared myths.jsonl
+  records (≥2 per patron god, ≥1 per hero). Then Wave 4 dedup → Wave 5 mapping.
+
+### ✅ Mythology pipeline progress
+- Wave 0 calibration ✓ · Wave 1 census 26/26 (957 candidates) ✓ · **Wave 2 extraction
+  COMPLETE: 14/14 traditions, 210 entities, 114 patron-capable** (all influence tiers;
+  54 luck_gambling, 56 forsaken hosts, 36 vvip) ✓ · Wave 3 myths running.
+- **I-16 enemy AI v1 MERGED** (95/95, both gates + adjudicated salt-teeth fix).
+- **Demo loadouts** (Imani/Dario) built + committed (66/66 at build).
 
 ### ▶️ Queued (agent)
 
