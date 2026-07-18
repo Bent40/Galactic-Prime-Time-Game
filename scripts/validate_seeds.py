@@ -88,7 +88,7 @@ def main() -> int:
     thresholds = load("skill_thresholds.json") or []
     items = load("items.json") or []
     load("modifiers.json")
-    load("tags.json")
+    tags = load("tags.json") or []
     # Optional stub until KAN-7 (docs/design/patron-gods.md): validate only if present.
     patrons = load("patron_gods.json") if (DATA / "patron_gods.json").is_file() else []
     if not isinstance(patrons, list):
@@ -102,6 +102,20 @@ def main() -> int:
         if not isinstance(g, dict):
             fail("crowd_goals.json", f"row {i}: must be an object, got {type(g).__name__}")
     goals = [g for g in goals if isinstance(g, dict)]
+    # Demo loadouts (decision log #13; docs/design/slice-contestants-proposal.md §RULED):
+    # object with _meta + loadouts, not a bare list — validate only if present.
+    demo = load("demo_loadouts.json") if (DATA / "demo_loadouts.json").is_file() else None
+    loadouts: list = []
+    if demo is not None:
+        if not isinstance(demo, dict) or not isinstance(demo.get("loadouts"), list):
+            fail("demo_loadouts.json", "top level must be an object with a 'loadouts' list")
+        else:
+            if not isinstance(demo.get("_meta"), dict):
+                fail("demo_loadouts.json", "_meta object required (R14 placeholder notice)")
+            for i, lo in enumerate(demo["loadouts"]):
+                if not isinstance(lo, dict):
+                    fail("demo_loadouts.json", f"loadout {i}: must be an object, got {type(lo).__name__}")
+            loadouts = [lo for lo in demo["loadouts"] if isinstance(lo, dict)]
 
     # races
     check_unique("races.json", races, "key")
@@ -270,14 +284,85 @@ def main() -> int:
         if not set(json.loads(json.dumps(t.get("stat_requirements", {})))).issubset(STATS):
             fail("skill_thresholds.json", f"id {t.get('id')}: stat_requirements keys invalid")
 
+    # demo loadouts (Imani/Dario demo kits — decision log #13; NOT canon characters,
+    # every number PLACEHOLDER per R14)
+    check_unique("demo_loadouts.json", loadouts, "id")
+    check_unique("demo_loadouts.json", loadouts, "key")
+    race_ids = {r.get("id") for r in races}
+    patron_ids = {p.get("id") for p in patrons}
+    tag_keys = {t.get("key") for t in tags}
+    skills_by_id = {s.get("id"): s for s in skills}
+    for lo in loadouts:
+        k = lo.get("key", "?")
+        for f_ in ("key", "display_name", "broadcast_persona"):
+            if not isinstance(lo.get(f_), str) or not lo.get(f_):
+                fail("demo_loadouts.json", f"{k}: {f_} must be a non-empty string")
+        if lo.get("race") not in race_ids:
+            fail("demo_loadouts.json", f"{k}: race {lo.get('race')!r} is not a races.json id")
+        traits = lo.get("traits")
+        if not isinstance(traits, dict):
+            fail("demo_loadouts.json", f"{k}: traits must be an object")
+        else:
+            for stat in sorted(STATS):
+                if not isinstance(traits.get(stat), int) or traits[stat] < 1:
+                    fail("demo_loadouts.json", f"{k}: trait {stat} must be int >= 1")
+            extra = set(traits) - STATS - {"_placeholder"}
+            if extra:
+                fail("demo_loadouts.json", f"{k}: unknown trait keys {sorted(extra)}")
+        skl = lo.get("skills")
+        if not isinstance(skl, list) or not skl:
+            fail("demo_loadouts.json", f"{k}: skills must be a non-empty list")
+            skl = []
+        for s in skl:
+            if not isinstance(s, dict):
+                fail("demo_loadouts.json", f"{k}: skill entry {s!r} is not an object")
+                continue
+            tpl = skills_by_id.get(s.get("id"))
+            if tpl is None:
+                fail("demo_loadouts.json", f"{k}: skill id {s.get('id')!r} unknown")
+                continue
+            if "key" in s and s["key"] != tpl.get("key"):
+                fail("demo_loadouts.json", f"{k}: skill id {s['id']} key annotation "
+                                           f"{s['key']!r} != skills.json {tpl.get('key')!r}")
+            cap = tpl.get("default_cap", 0)
+            if "cap" in s:
+                # R16 trade: a raised cap must exceed the template default (and obey the
+                # schema's 0..10 CHECK).
+                if not isinstance(s["cap"], int) or not (cap < s["cap"] <= 10):
+                    fail("demo_loadouts.json", f"{k}: {tpl.get('key')}: cap override "
+                                               f"{s['cap']!r} must be int in {cap + 1}..10 (R16 trade)")
+                else:
+                    cap = s["cap"]
+            if not isinstance(s.get("level"), int) or not (1 <= s["level"] <= cap):
+                fail("demo_loadouts.json", f"{k}: {tpl.get('key')}: level {s.get('level')!r} "
+                                           f"outside 1..{cap}")
+        if not isinstance(lo.get("camera_call_stacks"), int) or lo["camera_call_stacks"] < 0:
+            fail("demo_loadouts.json", f"{k}: camera_call_stacks must be int >= 0")
+        if lo.get("chosen_patron") not in patron_ids:
+            fail("demo_loadouts.json", f"{k}: chosen_patron {lo.get('chosen_patron')!r} "
+                                       "is not a patron_gods.json id")
+        lo_tags = lo.get("tags")
+        if not isinstance(lo_tags, list):
+            fail("demo_loadouts.json", f"{k}: tags must be a list "
+                                       "(RULED 2026-07-18: loadouts start tagless)")
+        else:
+            for tg in lo_tags:
+                if tg not in tag_keys:
+                    fail("demo_loadouts.json", f"{k}: tag {tg!r} is not a tags.json key")
+        if lo.get("rewireable") is not True:
+            fail("demo_loadouts.json", f"{k}: rewireable must be true (owner principle, "
+                                       "slice-contestants §RULED item 9)")
+
     if failures:
         print("\n".join(failures))
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
-    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons, goals))
+    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons,
+                             goals, loadouts))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
-          f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals — {n} rows checked).")
+          f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals, "
+          f"{len(loadouts)} demo loadouts — {n} rows checked).")
     return 0
 
 

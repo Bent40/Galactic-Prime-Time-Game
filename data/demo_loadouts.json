@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "note": "DEMO/QUICK-START LOADOUTS + TEST FIXTURES — NOT canon characters. Imani and Dario were demoted from slice premades to demo loadouts by owner ruling 2026-07-18 (decision log #13; docs/design/slice-contestants-proposal.md §RULED). All numbers here — trait spreads, skill levels, caps, Camera Call stacks — are PLACEHOLDER (R14) pending the numbers rework. Everything is rewireable to the real story/entities later; do not over-invest in canon (owner principle, §RULED item 9).",
+    "schema": "loadout: { id, key, display_name, broadcast_persona, race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], rewireable, notes }"
+  },
+  "loadouts": [
+    {
+      "id": 1,
+      "key": "imani_the_door",
+      "display_name": "Imani \"The Door\" Brandt",
+      "broadcast_persona": "The immovable veteran — a heavy-rescue firefighter with zero interest in the camera, which the camera loves; when the Door opens, somebody's getting carried out.",
+      "race": 1,
+      "traits": {
+        "physique": 5,
+        "reflexes": 2,
+        "mind": 4,
+        "charm": 3,
+        "_placeholder": "All trait values PLACEHOLDER (R14). Creation-legal 7 Body / 7 Core, max 5 per trait."
+      },
+      "skills": [
+        { "id": 4, "key": "strong_strike", "level": 2 },
+        {
+          "id": 23,
+          "key": "overhead_slam",
+          "level": 1,
+          "cap": 6,
+          "cap_note": "R16 skill-trade — 4th background skill given up for +1 cap on the signature skill (also demos the trade rule on screen; slice-contestants-proposal §RULED item 3)"
+        },
+        { "id": 8, "key": "brace", "level": 2 }
+      ],
+      "camera_call_stacks": 1,
+      "chosen_patron": 3,
+      "tags": [],
+      "rewireable": true,
+      "notes": "DEMO LOADOUT, not a canon character (decision log #13). Skill levels PLACEHOLDER (R14); starting levels above 1 approved (§RULED item 4). camera_call_stacks 1 is the system-testing override (§RULED item 5, no R6 rules change). chosen_patron 3 = hestia, pre-signed for bid-screen testing (§RULED item 6). Starts tagless — everything is earned on camera (slice-tags-proposal §RULED item 4). Gear deferred to the slice content pass: needs a Heavy Large breaching weapon that items.json lacks (flagged), plus 1x bandage (proposal gear note)."
+    },
+    {
+      "id": 2,
+      "key": "dario_encore",
+      "display_name": "Dario \"Encore\" Vekić",
+      "broadcast_persona": "The heel you pay to boo — a boardwalk sleight-of-hand hustler who works the crowd mid-fight, steals finishing blows, and bows after every kill; the boo is the applause.",
+      "race": 1,
+      "traits": {
+        "physique": 2,
+        "reflexes": 5,
+        "mind": 2,
+        "charm": 5,
+        "_placeholder": "All trait values PLACEHOLDER (R14). Creation-legal 7 Body / 7 Core, max 5 per trait. Charm 5 per R18: objectively striking — presentability as armor."
+      },
+      "skills": [
+        {
+          "id": 26,
+          "key": "feint",
+          "level": 3,
+          "cap": 6,
+          "cap_note": "R16 skill-trade — 4th background skill given up for +1 cap on the signature skill; Lv 3 also satisfies Pressure Strike's chain requirement (slice-contestants-proposal §RULED items 3-4)"
+        },
+        { "id": 27, "key": "pressure_strike", "level": 1 },
+        { "id": 33, "key": "dance", "level": 2 }
+      ],
+      "camera_call_stacks": 1,
+      "chosen_patron": 2,
+      "tags": [],
+      "rewireable": true,
+      "notes": "DEMO LOADOUT, not a canon character (decision log #13). Skill levels PLACEHOLDER (R14); starting levels above 1 approved (§RULED item 4). camera_call_stacks 1 is the system-testing override (§RULED item 5, no R6 rules change). chosen_patron 2 = enyo, pre-signed for bid-screen testing (§RULED item 6). Starts tagless — everything is earned on camera (slice-tags-proposal §RULED item 4). Gear deferred to the slice content pass: 2x kunai (items id 23) as stage knives, fedora_hat (items id 5) optional costume seed (proposal gear note)."
+    }
+  ]
+}
