@@ -253,3 +253,22 @@ also reachable via Sasha's claws, Breach B via any R15 merged hit.
    exist in `patron_gods.json` yet (only ares/enyo/hestia stubs do). Fine as archetype
    references for now, or should the roster pass stub them when this proposal is
    approved?
+
+## RULED (owner, 2026-07-18) — status: APPROVED as DEMO LOADOUTS
+
+**Reframe (decision log #12/#13): "OC" = the player's own character made in character
+creation (KAN-4 S4.1). Imani and Dario are DEMOTED TO DEMO/QUICK-START LOADOUTS + test
+fixtures — never canon characters. Build them.** Per-question rulings:
+1. Roster shape — moot, they're demo content.
+2. Names/identities — approved.
+3. 3-skill R16-trade framing — approved.
+4. Starting levels above 1 — approved (all PLACEHOLDER R14).
+5. Camera Call — **each demo loadout gets 1 stack, for system testing** (no R6 rules
+   change).
+6. Patron surface — **the bid screen IS in the slice; seed one chosen patron per
+   loadout for testing** (Imani–Hestia, Dario–Enyo as drafted).
+7. Two human loadouts fine; animals later (part-layout sitting stays deferred).
+8. Stub the forge/fire + fortune/trickster archetype gods into `patron_gods.json` as
+   placeholders.
+9. Owner principle, recorded: **everything demo-built here is rewireable later to the
+   real story/entities — don't over-invest in canon.**

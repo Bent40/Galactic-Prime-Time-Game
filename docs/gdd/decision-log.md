@@ -75,3 +75,19 @@
     (KAN-4 S4.1) — the two drafted slice "premades" exist only as a slice-scoping
     device; their final role (demo/quick-start loadouts vs creation-first slice)
     awaiting owner pick.
+13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
+    **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
+    proposal questions answered; rulings recorded in
+    `docs/design/slice-contestants-proposal.md` §RULED). Headlines: 1 Camera Call
+    stack per loadout for system testing (no R6 change) · **bid screen IS in the
+    slice, one chosen patron seeded per loadout** · stub forge/fire +
+    fortune/trickster archetype gods · owner principle: demo content is rewireable to
+    the real story later. **Tag slice APPROVED** (all 9 questions answered; rulings in
+    `docs/design/slice-tags-proposal.md` §RULED). Headlines: `tag_effects.json` ·
+    weighted goals stay deferred · loadouts start tagless, everything earned on
+    camera · 3 new goal rows approved · same-batch attribution blessed ·
+    non-contestants hold no tags · **The Bit constraint: signature actions must be
+    mechanically NULL — pure flavor, zero benefit, spectacle is the only payout.**
+    Char-sheet `passive` fix commit **approved**. Tag descriptions: owner will paste
+    rulebook text into a committed markdown scaffold
+    (`docs/rulebook-tag-descriptions.md`) instead of supplying the docx.

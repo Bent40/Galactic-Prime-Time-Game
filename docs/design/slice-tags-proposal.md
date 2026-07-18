@@ -363,3 +363,23 @@ resonance multiplication; rider escalate-and-reset; goal-row completion).
 9. **Tag descriptions:** engine and data need only the mechanical fields —
    confirmed acceptable that `description` stays empty until the rulebook docx text
    is ported (nothing in this proposal invents lore text)?
+
+## RULED (owner, 2026-07-18) — status: APPROVED, build it
+
+1. The 10-tag selection — **approved**.
+2. Data landing — **`data/tag_effects.json`** (as recommended).
+3. Weighted goal selection — **stays deferred** (v1 uniform draw; resonance only).
+4. **Demo loadouts start with NO tags — everything is earned on camera.** (Lifecycle:
+   binary held/not-held for the slice per the recommendation; the 0–3 weight ladder
+   stays deferred — owner did not rule the ladder explicitly, inferred default.)
+5. The three new goal rows (Pratfall! / Body Block! / Zoomies!) — **approved**
+   (numbers PLACEHOLDER).
+6. Same-batch attacker attribution — **blessed** as the detector standard until v2.
+7. **Non-contestants do NOT hold tags** (boss generates beats, holds nothing).
+8. The Bit — **approved with a HARD DESIGN CONSTRAINT: the signature action must add
+   NOTHING but flavor.** It is not any normal action — no damage, no buff, no
+   positioning value, nothing mechanical. The character chooses to do the bit despite
+   it giving them zero benefit; spectacle is the only payout. The detector action must
+   be mechanically null by construction.
+9. `description` fields stay empty pending the rulebook text port — **approved**
+   (scaffold: `docs/rulebook-tag-descriptions.md`).
