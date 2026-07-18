@@ -9,9 +9,13 @@ extends RefCounted
 ## seeded from the sim seed (separate stream so goal draws never perturb the
 ## action RNG's Forced-Action rolls) — hype stays a pure function of
 ## (seed, command log), serialized in CombatSim.to_dict() and covered by
-## state_hash. It emits its own events (hype_* prefixed) back into the same
-## stream so replays and Stage-2 broadcasts narrate the crowd for free; the
-## prefix is also the re-entry guard (hype_* is never rescored).
+## state_hash. EVERY event this engine emits is hype_* prefixed and re-enters
+## the same stream, so replays and Stage-2 broadcasts narrate the crowd for
+## free; the prefix is also the re-entry guard. The guard is load-bearing:
+## point-carrying hype events (hype_spike / hype_goal_completed) self-describe
+## their value in "spectacle_points" — the same generic field authored content
+## may use to inject spectacle — so re-ingesting a recorded stream would
+## double-count them if the guard ever went missing.
 ##
 ## Three subsystems:
 ## - METER: flat spectacle points per event type + damage/shock scaling, decay
@@ -120,14 +124,15 @@ func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 			out.append({
 				"type": "hype_goal_completed",
 				"goal": String(active_goal.get("id", "")),
-				"payout": payout,
+				"combatant": _attribution(event),
+				"spectacle_points": payout,
 			})
 			active_goal = {}
 		out.append_array(_check_spotlight_end(event))
 	if gain > 0:
 		meter += gain
 		if gain >= SPIKE_THRESHOLD:
-			out.append({"type": "hype_spike", "gain": gain, "meter": meter})
+			out.append({"type": "hype_spike", "spectacle_points": gain, "meter": meter})
 	var new_band: String = _band_for(meter)
 	if new_band != band:
 		out.append({"type": "hype_band_changed", "from_band": band, "to_band": new_band, "meter": meter})
@@ -148,13 +153,19 @@ func camera_call(caller_id: String, target_id: String, stacks_total: int) -> Arr
 	camera_calls_used[caller_id] = used + 1
 	spotlight = {"caller": caller_id, "target": target_id, "clocks_left": CAMERA_CALL_CLOCK_LIMIT}
 	return [{
-		"type": "camera_call_started",
+		"type": "hype_camera_call_started",
 		"actor": caller_id, "target": target_id,
 		"stacks_remaining": stacks_total - used - 1,
 	}]
 
 
 func _points_for(event: Dictionary) -> int:
+	# Generic injection hook: any event carrying "spectacle_points" scores that
+	# value directly (authored/boss/environment content, review-2 §2 "style"
+	# scoring). The engine's own hype_* events carry it too — which is exactly
+	# why ingest's prefix guard must skip them (double-count otherwise).
+	if event.has("spectacle_points"):
+		return maxi(0, int(event.get("spectacle_points", 0)))
 	match String(event.get("type", "")):
 		"damage_applied":
 			return maxi(0, int(event.get("amount", 0))) * DAMAGE_POINTS_PER_HP
@@ -288,5 +299,7 @@ static func from_dict(data: Dictionary) -> HypeEngine:
 	engine.spotlight = (data.get("spotlight", {}) as Dictionary).duplicate(true)
 	engine.camera_calls_used = (data.get("camera_calls_used", {}) as Dictionary).duplicate(true)
 	engine.exposed = (data.get("exposed", {}) as Dictionary).duplicate(true)
+	# Pre-I9 saves lack goal_rng_state; the 0 fallback resumes on a stream that
+	# DIVERGES from a log replay — pre-release saves are disposable (R11 #14).
 	engine.goal_rng.state = int(data.get("goal_rng_state", 0))
 	return engine

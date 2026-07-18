@@ -254,19 +254,27 @@ func _spend_level_point(cmd: Dictionary) -> Array[Dictionary]:
 
 
 ## Camera Call (compendium §2.2/§11; stacks per R6's Charm over-cap formula).
-## The sim validates the participants; stack accounting + the spotlight effect
-## live in the HypeEngine (broadcast plane).
+## The sim validates the participants — same actor gates and rejection
+## vocabulary as ActionResolver.declare (alive → removed → helpless, R11 #13);
+## stack accounting + the spotlight effect live in the HypeEngine (broadcast
+## plane).
 func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
 	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
 	if actor == null:
-		return [{"type": "command_rejected", "reason": "unknown_actor"}]
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
 	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
 	if target == null:
-		return [{"type": "command_rejected", "reason": "unknown_target"}]
-	if not actor.alive or actor.removed_from_play:
-		return [{"type": "command_rejected", "reason": "dead_actor", "combatant": actor.id}]
-	if not target.alive or target.removed_from_play:
-		return [{"type": "command_rejected", "reason": "dead_target", "combatant": target.id}]
+		return [{"type": "command_rejected", "reason": "unknown_target", "target": String(cmd.get("target", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if not target.alive:
+		return [{"type": "command_rejected", "reason": "target_dead", "target": target.id}]
+	if target.removed_from_play:
+		return [{"type": "command_rejected", "reason": "target_removed_from_play", "target": target.id}]
 	var stacks: int = int(actor.derived_stats().get("camera_call_stacks", 0))
 	return hype.camera_call(actor.id, target.id, stacks)
 

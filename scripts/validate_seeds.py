@@ -98,6 +98,10 @@ def main() -> int:
     if not isinstance(goals, list):
         fail("crowd_goals.json", "top level must be a list")
         goals = []
+    for i, g in enumerate(goals):
+        if not isinstance(g, dict):
+            fail("crowd_goals.json", f"row {i}: must be an object, got {type(g).__name__}")
+    goals = [g for g in goals if isinstance(g, dict)]
 
     # races
     check_unique("races.json", races, "key")

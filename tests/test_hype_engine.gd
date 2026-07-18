@@ -141,7 +141,8 @@ func test_goal_takedown_completion_pays_hype() -> void:
 	var events: Array[Dictionary] = advance(sim, 3)
 	assert_event(events, "combatant_died", "the kill landed")
 	var done: Dictionary = assert_event(events, "hype_goal_completed", "a kill completes the takedown goal")
-	assert_eq(int(done.get("payout", -1)), 80, "payout matches the goal table")
+	assert_eq(int(done.get("spectacle_points", -1)), 80, "payout matches the goal table")
+	assert_eq(String(done.get("combatant", "")), "b", "completion carries its attribution (Stage-2 broadcast)")
 	assert_true(sim.hype.active_goal.is_empty(), "goal cleared after completion")
 	assert_true(sim.hype.meter >= before + 80 + 80, "meter gained kill points AND the payout (got %d -> %d)" % [before, sim.hype.meter])
 	var next_events: Array[Dictionary] = advance(sim, Clock.TICKS_PER_CLOCK)
@@ -163,7 +164,7 @@ func test_goal_overkill_requires_threshold() -> void:
 	declare(sim, "a", attack_action("bleeding", 8, "b", "torso"))
 	var big: Array[Dictionary] = advance(sim, 2)
 	var done: Dictionary = assert_event(big, "hype_goal_completed", "an 8-damage hit clears the threshold")
-	assert_eq(int(done.get("payout", -1)), 60, "overkill payout matches the table")
+	assert_eq(int(done.get("spectacle_points", -1)), 60, "overkill payout matches the table")
 
 
 func test_goal_expiry_penalty_and_reoffer() -> void:
@@ -198,7 +199,7 @@ func test_camera_call_requires_stacks() -> void:
 	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "a", "target": "zz"}), "unknown_target", "unknown target")
 	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "a", "target": "b"}), "no_camera_call_stacks", "charm 3 -> zero stacks (R6)")
 	var started: Array[Dictionary] = sim.apply_command({"type": "camera_call", "actor": "s", "target": "b"})
-	var ack: Dictionary = assert_event(started, "camera_call_started", "charm 30 -> 1 stack, call accepted")
+	var ack: Dictionary = assert_event(started, "hype_camera_call_started", "charm 30 -> 1 stack, call accepted")
 	assert_eq(int(ack.get("stacks_remaining", -1)), 0, "the only stack is now spent")
 	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "s", "target": "a"}), "spotlight_active", "one spotlight at a time")
 
@@ -211,7 +212,7 @@ func test_camera_call_doubles_spotlit_gains() -> void:
 		add_human(sim, "b", {"position": [1, 0]})
 		add_star(sim, "s", {"position": [2, 0]})
 	assert_event(sim_called.apply_command({"type": "camera_call", "actor": "s", "target": "b"}),
-		"camera_call_started", "spotlight on the victim-to-be")
+		"hype_camera_call_started", "spotlight on the victim-to-be")
 	for sim: CombatSim in [sim_plain, sim_called]:
 		declare(sim, "a", attack_action("bleeding", 5, "b", "torso"))
 	advance(sim_plain, 3)
@@ -232,7 +233,7 @@ func test_camera_call_ends_when_target_acts() -> void:
 	add_star(sim, "s")
 	add_human(sim, "b", {"position": [1, 0]})
 	assert_event(sim.apply_command({"type": "camera_call", "actor": "s", "target": "b"}),
-		"camera_call_started", "spotlight up")
+		"hype_camera_call_started", "spotlight up")
 	declare(sim, "b", attack_action("bleeding", 0, "s", "torso"))
 	var events: Array[Dictionary] = advance(sim, 2)
 	assert_event(events, "action_resolved", "the target's action resolved")
@@ -265,7 +266,7 @@ func test_goal_payout_doubled_under_spotlight() -> void:
 	declare(sim, "a", attack_action("bleeding", 5, "b", "torso"))
 	var events: Array[Dictionary] = advance(sim, 3)
 	var done: Dictionary = assert_event(events, "hype_goal_completed", "spotlit kill completes the goal")
-	assert_eq(int(done.get("payout", -1)), 80 * HypeEngine.CAMERA_CALL_MULTIPLIER,
+	assert_eq(int(done.get("spectacle_points", -1)), 80 * HypeEngine.CAMERA_CALL_MULTIPLIER,
 		"payout is doubled when the completing event is the spotlit combatant's")
 
 
@@ -293,12 +294,137 @@ func test_spectacle_serialization_roundtrip() -> void:
 
 func test_hype_events_are_not_rescored() -> void:
 	var sim: CombatSim = _kill_setup()
-	advance(sim, 3)
+	var recorded: Array[Dictionary] = advance(sim, 3)
 	var meter_after: int = sim.hype.meter
-	# Feeding the engine its own output must be a no-op (re-entry safety).
-	var echo: Array[Dictionary] = sim.hype.ingest([
-		{"type": "hype_spike", "gain": 999, "meter": meter_after},
-		{"type": "hype_band_changed", "from_band": "cold", "to_band": "hot", "meter": meter_after},
-	])
-	assert_eq(sim.hype.meter, meter_after, "hype_* events score nothing")
+	# A recorded broadcast batch contains the engine's own outputs; re-feeding
+	# JUST those must not move the meter. This has teeth: hype_spike carries its
+	# point value in "spectacle_points", so an engine without the prefix guard
+	# would double-count it here.
+	var own: Array[Dictionary] = []
+	for event: Dictionary in recorded:
+		if String(event.get("type", "")).begins_with("hype_"):
+			own.append(event)
+	var spike: Dictionary = first_event(own, "hype_spike")
+	assert_true(int(spike.get("spectacle_points", 0)) > 0,
+		"the recorded spike self-describes a nonzero point value (guard hazard is real)")
+	var echo: Array[Dictionary] = sim.hype.ingest(own)
+	assert_eq(sim.hype.meter, meter_after, "re-ingesting the engine's own events scores nothing")
 	assert_true(echo.is_empty(), "no cascading hype events")
+
+
+## The generic scoring hook the guard protects: any non-hype event carrying
+## "spectacle_points" scores that value directly (authored-content injection).
+func test_spectacle_points_hook_scores_directly() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	var echo: Array[Dictionary] = sim.hype.ingest([
+		{"type": "scripted_flourish", "combatant": "a", "spectacle_points": 25},
+	])
+	assert_eq(sim.hype.meter, 25, "injected spectacle scores at face value")
+	assert_eq(int(sim.hype.ledger.get("a", 0)), 25, "and is credited to the attributed combatant")
+	assert_true(events_of(echo, "hype_spike").is_empty(), "25 points is below the spike threshold")
+
+
+func test_goal_part_break_completion() -> void:
+	var goal: Dictionary = {"id": "break_something", "name": "Break Something!", "kind": "part_break", "params": {}, "payout": 50, "deadline_clocks": 3}
+	var sim: CombatSim = make_goal_sim([goal])
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	advance(sim, Clock.TICKS_PER_CLOCK)
+	assert_eq(String(sim.hype.active_goal.get("id", "")), "break_something", "pinned goal is active")
+	# Bleeding T3 ("Part Death") destroys a non-lethal part outright.
+	var events: Array[Dictionary] = sim.apply_command({
+		"type": "apply_condition", "target": "b", "part": "left_arm",
+		"condition": "bleeding", "tier": 3,
+	})
+	assert_event(events, "part_destroyed", "the arm is gone")
+	var done: Dictionary = assert_event(events, "hype_goal_completed", "a destroyed part completes the goal")
+	assert_eq(int(done.get("spectacle_points", -1)), 50, "part_break payout matches the table")
+	assert_eq(String(done.get("combatant", "")), "b", "attribution is the maimed combatant")
+	assert_true(sim.hype.active_goal.is_empty(), "goal cleared after completion")
+
+
+func test_goal_exposed_strike_completion() -> void:
+	var goal: Dictionary = {"id": "show_off", "name": "Show-Off!", "kind": "exposed_strike", "params": {}, "payout": 45, "deadline_clocks": 2}
+	var sim: CombatSim = make_goal_sim([goal])
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	advance(sim, Clock.TICKS_PER_CLOCK)
+	assert_eq(String(sim.hype.active_goal.get("id", "")), "show_off", "pinned goal is active")
+	# A 2-Moment windup makes the attacker genuinely Exposed (R2 channeling) —
+	# the engine's exposed mirror must be populated by real exposure events.
+	var declared: Array[Dictionary] = declare(sim, "a", attack_action("bleeding", 2, "b", "torso", {"cost": 2}))
+	assert_event(declared, "exposed_state_changed", "declaring the windup exposes the attacker")
+	assert_true(bool(sim.hype.exposed.get("a", false)), "the exposed mirror tracks the attacker")
+	var events: Array[Dictionary] = advance(sim, 3)
+	assert_event(events, "action_resolved", "the windup landed")
+	var done: Dictionary = assert_event(events, "hype_goal_completed", "landing a hit while Exposed completes the goal")
+	assert_eq(int(done.get("spectacle_points", -1)), 45, "exposed_strike payout matches the table")
+	assert_eq(String(done.get("combatant", "")), "a", "attribution falls back to the acting combatant")
+	assert_false(bool(sim.hype.exposed.get("a", false)), "the mirror un-exposes once the windup resolves")
+
+
+func test_exposed_mirror_serialization_roundtrip() -> void:
+	var goal: Dictionary = {"id": "show_off", "name": "Show-Off!", "kind": "exposed_strike", "params": {}, "payout": 45, "deadline_clocks": 2}
+	var sim: CombatSim = make_goal_sim([goal])
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	advance(sim, Clock.TICKS_PER_CLOCK)
+	declare(sim, "a", attack_action("bleeding", 2, "b", "torso", {"cost": 2}))
+	assert_true(bool(sim.hype.exposed.get("a", false)), "precondition: mirror is NON-empty mid-windup")
+	var resumed: CombatSim = CombatSim.from_dict(sim.to_dict())
+	assert_eq(resumed.hype.exposed, sim.hype.exposed, "exposed mirror survives the round-trip")
+	assert_true(bool(resumed.hype.exposed.get("a", false)), "restored mirror still marks the attacker Exposed")
+	assert_eq(resumed.state_hash(), sim.state_hash(), "hash identical mid-windup")
+	# Both timelines complete the exposed_strike goal identically post-restore.
+	var events_live: Array[Dictionary] = advance(sim, 3)
+	var events_resumed: Array[Dictionary] = advance(resumed, 3)
+	assert_event(events_live, "hype_goal_completed", "live timeline completes the goal")
+	assert_event(events_resumed, "hype_goal_completed", "resumed timeline completes it too")
+	assert_eq(resumed.state_hash(), sim.state_hash(), "hashes stay identical after resume")
+
+
+## Teeth for the goal-RNG stream: different sim seeds must produce different
+## offer sequences (fails if the seed is ignored OR the draw is constant), and
+## a draw must consume the dedicated RNG (fails if the RNG is never advanced).
+func test_goal_rng_stream_has_teeth() -> void:
+	var sim1: CombatSim = make_sim(101)
+	var sim2: CombatSim = make_sim(202)
+	add_human(sim1, "a")
+	add_human(sim2, "a")
+	var seq1: Array[String] = []
+	for offer: Dictionary in events_of(advance(sim1, Clock.TICKS_PER_CLOCK * 20), "hype_goal_offered"):
+		seq1.append(String(offer.get("goal", "")))
+	var seq2: Array[String] = []
+	for offer: Dictionary in events_of(advance(sim2, Clock.TICKS_PER_CLOCK * 20), "hype_goal_offered"):
+		seq2.append(String(offer.get("goal", "")))
+	assert_true(seq1.size() >= 5, "enough offers to compare, got %d" % seq1.size())
+	assert_ne(",".join(seq1), ",".join(seq2), "different seeds -> different goal-offer sequences")
+	var sim3: CombatSim = make_sim(303)
+	add_human(sim3, "a")
+	var state_before: int = sim3.hype.goal_rng.state
+	var events: Array[Dictionary] = advance(sim3, Clock.TICKS_PER_CLOCK)
+	assert_event(events, "hype_goal_offered", "a goal draw happened")
+	assert_ne(sim3.hype.goal_rng.state, state_before, "a goal draw consumes the dedicated RNG")
+
+
+func test_camera_call_actor_gates() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	add_star(sim, "s", {"position": [0, 1]})
+	add_human(sim, "b", {"position": [1, 0]})
+	# Shock T3 -> Helpless for a Clock: same actor gate as declared actions.
+	sim.apply_command({"type": "apply_condition", "target": "s", "condition": "shock", "tier": 3})
+	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "s", "target": "b"}),
+		"helpless", "a Helpless caller cannot call the camera (R11 #13)")
+	advance(sim, Clock.TICKS_PER_CLOCK + 1)
+	# Kill the would-be target: rejection flips to target_dead (helpless expired).
+	declare(sim, "a", attack_action("bleeding", 5, "b", "torso"))
+	advance(sim, 3)
+	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "s", "target": "b"}),
+		"target_dead", "no spotlight on a corpse")
+	# Kill the caller: a dead caller is rejected before any stack accounting.
+	declare(sim, "a", attack_action("bleeding", 5, "s", "torso"))
+	advance(sim, 3)
+	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "s", "target": "a"}),
+		"actor_dead", "a dead caller cannot call the camera")
