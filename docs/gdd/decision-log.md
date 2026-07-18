@@ -55,3 +55,15 @@
     amendment: ANY god can all-in regardless of influence, existence can be the stake,
     a god's loss can unlock new stages.** Spec: `docs/design/mythology-research-spec.md`;
     propagated to `docs/design/patron-gods.md` §5 + `docs/cosmic-casino-canon.md` §3/§4.
+11. **Depiction policy v2 RULED (owner, 2026-07-18, in chat):** register = pop-culture
+    mythological fiction (Helltaker / mythology manhwa / Shinto anime precedent). Angels,
+    demons, God-figures, and living-religion deities depictable as characters, positively
+    or negatively — per-figure `living` gate DROPPED; investor-institution frame becomes
+    creative choice, not protective requirement; `depiction_risk` kept as data only.
+    Bar: respectful, never racist; thesis = how the mythos shaped humanity + how each
+    figure is perceived today. **Modern-life pantheon attributions wanted** (Greek =
+    Hawaii vacation, Roman = food-obsessed, Abrahamic = three managers fighting over one
+    company). FSM-class parody figures eligible in principle. **Held for explicit
+    confirmation:** named Islamic prophets (recommend OUT — the line precedent media
+    itself holds) · culturally closed ceremonial material (recommend exclusion stands).
+    Propagated: spec §3.3 v2 + `cosmic-casino-canon.md` §4.

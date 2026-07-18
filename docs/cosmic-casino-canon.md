@@ -78,6 +78,26 @@ Sources, in precedence order: **owner corrections 2026-07-16** (chat) > story bi
 - Hard rule (bible): gods are **morally alien throughout** — addicted, bored, starving
   for spectacle. No redemption, no hidden benevolence, nothing to twirl a mustache.
 
+### Depiction register & modern-life attributions (RULED 2026-07-18)
+
+- **Register:** pop-culture mythological fiction — owner-named precedents: Helltaker,
+  mythology manhwa, Shinto-themed anime. Gods, angels, demons, and God-figures are
+  depictable as characters, positively or negatively. The bar: **respectful, never
+  racist**; how players treat the mythos is per player.
+- **Thesis:** the story reflects **how the mythos shaped humanity and how each figure
+  is perceived today** — a god's table presence is their modern pop-culture image, not
+  an archaeology lesson.
+- **Modern-life attributions are wanted flavor** — each pantheon plays a modern
+  caricature at the table. Owner seed examples: Greek gods in Hawaii-vacation mode;
+  Romans food-obsessed; the three Abrahamic brands as managers vying for dominance of
+  the one holding company (§3). Extend per pantheon during roster design.
+- Parody-religion figures (owner floated the Flying Spaghetti Monster) are eligible in
+  principle; IP-check per figure before use.
+- Two carve-outs pending explicit owner confirmation (see
+  `docs/design/mythology-research-spec.md` §3.3 v2): named Islamic prophets
+  (recommended OUT) and culturally closed ceremonial material (recommended: exclusion
+  stands).
+
 ## 5. The novel's three protagonists (plot-protected — context only)
 
 1. **Marcus ("Mark")** — down-on-his-luck man, **tricked by a blind and naive god into

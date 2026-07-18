@@ -216,6 +216,36 @@ fronts of ONE holding company — a market-segmentation play to sell more produc
 and multiply gambling opportunities (recorded in
 `docs/cosmic-casino-canon.md` §3).
 
+**RULED (owner, 2026-07-18, second ruling — depiction policy v2).** Supersedes
+the gate structure above; `depiction_risk` remains as recorded DATA (provenance
+and awareness), but it is no longer a depiction gate. The game's register is
+pop-culture mythological fiction — owner-named precedents: Helltaker, mythology
+manhwa, Shinto-themed anime. Within that register, gods, angels, demons, and
+God-figures ARE depictable as characters, positively or negatively ("use them
+as is"). The per-figure owner gate on `living` figures is DROPPED; the
+investor-institution frame becomes a creative/lore choice (the holding-company
+canon stands), not a protective requirement. The bar that remains: portray
+respectfully, never in a racist way — the story reflects how the mythos shaped
+humanity and how each figure is perceived today. Pantheon-level MODERN-LIFE
+ATTRIBUTIONS are wanted flavor (owner examples: Greek gods = Hawaii-vacation
+style; Roman = food-obsessed; the three Abrahamic brands = managers vying for
+dominance of one company). Parody-religion figures (owner floated the Flying
+Spaghetti Monster) are eligible in principle — census + IP-check before use.
+
+**Two carve-outs held for explicit owner confirmation (nothing else blocks on
+them):**
+- **Named Islamic prophets (Muhammad above all): recommend keeping OUT.** This
+  is the one line the owner's own precedent media does not cross, and it
+  carries real-world safety risk beyond ordinary offense. Everything else in
+  the Abrahamic corpus (God-figure, angels, demons, saints, golem) is open per
+  this ruling.
+- **Culturally closed ceremonial material** (Aboriginal sacred lore, Native
+  nations' ceremonial stories): **recommend keeping the collection exclusion**
+  — this is the "racist kind of way" axis the ruling itself excludes;
+  respectfully depicting a public deity ≠ collecting stories a community
+  itself restricts. Public-sphere folk material stays in per the census
+  screening.
+
 ### 3.4 `source_quality` (1–5) — per tradition
 
 5 = rich primary texts in public-domain translation (Greek, Norse, Sanskrit
