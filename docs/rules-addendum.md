@@ -278,14 +278,16 @@ overturning one is a code change, not a rewrite.
     conversion + Patron-Token reward channel (R10) is KAN-7 scope. Recorded v1 limits:
     - **Deferred to v2:** weighted / audience-state-driven goal selection (v1 draws
       uniformly) and the compendium's Solo Action template.
-    - **PROVISIONAL — takedown side-blindness:** takedown completes on ANY death,
-      including a friendly one, and the payout is credited per attribution v1 (the
-      combatant the event is about). The owner may want a side-filter (enemy-only kills)
-      once teams exist in the sim.
-    - **PROVISIONAL — same-batch completion:** a goal offered at a clock_reset can be
-      completed by later events in that SAME batch (e.g. condition-advancement damage that
-      follows the reset in the event order). Open question for the owner: should a fresh
-      goal only be completable from the next command on?
+    - **RULED (owner 2026-07-18) — takedown = a kill YOU caused:** a friendly death
+      completes the takedown goal ONLY IF a contestant dealt the killing blow (friendly
+      fire counts — "it's cinema"); the payout is credited to that killer. IMPLEMENTATION
+      PENDING — this needs kill-attribution + team-awareness in the hype engine (the
+      deferred attribution v2); until then the v1 code over-fires on ANY `combatant_died`,
+      a known tracked gap (task queued). Enemy deaths still complete it.
+    - **RULED (owner 2026-07-18) — same-batch completion ALLOWED:** a goal offered at a
+      clock_reset CAN be completed by later events in that same batch — an insta-win off
+      good preparation or luck is not punished. Current behavior is correct as-is; no
+      change.
     - **Pre-I9 saves:** envelopes without `goal_rng_state` resume with state 0, which
       diverges from a full log replay. Pre-release saves are declared disposable; no
       migration shim.

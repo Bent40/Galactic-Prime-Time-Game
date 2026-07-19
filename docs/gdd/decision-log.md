@@ -90,16 +90,20 @@
       hygiene (legacy cooldowns vs R3, empty effect rows, garbled Camouflage, Nightlurking
       stat drift) cleaned during implementation. → the 43 skill ladders are being
       finalized against this framework.
-    - **Tag names: the owner's 2026-07-18 pasted list WINS over the 2026-07-17 renames.**
-      Reverted 7: LEEROY JENKINS (was Reckless), Chunky Salsa Rule (was Gorefest), Animal
-      Planet (was What a Beaut), Corporate Asset (was Shill), Certified Fresh (was Heart
-      Melter), SAG Dispute (was Not My Job), Sea World Reject (was Winter Sheep). Two are
-      live slice tags (LEEROY JENKINS, Chunky Salsa Rule). tags.json name+key updated;
-      slice-tags proposal banner-noted.
-    - **Mycelius Chrom → converted to Osiris** (`egyptian_osiris`): green vegetation-and-
-      death god, dismembered-then-reassembled (mycelial-network resonance). NOT slice-
-      critical; art reused for Osiris later. Owner may re-point to another decay figure.
-    - **R11 #14 — owner asked for a re-explanation (not yet ruled).** Still open.
+    - **Tag names: the 2026-07-17 RENAMES stand** (owner corrected 2026-07-18 — the pasted
+      list is OLDER, so its NAMES are superseded; its DESCRIPTIONS are canonical and were
+      ported). Canonical names: **Reckless, Gorefest, What a Beaut, Shill, Heart Melter,
+      Not My Job, Winter Sheep** (Reckless + Gorefest are live slice tags). `data/tags.json`
+      carries the rename name+key with the pasted-list descriptions attached.
+    - **Mycelius Chrom → a SERVANT, not a god** (owner corrected 2026-07-18): a fungal
+      servitor/attendant tied to a decay-and-death myth (retinue of a death/harvest god
+      such as Osiris), not a fully-fledged deity. NOT slice-critical; art reused later.
+    - **R11 #14 RULED (owner 2026-07-18):** (a) **same-batch goal completion is ALLOWED** —
+      a goal can be insta-won off good prep or luck, no penalty (current code is correct as
+      is). (b) **A friendly death completes the "takedown" goal ONLY IF a contestant killed
+      them** (friendly-fire counts — "it's cinema"); credit the killer. (b) needs
+      kill-attribution + team-awareness in the hype engine (the deferred attribution v2) →
+      IMPLEMENTATION QUEUED; the v1 code over-fires on any death until then.
 13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
     **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
     proposal questions answered; rulings recorded in
