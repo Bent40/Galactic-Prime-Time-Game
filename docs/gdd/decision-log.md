@@ -167,3 +167,16 @@
     Char-sheet `passive` fix commit **approved**. Tag descriptions: owner will paste
     rulebook text into a committed markdown scaffold
     (`docs/rulebook-tag-descriptions.md`) instead of supplying the docx.
+15. **I-13 TagEngine merged (2026-07-19), attribution boundary recorded.** The slice
+    tag engine (10 detectable tags + hype resonance + The Bit) passed two review gates
+    (standard + adversarial); both flagged a MAJOR attribution defect, both fixed
+    strict-side before the `--no-ff` merge (133 sim tests green, validate_seeds OK).
+    **Scene Stealer** now credits the goal COMPLETER via a new `completed_by` field on
+    `hype_goal_completed` (`HypeEngine._goal_completer`), not the completing event's
+    subject — which for takedown/overkill/part_break is the maimed victim.
+    **Reaction-dealt gore** now credits the reactor (`credited_actor` backward fallback).
+    **Boundary (explicit, not silent):** the hype LEDGER itself still victim-credits
+    those three goal kinds — aligning the ledger is the pre-existing provisional
+    attribution deferred to **attribution-v2 (task #13, R11 #14)**, out of I-13 scope.
+    The Bit's mechanical-null guarantee held under adversarial probing (combat state
+    byte-identical before/after, incl. rejected bits). Numbers PLACEHOLDER (R14).
