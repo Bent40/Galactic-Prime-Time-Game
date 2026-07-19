@@ -21,8 +21,8 @@
     "resolved_count": 24,
     "table_tier_counts": {
       "vvip": 9,
-      "vip": 10,
-      "normal": 5
+      "vip": 11,
+      "normal": 4
     },
     "unresolved_shortlist": []
   },
@@ -1426,62 +1426,63 @@
       "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
     },
     {
-      "id": "yoruba_west_african_anansi",
+      "id": "egyptian_ra",
       "status": "resolved",
-      "name": "Anansi",
-      "shortlist_name": "Anansi",
-      "tradition": "yoruba_west_african",
-      "influence": 1,
-      "recognition": 4,
-      "table_tier": "normal",
-      "obscurity_tier": "uncommon",
+      "name": "Ra",
+      "shortlist_name": "Ra",
+      "tradition": "egyptian",
+      "influence": 2,
+      "recognition": 5,
+      "table_tier": "vip",
+      "obscurity_tier": "common",
       "domains": [
-        "trickery",
-        "poetry_story",
-        "luck_gambling"
+        "sun_fire",
+        "justice_oaths",
+        "wisdom",
+        "magic",
+        "time_fate"
       ],
       "personality": {
-        "generosity": 2,
-        "strictness": 1,
+        "generosity": 3,
+        "strictness": 4,
         "pettiness": 3,
-        "wrath": 2,
-        "fidelity": 2,
-        "risk_appetite": 5
+        "wrath": 4,
+        "fidelity": 4,
+        "risk_appetite": 3
       },
-      "temperament": "Eight hands, one credit line, and a royalty on everything ever broadcast — he sold the house its own story catalog after winning it in the wildest all-in on record (stake: his own mother). Bet him nothing you can't afford to become a story.",
+      "temperament": "The reigning house king and old money in the most literal sense — he lit the first table and has sailed the same day-and-night circuit ever since, personally beating back the thing in the dark; imperious, punctual, and quietly terrified of the shift when the staff decide he's grown too old to run the floor.",
       "favor_conditions": [
-        "beat a foe or obstacle that outclasses you using trickery, a trap, or the terrain — not raw force (the small outwitting the mighty)",
-        "complete an objective by an unsanctioned method nobody proposed or expected",
-        "win an on-camera wager or bargain and collect on it to the letter",
-        "accept an 'impossible' task and clear it through a clever workaround (his four-capture price to Nyame)"
+        "Advance sun-like: clear a floor without ever re-entering a room you have already cleared (forward course only — the barque never sails back).",
+        "Land the killing blow yourself on a chaos-, serpent-, or darkness-class enemy, or deliver a boss's killing blow during a lit / daylight phase of the encounter.",
+        "Clear every objective on a floor in one unbroken push and extract before taking any rest.",
+        "Set up a kill and let your summoned enforcer, pet, or a marked teammate deliver the finishing blow (rule through your Eye, as Ra acts through Sekhmet/Hathor)."
       ],
       "taboos": [
-        "win by brute force when a clever option was on the table — Anansi has no patience for the graceless",
-        "renege on a bargain or a bet you struck"
+        "Retreat backward through a room you have already cleared — the sun does not reverse its course.",
+        "Let a full darkness / 'night' phase pass without defeating what ambushes you in it (you left Apep unanswered).",
+        "Mock, insult, or plot against a patron, host, or elder on camera — the offense that once made him loose the Eye on all mankind."
       ],
       "boon_domains": [
-        "trickery",
-        "luck_gambling"
+        "sun_fire",
+        "justice_oaths"
       ],
-      "blessing_style": "the trickster's edge — boons are workarounds and reversals: turn a stronger foe's own strength against it, slip a trap, or flip a losing bet; small, cheap, and always a little bit of a cheat",
+      "blessing_style": "Radiant but delegated — his favor arrives through an intermediary 'Eye' (a summoned enforcer or a marked ally) rather than his own hand; bright, order-restoring buffs that peak in lit phases, gutter in darkness, and must be re-earned at each new 'dawn'.",
       "casino_roles": [
-        "dealer",
-        "contestant_legend",
         "patron",
-        "forsaken_host"
+        "investor"
       ],
       "deal_sheet_hints": {
-        "boon_frequency": 2,
-        "boon_magnitude": 2,
-        "taboo_severity": 1,
-        "taboo_count": 2,
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
         "rival_curse_chance": 3,
-        "punishment_speed": 2,
-        "buyout_resistance": 2,
+        "punishment_speed": 4,
+        "buyout_resistance": 4,
         "buyout_magnet": false,
-        "forsaken_eager": true,
-        "forsaken_host_candidate": true,
-        "risk_appetite": 5
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 3
       },
       "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
     }

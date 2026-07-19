@@ -73,7 +73,7 @@ SHORTLIST: list[tuple[str, str]] = [
     ("Gad",              "abrahamic_folk_gad"),
     ("Lucifer",          "abrahamic_folk_lucifer"),
     ("Mammon",           "abrahamic_folk_mammon"),
-    ("Anansi",           "yoruba_west_african_anansi"),
+    ("Ra",               "egyptian_ra"),
 ]
 
 AXES = ("generosity", "strictness", "pettiness", "wrath", "fidelity", "risk_appetite")

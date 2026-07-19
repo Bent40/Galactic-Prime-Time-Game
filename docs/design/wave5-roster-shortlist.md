@@ -32,10 +32,16 @@ this is a proposal, not a lock.
 | 21 | **Gad** | abrahamic | 1 normal | luck, wealth | **The honest-floor pure-luck patron** (inf 1 / rec 1 — rare-board collector's thrill); reweighted-dice build |
 | 22 | **Lucifer** | abrahamic | 1 normal | chaos, sun_fire, luck | **The archetypal Forsaken all-in** (stakes existence); leverage-loan build; famous-but-poor (inf1/rec5) tier edge |
 | 23 | **Mammon** | abrahamic | 1 normal | wealth, luck, trickery | **fidelity 1** — THE buy-out-magnet mechanic tester; treasure-greed build |
-| 24 | **Anansi** | yoruba | 1 normal | luck, trickery | Small-clever **underdog / wager** build; West-African trickster |
+| 24 | **Ra** | egyptian | 2 vip | sun_fire, justice, wisdom | Adds the missing **Egyptian** pantheon; sun-king / cosmic-order / prophecy build |
+
+> **Correction (2026-07-18):** slot #24 was originally **Anansi** — a mistaken pick: he's
+> extracted as `folk` / `patron_capable: false` (no deal sheet), so he could not be a patron
+> without fabricating one. Replaced with **Ra**, who is genuinely patron-capable AND fills the
+> roster's only major-pantheon gap (there was no Egyptian god). Anansi remains a folk
+> dealer/contestant-legend in the data, unchanged.
 
 ## Coverage checks
-- **Influence tiers:** i5×2 · i4×6 · i3×4 · i2×8 · i1×4 — every tier, weighted toward the playable-VIP band.
+- **Influence tiers:** i5×2 · i4×6 · i3×4 · i2×9 · i1×3 — every tier, weighted toward the playable-VIP band. (13 traditions now, incl. Egyptian.)
 - **Personality extremes:** generosity-hi (Avalokiteshvara) · strictness-hi (Yama) · pettiness-hi (Morrígan) · wrath-hi (Santa Muerte) · risk-hi (Palden Lhamo/Lucifer) · risk-lo (Yama/Hades) · **fidelity-1 buy-out magnets ×4** (Zeus, Loki, Tezcatlipoca, Mammon) to stress the contract-sale mechanic.
 - **Casino roles:** investor (Ganesha), Forsaken hosts (Lucifer + 8 more), dealers (Hermes, Gad, Mammon, Eshu), messenger (Hermes, Eshu).
 - **Build archetypes:** aggression, prep/defense, attrition/death, trickery, treasure-greed, spectacle/Charm, oath-keeping, speed/movement, underdog, healing/protection, poison/swarm, gamble/luck.

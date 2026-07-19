@@ -132,7 +132,18 @@
       generator + domain→condition/affix maps (domain→tag waits on the I-13 tag effects).
     - **Animal parts:** owner requested a QUICK RESEARCH pass first — catalog the body parts
       UNIQUE to animals (tails, pincers, pouches/"pockets", wings, horns, beaks, shells,
-      etc.) as a premade-parts library, before the full animal-layout sitting. (→ R21 TBD.)
+      etc.) as a premade-parts library, before the full animal-layout sitting. Done:
+      `docs/design/animal-parts-library.md` (38 parts).
+    - **R21 body structure RULED (owner 2026-07-18):** Lego-style — a character type =
+      typed parts (base head/torso/arms/legs + any animal part) each with a size range;
+      deep customization (fur color, per-part sizing) DEFERRED, irrelevant to the demo.
+      Character-creation UX: choose-by-PROPERTIES-then-filter (deferred to KAN-4/KAN-6, not
+      the demo). Recorded in `docs/rules-addendum.md` §R21.
+    - **Roster CORRECTION (owner-caught 2026-07-18):** slot #24 Anansi was MY MISTAKE — he's
+      `folk`/`patron_capable:false`; I had wrongly authored him a patron_block to cover the
+      error. **Reverted** (Anansi restored to folk dealer/contestant-legend) and **swapped
+      for Ra** (genuinely patron-capable; also fills the roster's Egyptian gap). Process
+      note: surface such errors as errors — do not quietly fabricate a fix.
 13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
     **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
     proposal questions answered; rulings recorded in

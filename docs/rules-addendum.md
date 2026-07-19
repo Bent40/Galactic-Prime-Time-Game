@@ -556,6 +556,31 @@ yet). The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or 
 is the seed of the sight rule; Shock-T1 Shout ("breaks stealth") is the noise seed. This
 ruling supersedes the review-1 B10 gap ("stealth referenced, no rules"). Q58 CLOSED.
 
+## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
+
+**RULED — the structural model.** A character **type** (human, animal, hybrid) is a
+**structure composed of typed parts** — like Lego. Parts are drawn from a single library:
+the base set (**torso, arms, legs, head**, …) **plus** any part from the animal-parts
+library (`docs/design/animal-parts-library.md`, the R21 source catalog: tails, pincers,
+pouches, wings, horns, beaks, shells, stingers, gills, compound eyes, …). Each part carries
+a **range of size**. A layout is just "which parts, how many, what size" (e.g. crab =
+carapace-torso + 8 legs + 2 pincers; snake = head + long segmented torso, no limbs).
+
+- **Deferred customization** (owner: "later if we REALLY want to"): fur/hair color, per-part
+  size sliders beyond the range, cosmetic variants. **None of it matters for the demo** (the
+  demo runs the two human loadouts).
+- **Engine reconciliation items** (from the parts research, for the implementation pass, not
+  now): (1) manipulation parts need a **`can_manipulate` flag** — the sim currently detects
+  "hands" by an `arm`/`hand` substring in the part key; (2) every layout must include a
+  **torso-equivalent + head-equivalent** so torso/head-routed conditions have a landing part.
+- All part HP / lethal / size numbers are **PLACEHOLDER (R14)** until the numbers pass.
+
+**Character-creation UX (deferred design — KAN-4 creation / KAN-6 UI, NOT the demo):** a flat
+list of "human + a billion animals + every part" is too heavy for a user. Direction: let the
+player **choose by PROPERTIES and filter first** (e.g. "aquatic", "flying", "has a grab
+limb", "small"), then pick a body/parts from the filtered set. Design later; recorded so it
+isn't lost.
+
 ## Rulings batch 2026-07-17 (owner, in chat)
 
 - **Friendly fire: ON** (Q69) — spectacle wins.
