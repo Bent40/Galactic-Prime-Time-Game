@@ -121,6 +121,11 @@ func view_combatants() -> Array[Dictionary]:
 				"max_hp": c.max_hp(String(part_key)),
 				"lethal": bool(part.get("lethal", false)),
 				"disabled": bool(part.get("disabled", false)),
+				"destroyed": bool(part.get("destroyed", false)),
+				# A part hidden_until_breach reads hidden=true until this combatant
+				# is breached — the HUD keeps the boss's mycelium network off-screen
+				# until the party discovers it (breached flips it visible).
+				"hidden": bool(part.get("hidden", false)) and not c.breached,
 				"conditions": conds,
 			})
 		out.append({
@@ -130,6 +135,7 @@ func view_combatants() -> Array[Dictionary]:
 			"alive": c.alive,
 			"shock": c.shock,
 			"exposed": c.exposed_cache,
+			"breached": c.breached,
 			"parts": parts,
 		})
 	return out
@@ -139,6 +145,67 @@ func view_clock() -> Dictionary:
 	if sim == null:
 		return {}
 	return {"tick": sim.clock.tick, "moment": sim.clock.moment()}
+
+
+## Owner-blessed band display names (2026-07-19): the sim enum -> broadcast copy.
+const BAND_DISPLAY: Dictionary = {
+	"cold": "COLD OPEN", "warm": "WARMING UP", "hot": "ELECTRIC", "on_fire": "ON FIRE",
+}
+
+
+## Broadcast/audience projection for the combat HUD. view_combatants covers the
+## fighters; this covers the audience economy the mockup shows — hype meter+band,
+## the active crowd goal, the camera spotlight, and per-contestant tags — none of
+## which lived in a view before (slice playtest finding F3). Read-only over the
+## sim's HypeEngine + TagEngine; presentation only, never mutates.
+func view_broadcast() -> Dictionary:
+	if sim == null:
+		return {}
+	var hype: HypeEngine = sim.hype
+	var band := String(hype.band)
+	var goal: Dictionary = {}
+	if not hype.active_goal.is_empty():
+		var g: Dictionary = hype.active_goal
+		goal = {
+			"id": String(g.get("id", "")),
+			"name": String(g.get("name", "")),
+			"kind": String(g.get("kind", "")),
+			"payout": int(g.get("payout", 0)),
+			"clocks_left": int(g.get("clocks_left", 0)),
+			"progress": int(g.get("progress", 0)),
+			"params": (g.get("params", {}) as Dictionary).duplicate(true),
+		}
+	var spotlight: Dictionary = {}
+	if not hype.spotlight.is_empty():
+		spotlight = {
+			"caller": String(hype.spotlight.get("caller", "")),
+			"target": String(hype.spotlight.get("target", "")),
+			"clocks_left": int(hype.spotlight.get("clocks_left", 0)),
+		}
+	# Per-contestant tags (held + in-progress) for the tag feed / unit tokens.
+	var tags: Dictionary = {}
+	var tag_ids: Array = sim.tags.held.keys()
+	for pid: Variant in sim.tags.progress.keys():
+		if not tag_ids.has(pid):
+			tag_ids.append(pid)
+	tag_ids.sort()
+	for pid: Variant in tag_ids:
+		var held_keys: Array = (sim.tags.held.get(pid, {}) as Dictionary).keys()
+		held_keys.sort()
+		tags[String(pid)] = {
+			"held": held_keys,
+			"progress": (sim.tags.progress.get(pid, {}) as Dictionary).duplicate(true),
+		}
+	return {
+		"hype": {
+			"meter": int(hype.meter),
+			"band": band,
+			"band_display": String(BAND_DISPLAY.get(band, band.to_upper())),
+		},
+		"goal": goal,
+		"spotlight": spotlight,
+		"tags": tags,
+	}
 
 
 func save_game(save_name: String) -> bool:

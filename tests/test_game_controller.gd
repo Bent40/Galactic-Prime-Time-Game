@@ -42,3 +42,50 @@ func test_apply_before_start_is_safe() -> void:
 	var events: Array[Dictionary] = game.apply_command({"type": "advance_tick"})
 	assert_true(events.is_empty(), "no sim -> empty result, no crash")
 	game.free()
+
+
+func test_view_broadcast_projects_the_audience_economy() -> void:
+	# Slice-playtest finding F3: the HUD needs hype/goal/spotlight/tags and the
+	# boss's hidden-part state, none of which lived in a view before.
+	var game: Node = _make_controller()
+	game.start_combat(14, load_static_data())
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "a", "name": "A", "race": "human", "position": [0, 1],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3},
+	}})
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "boss", "enemy": "incinedile", "position": [0, 0],
+	}})
+
+	# --- view_broadcast: the audience economy ---
+	var b: Dictionary = game.view_broadcast()
+	assert_true(b.has("hype") and b.has("goal") and b.has("spotlight") and b.has("tags"),
+		"broadcast projection carries hype / goal / spotlight / tags")
+	var band := String((b["hype"] as Dictionary).get("band", ""))
+	var disp := String((b["hype"] as Dictionary).get("band_display", ""))
+	var expected: Dictionary = {"cold": "COLD OPEN", "warm": "WARMING UP", "hot": "ELECTRIC", "on_fire": "ON FIRE"}
+	assert_eq(disp, String(expected.get(band, "")), "band_display maps the sim band to the owner-blessed name")
+	assert_false(disp.is_empty(), "band_display is populated")
+	# A bit generates in-progress tag state that must surface in the projection.
+	game.apply_command({"type": "bit", "actor": "a"})
+	var b2: Dictionary = game.view_broadcast()
+	var atags: Dictionary = (b2["tags"] as Dictionary).get("a", {})
+	assert_eq(int((atags.get("progress", {}) as Dictionary).get("the_bit", 0)), 1,
+		"the contestant's in-progress tag surfaces in view_broadcast")
+	assert_true(int((b2["hype"] as Dictionary).get("meter", 0)) > 0, "the bit's spectacle moved the meter")
+
+	# --- view_combatants: the hidden network stays hidden until breach ---
+	var boss_view: Dictionary = {}
+	for cv: Dictionary in game.view_combatants():
+		if String(cv.get("id", "")) == "boss":
+			boss_view = cv
+	assert_false(bool(boss_view.get("breached", true)), "boss starts un-breached")
+	var network_present := false
+	var network_hidden := false
+	for p: Dictionary in boss_view.get("parts", []):
+		if String(p.get("key", "")) == "network":
+			network_present = true
+			network_hidden = bool(p.get("hidden", false))
+	assert_true(network_present, "the network part is in the view")
+	assert_true(network_hidden, "the network reads hidden while un-breached — the HUD keeps it off-screen")
+	game.free()
