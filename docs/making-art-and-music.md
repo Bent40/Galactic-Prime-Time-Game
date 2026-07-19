@@ -452,7 +452,12 @@ Buy once; it's your forever-DAW for the whole multi-year project. Why it fits *y
 - Scales cleanly from chiptune step patterns up to full orchestral/hybrid — one program you
   learn once. Editions: **Fruity $99** (MIDI/VST only, no audio recording — fine for game
   music) / **Producer $199** (adds audio recording — the real entry if you'll record live).
-  Cross-platform (Win/Mac). (image-line.com/fl-studio/pricing)
+  Windows-native (it started as a Windows app), so it runs great on your setup.
+  (image-line.com/fl-studio/pricing)
+- **Try it free first (matches your "learn the program" goal):** the FL Studio **trial has
+  no time limit and is fully featured** for making *and* exporting music — the only catch is
+  you **can't reopen a saved `.flp` project** after closing FL until you buy. For learning
+  the software that's a non-issue; upgrade the moment you want to keep a project going.
 
 **Alternative to ③ if *live* jamming is your #1 priority → Ableton Live Intro ($99).**
 Ableton's **Session View** is the best "improvise with loops" paradigm ever built — a grid of
@@ -470,10 +475,12 @@ beginner learning the *software.*
   MIDI/synth only, no audio recording — fine for chiptune/synth).
 - **Any machine, instant → BandLab** in a browser.
 
-> **My recommendation for you:** jam in **Bosca Ceoil this week** (free, 10-minute win), and
-> pick your forever-DAW between **FL Studio (Producer $199)** for structured composing or
-> **Ableton Intro ($99)** if live loop-jamming is the draw. Both carry you all the way to the
-> orchestral tier. Tell me your OS and I'll narrow the free options.
+> **My recommendation for you (Windows + FL Studio, locked in):** jam in **Bosca Ceoil this
+> week** for the instant win, and make **FL Studio** your forever-DAW. **Start on the free
+> trial** (see ③ below) to learn the program — your actual goal — then buy **Fruity ($99)**
+> or **Producer ($199)** when you commit. FL is Windows-native, so it'll run great on your
+> machine. Free stopgap if you want one before touching FL: **Cakewalk Sonar** (Windows,
+> full-featured, free).
 
 ## §2.3 — Chiptune the pro way (trackers vs. piano-roll, and VSTs)
 
@@ -607,6 +614,31 @@ In `Project Settings` (enable "Advanced Settings"):
 **Quick profile:** 640×360 · Filter Nearest · Stretch `canvas_items` · Aspect `keep` · Scale
 `integer` · Snap Transforms On.
 
+**Ready to paste into `project.godot`** — these are the exact settings above (your current
+`project.godot` has none of them yet):
+
+```ini
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/stretch/scale_mode="integer"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+```
+
+*(`default_texture_filter=0` means Nearest.)* **Hold before applying, though:** per your GDD
+the visual-style call goes through the **KAN-6 style-frame gate**, and base resolution +
+stretch mode are part of that decision — so treat this block as *the recommended default to
+adopt at KAN-6*, not something to bake in mid-KAN-2. That's why `project.godot` is left
+untouched for now; say the word and I'll apply it (plus a Master/Music/SFX bus layout).
+
 ## §3.3 — Sprites, animation, tiles, depth
 
 - **Static sprite:** **`Sprite2D`** (drag PNG onto `Texture`). For a spritesheet, set
@@ -723,9 +755,10 @@ Assumes ~1 hr/day; scale to taste.
   aside and keep hand-making.
 
 **Week 2 — start making *your* assets.**
-- **Music:** pick your forever-DAW (**FL Studio Producer** or **Ableton Intro**), install
-  **Spitfire LABS** + **Magical 8bit Plug 2**, and write one **leitmotif** for a contestant —
-  first as chiptune, then re-voiced with LABS (your fidelity ladder, in miniature).
+- **Music:** install **FL Studio** (start on the free trial; Producer $199 when you commit),
+  add **Spitfire LABS** + **Magical 8bit Plug 2**, and write one **leitmotif** for a
+  contestant — first as chiptune, then re-voiced with LABS (your fidelity ladder, in
+  miniature).
 - **Art:** **milestones 5–6** — your first 3/4-view character and its 4 directions. Run the
   **black-silhouette test** on the character.
 - **Integration:** get that character into Godot as an **`AnimatedSprite2D`**, and set up a
@@ -745,7 +778,7 @@ if you ever want it. That's a real foundation for KAN-6.
 | Palette | **lospec.com/palette-list** — one ~32-color global palette |
 | Jam music *today* | **Bosca Ceoil Blue** (free) |
 | Real 8-bit NES music | **FamiStudio** (free) |
-| Forever-DAW | **FL Studio Producer $199** (structured) / **Ableton Intro $99** (live jam) |
+| Forever-DAW | **FL Studio** (Windows-native; free trial → Fruity $99 / Producer $199) |
 | Free chip VST | **Magical 8bit Plug 2** |
 | Free orchestral | **Spitfire LABS** + **Symphony Orchestra: Discover** |
 | Free synth | **Vital** |
@@ -765,6 +798,9 @@ if you ever want it. That's a real foundation for KAN-6.
 | Contrast reference | **Danganronpa** executions (low-fi baseline → animated set-piece) |
 | Safest asset license | **CC0** (Kenney.nl) — keep a CREDITS.txt anyway |
 
-*Tell me your OS (and whether you're leaning FL vs Ableton) and I'll tighten the tool picks
-— and I can stub the Godot pixel-perfect project settings + a Music/SFX bus layout into the
-repo so those are already done when you get there.*
+*Locked in: **Windows + FL Studio**, and the guide reflects that throughout. The one thing I
+**didn't** do is edit your live `project.godot` — the §3.2 pixel-perfect settings (and a
+Master/Music/SFX bus layout) are a **KAN-6 presentation decision** your GDD routes through
+the style-frame gate, so applying them now would jump ahead of KAN-2. The exact block is in
+§3.2, ready to paste. **Say "apply the Godot settings" and I'll drop the `[display]` /
+`[rendering]` block and a `default_bus_layout.tres` into the repo for you.***
