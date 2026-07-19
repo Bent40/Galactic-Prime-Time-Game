@@ -75,6 +75,31 @@
     (KAN-4 S4.1) — the two drafted slice "premades" exist only as a slice-scoping
     device; their final role (demo/quick-start loadouts vs creation-first slice)
     awaiting owner pick.
+14. **Batch rulings (owner, 2026-07-18, in chat).**
+    - **R19 skill framework = ALL DEFAULTS ACCEPTED** (the 10 cross-cutting questions):
+      (1) passives generalize as passives, high rung may add an active toggle where it
+      fits · (2) L10 rule-transcending tier is magic-only + source-gated · (3) the R16
+      4-skill trade does NOT push a starting skill into the 6+ band; 6+ is earned in-run ·
+      (4) chain-opener generalization loosens chain gates only at authored rungs, never
+      automatically · (5) consume/mutate capstones sit OUTSIDE the 6–10 ladder; cap-10
+      always Patron-Token-gated · (6) performance skills: Charm scales the crowd payoff, a
+      shared "spectacle" rung is the standard L10 · (7) locked/NPC skills use the 0–10
+      ladder only if a player could ever acquire them; player-inflicted mind-collapse
+      gated per R5 · (8) NO ladder introduces true HP restoration (HP recovery stays
+      scarce) · (9) approve ladder SHAPES now, tune magnitudes after R14 · (10) data
+      hygiene (legacy cooldowns vs R3, empty effect rows, garbled Camouflage, Nightlurking
+      stat drift) cleaned during implementation. → the 43 skill ladders are being
+      finalized against this framework.
+    - **Tag names: the owner's 2026-07-18 pasted list WINS over the 2026-07-17 renames.**
+      Reverted 7: LEEROY JENKINS (was Reckless), Chunky Salsa Rule (was Gorefest), Animal
+      Planet (was What a Beaut), Corporate Asset (was Shill), Certified Fresh (was Heart
+      Melter), SAG Dispute (was Not My Job), Sea World Reject (was Winter Sheep). Two are
+      live slice tags (LEEROY JENKINS, Chunky Salsa Rule). tags.json name+key updated;
+      slice-tags proposal banner-noted.
+    - **Mycelius Chrom → converted to Osiris** (`egyptian_osiris`): green vegetation-and-
+      death god, dismembered-then-reassembled (mycelial-network resonance). NOT slice-
+      critical; art reused for Osiris later. Owner may re-point to another decay figure.
+    - **R11 #14 — owner asked for a re-explanation (not yet ruled).** Still open.
 13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
     **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
     proposal questions answered; rulings recorded in

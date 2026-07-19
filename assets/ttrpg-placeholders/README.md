@@ -17,7 +17,7 @@ images never enter the headless import path (they'd slow the sim test suite and 
 | `Tokens and portraits/Mobs/Elite/Little brother Roach.*` | elite `little_brother_roach` (`data/enemies.json`) |
 | `Tokens and portraits/Mobs/Elite/Middle*/Big Brother Roach.*` | elite tier variants (future roach brothers) |
 | `Tokens and portraits/Mobs/Normal/Trash Roach*.*` | mob tier (the `roach_dog` mob analogue) |
-| `Tokens and portraits/NPC/Mycelius Chrom*.webp` | NPC — **relevance to casino frame is an OPEN owner question** (mushroom-being tie-in; see decision log) |
+| `Tokens and portraits/NPC/Mycelius Chrom*.webp` | NPC — **RULED: converted to an existing myth. Mycelius = a depiction of Osiris** (`egyptian_osiris`): the green vegetation-and-death god, dismembered then reassembled — the mycelial-network / decay-feeds-regrowth resonance is exact. NOT slice-critical (the slice uses Incinedile + roaches); reuse this art for Osiris in a later table. Owner may re-point to another decay figure (Cernunnos, Xiwangmu, Balor) if preferred. |
 | `Tokens and portraits/PC/*` | Filipe, Mario Marcus, Sasha, Xquezit — live-campaign PCs; **parked per the IP ruling** (not the game's original cast). Usable as demo-loadout portrait stand-ins only. |
 | `Maps/Tutorial Floor/Playtest Incinerator Boss Room.jpg` | the slice arena reference |
 | `Maps/Tutorial Floor/Playtest *.jpg` | tutorial-floor room references (Compactor, Sludge Hatchery, Sorting, Brothers, Tutorial) |

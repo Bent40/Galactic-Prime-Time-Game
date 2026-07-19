@@ -364,6 +364,8 @@ resonance multiplication; rider escalate-and-reset; goal-row completion).
    confirmed acceptable that `description` stays empty until the rulebook docx text
    is ported (nothing in this proposal invents lore text)?
 
+## NAME UPDATE (owner, 2026-07-18): the pasted-list names win — **Reckless → LEEROY JENKINS** (`leeroy_jenkins`) and **Gorefest → Chunky Salsa Rule** (`chunky_salsa_rule`). Every "Reckless"/"Gorefest" below now reads as those names; mechanics/detectors unchanged.
+
 ## RULED (owner, 2026-07-18) — status: APPROVED, build it
 
 1. The 10-tag selection — **approved**.
