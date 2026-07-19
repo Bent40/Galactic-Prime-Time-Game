@@ -518,6 +518,44 @@ passover; the generalization ladder 6–10 is the authoring template for every s
 **NOTE (owner 2026-07-18): "Explosion" is an ILLUSTRATIVE teaching example only — there is
 NO Explosion skill. Fire Ball generalizes on its own terms; do not seed an Explosion skill.**
 
+## R20 — Stealth, detection & cover (owner, 2026-07-18)
+
+**RULED — the complete model.** Applies to BOTH combat and exploration. Parts may be phased
+in implementation (§ "Phasing" below); the design is settled.
+
+- **Vision (sight detection).** An entity sees out to roughly **2× its Mind stat** in range,
+  through **vision cones** — eye positioning and field of view matter, so different creatures
+  (and animal part-layouts, R21) have different cones. **If you are seen, you are not
+  stealthed** (binary: within cone + in range + line-of-sight + Mind sufficient → revealed).
+- **Hearing.** If an entity **hears** you it may, per its personality/AI, **investigate,
+  ignore, or otherwise react**. Two escalation paths: (a) reacting to the sound **turns/moves
+  it so you enter its vision cone → you are unstealthed**; (b) an entity **smart enough**
+  (an AI/Mind threshold we set per creature) becomes **ALERTED** — it does **not** know where
+  you are, only that *something* is there. Alerted-but-unlocated is a deliberate design space:
+  it enables **scapegoating** (make something else look like the intruder), **illusions**,
+  decoys, and misdirection plays.
+- **Disguise.** You can disguise yourself: an entity **outside a specified range does NOT
+  recognize you as an intruder even if it has the Mind to see you** — it only sees through the
+  disguise within that close range. (Disguise range is a property of the disguise, PLACEHOLDER
+  R14.)
+- **Cover — a real geometric system.** Covers have **real heights and sizes**; gaps/holes in
+  walls have **real dimensions**. This is load-bearing: **some skills pass through or exploit
+  specific gap sizes and do different things by size** (a mouse-hole vs a crawlspace vs a
+  window are mechanically different). Cover blocks line-of-sight/vision-cone per its geometry.
+- **Hype interaction — stealth does NOT auto-suppress hype.** Sneaking past every guard
+  impeccably is spectacle; stalking prey as a hunter is spectacle. **What you DO with stealth
+  determines the hype**, not the hiding itself. **Production NEVER interferes directly in the
+  show** (correction to an earlier proposal). The diegetic destealth lever is **rival gods**:
+  a rival patron can **curse you unstealthy / out you** as a divine intervention.
+
+**Phasing (implementation, not design — defer freely):** v1 can ship the binary
+sight/hearing model on the existing hex positions with a simple facing/cone; **full cover
+geometry (heights, sized gaps, skill-by-gap-size interactions) and true vision-cone
+facing are KAN-5-era** (they need positional facing + sized terrain the sim doesn't model
+yet). The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or on move")
+is the seed of the sight rule; Shock-T1 Shout ("breaks stealth") is the noise seed. This
+ruling supersedes the review-1 B10 gap ("stealth referenced, no rules"). Q58 CLOSED.
+
 ## Rulings batch 2026-07-17 (owner, in chat)
 
 - **Friendly fire: ON** (Q69) — spectacle wins.

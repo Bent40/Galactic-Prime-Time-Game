@@ -114,6 +114,25 @@
       repurpose to reading enemy/NPC hidden intent). Recorded in
       `docs/design/skills-r19-ladders-FINAL.md`; 42/43 ladders now final, Telepathy the
       one open skill.
+    - **Telepathy RESOLVED (owner 2026-07-18):** comms use dropped (chat covers it); reading
+      intent is Read the Pattern's job; Telepathy leans into the **manipulation lane**
+      (read→write→influence→gated collapse). 43/43 ladders now settled.
+    - **Caishen influence RESTORED to 5 (owner 2026-07-18):** not a rubric error — played as
+      him simply being a **better/more-popular casino player** ("some tables ARE more
+      popular"; a son showing his dad new phone games). Overrides the Wave-4 auto-correction.
+    - **R20 Stealth/detection/cover RULED (owner 2026-07-18):** complete model in
+      `docs/rules-addendum.md` §R20 — vision = ~2× Mind via cones (eye position matters);
+      hearing → investigate/alert (alerted-but-unlocated enables scapegoat/illusion plays);
+      disguise = unrecognized outside a range; **cover is a real sized-geometry system**
+      (skills pass sized gaps differently); stealth does NOT auto-suppress hype (spectacle
+      depends on what you do); **production never interferes — rival gods out you**. Both
+      combat + exploration. Cover-geometry/vision-facing phased to KAN-5. Q58 CLOSED.
+    - **Wave 5 APPROVED (owner 2026-07-18):** the 24-god MVP roster
+      (`docs/design/wave5-roster-shortlist.md`) is greenlit → build the patron-roster
+      generator + domain→condition/affix maps (domain→tag waits on the I-13 tag effects).
+    - **Animal parts:** owner requested a QUICK RESEARCH pass first — catalog the body parts
+      UNIQUE to animals (tails, pincers, pouches/"pockets", wings, horns, beaks, shells,
+      etc.) as a premade-parts library, before the full animal-layout sitting. (→ R21 TBD.)
 13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
     **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
     proposal questions answered; rulings recorded in
