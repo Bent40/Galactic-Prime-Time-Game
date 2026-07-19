@@ -66,6 +66,7 @@ static func load_static_data() -> Dictionary:
 		"enemies": load_json("res://data/enemies.json"),
 		"items": load_json("res://data/items.json"),
 		"crowd_goals": load_json("res://data/crowd_goals.json"),
+		"tag_effects": load_json("res://data/tag_effects.json"),
 	}
 
 

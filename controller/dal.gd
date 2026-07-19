@@ -41,6 +41,16 @@ func patron_gods() -> Array: return _collection("patron_gods")
 func crowd_goals() -> Array: return _collection("crowd_goals")
 
 
+## Slice-tag effects (I-13). Unlike the other collections this file is an OBJECT
+## ({_meta, tags:[...]}), so it loads outside _collection; the sim's TagEngine
+## consumes the whole object.
+func tag_effects() -> Dictionary:
+	if not _cache.has("tag_effects"):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/tag_effects.json"))
+		_cache["tag_effects"] = parsed if parsed is Dictionary else {}
+	return _cache["tag_effects"]
+
+
 ## By-key lookup (rows are keyed by "key" across all collections; "" -> {}).
 func by_key(collection: String, key: String) -> Dictionary:
 	for row: Variant in _collection(collection):
@@ -64,4 +74,5 @@ func static_data_for_sim() -> Dictionary:
 		"enemies": enemies(),
 		"items": items(),
 		"crowd_goals": crowd_goals(),
+		"tag_effects": tag_effects(),
 	}

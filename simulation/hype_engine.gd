@@ -82,6 +82,11 @@ var exposed: Dictionary = {}  # combatant id -> bool
 ## ConditionEngine's condition list) + its dedicated RNG (state IS serialized).
 var goal_table: Array = []
 var goal_rng := RandomNumberGenerator.new()
+## Slice-tag engine ref (I-13, NOT serialized — re-wired by CombatSim, held
+## untyped so HypeEngine keeps no compile-time dependency on TagEngine). Held
+## tags amplify the spectacle points of matching events attributed to (or
+## batch-credited to) the holder; null (no tags wired) leaves scoring untouched.
+var tags = null
 
 
 ## Fresh-sim wiring: goal table + deterministic goal-RNG seed. from_dict
@@ -101,7 +106,8 @@ func set_goal_table(goals: Array) -> void:
 func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var gain: int = 0
-	for event: Dictionary in events:
+	for i: int in range(events.size()):
+		var event: Dictionary = events[i]
 		var etype := String(event.get("type", ""))
 		if etype.begins_with("hype_"):
 			continue
@@ -115,10 +121,12 @@ func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 		var points: int = _points_for(event)
 		if points > 0:
 			points = _spotlit(event, points)
+			points = _resonate(events, i, event, points, false)
 			gain += points
 			_credit(event, points)
 		if _goal_completed_by(event):
 			var payout: int = _spotlit(event, int(active_goal.get("payout", 0)))
+			payout = _resonate(events, i, event, payout, true)
 			gain += payout
 			_credit(event, payout)
 			out.append({
@@ -179,6 +187,47 @@ func _spotlit(event: Dictionary, points: int) -> int:
 	if not spotlight.is_empty() and _attribution(event) == String(spotlight.get("target", "")):
 		return points * CAMERA_CALL_MULTIPLIER
 	return points
+
+
+## Slice-tag resonance (I-13): amplify `points` for events attributed to a
+## tag-holder. Two responsible parties may hold a matching tag — the event's own
+## subject (_attribution: victim/actor) and, for offensive beats, the batch
+## attacker (credited_actor). Applying both covers offense tags (Gorefest, on
+## the attacker) and defense/self tags (Reckless/Survivor, on the victim) with
+## one mechanism. is_goal selects the "goal_completed" token for payout
+## resonance (Scene Stealer / Fan Favorite). Audience-side only — never touches
+## combat state. A null tags ref (untagged play) is the identity.
+func _resonate(events: Array[Dictionary], index: int, event: Dictionary, points: int, is_goal: bool) -> int:
+	if tags == null or points <= 0:
+		return points
+	var token: String = "goal_completed" if is_goal else String(event.get("type", ""))
+	var seen: Dictionary = {}
+	var victim := _attribution(event)
+	if victim != "":
+		seen[victim] = true
+	var attacker := credited_actor(events, index)
+	if attacker != "":
+		seen[attacker] = true
+	var ids: Array = seen.keys()
+	ids.sort()
+	var result: int = points
+	for id: Variant in ids:
+		result = int(tags.apply_resonance(String(id), token, result))
+	return result
+
+
+## Same-batch attacker attribution (RULED item 6, PROVISIONAL extends R11 #14):
+## a victim-attributed offensive event is credited to the actor of the NEXT
+## action_resolved/reaction_resolved in the same batch — the resolver emits
+## strike events BEFORE their closing resolution, so the forward pairing is
+## deterministic and replay-stable. No closer ahead (e.g. clock-driven condition
+## advancement) → uncredited, which is correct: nobody performed it.
+static func credited_actor(events: Array[Dictionary], index: int) -> String:
+	for j: int in range(index, events.size()):
+		var etype := String(events[j].get("type", ""))
+		if etype == "action_resolved" or etype == "reaction_resolved":
+			return String(events[j].get("actor", ""))
+	return ""
 
 
 ## The spotlight ends when the spotlit combatant's action finishes (resolved or
@@ -256,6 +305,25 @@ func _goal_completed_by(event: Dictionary) -> bool:
 				and String(event.get("result", "")) == "ok" \
 				and int(event.get("rounds", 0)) > 0 \
 				and bool(exposed.get(String(event.get("actor", "")), false))
+		"forced_action": # I-13 "Pratfall!" — any d6 Forced Action fires (comedy beat)
+			if etype != "forced_action_triggered":
+				return false
+			if params.has("table") and String(params["table"]) != String(event.get("table", "")):
+				return false
+			if params.has("consequence") and String(params["consequence"]) != String(event.get("consequence", "")):
+				return false
+			return true
+		"body_block": # I-13 "Body Block!" — a block or a protective reaction (Craft Services' plate)
+			if etype == "attack_blocked":
+				return true
+			return etype == "reaction_resolved" \
+				and (params.get("reaction_keys", []) as Array).has(String(event.get("key", "")))
+		"move_spaces": # I-13 "Zoomies!" — moved-spaces accumulated within the goal's window
+			if etype != "moved":
+				return false
+			var moved_total: int = int(active_goal.get("progress", 0)) + maxi(0, int(event.get("spaces", 0)))
+			active_goal["progress"] = moved_total
+			return moved_total >= int(params.get("spaces", 1))
 	return false
 
 
