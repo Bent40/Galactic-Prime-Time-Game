@@ -114,9 +114,9 @@
       repurpose to reading enemy/NPC hidden intent). Recorded in
       `docs/design/skills-r19-ladders-FINAL.md`; 42/43 ladders now final, Telepathy the
       one open skill.
-    - **Telepathy RESOLVED (owner 2026-07-18):** comms use dropped (chat covers it); reading
-      intent is Read the Pattern's job; Telepathy leans into the **manipulation lane**
-      (read→write→influence→gated collapse). 43/43 ladders now settled.
+    - **Telepathy RESOLVED + CONFIRMED (owner 2026-07-18):** comms use dropped (chat covers
+      it); reading intent is Read the Pattern's job; Telepathy leans into the **manipulation
+      lane** (read→write→influence→gated collapse). **43/43 ladders FINAL — no open skills.**
     - **Caishen influence RESTORED to 5 (owner 2026-07-18):** not a rubric error — played as
       him simply being a **better/more-popular casino player** ("some tables ARE more
       popular"; a son showing his dad new phone games). Overrides the Wave-4 auto-correction.

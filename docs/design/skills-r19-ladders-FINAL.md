@@ -491,7 +491,7 @@ mind-collapse capstone) — an offensive/control mind skill, distinct from Read 
 passive action-reveal and Aura Reading's emotion-read. Any read facet it keeps is DEEPER
 hidden info (secrets/plans), scaling on **depth**, not the single next-action (owner: "a
 version of intent-reading that scales in a different way"). Mind Burst's "Req Telepathy
-Lv 3" prereq stands. *(Confirm the manipulation-lane framing when convenient — low stakes.)*
+Lv 3" prereq stands. **CONFIRMED by owner 2026-07-18 — all 43 ladders now FINAL, no open skills.**
 
 ### #19 — Mind Burst · mind · 2 Moment · cap 5 · [MAGIC]
 **Identity.** Flood a mind with psychic noise → Shock T2 (action fails); escalates if already Shocked; may target the Head regardless of Exposure. Req Telepathy Lv 3.
@@ -648,7 +648,7 @@ Where a default forced a change from the DRAFT worksheet, and the running data-h
 # Residual owner questions (the small set the framework did NOT settle)
 
 The 10 accepted defaults resolved the great majority of the worksheet's ~20 per-skill open questions
-and all 10 cross-cutting questions. **All three residuals RULED by the owner 2026-07-18** — one new sub-question opened (Telepathy's fit):
+and all 10 cross-cutting questions. **All residuals RULED by the owner 2026-07-18 — 43/43 ladders FINAL, nothing open.**
 
 - **R1 — Brace (#8): RULED — SPLIT then merge.** Intercept and Iron Stance are **separate lower-tier
   skills**, with an upgrade/merge path that folds them into Brace's high rungs. Author all three.
@@ -657,10 +657,10 @@ and all 10 cross-cutting questions. **All three residuals RULED by the owner 202
   example, "not concrete in any way" — Fire Ball's ladder stands on its own as fire's native generalization.
 
 - **R3 — Mind Burst (#19): RULED — mind-collapse = really-high-tier magic only** (L10, magic-only,
-  source-gated, non-boss, per R5). Confirmed. **Telepathy (#18): NEW OPEN question** — owner is unsure
-  Telepathy fits the game at all, since the **player chat function already covers mind-to-mind comms**.
-  Leaning cut or repurpose (recommend: repurpose to reading enemy/NPC hidden intent, which chat can't do).
-  Re-anchor Mind Burst's "Req Telepathy Lv 3" prereq if Telepathy is cut.
+  source-gated, non-boss, per R5). **Telepathy (#18): RULED & CONFIRMED (2026-07-18) → the MANIPULATION
+  lane.** Comms use dropped (the player chat covers it); reading intent is Read the Pattern's job;
+  Telepathy is the read→WRITE→influence→gated-collapse control skill, any read facet scaling on DEPTH
+  (secrets/plans), not the single next-action. Mind Burst's "Req Telepathy Lv 3" prereq stands.
 
 *(Everything else — passives, chains, the elemental line, spectacle skills, Reversion, Seal The Wound,
 Swim's racial question, Dance's stat question, all cooldown/empty-effects/garbled-text items — is
