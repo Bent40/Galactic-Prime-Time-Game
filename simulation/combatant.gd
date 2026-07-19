@@ -142,6 +142,9 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 			"disabled": bool(p.get("disabled", false)),
 			"destroyed": bool(p.get("destroyed", false)),
 			"hidden": bool(p.get("hidden_until_breach", false)),
+			# F2 rework: a bleed_immune part has no blood — bleeding never applies
+			# and the systemic bleed-out drain skips it (the mycelium network).
+			"bleed_immune": bool(p.get("bleed_immune", false)),
 		}
 
 	for item_spec: Variant in spec.get("items", []) as Array:

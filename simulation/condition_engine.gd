@@ -145,6 +145,14 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 			events.append({"type": "condition_ignored", "combatant": c.id, "condition": condition_id, "reason": "no_valid_part"})
 			return events
 
+	# Bleed immunity (F2 rework): a bleed_immune part — the mycelium network — has
+	# no blood to lose, so bleeding never establishes on it (and the systemic
+	# bleed-out drain never touches it either). Finish such a part with
+	# crushing/HP damage after the breach, not by bleeding it.
+	if condition_id == "bleeding" and bool(c.parts.get(part_key, {}).get("bleed_immune", false)):
+		events.append({"type": "condition_resisted", "combatant": c.id, "part": part_key, "condition": condition_id, "reason": "bleed_immune"})
+		return events
+
 	if is_timer_condition(condition_id):
 		return _apply_timer_condition(c, part_key, condition_id, def, events)
 
@@ -484,9 +492,49 @@ func on_clock_reset(c: CombatantState, tick: int) -> Array[Dictionary]:
 				var steps: int = 1 + (extra if condition_id != "infected" else 0)
 				events.append_array(advance(c, String(part_key), condition_id, steps, tick, "clock_reset"))
 
+	events.append_array(_bleed_out_drain(c, tick))
 	events.append_array(_advance_timers(c))
 	c.took_scheduled_action_this_clock = false
 	in_clock_reset = false
+	return events
+
+
+## Systemic bleed-out (F2 rework, owner ruling 2026-07-19). A part bleeding out to
+## a lethal degree drains the whole body each Clock: blood loss ticks HP off every
+## OTHER part that can bleed — never a bleed_immune part (the mycelium network is a
+## separate organism with no blood), never one still hidden behind surface immunity,
+## never one already destroyed. Death is NOT a special effect here: the drain routes
+## through damage_part, so the show ends only when a LETHAL part empties (the normal
+## vital-part-destroyed rule). Skipped while a formal bleed-out grace is already
+## running — that timer finishes the job. Drain scales with the worst bleed tier.
+func _bleed_out_drain(c: CombatantState, tick: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not c.alive or not c.bleed_out.is_empty():
+		return events
+	var cfg: Dictionary = def_for("bleeding").get("bleed_out_drain", {})
+	var per_tier: int = int(cfg.get("hp_per_tier", 0))
+	var from_tier: int = int(cfg.get("from_tier", 3))
+	if per_tier <= 0:
+		return events
+	var worst: int = 0
+	for pk: Variant in c.conditions.keys():
+		var t: int = int(((c.conditions[pk] as Dictionary).get("bleeding", {}) as Dictionary).get("tier", 0))
+		if t >= from_tier and t > worst:
+			worst = t
+	if worst <= 0:
+		return events
+	var drain: int = per_tier * worst
+	events.append({"type": "bleed_out_draining", "combatant": c.id, "amount": drain, "tier": worst})
+	var drain_keys: Array = c.parts.keys()
+	drain_keys.sort()
+	for pk: Variant in drain_keys:
+		if not c.alive:
+			break
+		var part: Dictionary = c.parts[pk]
+		if bool(part.get("bleed_immune", false)) or bool(part.get("hidden", false)) \
+				or bool(part.get("destroyed", false)) or int(part.get("hp", 0)) <= 0:
+			continue
+		events.append_array(damage_part(c, String(pk), drain, "bleed_out", "bleeding", tick))
 	return events
 
 
@@ -558,7 +606,10 @@ func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id
 			if lethal:
 				events.append_array(_vital_zero_by_condition(c, part_key, condition_id))
 		elif eff == "lethal_if_head":
-			if part_key.contains("head"):
+			# Respect the part's lethal flag (F2): a humanoid head is lethal:true so
+			# this still fires, but an entity whose "head" is lethal:false (the
+			# mycelium puppet head) is cosmetic — only its network can kill it.
+			if part_key.contains("head") and lethal:
 				events.append_array(_vital_zero_by_condition(c, part_key, condition_id))
 		elif eff == "incapacitated_if_head":
 			if part_key.contains("head"):

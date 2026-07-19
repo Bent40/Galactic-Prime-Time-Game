@@ -9,6 +9,11 @@
       "advances_on_clock_reset": true,
       "max_tier": 4
     },
+    "bleed_out_drain": {
+      "from_tier": 3,
+      "hp_per_tier": 1,
+      "_note": "Systemic bleed-out (F2 rework, owner ruling 2026-07-19): once a part is bleeding out to a lethal degree (tier >= from_tier), the body loses hp_per_tier*tier HP each Clock from every OTHER part that can bleed (not bleed_immune, not still hidden behind surface immunity, not already destroyed). Death is not a tier effect — the drain routes through the normal vital-part-destroyed rule, so the show only ends when a LETHAL part empties. Numbers PLACEHOLDER (R14) — tune drain feel in playtest."
+    },
     "tiers": [
       {
         "tier": 1,
@@ -45,14 +50,12 @@
       },
       {
         "tier": 4,
-        "name": "Death",
-        "description": "Bled out.",
+        "name": "Bled Out",
+        "description": "Maximum blood loss. No instant kill on its own part (F2 rework) — the systemic bleed_out_drain empties the body each Clock, and death comes only when a LETHAL part is drained to zero.",
         "clock_advance": 0,
         "shock_tier": 0,
         "forced_action_type": null,
-        "effects": [
-          "death"
-        ]
+        "effects": []
       }
     ]
   },
@@ -103,12 +106,12 @@
       {
         "tier": 4,
         "name": "Death",
-        "description": "Crushed beyond recovery (torso/head only).",
+        "description": "Crushed beyond recovery — lethal on torso/head only (R4). A limb caps at destroyed (permanent loss), never death; only a lethal part can be killed by crushing (F2 fix).",
         "clock_advance": 0,
         "shock_tier": 0,
         "forced_action_type": null,
         "effects": [
-          "death"
+          "lethal_if_vital"
         ]
       }
     ]
@@ -320,12 +323,12 @@
       {
         "tier": 4,
         "name": "Consumed",
-        "description": "Burned beyond recovery.",
+        "description": "Burned beyond recovery — lethal on vital parts only (matches burn T3's death_timer_clocks_if_vital). A limb caps at disabled; only a lethal part can be killed by burning (F2 fix — same categorical bug as crushed T4).",
         "clock_advance": 0,
         "shock_tier": 0,
         "forced_action_type": null,
         "effects": [
-          "death"
+          "lethal_if_vital"
         ]
       }
     ]

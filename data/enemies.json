@@ -163,7 +163,9 @@
         "name": "Network",
         "hp": 50,
         "lethal": true,
-        "hidden_until_breach": true
+        "hidden_until_breach": true,
+        "bleed_immune": true,
+        "bleed_immune_note": "The mycelium core is a separate organism — it doesn't bleed. Bleeding never applies to it and systemic bleed-out never drains it; the puppet's flesh can be bled, the network cannot. Finish it with crushing/HP damage after the breach (F2 rework, owner ruling 2026-07-19)."
       },
       {
         "key": "head",
