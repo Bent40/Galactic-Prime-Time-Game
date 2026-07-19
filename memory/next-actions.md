@@ -6,28 +6,33 @@
 
 ## Next actions
 
+### 🔀 main = integration branch (owner-ruled 2026-07-18)
+Session work fast-forwards to `origin/main` at milestones (last sync: e6c2bd7). Keep
+developing on `claude/session-continuation-next-steps-mpycyj`; re-FF main periodically.
+
 ### ⏸️ Owner decision queue (nothing below blocks running work)
 
-1. **Skill-sitting framework** — the 10 cross-cutting R19 questions (in the last chat
-   report + `docs/design/skills-passover-worksheet.md`). Reply "defaults" or override.
-   HIGHEST LEVERAGE: unblocks all 43 skill ladders → I-11 priming + KAN-4 kit authoring.
-2. **Tag-name conflict** — 7 tags renamed 2026-07-17 vs the owner's 2026-07-18 pasted
-   names (Reckless/LEEROY JENKINS, Gorefest/Chunky Salsa Rule, What a Beaut/Animal Planet,
-   Shill/Corporate Asset, Heart Melter/Certified Fresh, Not My Job/SAG Dispute, Winter
-   Sheep/Sea World Reject). Which set wins? (2 are live slice tags.)
-3. **R11 #14** (`docs/rules-addendum.md` ~line 272): friendly-death takedown payout ·
-   same-instant goal completion. (Recs: friendly death counts since Friendly Fire is ON;
-   goals count from next action on.)
-4. **Mycelius** (NPC in the asset drop) — my rec: an invented forgotten fungal god /
-   Forsaken host (no real mythos needed; ties to the Incinedile "network"/rot themes).
-5. **Wave 5 roster shape** — which 24 gods for the MVP patron roster, tier placement.
-   Wave 5 also wants the tag effects designed (dep on #2 + I-13 build).
-6. **Wave-2b (optional)** — extract the ~14 most-referenced missing figures (Olodumare,
-   Ra, Izanagi, Seal of Solomon…) to close dangling relation edges. Not roster-critical.
-7. **Caishen flag** — influence auto-corrected 5→4 (rubric); revert if a deliberate outlier.
-8. **Bigger sittings** (any time): R14 force-gate numbers · R2–R10+R13 batch · Q58 stealth
+1. **Telepathy — does it fit?** The one open skill (of 43): owner unsure it belongs, since
+   the player CHAT function already covers mind-to-mind comms. Cut, or repurpose to reading
+   enemy/NPC hidden intent (rec: repurpose). Re-anchor Mind Burst's "Req Telepathy Lv 3" if cut.
+2. **Extract-everything?** ~747 more entities (349 deeper in the 14 done + 398 in the 12
+   un-extracted traditions), ~15M tokens over many limit-windows. REC: don't bulk it — the
+   210 cover the MVP roster; the un-extracted 12 are the sensitive/deferred ones needing
+   per-entity screening. A cheap Wave-2b (~14 most-referenced) is the good-value slice.
+3. **Wave 5 roster shape** — which 24 gods for the MVP patron roster, tier placement.
+   Wave 5 also wants the tag effects designed (dep on the I-13 build).
+4. **Caishen flag** — influence auto-corrected 5→4 (rubric); revert if a deliberate outlier.
+5. **Bigger sittings** (any time): R14 force-gate numbers · R2–R10+R13 batch · Q58 stealth
    · animal parts · GDD/narrative/arch markups · sprites → `docs/art/samples/gpt/`.
-9. **Char-sheet `client/dist` rebuild** (your side, optional; bundle predates the fix).
+6. **Char-sheet `client/dist` rebuild** (your side, optional; bundle predates the fix).
+
+### ✅ RULED this session (no longer open)
+- Skill framework: all 10 defaults · skill ladders 42/43 FINAL (Telepathy the one open).
+- Tag names: 2026-07-17 renames stand (pasted descriptions kept).
+- Mycelius = a servant (not a god), Osiris's retinue; not slice-critical.
+- R11 #14: same-batch insta-win allowed · friendly takedown counts iff you killed them
+  (attribution-v2 impl QUEUED — task #13).
+- Depiction v2 + carve-outs · Wave-2 shortlist · slice cast = demo loadouts · tag slice.
 
 ### 🔄 Running now (agent)
 
