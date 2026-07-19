@@ -1,0 +1,120 @@
+{
+  "_meta": {
+    "note": "Wave 5 domain->condition affinity map. Maps each of the 26 controlled mythology domains (docs/design/mythology-research-spec.md §4) to the 9 rulebook conditions (data/conditions.json). The patron boon economy uses this to skew WHICH conditions a patron's domain-aligned boons and rival-curses touch. Associations are thematic DESIGN affinities; any weighting is PLACEHOLDER (R14).",
+    "direction_note": "Direction-agnostic: an affinity is a thematic link the systems may use to INFLICT (enemy/curse) OR to CURE/RESIST (boon), depending on the effect. e.g. sun_fire<->burn can mean a fire boon that applies burn OR a solar ward that clears chill.",
+    "empty_list_rule": "A domain with no clean condition fit gets an empty list ON PURPOSE (owner: leave empty rather than force). Empty here does not mean the domain is unused — most such domains act on tags/affixes/hype, not on the 9 damaging conditions.",
+    "domain_vocab_source": "docs/design/mythology-research-spec.md §4 — 26 controlled domains",
+    "condition_source": "data/conditions.json — 9 rulebook conditions",
+    "valid_conditions": ["bleeding", "crushed", "suffocation", "chilled", "exhausted", "infected", "burn", "poison", "dissolution"],
+    "deferred": {
+      "domain_tag_map": "DEFERRED — needs the I-13 tag-effects layer, which is not built yet. Do not add a domain->tag map here until tag effects exist.",
+      "domain_affix_map": "DEFERRED — needs the loot/affix families (character-sheet app has 27 affixes; the game side has not modelled affix families). Add when the affix layer lands."
+    }
+  },
+  "domain_conditions": {
+    "war": {
+      "conditions": ["bleeding", "crushed"],
+      "rationale": "The battlefield's two staple wounds: cutting/piercing (bleeding) and blunt-force trauma (crushed)."
+    },
+    "hunt": {
+      "conditions": ["bleeding"],
+      "rationale": "The kill draws blood — arrows, spears, and claws open wounds. (Hunter's-poison is thin across the corpus; kept to disease_poison.)"
+    },
+    "sea": {
+      "conditions": ["suffocation", "chilled"],
+      "rationale": "Drowning (suffocation — the torso death-timer) and cold water (chilled)."
+    },
+    "sky_storm": {
+      "conditions": ["burn", "crushed"],
+      "rationale": "Lightning strike modelled as burn (electrical/thermal); storm-force wind, hail, and hurled debris as crushed."
+    },
+    "sun_fire": {
+      "conditions": ["burn"],
+      "rationale": "Solar fire — the canonical burn source (matches the Hephaestus forge/fire stub's tier_up_burn)."
+    },
+    "moon_night": {
+      "conditions": ["chilled"],
+      "rationale": "The cold of night. (Lunacy/madness -> dissolution is carried by madness_dream, not duplicated here.)"
+    },
+    "earth_harvest": {
+      "conditions": [],
+      "rationale": "Fertility/growth/soil is a nurturing buff domain, not a damaging condition. Burial/rockfall could argue crushed, but that is forcing it — left empty per the empty-list rule."
+    },
+    "death_underworld": {
+      "conditions": ["dissolution"],
+      "rationale": "The domain of endings and the underworld resonates with mind-collapse (dissolution = suffocation of the Mind). Note: engine 'death' is a body-condition endpoint, not a domain affinity."
+    },
+    "wisdom": {
+      "conditions": [],
+      "rationale": "Knowledge domain — acts on information/prep boons, not on the 9 damaging conditions. (Its defensive tie to dissolution/Psychic resistance belongs to a future resist map.)"
+    },
+    "magic": {
+      "conditions": [],
+      "rationale": "Magic is a delivery mechanism, not a specific condition — a magic boon could carry any condition. Left empty rather than forcing one lane."
+    },
+    "trickery": {
+      "conditions": [],
+      "rationale": "Deception/sleight-of-hand acts through tags, positioning, and exposure, not a damaging condition."
+    },
+    "craft_forge": {
+      "conditions": ["burn"],
+      "rationale": "The forge's fire — the smith-gods (Hephaestus lineage) work in flame; forged-weapon boons carry burn."
+    },
+    "healing": {
+      "conditions": [],
+      "rationale": "Healing REMOVES/RESISTS conditions rather than having an inflict-affinity. The boon economy applies it as a cure across conditions, not a single affinity."
+    },
+    "love_beauty": {
+      "conditions": [],
+      "rationale": "Charm/allure acts on hype, tags, and the crowd payoff — not a damaging condition."
+    },
+    "music_performance": {
+      "conditions": [],
+      "rationale": "Spectacle/Charm domain — drives hype gain and crowd payoff, not a condition (see patron-gods.md default #6)."
+    },
+    "luck_gambling": {
+      "conditions": [],
+      "rationale": "Fortune skews roll quality, tier odds, and windfalls — not a damaging condition. (These are the casino-nobility gods; flagged in research, not condition-bearing.)"
+    },
+    "wealth_commerce": {
+      "conditions": [],
+      "rationale": "Loot/comps/affix-roll quality — an economic buff domain, not a condition."
+    },
+    "travel_speed": {
+      "conditions": ["exhausted"],
+      "rationale": "The toll of the road / forced march — over-travel leads to whole-body fatigue (exhausted). Mobility boons are the positive face of the same domain."
+    },
+    "justice_oaths": {
+      "conditions": [],
+      "rationale": "Oath/contract domain — acts through favor/taboo and buy-out mechanics, not a damaging condition."
+    },
+    "chaos": {
+      "conditions": [],
+      "rationale": "Too broad for one condition — chaos boons/curses could carry any of them. Left empty rather than forcing a single lane."
+    },
+    "beasts_wild": {
+      "conditions": ["bleeding", "poison"],
+      "rationale": "Claws and fangs tear (bleeding); venomous beasts envenom (poison)."
+    },
+    "disease_poison": {
+      "conditions": ["poison", "infected"],
+      "rationale": "The plague lane: toxins (poison) and sepsis (infected). The rare disease_poison build (Beelzebub) lives here."
+    },
+    "protection_home": {
+      "conditions": [],
+      "rationale": "Warding/hearth domain — prevents and resists rather than inflicts. Applied as ward/resist boons across conditions, not a single affinity."
+    },
+    "poetry_story": {
+      "conditions": [],
+      "rationale": "Narrative/eloquence domain — feeds epithets, hype, and myth recreation, not a damaging condition."
+    },
+    "madness_dream": {
+      "conditions": ["dissolution"],
+      "rationale": "Mind-unmaking and nightmare map directly to dissolution (suffocation of the Mind; Psychic resistance track)."
+    },
+    "time_fate": {
+      "conditions": [],
+      "rationale": "Fate/time domain — bends clocks, odds, and reversals; not a damaging condition of its own. Left empty rather than forcing one."
+    }
+  }
+}

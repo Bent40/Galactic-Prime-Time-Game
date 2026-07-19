@@ -1,0 +1,1489 @@
+{
+  "_meta": {
+    "generated_by": "scripts/generate_patron_roster.py",
+    "source": "data/mythology/entities.jsonl",
+    "shortlist": "docs/design/wave5-roster-shortlist.md (owner-approved 24-god MVP)",
+    "design": "docs/design/patron-gods.md",
+    "placeholder_notice": "All numbers PLACEHOLDER (R14). deal_sheet_hints values are direct 1-5 restatements of the entity personality axes (mythology-research-spec §5), not tuned constants.",
+    "supersession_note": "SUPERSEDES the slice stubs in data/patron_gods.json LATER, not yet: patron_gods.json ids 1-5 stay in place because data/demo_loadouts.json still references chosen_patron ids 2 (enyo) and 3 (hestia). The migration re-points the demo loadouts first.",
+    "deal_sheet_hint_semantics": {
+      "boon_frequency/boon_magnitude": "generosity — boon frequency & magnitude; gift chance at affection thresholds",
+      "taboo_severity": "strictness — taboo penalty severity",
+      "taboo_count": "observed count of taboos on the deal sheet (strictness-correlated)",
+      "rival_curse_chance": "pettiness — rival-curse chance when courting other gods",
+      "punishment_speed": "wrath — punishment escalation speed after a taboo breach",
+      "buyout_resistance": "fidelity — buy-out resistance (low = sells your contract sooner)",
+      "buyout_magnet": "fidelity <= 1 — the buy-out-magnet edge case",
+      "forsaken_eager": "risk_appetite >= 4 — eager Forsaken host",
+      "forsaken_host_candidate": "risk_appetite >= 4 OR influence == 1 (nothing-to-lose proxy; §5 amendment)"
+    },
+    "roster_count": 24,
+    "resolved_count": 24,
+    "table_tier_counts": {
+      "vvip": 9,
+      "vip": 10,
+      "normal": 5
+    },
+    "unresolved_shortlist": []
+  },
+  "roster": [
+    {
+      "id": "hindu_ganesha",
+      "status": "resolved",
+      "name": "Ganesha",
+      "shortlist_name": "Ganesha",
+      "tradition": "hindu",
+      "influence": 5,
+      "recognition": 4,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "wisdom",
+        "luck_gambling",
+        "wealth_commerce",
+        "poetry_story",
+        "protection_home"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 2,
+        "pettiness": 3,
+        "wrath": 2,
+        "fidelity": 4,
+        "risk_appetite": 2
+      },
+      "temperament": "The floor's beloved first-bet concierge — every new player's chips pass under his trunk for luck before touching a table, and the house never opens a season without him.",
+      "favor_conditions": [
+        "perform an offering/salute action at the run's first threshold before any combat",
+        "clear a blocking obstacle (barricade, rubble, locked route) instead of routing around it",
+        "learn a boss's win condition before dealing it any damage",
+        "sacrifice a piece of your own equipped gear to complete an objective (the broken-tusk clause)"
+      ],
+      "taboos": [
+        "mock a fallen contestant's failure on camera (the moon clause)",
+        "skip an available threshold offering at a run's start",
+        "let food supplies spoil or go to waste"
+      ],
+      "boon_domains": [
+        "wisdom",
+        "luck_gambling",
+        "wealth_commerce"
+      ],
+      "blessing_style": "obstacles quietly resolve ahead of you — locked doors found open, traps pre-sprung; boons front-load run starts and the first attempt of anything",
+      "casino_roles": [
+        "patron",
+        "investor"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 2,
+        "taboo_count": 3,
+        "rival_curse_chance": 3,
+        "punishment_speed": 2,
+        "buyout_resistance": 4,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 2
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "buddhist_avalokiteshvara",
+      "status": "resolved",
+      "name": "Avalokiteshvara",
+      "shortlist_name": "Avalokiteshvara",
+      "tradition": "buddhist",
+      "influence": 5,
+      "recognition": 4,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "healing",
+        "protection_home",
+        "sea",
+        "wisdom"
+      ],
+      "personality": {
+        "generosity": 5,
+        "strictness": 1,
+        "pettiness": 1,
+        "wrath": 1,
+        "fidelity": 5,
+        "risk_appetite": 2
+      },
+      "temperament": "Runs the casino's only genuinely charitable foundation from a thousand help-desk windows at once — answers every call personally, forgives every debt, and has never once left the phones.",
+      "favor_conditions": [
+        "revive, stabilize, or carry a downed teammate before advancing the objective",
+        "call for help aloud (use a call/signal action) when below 25% HP instead of dying silently",
+        "accept an enemy's surrender and let it leave the arena alive on camera",
+        "take a hit intended for another contestant (intercept/guard action)"
+      ],
+      "taboos": [
+        "execute a helpless or surrendering enemy",
+        "abandon a rescuable teammate or NPC to save run time"
+      ],
+      "boon_domains": [
+        "healing",
+        "protection_home",
+        "sea"
+      ],
+      "blessing_style": "a thousand small mercies — the ledge you barely catch, the blade that misses by a finger; heals arrive at the exact moment a cry for help is spoken aloud",
+      "casino_roles": [
+        "patron",
+        "investor"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 5,
+        "boon_magnitude": 5,
+        "taboo_severity": 1,
+        "taboo_count": 2,
+        "rival_curse_chance": 1,
+        "punishment_speed": 1,
+        "buyout_resistance": 5,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 2
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "japanese_shinto_amaterasu",
+      "status": "resolved",
+      "name": "Amaterasu",
+      "shortlist_name": "Amaterasu",
+      "tradition": "japanese_shinto",
+      "influence": 4,
+      "recognition": 4,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "sun_fire",
+        "justice_oaths",
+        "earth_harvest",
+        "protection_home"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 4,
+        "pettiness": 2,
+        "wrath": 2,
+        "fidelity": 5,
+        "risk_appetite": 2
+      },
+      "temperament": "Chairwoman-emeritus of the eight-million-kami Takamagahara talent agency; one on-air outrage from her brother and she'll cancel every broadcast in existence — her staff keep a mirror, a comedian, and a strongman on retainer for the next blackout.",
+      "favor_conditions": [
+        "Clear a dungeon floor engaging enemies only in lit tiles or after deploying a light source — never fight in darkness",
+        "Recover the crowd from a hype-meter floor to a cheer within the same fight (stage a comeback the audience laughs or roars at)",
+        "Keep every promise sworn on camera for an entire run (declared pledges tracked, zero breaches)",
+        "Lure a fortified boss out of its lair instead of storming in — make the enemy come to you"
+      ],
+      "taboos": [
+        "Defile a camp, shrine, or rest zone (leave corpses or filth where allies eat and sleep)",
+        "Break an oath sworn on camera",
+        "Abandon an ally alone in darkness"
+      ],
+      "boon_domains": [
+        "sun_fire",
+        "justice_oaths",
+        "protection_home"
+      ],
+      "blessing_style": "Daylight banking: steady boons that compound while conduct stays clean — and a total blackout of favor (absence, not punishment) the moment the deal-sheet is dirtied; her light returns only after a genuine crowd-winning comeback.",
+      "casino_roles": [
+        "patron",
+        "investor"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
+        "rival_curse_chance": 2,
+        "punishment_speed": 2,
+        "buyout_resistance": 5,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 2
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "buddhist_yama",
+      "status": "resolved",
+      "name": "Yama",
+      "shortlist_name": "Yama",
+      "tradition": "buddhist",
+      "influence": 4,
+      "recognition": 4,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "death_underworld",
+        "justice_oaths",
+        "time_fate"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 5,
+        "pettiness": 1,
+        "wrath": 3,
+        "fidelity": 4,
+        "risk_appetite": 1
+      },
+      "temperament": "The house auditor: reads your ledger back to you line by line, sighs, stamps it — and privately dreams of quitting the office to play the tables as a mortal.",
+      "favor_conditions": [
+        "report your kill count and loot exactly at every end-of-floor tally (no inflation, no omission)",
+        "read every posted warning/messenger sign on a floor before engaging its boss",
+        "grant a mortally wounded enemy a clean finishing stroke instead of leaving it to bleed out",
+        "accept a rules penalty without contesting it when fairly caught"
+      ],
+      "taboos": [
+        "falsify the ledger — claim a kill or loot that is not yours",
+        "kill outside the game's sanctioned bounds (noncombatant NPCs)"
+      ],
+      "boon_domains": [
+        "death_underworld",
+        "justice_oaths",
+        "time_fate"
+      ],
+      "blessing_style": "exact accounting — foreknowledge as boon: what a fight will cost you, itemized, before you commit to it",
+      "casino_roles": [
+        "patron",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 5,
+        "taboo_count": 2,
+        "rival_curse_chance": 1,
+        "punishment_speed": 3,
+        "buyout_resistance": 4,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 1
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "buddhist_palden_lhamo",
+      "status": "resolved",
+      "name": "Palden Lhamo",
+      "shortlist_name": "Palden Lhamo",
+      "tradition": "buddhist",
+      "influence": 4,
+      "recognition": 1,
+      "table_tier": "vvip",
+      "obscurity_tier": "mythic",
+      "domains": [
+        "luck_gambling",
+        "war",
+        "protection_home",
+        "disease_poison",
+        "time_fate"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 5,
+        "pettiness": 2,
+        "wrath": 5,
+        "fidelity": 5,
+        "risk_appetite": 5
+      },
+      "temperament": "Rides her mule between VVIP tables across a sea of blood, divination dice swinging from the saddle — the only regular who has already paid the worst price a bet can ask, and plays like it.",
+      "favor_conditions": [
+        "accept a dice-shrine gamble (randomized loadout or route) before a boss and play out the result",
+        "publicly call your victory before the run begins and deliver it",
+        "sacrifice your highest-value carried item to keep a declared vow alive",
+        "finish a floor after losing your mount, vehicle, or movement gear"
+      ],
+      "taboos": [
+        "re-roll, cancel, or scum a gamble after seeing the result",
+        "abandon a sworn cause when the price turns personal"
+      ],
+      "boon_domains": [
+        "luck_gambling",
+        "war",
+        "time_fate"
+      ],
+      "blessing_style": "the dice decide — boons come as brutal either/or wagers; take the roll as it lands and she rides beside you, hedge and she rides on",
+      "casino_roles": [
+        "patron",
+        "forsaken_host",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 5,
+        "taboo_count": 2,
+        "rival_curse_chance": 2,
+        "punishment_speed": 5,
+        "buyout_resistance": 5,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "chinese_caishen",
+      "status": "resolved",
+      "name": "Caishen",
+      "shortlist_name": "Caishen",
+      "tradition": "chinese",
+      "influence": 5,
+      "recognition": 3,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "wealth_commerce",
+        "luck_gambling",
+        "war"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 2,
+        "pettiness": 2,
+        "wrath": 2,
+        "fidelity": 2,
+        "risk_appetite": 4
+      },
+      "temperament": "The casino's market-maker — a New-Year rainmaker in a gold-trimmed suit who loves a bold position, remembers every ledger line, and will sell your contract the moment a better bid lands.",
+      "favor_conditions": [
+        "open the run by wagering or offering your own currency at the table shrine",
+        "end the run with more currency than you entered with, after all fees",
+        "convert a boss drop into currency at the shop instead of equipping it",
+        "return another contestant's dropped loot bag intact on camera"
+      ],
+      "taboos": [
+        "be caught broke — reach zero currency on camera",
+        "wantonly destroy loot or currency",
+        "default on a debt owed to another contestant"
+      ],
+      "boon_domains": [
+        "wealth_commerce",
+        "luck_gambling"
+      ],
+      "blessing_style": "Compounding returns — small boons that multiply if reinvested rather than spent, with jackpot windfalls timed to festival broadcasts; his blessings always arrive as credit first.",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 2,
+        "taboo_count": 3,
+        "rival_curse_chance": 2,
+        "punishment_speed": 2,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "abrahamic_folk_santa_muerte",
+      "status": "resolved",
+      "name": "Santa Muerte",
+      "shortlist_name": "Santa Muerte",
+      "tradition": "abrahamic_folk",
+      "influence": 4,
+      "recognition": 4,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "death_underworld",
+        "protection_home",
+        "luck_gambling",
+        "healing"
+      ],
+      "personality": {
+        "generosity": 5,
+        "strictness": 3,
+        "pettiness": 4,
+        "wrath": 5,
+        "fidelity": 5,
+        "risk_appetite": 4
+      },
+      "temperament": "The saint the desperate pray to when every other patron has passed — generous to the outlaw and the orphan alike, and merciless to anyone who breaks a promise to her.",
+      "favor_conditions": [
+        "take a champion flagged doomed / lowest-odds into a Forsaken game and survive",
+        "keep a vow made to her for the entire run (honor a self-imposed rule to the letter)",
+        "finish the strong and the weak enemies alike, sparing none for reward (show death no favoritism)"
+      ],
+      "taboos": [
+        "break a promise sworn to her on camera",
+        "court a rival patron while carrying her favor (she is the jealous saint)"
+      ],
+      "boon_domains": [
+        "death_underworld",
+        "protection_home",
+        "luck_gambling"
+      ],
+      "blessing_style": "the impartial hand — boons come to anyone who asks sincerely, outlaw or saint; generous and unconditional up front, then withdrawn with terrifying speed the instant a vow is broken.",
+      "casino_roles": [
+        "patron",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 5,
+        "boon_magnitude": 5,
+        "taboo_severity": 3,
+        "taboo_count": 2,
+        "rival_curse_chance": 4,
+        "punishment_speed": 5,
+        "buyout_resistance": 5,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "yoruba_west_african_eshu",
+      "status": "resolved",
+      "name": "Eshu",
+      "shortlist_name": "Eshu",
+      "tradition": "yoruba_west_african",
+      "influence": 4,
+      "recognition": 3,
+      "table_tier": "vvip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "trickery",
+        "luck_gambling",
+        "travel_speed",
+        "chaos"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 4,
+        "pettiness": 4,
+        "wrath": 3,
+        "fidelity": 2,
+        "risk_appetite": 5
+      },
+      "temperament": "Valet, bouncer, switchboard, and rigger of every doorway in the building, in a suit red on one side and black on the other; tip him going in or your chips, your messages, and your luck all reach the wrong table — a liability the house settled by making him a partner.",
+      "favor_conditions": [
+        "pay a toll at the run's first door — leave an item or currency at the entrance tile before engaging anything",
+        "at a fork, take the unscouted route and clear what you find there",
+        "turn two enemies against each other and let them fight before you strike",
+        "declare your next move on camera and land it exactly as called"
+      ],
+      "taboos": [
+        "enter a floor without paying or acknowledging the gatekeeper (skip the entrance offering)",
+        "claim on camera that luck played no part in your win",
+        "shortchange a promised offering after the boon has already landed"
+      ],
+      "boon_domains": [
+        "trickery",
+        "luck_gambling",
+        "travel_speed"
+      ],
+      "blessing_style": "coin-flip boons at doors and crossings — paid first, he swaps outcomes at thresholds (the ambush misfires, the wrong door is right); unpaid, the same swaps run against you",
+      "casino_roles": [
+        "patron",
+        "messenger",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
+        "rival_curse_chance": 4,
+        "punishment_speed": 3,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "norse_germanic_odin",
+      "status": "resolved",
+      "name": "Odin",
+      "shortlist_name": "Odin",
+      "tradition": "norse_germanic",
+      "influence": 3,
+      "recognition": 5,
+      "table_tier": "vvip",
+      "obscurity_tier": "common",
+      "domains": [
+        "wisdom",
+        "war",
+        "magic",
+        "poetry_story",
+        "death_underworld"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 4,
+        "pettiness": 2,
+        "wrath": 3,
+        "fidelity": 2,
+        "risk_appetite": 5
+      },
+      "temperament": "Plays like a hedge-fund doomer who has read the settlement date of his own bankruptcy — insider-trading against his own obituary and paying for tips in body parts.",
+      "favor_conditions": [
+        "win by sacrificing something of real value mid-run (destroy or permanently give up an equipped item, stat, or skill) and convert the loss into the winning play",
+        "learn a boss's win condition before first engaging it (scout, interrogate, or read the arena) and defeat it that way",
+        "keep fighting and land a finishing blow while one of your body parts is disabled",
+        "interrogate or spare an enemy to extract intelligence, then win the encounter using it"
+      ],
+      "taboos": [
+        "break an oath sworn on camera",
+        "waste knowledge freely given — ignore an NPC's explicit warning and wipe on the thing it warned about",
+        "refuse a riddle or wisdom-contest offered at the table"
+      ],
+      "boon_domains": [
+        "wisdom",
+        "war",
+        "magic"
+      ],
+      "blessing_style": "cryptic pre-run intelligence — boons front-loaded as information, not stats: map fragments, boss-weakness whispers, rune-marked doors; the price is always named after it has already been paid",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
+        "rival_curse_chance": 2,
+        "punishment_speed": 3,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "celtic_morrigan",
+      "status": "resolved",
+      "name": "The Morrígan",
+      "shortlist_name": "The Morrígan",
+      "tradition": "celtic",
+      "influence": 3,
+      "recognition": 4,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "war",
+        "time_fate",
+        "magic",
+        "death_underworld"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 4,
+        "pettiness": 5,
+        "wrath": 4,
+        "fidelity": 3,
+        "risk_appetite": 4
+      },
+      "temperament": "Sits at the sportsbook window betting battle outcomes she already called — and takes it very personally when a contestant declines her tip.",
+      "favor_conditions": [
+        "win an engagement you were explicitly warned (omen event / scout report) you would lose",
+        "defeat a named enemy champion in single combat while your party stands out of the fight",
+        "accept an unidentified offer of aid or a gift from an NPC mid-run without vetting it",
+        "finish a battle leaving no enemy unit alive to retreat"
+      ],
+      "taboos": [
+        "refuse aid, a gift, or affection offered by an NPC on camera",
+        "declare victory certain (boast emote / prediction) before the fight resolves"
+      ],
+      "boon_domains": [
+        "war",
+        "time_fate",
+        "magic"
+      ],
+      "blessing_style": "Omens and battlefield prophecy — she marks who falls before the fight starts; boons arrive as enemy-fate intel and fear/rout pressure, and her displeasure literally fights beside your enemies in beast-shapes.",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 4,
+        "taboo_count": 2,
+        "rival_curse_chance": 5,
+        "punishment_speed": 4,
+        "buyout_resistance": 3,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "arthurian_medieval_morgan_le_fay",
+      "status": "resolved",
+      "name": "Morgan le Fay",
+      "shortlist_name": "Morgan le Fay",
+      "tradition": "arthurian_medieval",
+      "influence": 3,
+      "recognition": 4,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "magic",
+        "healing",
+        "death_underworld",
+        "trickery"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 3,
+        "pettiness": 5,
+        "wrath": 4,
+        "fidelity": 2,
+        "risk_appetite": 4
+      },
+      "temperament": "The one player here with real worshippers in the stands — a fae-queen VIP who heals with one hand and poisons your rival's chips with the other, all smiles for the camera and knives for the recap.",
+      "favor_conditions": [
+        "win a duel you could have avoided — take the pettier, more personal path to victory",
+        "steal or turn an enemy's own weapon/relic against them and finish the run wielding it",
+        "heal or revive an ally at real cost to yourself, then still close the run",
+        "humiliate a rival's champion on camera before you beat them"
+      ],
+      "taboos": [
+        "show mercy to someone Morgan has marked, or refuse a vengeance she offers you",
+        "court her rival the Lady of the Lake in the same run — the two fay will not share a table"
+      ],
+      "boon_domains": [
+        "magic",
+        "healing",
+        "death_underworld"
+      ],
+      "blessing_style": "two-faced fae sorcery — a healing or shape-shifting boon that also poisons a rival's luck; gifts come wrapped in a grudge, and the price is always someone else's ruin.",
+      "casino_roles": [
+        "patron",
+        "table_boss",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 3,
+        "taboo_count": 2,
+        "rival_curse_chance": 5,
+        "punishment_speed": 4,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "japanese_shinto_benzaiten",
+      "status": "resolved",
+      "name": "Benzaiten",
+      "shortlist_name": "Benzaiten",
+      "tradition": "japanese_shinto",
+      "influence": 3,
+      "recognition": 3,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "music_performance",
+        "luck_gambling",
+        "wealth_commerce",
+        "wisdom",
+        "sea"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 3,
+        "pettiness": 4,
+        "wrath": 2,
+        "fidelity": 3,
+        "risk_appetite": 4
+      },
+      "temperament": "Headline lounge act and treasury director in one — she'll launder your winnings in holy water, double them, and curse your date on the way out.",
+      "favor_conditions": [
+        "Perform mid-combat (music, dance, or flourish action) and hold a hype streak through a full fight",
+        "Wash or tithe currency at a water feature, then stake the washed sum the same day (the Zeniarai rite)",
+        "Talk an enemy or rival down instead of fighting — win an eloquence check on camera (she tamed the five-headed dragon with words)",
+        "Enter a boss arena solo"
+      ],
+      "taboos": [
+        "Flaunt a romance at her table (the Enoshima jealousy: she splits couples who parade before her)",
+        "Interrupt or talk over a performance",
+        "Pawn a musical instrument"
+      ],
+      "boon_domains": [
+        "music_performance",
+        "luck_gambling",
+        "wealth_commerce",
+        "wisdom"
+      ],
+      "blessing_style": "Flow-state artistry: multipliers that build while you keep performing and vanish the instant you play it safe — plus laundered luck: money staked after her water rite returns multiplied.",
+      "casino_roles": [
+        "patron",
+        "investor"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 3,
+        "taboo_count": 3,
+        "rival_curse_chance": 4,
+        "punishment_speed": 2,
+        "buyout_resistance": 3,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "greek_roman_zeus",
+      "status": "resolved",
+      "name": "Zeus",
+      "shortlist_name": "Zeus",
+      "tradition": "greek_roman",
+      "influence": 2,
+      "recognition": 5,
+      "table_tier": "vip",
+      "obscurity_tier": "common",
+      "domains": [
+        "sky_storm",
+        "justice_oaths",
+        "protection_home"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 4,
+        "pettiness": 3,
+        "wrath": 4,
+        "fidelity": 1,
+        "risk_appetite": 3
+      },
+      "temperament": "The chairman on permanent Hawaii vacation — floral shirt over the aegis, mai tai in the thunderbolt hand, still insisting every big wager on the floor needs his sign-off; it does, and his oaths have fine print.",
+      "favor_conditions": [
+        "swear a public oath before the run and keep it to the letter through the final room",
+        "win a duel you accepted in front of the audience",
+        "strike the killing blow on a boss from high ground or during an active storm/lightning field",
+        "shelter a weaker contestant who asks for protection and finish the run with them alive"
+      ],
+      "taboos": [
+        "break any oath you swore on camera",
+        "harm a contestant who has formally surrendered or begged your protection",
+        "fake or claim credit for a god's intervention"
+      ],
+      "boon_domains": [
+        "sky_storm",
+        "justice_oaths",
+        "protection_home"
+      ],
+      "blessing_style": "rare, loud, table-shaking — favor lands as single decisive thunder-strikes and public displays of endorsement, never quiet drip-feeds",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "vip_audience"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
+        "rival_curse_chance": 3,
+        "punishment_speed": 4,
+        "buyout_resistance": 1,
+        "buyout_magnet": true,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 3
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "greek_roman_athena",
+      "status": "resolved",
+      "name": "Athena",
+      "shortlist_name": "Athena",
+      "tradition": "greek_roman",
+      "influence": 2,
+      "recognition": 5,
+      "table_tier": "vip",
+      "obscurity_tier": "common",
+      "domains": [
+        "wisdom",
+        "war",
+        "craft_forge",
+        "protection_home"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 4,
+        "pettiness": 3,
+        "wrath": 3,
+        "fidelity": 4,
+        "risk_appetite": 2
+      },
+      "temperament": "Came to the pantheon's Hawaii vacation with sensible sandals and a laminated itinerary; sits behind the high-rollers running the odds in her head and never touches the dice — she bets on preparation, not luck.",
+      "favor_conditions": [
+        "identify a boss's win condition before first contact with it",
+        "clear a combat encounter without taking a single point of damage",
+        "defeat a stronger enemy using terrain, a trap, or a prepared ambush",
+        "craft or upgrade a piece of equipment mid-run and win a fight with it"
+      ],
+      "taboos": [
+        "boast on camera that your skill needed no god's help",
+        "desecrate a shrine or sanctuary tile",
+        "engage a boss with zero scouting information"
+      ],
+      "boon_domains": [
+        "wisdom",
+        "war",
+        "craft_forge"
+      ],
+      "blessing_style": "front-loaded intelligence — map fragments, enemy tells, a whispered plan; her multipliers pay out on flawless execution of a prepared play",
+      "casino_roles": [
+        "patron",
+        "investor"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 4,
+        "taboo_count": 3,
+        "rival_curse_chance": 3,
+        "punishment_speed": 3,
+        "buyout_resistance": 4,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 2
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "greek_roman_hades",
+      "status": "resolved",
+      "name": "Hades",
+      "shortlist_name": "Hades",
+      "tradition": "greek_roman",
+      "influence": 2,
+      "recognition": 4,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "death_underworld",
+        "wealth_commerce",
+        "justice_oaths"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 5,
+        "pettiness": 2,
+        "wrath": 3,
+        "fidelity": 5,
+        "risk_appetite": 1
+      },
+      "temperament": "The house that always collects — never gambles, never vacations; sends a corporate regrets card to the beach party and quietly buys the hotel.",
+      "favor_conditions": [
+        "recover a fallen teammate's remains or token and carry it to the exit",
+        "finish a run without using any revival or second-chance item",
+        "collect every coin and treasure drop on a floor before leaving it",
+        "hold an underground or lowest-level room against a wave without retreating"
+      ],
+      "taboos": [
+        "use any death-cheating trick — revives, resurrection items, feigned death",
+        "renege on the stated terms of any deal made at the table",
+        "leave your own dead unburied on camera"
+      ],
+      "boon_domains": [
+        "death_underworld",
+        "wealth_commerce",
+        "justice_oaths"
+      ],
+      "blessing_style": "silent compounding interest — boons accrue invisibly and pay out at the death-door moment; his favor is never seen until it is decisive",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "table_boss"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 5,
+        "taboo_count": 3,
+        "rival_curse_chance": 2,
+        "punishment_speed": 3,
+        "buyout_resistance": 5,
+        "buyout_magnet": false,
+        "forsaken_eager": false,
+        "forsaken_host_candidate": false,
+        "risk_appetite": 1
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "greek_roman_hermes",
+      "status": "resolved",
+      "name": "Hermes",
+      "shortlist_name": "Hermes",
+      "tradition": "greek_roman",
+      "influence": 2,
+      "recognition": 4,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "trickery",
+        "travel_speed",
+        "luck_gambling",
+        "wealth_commerce",
+        "music_performance"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 1,
+        "pettiness": 1,
+        "wrath": 2,
+        "fidelity": 3,
+        "risk_appetite": 5
+      },
+      "temperament": "The floor runner who deals, delivers, and skims — invented half the games and the loaded dice the door checks for; runs a shave-ice stand out front strictly as a front.",
+      "favor_conditions": [
+        "steal an item from an elite or boss without triggering combat",
+        "find and use a hidden shortcut or secret passage",
+        "talk or trade your way past an encounter designed to be fought",
+        "accept any wager offered mid-run and play it out"
+      ],
+      "taboos": [
+        "harm a herald, courier, or merchant NPC",
+        "walk the marked main path from entrance to exit with zero detours",
+        "leave a discovered windfall (hermaion) unclaimed"
+      ],
+      "boon_domains": [
+        "trickery",
+        "travel_speed",
+        "luck_gambling",
+        "wealth_commerce"
+      ],
+      "blessing_style": "opportunist's luck — doors left unlocked, guards distracted, dice quietly weighted; boons arrive as absurdly convenient timing",
+      "casino_roles": [
+        "patron",
+        "dealer",
+        "messenger"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 1,
+        "taboo_count": 3,
+        "rival_curse_chance": 1,
+        "punishment_speed": 2,
+        "buyout_resistance": 3,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "norse_germanic_loki",
+      "status": "resolved",
+      "name": "Loki",
+      "shortlist_name": "Loki",
+      "tradition": "norse_germanic",
+      "influence": 2,
+      "recognition": 5,
+      "table_tier": "vip",
+      "obscurity_tier": "common",
+      "domains": [
+        "trickery",
+        "chaos",
+        "magic"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 1,
+        "pettiness": 5,
+        "wrath": 3,
+        "fidelity": 1,
+        "risk_appetite": 5
+      },
+      "temperament": "The card-counter the pit bosses can't ban because he co-founded the casino — will bet his own head, lawyer the payout down to 'the head, not the neck,' and take his lips sewn shut before admitting the L.",
+      "favor_conditions": [
+        "win an encounter without dealing damage — stealth, deception, or positioning resolves it",
+        "talk or trick your way past a guardian on camera",
+        "exploit a rule's or reward's literal wording in a way the audience can see",
+        "steal something from a boss and leave the fight alive"
+      ],
+      "taboos": [
+        "play an encounter straight when a visible cheat was available",
+        "repeat the same winning tactic three encounters running — boring his audience"
+      ],
+      "boon_domains": [
+        "trickery",
+        "chaos",
+        "magic"
+      ],
+      "blessing_style": "loopholes made flesh — rerolls, identity swaps, one glorious rules-inversion per run; every gift is refurbished, every receipt is forged, and the warranty voids at the worst possible moment",
+      "casino_roles": [
+        "patron",
+        "dealer",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 1,
+        "taboo_count": 2,
+        "rival_curse_chance": 5,
+        "punishment_speed": 3,
+        "buyout_resistance": 1,
+        "buyout_magnet": true,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "mesoamerican_tezcatlipoca",
+      "status": "resolved",
+      "name": "Tezcatlipoca",
+      "shortlist_name": "Tezcatlipoca",
+      "tradition": "mesoamerican",
+      "influence": 2,
+      "recognition": 3,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "trickery",
+        "moon_night",
+        "magic",
+        "time_fate",
+        "war",
+        "luck_gambling"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 2,
+        "pettiness": 5,
+        "wrath": 4,
+        "fidelity": 1,
+        "risk_appetite": 5
+      },
+      "temperament": "The corporate raider who holds short positions on every contestant including his own — he hands you the drink, films what happens, and calls it market research.",
+      "favor_conditions": [
+        "turn a rival contestant's own trap, weapon, or summon against them",
+        "win a fight in darkness or while blinded",
+        "completely change loadout or build between floors and still win the next fight",
+        "publicly humiliate a stronger contestant without dealing a single point of damage"
+      ],
+      "taboos": [
+        "repeat the same winning tactic on consecutive floors (he despises predictability)",
+        "thank or credit another god on camera while contracted to him"
+      ],
+      "boon_domains": [
+        "trickery",
+        "luck_gambling",
+        "moon_night"
+      ],
+      "blessing_style": "A reversal-of-fortune engine — multipliers spike when your odds are worst; he will curse his own champion mid-run purely to improve the show, then pay triple if you adapt.",
+      "casino_roles": [
+        "patron",
+        "table_boss",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 2,
+        "taboo_count": 2,
+        "rival_curse_chance": 5,
+        "punishment_speed": 4,
+        "buyout_resistance": 1,
+        "buyout_magnet": true,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "mesopotamian_inanna",
+      "status": "resolved",
+      "name": "Inanna",
+      "shortlist_name": "Inanna",
+      "tradition": "mesopotamian",
+      "influence": 2,
+      "recognition": 4,
+      "table_tier": "vip",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "love_beauty",
+        "war",
+        "chaos",
+        "moon_night"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 3,
+        "pettiness": 5,
+        "wrath": 5,
+        "fidelity": 2,
+        "risk_appetite": 5
+      },
+      "temperament": "The founding family's ambitious heiress — walks into any boardroom wearing whatever she took from the last one, and has already sat in your chair.",
+      "favor_conditions": [
+        "Win a fight the odds board flagged as beyond your rating",
+        "Take a boss's or rival contestant's signature equipment and wear or use it on camera in the same run",
+        "Return to a room where you were previously downed and clear it",
+        "Hold the run's highest single-encounter hype/camera-call gain"
+      ],
+      "taboos": [
+        "Decline a boon, gift, or advance she offers (the Gilgamesh precedent — refusal cost Uruk a Bull)",
+        "Credit another god on camera for a kill her boon powered"
+      ],
+      "boon_domains": [
+        "love_beauty",
+        "war",
+        "chaos"
+      ],
+      "blessing_style": "Spotlight escalation — comps arrive as finery and weapons lifted from other gods' tables and grow with your hype; all-or-nothing multipliers when you fight above your class.",
+      "casino_roles": [
+        "patron",
+        "investor",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 3,
+        "taboo_count": 2,
+        "rival_curse_chance": 5,
+        "punishment_speed": 5,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "abrahamic_folk_beelzebub",
+      "status": "resolved",
+      "name": "Beelzebub",
+      "shortlist_name": "Beelzebub",
+      "tradition": "abrahamic_folk",
+      "influence": 1,
+      "recognition": 4,
+      "table_tier": "normal",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "disease_poison",
+        "death_underworld",
+        "chaos"
+      ],
+      "personality": {
+        "generosity": 3,
+        "strictness": 3,
+        "pettiness": 4,
+        "wrath": 3,
+        "fidelity": 2,
+        "risk_appetite": 4
+      },
+      "temperament": "Old money gone rancid: a demoted god who still throws around a fortune that smells of decay, buzzing with a retinue that eats what it touches.",
+      "favor_conditions": [
+        "win an encounter by attrition — let poison or infection do the finishing work",
+        "turn an enemy's own numbers against it (make a swarm or summon kill its master)",
+        "hold a chokepoint for a set number of turns without yielding ground"
+      ],
+      "taboos": [
+        "cleanse or cure a condition you inflicted (waste the rot)",
+        "keep a clean, tidy killbox — refuse to let the field degrade"
+      ],
+      "boon_domains": [
+        "disease_poison",
+        "death_underworld",
+        "chaos"
+      ],
+      "blessing_style": "spread — boons are contagions: buffs that multiply across a swarm and creep onto whatever you touch, strongest in a filthy, condition-soaked arena.",
+      "casino_roles": [
+        "forsaken_host",
+        "patron",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 3,
+        "boon_magnitude": 3,
+        "taboo_severity": 3,
+        "taboo_count": 2,
+        "rival_curse_chance": 4,
+        "punishment_speed": 3,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "abrahamic_folk_gad",
+      "status": "resolved",
+      "name": "Gad",
+      "shortlist_name": "Gad",
+      "tradition": "abrahamic_folk",
+      "influence": 1,
+      "recognition": 1,
+      "table_tier": "normal",
+      "obscurity_tier": "mythic",
+      "domains": [
+        "luck_gambling",
+        "wealth_commerce",
+        "sky_storm"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 2,
+        "pettiness": 2,
+        "wrath": 2,
+        "fidelity": 3,
+        "risk_appetite": 5
+      },
+      "temperament": "The oldest patron in the room and the most literal â€” the god you set a table for before the word 'casino' existed, who deals in nothing but the tilt of the odds.",
+      "favor_conditions": [
+        "win an encounter decided by a coin-flip / low-odds outcome (let the gamble land)",
+        "set an offering at a shrine or table before a run and then complete the run",
+        "take the riskier of two offered paths and clear it"
+      ],
+      "taboos": [
+        "hedge every bet â€” never take an offered high-risk/high-reward option across a whole run",
+        "curse your luck aloud after a bad outcome (blaspheme against fortune)"
+      ],
+      "boon_domains": [
+        "luck_gambling",
+        "wealth_commerce"
+      ],
+      "blessing_style": "pure fortune â€” boons are reweighted dice: Gad doesn't make you stronger, he makes the improbable break your way; the casino's oldest and most literal patron.",
+      "casino_roles": [
+        "patron",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 2,
+        "taboo_count": 2,
+        "rival_curse_chance": 2,
+        "punishment_speed": 2,
+        "buyout_resistance": 3,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "abrahamic_folk_lucifer",
+      "status": "resolved",
+      "name": "Lucifer",
+      "shortlist_name": "Lucifer",
+      "tradition": "abrahamic_folk",
+      "influence": 1,
+      "recognition": 5,
+      "table_tier": "normal",
+      "obscurity_tier": "common",
+      "domains": [
+        "chaos",
+        "sun_fire",
+        "luck_gambling",
+        "trickery"
+      ],
+      "personality": {
+        "generosity": 4,
+        "strictness": 2,
+        "pettiness": 4,
+        "wrath": 4,
+        "fidelity": 2,
+        "risk_appetite": 5
+      },
+      "temperament": "The floor's most famous degenerate — went all-in against the house once, lost everything, and has been working the comeback ever since, grinning like the pot is already his.",
+      "favor_conditions": [
+        "decline the safe reward and take the higher-stakes option at a fork",
+        "win a Forsaken (VVIP) game solo after refusing all mid-run help",
+        "beat an enemy that outclasses you on paper (win while flagged the underdog)"
+      ],
+      "taboos": [
+        "accept a buy-out from the Firm or a messenger after signing with him",
+        "cash out early / win small instead of pushing the pot"
+      ],
+      "boon_domains": [
+        "chaos",
+        "sun_fire",
+        "luck_gambling"
+      ],
+      "blessing_style": "leverage — boons are loans against your future: enormous power now, a debt that compounds; he front-loads the comeback and lets you carry the risk.",
+      "casino_roles": [
+        "forsaken_host",
+        "patron",
+        "table_boss"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 4,
+        "boon_magnitude": 4,
+        "taboo_severity": 2,
+        "taboo_count": 2,
+        "rival_curse_chance": 4,
+        "punishment_speed": 4,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "abrahamic_folk_mammon",
+      "status": "resolved",
+      "name": "Mammon",
+      "shortlist_name": "Mammon",
+      "tradition": "abrahamic_folk",
+      "influence": 1,
+      "recognition": 3,
+      "table_tier": "normal",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "wealth_commerce",
+        "luck_gambling",
+        "trickery"
+      ],
+      "personality": {
+        "generosity": 5,
+        "strictness": 2,
+        "pettiness": 3,
+        "wrath": 2,
+        "fidelity": 1,
+        "risk_appetite": 4
+      },
+      "temperament": "The deepest pockets on the floor and the shallowest loyalty — backs whoever's up, folds on whoever's down, and calls it good business.",
+      "favor_conditions": [
+        "end a run with the largest treasure haul on the board (top the greed leaderboard)",
+        "buy your way past an obstacle instead of fighting it (spend, don't sweat)",
+        "win a bidding war for a contested reward against a rival"
+      ],
+      "taboos": [
+        "give away loot for free (hand a reward to an ally without payment)",
+        "leave a treasure uncollected when you could have taken it"
+      ],
+      "boon_domains": [
+        "wealth_commerce",
+        "luck_gambling",
+        "trickery"
+      ],
+      "blessing_style": "liquidity — boons are purchasable and instant, the deepest pockets on the floor; but he backs only whoever's winning and drops a losing book without sentiment (buy-out magnet — lowest fidelity on the roster).",
+      "casino_roles": [
+        "patron",
+        "dealer"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 5,
+        "boon_magnitude": 5,
+        "taboo_severity": 2,
+        "taboo_count": 2,
+        "rival_curse_chance": 3,
+        "punishment_speed": 2,
+        "buyout_resistance": 1,
+        "buyout_magnet": true,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 4
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    },
+    {
+      "id": "yoruba_west_african_anansi",
+      "status": "resolved",
+      "name": "Anansi",
+      "shortlist_name": "Anansi",
+      "tradition": "yoruba_west_african",
+      "influence": 1,
+      "recognition": 4,
+      "table_tier": "normal",
+      "obscurity_tier": "uncommon",
+      "domains": [
+        "trickery",
+        "poetry_story",
+        "luck_gambling"
+      ],
+      "personality": {
+        "generosity": 2,
+        "strictness": 1,
+        "pettiness": 3,
+        "wrath": 2,
+        "fidelity": 2,
+        "risk_appetite": 5
+      },
+      "temperament": "Eight hands, one credit line, and a royalty on everything ever broadcast — he sold the house its own story catalog after winning it in the wildest all-in on record (stake: his own mother). Bet him nothing you can't afford to become a story.",
+      "favor_conditions": [
+        "beat a foe or obstacle that outclasses you using trickery, a trap, or the terrain — not raw force (the small outwitting the mighty)",
+        "complete an objective by an unsanctioned method nobody proposed or expected",
+        "win an on-camera wager or bargain and collect on it to the letter",
+        "accept an 'impossible' task and clear it through a clever workaround (his four-capture price to Nyame)"
+      ],
+      "taboos": [
+        "win by brute force when a clever option was on the table — Anansi has no patience for the graceless",
+        "renege on a bargain or a bet you struck"
+      ],
+      "boon_domains": [
+        "trickery",
+        "luck_gambling"
+      ],
+      "blessing_style": "the trickster's edge — boons are workarounds and reversals: turn a stronger foe's own strength against it, slip a trap, or flip a losing bet; small, cheap, and always a little bit of a cheat",
+      "casino_roles": [
+        "dealer",
+        "contestant_legend",
+        "patron",
+        "forsaken_host"
+      ],
+      "deal_sheet_hints": {
+        "boon_frequency": 2,
+        "boon_magnitude": 2,
+        "taboo_severity": 1,
+        "taboo_count": 2,
+        "rival_curse_chance": 3,
+        "punishment_speed": 2,
+        "buyout_resistance": 2,
+        "buyout_magnet": false,
+        "forsaken_eager": true,
+        "forsaken_host_candidate": true,
+        "risk_appetite": 5
+      },
+      "notes": "PLACEHOLDER numbers (R14). Deal sheet derived from entities.jsonl patron_block; hints restate personality axes per mythology-research-spec §5."
+    }
+  ]
+}
