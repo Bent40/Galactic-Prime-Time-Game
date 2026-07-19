@@ -3,6 +3,7 @@
 # Source of truth for the sister web app's palette, extended for the game HUD.
 # Every NUMBER shown in the mockups is PLACEHOLDER (R14).
 meta:
+  status: "APPROVED (owner 2026-07-19) — KAN-6 mockup gate passed; director rail kept, band display names (ELECTRIC/ON FIRE) blessed"
   product: "Galactic Prime Time — Game (Godot)"
   screen: "vertical-slice demo — Incine-Dile Phase 1"
   frame: "Cosmic Casino broadcast · Momus hosts"

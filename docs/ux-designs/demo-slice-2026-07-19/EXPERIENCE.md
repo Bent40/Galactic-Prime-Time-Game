@@ -1,5 +1,9 @@
 # Galactic Prime Time — Experience Spine (demo-slice, KAN-6 mockup gate)
 
+> **STATUS: APPROVED (owner 2026-07-19).** KAN-6 mockup gate passed — scene-building
+> unblocked. Owner calls: keep the 3-column director rail; keep the band display names
+> (enum `cold/warm/hot/on_fire` shown as ELECTRIC / ON FIRE). Numbers stay PLACEHOLDER (R14).
+
 The interaction spine for the vertical-slice demo. Pairs with `DESIGN.md` (visual identity)
 and the three rendered mockups (`renders/combat-hud.png`, `renders/bid-screen.png`,
 `renders/verdict-card.png`). It answers *how the screen behaves and what the player does* —

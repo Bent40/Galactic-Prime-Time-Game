@@ -180,3 +180,10 @@
     attribution deferred to **attribution-v2 (task #13, R11 #14)**, out of I-13 scope.
     The Bit's mechanical-null guarantee held under adversarial probing (combat state
     byte-identical before/after, incl. rejected bits). Numbers PLACEHOLDER (R14).
+16. **Demo mockups APPROVED — KAN-6 mockup gate passed (owner 2026-07-19).** The three
+    rendered mockups (combat/broadcast HUD, patron bid screen, verdict card) in
+    `docs/ux-designs/demo-slice-2026-07-19/` are approved as the build target. Owner
+    calls on the two flagged questions: **keep the 3-column director rail**; **keep the
+    band display names** (enum `cold/warm/hot/on_fire` shown as ELECTRIC / ON FIRE). The
+    gds-ux spines (DESIGN.md / EXPERIENCE.md) are marked APPROVED. Scene-building is
+    unblocked; numbers stay PLACEHOLDER (R14), tuned by feel through playtest.
