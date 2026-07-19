@@ -29,7 +29,9 @@ CONDITION_IDS = {
 FORCED_ACTION_TYPES = {None, "Body", "Tool"}
 ITEM_TYPES = {"consumable", "equipment", "weapon", "system_item", "misc", "key_item", "tool"}
 # Goal kinds the sim's HypeEngine can evaluate (simulation/hype_engine.gd).
-CROWD_GOAL_KINDS = {"takedown", "overkill", "part_break", "exposed_strike"}
+# I-13 added forced_action (Pratfall!), body_block (Body Block!), move_spaces (Zoomies!).
+CROWD_GOAL_KINDS = {"takedown", "overkill", "part_break", "exposed_strike",
+                    "forced_action", "body_block", "move_spaces"}
 PATRON_DOMAINS_MIN = 1  # sketch: docs/design/patron-gods.md — every god needs at least one domain
 # Controlled mythology domain vocabulary (docs/design/mythology-research-spec.md §4 — 26 domains).
 MYTHOLOGY_DOMAINS = {
@@ -326,6 +328,68 @@ def main() -> int:
             th = g.get("params", {}).get("threshold") if isinstance(g.get("params"), dict) else None
             if not isinstance(th, int) or th <= 0:
                 fail("crowd_goals.json", f"{k}: overkill needs params.threshold int > 0")
+        if g.get("kind") == "move_spaces":
+            sp = g.get("params", {}).get("spaces") if isinstance(g.get("params"), dict) else None
+            if not isinstance(sp, int) or sp <= 0:
+                fail("crowd_goals.json", f"{k}: move_spaces needs params.spaces int > 0")
+        if g.get("kind") == "body_block":
+            rk = g.get("params", {}).get("reaction_keys") if isinstance(g.get("params"), dict) else None
+            if not isinstance(rk, list) or not all(isinstance(x, str) and x for x in rk or []):
+                fail("crowd_goals.json", f"{k}: body_block needs params.reaction_keys list of strings")
+
+    # tag_effects (I-13 slice tags — simulation/tag_engine.gd). Object with
+    # _meta + a 'tags' list; keys AND names must match data/tags.json exactly
+    # (tags.json is the ported catalog of record). All numbers PLACEHOLDER (R14).
+    tag_by_key = {t.get("key"): t for t in tags}
+    te_rows: list = []
+    if (DATA / "tag_effects.json").is_file():
+        te = load("tag_effects.json")
+        if not isinstance(te, dict) or not isinstance(te.get("tags"), list):
+            fail("tag_effects.json", "top level must be an object with a 'tags' list")
+        else:
+            if not isinstance(te.get("_meta"), dict):
+                fail("tag_effects.json", "_meta object required (R14 placeholder + provenance)")
+            te_rows = [r for r in te["tags"] if isinstance(r, dict)]
+            if len(te_rows) != len(te["tags"]):
+                fail("tag_effects.json", "every tag entry must be an object")
+            check_unique("tag_effects.json", te_rows, "key")
+            for r in te_rows:
+                k = r.get("key", "?")
+                src = tag_by_key.get(k)
+                if src is None:
+                    fail("tag_effects.json", f"{k}: key does not resolve to a data/tags.json tag")
+                elif r.get("name") != src.get("name"):
+                    fail("tag_effects.json", f"{k}: name {r.get('name')!r} != tags.json {src.get('name')!r}")
+                doms = r.get("domains")
+                if not isinstance(doms, list) or not doms or not all(isinstance(d, str) for d in doms):
+                    fail("tag_effects.json", f"{k}: domains must be a non-empty list of strings")
+                else:
+                    for d in doms:
+                        if d not in MYTHOLOGY_DOMAINS:
+                            fail("tag_effects.json", f"{k}: domain {d!r} not in the controlled vocab")
+                det = r.get("detector")
+                if not isinstance(det, dict) or not isinstance(det.get("events"), list) or not det["events"]:
+                    fail("tag_effects.json", f"{k}: detector.events must be a non-empty list")
+                unlock = r.get("unlock")
+                if not isinstance(unlock, dict) or not isinstance(unlock.get("count"), int) or unlock.get("count", 0) < 1:
+                    fail("tag_effects.json", f"{k}: unlock.count must be int >= 1")
+                res = r.get("resonance")
+                if not isinstance(res, dict) or not isinstance(res.get("selectors"), list):
+                    fail("tag_effects.json", f"{k}: resonance.selectors must be a list")
+                elif not isinstance(res.get("resonance_pct"), int) or res.get("resonance_pct", 0) < 100:
+                    fail("tag_effects.json", f"{k}: resonance.resonance_pct must be int >= 100")
+                if not isinstance(r.get("earned_on_camera"), bool):
+                    fail("tag_effects.json", f"{k}: earned_on_camera must be a boolean")
+            # RULED item 8: the slice carries exactly ONE pattern-5 rider (the_bit).
+            riders = sorted(r.get("key") for r in te_rows if "rider" in r)
+            if riders != ["the_bit"]:
+                fail("tag_effects.json", f"exactly one rider (the_bit) allowed, got {riders}")
+            bit = next((r for r in te_rows if r.get("key") == "the_bit"), None)
+            if bit is not None:
+                rider = bit.get("rider", {})
+                for f_ in ("base_spectacle", "bonus_per_prior"):
+                    if not isinstance(rider.get(f_), int) or rider.get(f_, -1) < 0:
+                        fail("tag_effects.json", f"the_bit: rider.{f_} must be int >= 0")
 
     # skills
     check_unique("skills.json", skills, "key")
@@ -553,11 +617,11 @@ def main() -> int:
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
     n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons,
-                             goals, loadouts, roster))
+                             goals, loadouts, roster, te_rows))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
           f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals, "
-          f"{len(loadouts)} demo loadouts, {len(roster)} roster patrons, "
+          f"{len(te_rows)} slice tags, {len(loadouts)} demo loadouts, {len(roster)} roster patrons, "
           f"{dcmap_pairs} domain->condition affinities — {n} rows checked).")
     return 0
 

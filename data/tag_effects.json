@@ -1,0 +1,148 @@
+{
+  "_meta": {
+    "issue": "I-13",
+    "source": "docs/design/slice-tags-proposal.md (RULED owner 2026-07-18)",
+    "placeholder_notice": "Every count, threshold, resonance_pct and rider number below is a PLACEHOLDER (R14) — tuned by feel through playtest. Shapes, detectors and the tag selection are what is ruled; values are not.",
+    "held": "binary held / not-held for the slice (RULED item 4). Loadouts start with NO tags — everything earned on camera. The 0..3 lifecycle weight ladder stays deferred.",
+    "attribution": "RULED item 6 — same-batch attacker attribution is the detector standard: a victim-attributed offensive event is credited to the actor of the next action_resolved/reaction_resolved in the same command batch (HypeEngine.credited_actor). Events with no such closer stay uncredited.",
+    "contestants_only": "RULED item 7 — non-contestants (the boss) generate detectable beats but hold NO tags. TagEngine gates every award on category == Contestant.",
+    "resonance": "resonance_pct is an audience-side multiplier applied by HypeEngine to the spectacle POINTS of matching events attributed to (or batch-credited to) the holder. It never touches combat state. selectors are event-type tokens; \"*\" matches every event; \"goal_completed\" matches crowd-goal payouts. v1 resonance matches on event TYPE only (coarse) — the precise predicate lives in the unlock detector.",
+    "the_bit": "RULED item 8 — HARD CONSTRAINT: the signature bit action adds NOTHING but flavor (no damage, buff, positioning, cost-advantage — mechanically null by construction). Its only payout is spectacle, escalating with repeat performances (the set's single pattern-5 rider)."
+  },
+  "tags": [
+    {
+      "key": "reckless",
+      "name": "Reckless",
+      "domains": ["war", "chaos", "luck_gambling"],
+      "detector": {
+        "events": ["action_resolved"],
+        "predicate": "kind==attack, result==ok, rounds>0, while the actor's exposed mirror is true (verbatim reuse of the exposed_strike goal predicate)",
+        "attribution": "actor"
+      },
+      "unlock": {"count": 3},
+      "resonance": {"selectors": ["damage_applied"], "resonance_pct": 150},
+      "earned_on_camera": true
+    },
+    {
+      "key": "gorefest",
+      "name": "Gorefest",
+      "domains": ["war", "death_underworld"],
+      "detector": {
+        "events": ["part_destroyed", "bleed_out_started", "condition_advanced"],
+        "predicate": "part_destroyed, OR bleeding condition_advanced reaching to_tier>=2, OR bleed_out_started — batch-credited to the attacker",
+        "attribution": "batch_attacker"
+      },
+      "unlock": {"count": 2},
+      "resonance": {"selectors": ["part_destroyed", "bleed_out_started", "condition_advanced"], "resonance_pct": 150},
+      "earned_on_camera": true
+    },
+    {
+      "key": "blooper_reel",
+      "name": "Blooper Reel",
+      "domains": ["trickery", "chaos"],
+      "detector": {
+        "events": ["forced_action_triggered"],
+        "predicate": "any forced_action_triggered suffered by the actor (already perfectly actor-attributed)",
+        "attribution": "actor"
+      },
+      "unlock": {"count": 3},
+      "resonance": {"selectors": ["forced_action_triggered", "collateral_hit", "item_dropped"], "resonance_pct": 200},
+      "earned_on_camera": true
+    },
+    {
+      "key": "scene_stealer",
+      "name": "Scene Stealer",
+      "domains": ["music_performance", "trickery"],
+      "detector": {
+        "events": ["hype_goal_completed", "hype_camera_call_started"],
+        "predicate": "the holder completes a crowd goal, or starts a camera call — consuming the hype engine's own outputs (TagEngine ingests after hype)",
+        "attribution": "actor"
+      },
+      "unlock": {"count": 2},
+      "resonance": {"selectors": ["goal_completed"], "resonance_pct": 125},
+      "earned_on_camera": true
+    },
+    {
+      "key": "the_bit",
+      "name": "The Bit",
+      "domains": ["music_performance", "poetry_story"],
+      "detector": {
+        "events": ["bit_performed"],
+        "predicate": "the mechanically-null signature bit command resolves, carrying spectacle_points",
+        "attribution": "actor"
+      },
+      "unlock": {"count": 3},
+      "resonance": {"selectors": [], "resonance_pct": 100},
+      "rider": {"base_spectacle": 20, "bonus_per_prior": 10},
+      "earned_on_camera": true
+    },
+    {
+      "key": "fan_favorite",
+      "name": "Fan Favorite",
+      "domains": ["love_beauty", "protection_home"],
+      "detector": {
+        "events": ["part_destroyed", "bleed_out_started", "bleed_out_stabilized", "combatant_died", "part_disabled"],
+        "predicate": "v1 proxy for cumulative credited spectacle — count dramatic beats whose subject (victim) is the holder; a true shared spectacle ledger awaits v2",
+        "attribution": "victim"
+      },
+      "unlock": {"count": 5},
+      "resonance": {"selectors": ["*"], "resonance_pct": 115},
+      "earned_on_camera": true
+    },
+    {
+      "key": "survivor",
+      "name": "Survivor",
+      "domains": ["death_underworld", "time_fate"],
+      "detector": {
+        "events": ["bleed_out_started", "bleed_out_stabilized", "part_disabled", "part_destroyed", "shock_changed"],
+        "predicate": "own jeopardy beats while remaining ALIVE — bleed-out start/stabilize, part disabled/destroyed on self, shock to tier>=3",
+        "attribution": "victim"
+      },
+      "unlock": {"count": 2},
+      "resonance": {"selectors": ["bleed_out_started", "bleed_out_stabilized", "shock_changed"], "resonance_pct": 150},
+      "earned_on_camera": true
+    },
+    {
+      "key": "craft_services",
+      "name": "Craft Services",
+      "domains": ["protection_home", "healing", "earth_harvest"],
+      "detector": {
+        "events": ["reaction_resolved", "inventory_used", "attack_blocked"],
+        "predicate": "protective reaction (key in protective_keys), a support item interaction (in support_interactions), or an attack_blocked on a contestant defender",
+        "attribution": "actor",
+        "protective_keys": ["brace", "block", "guard", "shield", "body_block", "intercept"],
+        "support_interactions": ["share", "handoff", "give", "treat", "bandage", "heal"]
+      },
+      "unlock": {"count": 3},
+      "resonance": {"selectors": ["reaction_resolved", "attack_blocked", "healed"], "resonance_pct": 150},
+      "earned_on_camera": true
+    },
+    {
+      "key": "formation",
+      "name": "Formation",
+      "domains": ["war", "music_performance"],
+      "detector": {
+        "events": ["combined_action_declared"],
+        "predicate": "the R15 combined-action event — every linked member (enumerated in members[]) that is a contestant is credited",
+        "attribution": "members"
+      },
+      "unlock": {"count": 2},
+      "resonance": {"selectors": ["damage_applied", "part_destroyed"], "resonance_pct": 150},
+      "earned_on_camera": true
+    },
+    {
+      "key": "3am_energy",
+      "name": "3am Energy",
+      "domains": ["travel_speed", "beasts_wild", "moon_night"],
+      "detector": {
+        "events": ["moved"],
+        "predicate": "movement streak — accumulate the holder's moved spaces between clock_reset boundaries; a Clock in which the accumulation reaches streak_spaces counts once",
+        "attribution": "actor",
+        "streak_spaces": 4
+      },
+      "unlock": {"count": 2},
+      "resonance": {"selectors": ["moved"], "resonance_pct": 130},
+      "earned_on_camera": true
+    }
+  ]
+}
