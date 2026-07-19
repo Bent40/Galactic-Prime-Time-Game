@@ -38,6 +38,10 @@ var allocated_physical: Dictionary = {}
 
 var boss_traits: Dictionary = {}
 var breached: bool = false
+## Enemy ability list (data/enemies.json shape) — consumed by EnemyAI (I-16).
+var abilities: Array[Dictionary] = []
+## Boss phase table (data/enemies.json "phases") — consumed by EnemyAI (I-16).
+var boss_phases: Array[Dictionary] = []
 
 ## item_key -> item dict (normalized; ranged items carry "magazine_loaded").
 var items: Dictionary = {}
@@ -119,6 +123,10 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 		c.allocated_physical[String(alloc_key)] = int(alloc[alloc_key])
 
 	c.boss_traits = (spec.get("boss_traits", template.get("traits", {})) as Dictionary).duplicate(true)
+	for ability_spec: Variant in spec.get("abilities", template.get("abilities", [])) as Array:
+		c.abilities.append((ability_spec as Dictionary).duplicate(true))
+	for phase_spec: Variant in spec.get("phases", template.get("phases", [])) as Array:
+		c.boss_phases.append((phase_spec as Dictionary).duplicate(true))
 
 	var hp_bonus: int = c.hp_bonus_per_part()
 	var part_specs: Array = spec.get("body_parts", template.get("body_parts", []))
@@ -302,6 +310,8 @@ func to_dict() -> Dictionary:
 		"allocated_physical": allocated_physical.duplicate(true),
 		"boss_traits": boss_traits.duplicate(true),
 		"breached": breached,
+		"abilities": abilities.duplicate(true),
+		"boss_phases": boss_phases.duplicate(true),
 		"items": items.duplicate(true),
 		"alive": alive,
 		"removed_from_play": removed_from_play,
@@ -349,6 +359,10 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.allocated_physical = (data.get("allocated_physical", {}) as Dictionary).duplicate(true)
 	c.boss_traits = (data.get("boss_traits", {}) as Dictionary).duplicate(true)
 	c.breached = bool(data.get("breached", false))
+	for ability: Variant in data.get("abilities", []) as Array:
+		c.abilities.append((ability as Dictionary).duplicate(true))
+	for phase: Variant in data.get("boss_phases", []) as Array:
+		c.boss_phases.append((phase as Dictionary).duplicate(true))
 	c.items = (data.get("items", {}) as Dictionary).duplicate(true)
 	c.alive = bool(data.get("alive", true))
 	c.removed_from_play = bool(data.get("removed_from_play", false))

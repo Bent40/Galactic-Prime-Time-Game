@@ -3,7 +3,7 @@
     "id": 1,
     "key": "documentary",
     "name": "Documentary",
-    "description": "",
+    "description": "Everyday life turned cinema. Narrate or frame a mundane action as if it were meaningful. The crowd agrees.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -12,7 +12,7 @@
     "id": 2,
     "key": "playa",
     "name": "Playa",
-    "description": "",
+    "description": "Flirting with danger. Voluntarily put yourself at risk for no tactical reason, and walk away from it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -21,7 +21,7 @@
     "id": 3,
     "key": "absolute_cinema",
     "name": "Absolute Cinema",
-    "description": "",
+    "description": "Top 10 cinematic moments right here. Do something that makes the whole table go quiet for a second.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -30,7 +30,7 @@
     "id": 4,
     "key": "edgy",
     "name": "Edgy",
-    "description": "",
+    "description": "Careful, don't cut yourself! We don't have bandaids around here. Commit a genuinely dark act and show no visible reaction to it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -39,7 +39,7 @@
     "id": 5,
     "key": "anime",
     "name": "Anime",
-    "description": "",
+    "description": "Not another filler episode! Do something that would require a three-episode flashback arc to explain. In the moment.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -48,7 +48,7 @@
     "id": 6,
     "key": "reckless",
     "name": "Reckless",
-    "description": "",
+    "description": "Plan? I don't need a plan! Charge into a situation solo with no preparation and force everyone else to react.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -58,7 +58,7 @@
     "id": 7,
     "key": "scrub",
     "name": "Scrub",
-    "description": "",
+    "description": "Ouch, what a fumble! Gonna remember that one for a while. Roll a Forced Action consequence that makes things significantly worse for yourself.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -67,7 +67,7 @@
     "id": 8,
     "key": "stinker",
     "name": "Stinker",
-    "description": "",
+    "description": "Shower, friend. Heard of it? No? We can tell. Be the source of a condition, smell, or substance that affects allies as much as enemies.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -76,7 +76,7 @@
     "id": 9,
     "key": "pinky_promise",
     "name": "Pinky Promise",
-    "description": "",
+    "description": "This will totally backfire on us, right? Make a commitment out loud \u2014 to an ally, an enemy, or the camera \u2014 and then watch it immediately complicate things.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -85,7 +85,7 @@
     "id": 11,
     "key": "oops",
     "name": "Oops",
-    "description": "",
+    "description": "You didn't need that eye, right? Cause permanent or serious collateral damage to an ally, an innocent, or yourself by accident.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -94,7 +94,7 @@
     "id": 13,
     "key": "menace",
     "name": "Menace",
-    "description": "",
+    "description": "Don't make eye contact with this guy. Cause an enemy to retreat, surrender, or hesitate purely based on your presence or reputation.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -103,7 +103,7 @@
     "id": 14,
     "key": "what_a_beaut",
     "name": "What a Beaut",
-    "description": "",
+    "description": "I love pets! I have a dog, a cat, a lizard, a bird\u2026 Establish a non-hostile relationship with a creature that has no reason to tolerate you.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -113,7 +113,7 @@
     "id": 15,
     "key": "fan_favorite",
     "name": "Fan Favorite",
-    "description": "",
+    "description": "Take a bow, little actor! Receive an unsolicited positive crowd reaction three times. They're not rooting for the party. They're rooting for you.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -122,7 +122,7 @@
     "id": 16,
     "key": "shill",
     "name": "Shill",
-    "description": "",
+    "description": "Orders are absolute. Complete a Directive without deviation, complaint, or asking what it's for.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -132,7 +132,7 @@
     "id": 17,
     "key": "tragic",
     "name": "Tragic",
-    "description": "",
+    "description": "Suffering brings creativity. Lose something \u2014 a person, a part, a capability \u2014 and keep going without resolving it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -141,7 +141,7 @@
     "id": 19,
     "key": "gorefest",
     "name": "Gorefest",
-    "description": "",
+    "description": "Pop goes the goblin! Kill something in a way that requires cleanup.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -151,7 +151,7 @@
     "id": 21,
     "key": "protagonist",
     "name": "Protagonist",
-    "description": "",
+    "description": "Spotlight, here we come! Be the one who makes the call that changes the direction of the session. The crowd noticed.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -160,7 +160,7 @@
     "id": 22,
     "key": "antagonist",
     "name": "Antagonist",
-    "description": "",
+    "description": "I too, can write myself a story. Deliberately position yourself against the interests of an ally, an NPC, or the Corporation \u2014 and frame it well.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -169,7 +169,7 @@
     "id": 23,
     "key": "anti_hero",
     "name": "Anti-Hero",
-    "description": "",
+    "description": "The right thing for the wrong reasons. Do something genuinely good in the worst way possible, for reasons you won't fully explain.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -178,7 +178,7 @@
     "id": 25,
     "key": "no_cure_for_evil",
     "name": "No Cure For Evil",
-    "description": "",
+    "description": "No rest for the wicked, especially for you. Be the instigating cause of a problem the party then has to solve. Twice.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -187,7 +187,7 @@
     "id": 26,
     "key": "munchkin",
     "name": "Munchkin",
-    "description": "",
+    "description": "Bug or feature? Find an interaction between two mechanics, items, or skills that was not clearly intended. Use it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -196,7 +196,7 @@
     "id": 28,
     "key": "mascot",
     "name": "Mascot",
-    "description": "",
+    "description": "So cute, so memorable. Be referenced, imitated, or protected by an NPC who has no mechanical reason to care about you.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -205,7 +205,7 @@
     "id": 30,
     "key": "survivor",
     "name": "Survivor",
-    "description": "",
+    "description": "These tracks are fresh. Be the last one standing in a situation where the rest of the party is down or gone.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -214,7 +214,7 @@
     "id": 31,
     "key": "spy",
     "name": "Spy",
-    "description": "",
+    "description": "He could be you, he could be me! Operate without anyone \u2014 ally or enemy \u2014 knowing your real objective for an entire session.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -223,7 +223,7 @@
     "id": 32,
     "key": "liability",
     "name": "Liability",
-    "description": "",
+    "description": "Work on yourself, will ya? Be directly responsible for a party wipe, near-wipe, or significant loss. Own it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -232,7 +232,7 @@
     "id": 33,
     "key": "method_actor",
     "name": "Method Actor",
-    "description": "",
+    "description": "I did my own stunts. I also wrote the script. I'm also bleeding. Stay in a bit, a character, or a stated role through a Forced Action consequence or Shock tier.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -241,7 +241,7 @@
     "id": 34,
     "key": "understudy",
     "name": "Understudy",
-    "description": "",
+    "description": "I've been watching. I've been waiting. Successfully replicate another character's skill, move, or approach in the moment it was needed.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -250,7 +250,7 @@
     "id": 35,
     "key": "typecast",
     "name": "Typecast",
-    "description": "",
+    "description": "Oh, we know exactly what you're going to do. Use the same tactic to solve three different problems in three different sessions. It keeps working.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -259,7 +259,7 @@
     "id": 36,
     "key": "prima_donna",
     "name": "Prima Donna",
-    "description": "",
+    "description": "This dungeon is not up to my standards. Complain about conditions, resources, or treatment while doing something genuinely impressive.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -268,7 +268,7 @@
     "id": 37,
     "key": "scene_stealer",
     "name": "Scene Stealer",
-    "description": "",
+    "description": "Sorry, were you in the middle of something? Redirect the crowd's attention from another party member's moment to yours.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -277,7 +277,7 @@
     "id": 38,
     "key": "the_monologue",
     "name": "The Monologue",
-    "description": "",
+    "description": "You know, I never wanted it to come to this. Deliver a speech \u2014 to an enemy, the camera, or nobody \u2014 before, during, or after a kill.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -286,7 +286,7 @@
     "id": 39,
     "key": "fourth_wall",
     "name": "Fourth Wall",
-    "description": "",
+    "description": "Hey. You watching? Good. Address the audience directly, in-character, in a moment that lands.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -295,7 +295,7 @@
     "id": 40,
     "key": "box_office_bomb",
     "name": "Box Office Bomb",
-    "description": "",
+    "description": "Coming this summer. It did not perform well. Build up to something publicly \u2014 announce it, commit to it \u2014 and fail in front of everyone.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -304,7 +304,7 @@
     "id": 41,
     "key": "director_s_cut",
     "name": "Director's Cut",
-    "description": "",
+    "description": "Let's try that one again. Redo a failed action in the same scene and succeed. The crowd saw both versions.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -313,7 +313,7 @@
     "id": 42,
     "key": "heart_melter",
     "name": "Heart Melter",
-    "description": "",
+    "description": "Critics loved it. The party did not. Do something the rest of the party called stupid. The crowd rewarded it anyway.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -323,7 +323,7 @@
     "id": 43,
     "key": "not_my_job",
     "name": "Not My Job",
-    "description": "",
+    "description": "I'm not doing that. Put it in writing. Refuse a Directive on stated principle, explain why to the camera, and survive the consequences.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -333,7 +333,7 @@
     "id": 44,
     "key": "direct_to_dvd",
     "name": "Direct to DVD",
-    "description": "",
+    "description": "It went somewhere. Just not the main screen. Be visibly passed over \u2014 for a reward, a moment, a spotlight \u2014 and have the crowd notice.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -342,7 +342,7 @@
     "id": 45,
     "key": "callback",
     "name": "Callback",
-    "description": "",
+    "description": "Remember this? The crowd does. Return to a previous failure and succeed at it. The context must still be recognizable.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -351,7 +351,7 @@
     "id": 46,
     "key": "nepotism_hire",
     "name": "Nepotism Hire",
-    "description": "",
+    "description": "Somehow still here. Nobody's sure why. Benefit from a reward, opportunity, or survival you clearly didn't earn. Don't acknowledge it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -360,7 +360,7 @@
     "id": 47,
     "key": "one_star_review",
     "name": "One Star Review",
-    "description": "",
+    "description": "Needs improvement in several key areas. Receive direct, public criticism from an NPC, ally, or crowd reaction. Keep performing.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -369,7 +369,7 @@
     "id": 48,
     "key": "student_film",
     "name": "Student Film",
-    "description": "",
+    "description": "The ambition is there. The budget is not. Attempt something that visibly exceeds your current capability. The effort is undeniable.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -378,7 +378,7 @@
     "id": 49,
     "key": "craft_services",
     "name": "Craft Services",
-    "description": "",
+    "description": "Is there food here? I'm asking for me. Prioritize personal resource management over the objective in a way the crowd finds deeply relatable.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -387,7 +387,7 @@
     "id": 50,
     "key": "resting_loser_face",
     "name": "Resting Loser Face",
-    "description": "",
+    "description": "He looks like he already knows how this ends. Have an NPC or crowd react to your neutral expression as if you've already given up. You haven't. Probably.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -396,7 +396,7 @@
     "id": 51,
     "key": "applause_machine",
     "name": "Applause Machine",
-    "description": "",
+    "description": "They're clapping. You're not sure why. Neither are they. Generate a positive crowd reaction from a passive action \u2014 something you did without trying to perform.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -405,7 +405,7 @@
     "id": 52,
     "key": "unlikely_menace",
     "name": "Unlikely Menace",
-    "description": "",
+    "description": "That should not have worked. Win a confrontation against something significantly more dangerous than you using only what you had.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -414,7 +414,7 @@
     "id": 53,
     "key": "adorable_threat",
     "name": "Adorable Threat",
-    "description": "",
+    "description": "Aww. Oh no. Deal meaningful damage or cause genuine harm immediately after a moment the crowd found charming.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -423,7 +423,7 @@
     "id": 54,
     "key": "waddled_into_frame",
     "name": "Waddled Into Frame",
-    "description": "",
+    "description": "Late. Uninvited. Immediately relevant. Arrive after the situation has already developed and become the deciding factor anyway.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -432,7 +432,7 @@
     "id": 55,
     "key": "the_bit",
     "name": "The Bit",
-    "description": "",
+    "description": "They have a thing. You know the thing. Do the thing. Perform the same signature move or behavior three times across different sessions. The crowd names it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -441,7 +441,7 @@
     "id": 56,
     "key": "bark_bark_bark",
     "name": "Bark Bark Bark",
-    "description": "",
+    "description": "We understood completely. We don't know how. Communicate something critical through non-standard or non-verbal means, successfully.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -450,7 +450,7 @@
     "id": 57,
     "key": "winter_sheep",
     "name": "Winter Sheep",
-    "description": "",
+    "description": "That was precise. That was practiced. What are you? Execute something trained, deliberate, and technically impressive in a way that recontextualizes your nature.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {},
@@ -460,7 +460,7 @@
     "id": 58,
     "key": "flipper_mode",
     "name": "Flipper Mode",
-    "description": "",
+    "description": "No hands. No problem. No further questions. Complete a task that explicitly requires manipulation, grip, or hands \u2014 without them.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -469,7 +469,7 @@
     "id": 59,
     "key": "crowd_s_baby",
     "name": "Crowd's Baby",
-    "description": "",
+    "description": "If they die we're cancelling the show and we mean it. Reach a point where the audience reaction to your danger is loud enough that the Corporation has to acknowledge it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -478,7 +478,7 @@
     "id": 61,
     "key": "knock_it_off_the_table",
     "name": "Knock It Off The Table",
-    "description": "",
+    "description": "Was that important? Asking after. Destroy, displace, or ruin something with no stated intent \u2014 and have it matter to the scene.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -487,7 +487,7 @@
     "id": 62,
     "key": "feral_consultant",
     "name": "Feral Consultant",
-    "description": "",
+    "description": "They asked for input. This is the input. Solve a problem in a way that nobody proposed and nobody can fully explain after the fact.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -496,7 +496,7 @@
     "id": 63,
     "key": "witnessed",
     "name": "Witnessed",
-    "description": "",
+    "description": "I was there. I watched. I made my choice. Observe a significant event without intervening. The crowd respects this. Or resents it. Either works.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -505,7 +505,7 @@
     "id": 64,
     "key": "murder_mittens",
     "name": "Murder Mittens",
-    "description": "",
+    "description": "Small. Armed. Not in the way you expected. Deal significant damage to a target at least two size or threat categories above you using only your natural capabilities.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -514,7 +514,7 @@
     "id": 65,
     "key": "dead_drop",
     "name": "Dead Drop",
-    "description": "",
+    "description": "You left something. It came back. Leave an item, a mark, or information somewhere with no explanation. Have it become relevant at least one session later.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -523,7 +523,7 @@
     "id": 66,
     "key": "vet_visit",
     "name": "Vet Visit",
-    "description": "",
+    "description": "It's been handled. The patient has opinions about this. Be physically managed, restrained, or treated by an ally without your cooperation \u2014 and return to function immediately.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -532,7 +532,7 @@
     "id": 67,
     "key": "territory_marked",
     "name": "Territory Marked",
-    "description": "",
+    "description": "You've been here. Whatever was here before knows it. Return to a location and have it reflect your previous presence \u2014 through environment, NPC memory, or enemy behavior.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -541,7 +541,7 @@
     "id": 68,
     "key": "3am_energy",
     "name": "3am Energy",
-    "description": "",
+    "description": "Why. Why now. Why like this. Initiate something \u2014 combat, a social situation, a plan \u2014 at the worst possible moment with the least possible justification.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -550,7 +550,7 @@
     "id": 69,
     "key": "indoor_cat",
     "name": "Indoor Cat",
-    "description": "",
+    "description": "In its natural habitat. Everything is fine. Run. Operate in a situation perfectly suited to your capabilities and demonstrate it completely.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -559,7 +559,7 @@
     "id": 70,
     "key": "birdwatcher",
     "name": "Birdwatcher",
-    "description": "",
+    "description": "Patient. Focused. Then not. Track or observe a target across at least two Clocks without acting \u2014 then resolve it in a single moment.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -568,7 +568,7 @@
     "id": 72,
     "key": "visual",
     "name": "Visual",
-    "description": "",
+    "description": "Didn't do much. Looked incredible doing it. Generate a crowd reaction from appearance, positioning, or presence alone, with no mechanical action taken.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -577,7 +577,7 @@
     "id": 75,
     "key": "formation",
     "name": "Formation",
-    "description": "",
+    "description": "One, two, three, four \u2014 we do this together. Coordinate a simultaneous or sequential action with at least two allies that looks deliberate to the audience.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -586,7 +586,7 @@
     "id": 77,
     "key": "internal_dispute",
     "name": "Internal Dispute",
-    "description": "",
+    "description": "They are not in agreement. This is everyone's problem now. Have two competing impulses, objectives, or behaviors visibly conflict mid-action. The crowd picks a side.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -595,7 +595,7 @@
     "id": 78,
     "key": "solo_debut",
     "name": "Solo Debut",
-    "description": "",
+    "description": "No backup. No committee. Just one. Complete an objective entirely independently, with no ally involvement, in a way that reads as intentional.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -604,7 +604,7 @@
     "id": 79,
     "key": "parasocial",
     "name": "Parasocial",
-    "description": "",
+    "description": "They don't know you. They feel like they do. This is becoming a situation. Have an NPC develop an attachment to a specific mode or personality that creates a complication.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -613,7 +613,7 @@
     "id": 80,
     "key": "all_kill",
     "name": "All-Kill",
-    "description": "",
+    "description": "Every chart. Every metric. Simultaneously. Briefly. In a single Clock, generate a Viewer spike, complete a Goal, and deal meaningful damage. All three.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -622,7 +622,7 @@
     "id": 81,
     "key": "disbandment_arc",
     "name": "Disbandment Arc",
-    "description": "",
+    "description": "Something is fracturing. The audience can see it. Reach a moment where internal conflict visibly undermines function \u2014 and have the crowd treat it as a storyline.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -631,7 +631,7 @@
     "id": 82,
     "key": "fan_service",
     "name": "Fan Service",
-    "description": "",
+    "description": "This one's for the viewers at home. Do something with no tactical value, purely for audience response. Receive audience response.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -640,7 +640,7 @@
     "id": 83,
     "key": "blue_screen",
     "name": "Blue Screen",
-    "description": "",
+    "description": "\u2026 Fail to act on your declared moment with no external cause. Just stop. Then continue.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -649,7 +649,7 @@
     "id": 86,
     "key": "unpatched",
     "name": "Unpatched",
-    "description": "",
+    "description": "We know about this one. We haven't fixed it. Have a known behavioral flaw exploited by an enemy or NPC. Be aware of it happening. Be unable to stop it.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -658,7 +658,7 @@
     "id": 87,
     "key": "404",
     "name": "404",
-    "description": "",
+    "description": "Request received. No data returned. Be asked for something \u2014 information, a skill, a response \u2014 and have nothing. No fallback. Just absence.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -667,7 +667,7 @@
     "id": 88,
     "key": "out_of_memory",
     "name": "Out of Memory",
-    "description": "",
+    "description": "We've done this before. Apparently not. Repeat a previous action with full commitment and zero recognition that it already happened.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -676,7 +676,7 @@
     "id": 89,
     "key": "safe_mode",
     "name": "Safe Mode",
-    "description": "",
+    "description": "Everything extra is off. Only the necessary remains. Operate under extreme pressure with all performance stripped away \u2014 and succeed on fundamentals alone.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -685,7 +685,7 @@
     "id": 91,
     "key": "overclock",
     "name": "Overclock",
-    "description": "",
+    "description": "Past the rated limit. Something was lost. It was worth it. Push past a stated mechanical or narrative limit and succeed \u2014 with a visible cost.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -694,7 +694,7 @@
     "id": 93,
     "key": "technical_difficulties",
     "name": "Technical Difficulties",
-    "description": "",
+    "description": "Two different failures. Same moment. Live broadcast. Have two party members fail simultaneously in different ways during the same scene.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -703,7 +703,7 @@
     "id": 94,
     "key": "off_script",
     "name": "Off Script",
-    "description": "",
+    "description": "The improvisation was not in the file. Processing\u2026 Have the actor do something unplanned that the robot cannot adapt to \u2014 and broadcast both reactions.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -712,7 +712,7 @@
     "id": 95,
     "key": "crossover_event",
     "name": "Crossover Event",
-    "description": "",
+    "description": "This required both of you specifically. Nobody planned this. Pull off something that only works because of the specific combination of two party members' absurdities.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -721,7 +721,7 @@
     "id": 96,
     "key": "genre_shift",
     "name": "Genre Shift",
-    "description": "",
+    "description": "The tone of the room just changed. Did you feel that? Take an action that visibly and significantly changes the emotional register of the session.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -730,7 +730,7 @@
     "id": 97,
     "key": "background_character",
     "name": "Background Character",
-    "description": "",
+    "description": "They've been here the whole time. Somehow you forgot. Go an entire session with minimal spotlight \u2014 then do something the crowd immediately reacts to.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -739,7 +739,7 @@
     "id": 98,
     "key": "the_recast",
     "name": "The Recast",
-    "description": "",
+    "description": "Someone else's role. Your performance now. Step into a function, position, or narrative role that belonged to another party member.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -748,7 +748,7 @@
     "id": 99,
     "key": "blooper_reel",
     "name": "Blooper Reel",
-    "description": "",
+    "description": "Three failures. Four. We've lost count. Fail at least three times in sequence in the same scene. The crowd never changes the channel.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}
@@ -757,7 +757,151 @@
     "id": 100,
     "key": "post_credits_scene",
     "name": "Post-Credits Scene",
-    "description": "",
+    "description": "The encounter ended. You weren't done. Take a significant action after the formal resolution of a combat or scene.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 10,
+    "key": "unkillable",
+    "name": "Unkillable",
+    "description": "Conquer the castle, and when it collapses upon you, stand on its ruins. Survive three separate instances that should have killed you, across any number of sessions.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 12,
+    "key": "vengeful",
+    "name": "Vengeful",
+    "description": "Eye for an eye. Take a significant action specifically to repay harm done to you or someone you care about.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 18,
+    "key": "bolivian_army_ending",
+    "name": "Bolivian Army Ending",
+    "description": "You never stood a chance. Enter a fight dramatically outnumbered or outclassed and make them work for it.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 20,
+    "key": "coconut_superpowers",
+    "name": "Coconut Superpowers",
+    "description": "No way you survived that! Take damage or a condition that should have ended you, and walk it off with no explanation.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 24,
+    "key": "incorrigible",
+    "name": "Incorrigible",
+    "description": "STOP FLIRTING WITH THE DRAGON! Attempt something socially inappropriate with a target that has every reason to destroy you.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 27,
+    "key": "little_dead_rising_hood",
+    "name": "Little Dead Rising Hood",
+    "description": "Tiny little devil, clad in red. Be the smallest or least physically threatening member of the party and deal the most damage in a session.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 29,
+    "key": "butcher",
+    "name": "Butcher",
+    "description": "Yum, steak! Reduce an enemy to component parts. Deliberately.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 60,
+    "key": "nine_lives",
+    "name": "Nine Lives",
+    "description": "One down. Eight to go. Allegedly. Escape a lethal situation through movement, positioning, or luck rather than durability. Do it again.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 71,
+    "key": "main_vocalist",
+    "name": "Main Vocalist",
+    "description": "One of them took the mic. The rest stepped back. Have one dominant personality or mode take over a scene completely \u2014 and land it.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 73,
+    "key": "maknae",
+    "name": "Maknae",
+    "description": "Youngest energy. Worst timing. Best outcome. Have your most reckless or naive behavior produce the best result of the session.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 74,
+    "key": "rap_line",
+    "name": "Rap Line",
+    "description": "Informational. Rhythmic. Somehow threatening. Deliver a rapid sequence of tactical or factual information in a way the crowd receives as a performance.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 76,
+    "key": "comeback_stage",
+    "name": "Comeback Stage",
+    "description": "We thought you were done. You were not done. Return to active contribution after being downed, disabled, or written off \u2014 and immediately do something significant.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 84,
+    "key": "legacy_code",
+    "name": "Legacy Code",
+    "description": "This was the right call, once. Default to a previously successful behavior in a context where it clearly no longer applies.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 85,
+    "key": "corrupted_file",
+    "name": "Corrupted File",
+    "description": "It's close. It's recognizable. It's wrong. Attempt a known action and produce a result that is identifiably off in a consistent, specific way.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 90,
+    "key": "null_pointer",
+    "name": "Null Pointer",
+    "description": "It reached for something. It wasn't there. Reference or attempt to access a capability, memory, or personality that does not respond.",
+    "effect": "",
+    "unlock_conditions": "",
+    "goal_modifier_weights": {}
+  },
+  {
+    "id": 92,
+    "key": "peer_review",
+    "name": "Peer Review",
+    "description": "The analysis was thorough. The subject did not enjoy it. Have the robot evaluate a party member's performance accurately and publicly. Let it land.",
     "effect": "",
     "unlock_conditions": "",
     "goal_modifier_weights": {}

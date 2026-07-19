@@ -24,6 +24,8 @@ extends RefCounted
 ##            "activation_delay"?}                           environment/GM source
 ##   {"type": "grant_level", "actor"} / {"type": "spend_level_point", "actor", "trait"} (R6)
 ##   {"type": "set_status", "target", "status": "overwhelmed"|"prone"|"slowed", "value"}
+##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
+##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -35,6 +37,7 @@ var combatants: Dictionary = {}  # id -> CombatantState (shared with helpers)
 var cond: ConditionEngine
 var resolver: ActionResolver
 var hype: HypeEngine
+var ai: EnemyAI
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -48,10 +51,20 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	clock = Clock.new()
 	cond = ConditionEngine.new()
 	cond.setup(static_data.get("conditions", []), combatants)
+	ai = EnemyAI.new()
+	ai.setup(combatants, clock, sim_seed)
 	resolver = ActionResolver.new()
-	resolver.setup(clock, combatants, cond, rng)
+	resolver.setup(clock, combatants, cond, rng, ai)
 	hype = HypeEngine.new()
+	hype.setup(_goal_table(), sim_seed)
 	_rebuild_snapshot()
+
+
+## Crowd-goal table from static data; degrades to "no goals" when the key is
+## absent or unparsed (nothing else in the sim depends on it).
+func _goal_table() -> Array:
+	var goals: Variant = static_data.get("crowd_goals", [])
+	return goals if goals is Array else []
 
 
 func apply_command(cmd: Dictionary) -> Array[Dictionary]:
@@ -84,6 +97,10 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _spend_level_point(cmd)
 		"set_status":
 			events = _set_status(cmd)
+		"camera_call":
+			events = _camera_call(cmd)
+		"ai_decide":
+			events = _ai_decide(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -100,9 +117,8 @@ func _post(events: Array[Dictionary]) -> void:
 			var dead: CombatantState = combatants.get(dead_id)
 			if dead != null:
 				dead.windup_pending = false
-	# Breach can open on non-advance damage (e.g. a reaction) — catch it here.
-	# (advance_tick opens single-hit breaches earlier, before its tick-flag reset.)
-	events.append_array(_open_breaches())
+	# Breach (incl. non-advance damage like reactions) + boss phase machine.
+	events.append_array(_breach_and_phase_checks())
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -113,11 +129,13 @@ func _post(events: Array[Dictionary]) -> void:
 			event["tick"] = clock.tick
 
 
-## Opens surface-immunity breaches whose conditions are now met (R6 boss hooks;
-## the single-hit burst path is R15/NQ2). Idempotent — check_breach returns false
-## once breached — so calling this from both advance_tick (before tick-flag reset,
-## while single-hit damage is still live) and _post never double-fires.
-func _open_breaches() -> Array[Dictionary]:
+## Breach hooks (Resistance.check_breach — single-hit burst per R15/NQ2, so a
+## combined action's merged hit is the party's path to 7+) + the boss phase
+## machine (R11 #18). Runs in _post after every command AND inside _advance_tick
+## BEFORE the per-tick flags reset — single-hit/burst breach data must be
+## evaluated on the tick it happened. Both flags latch (breached / boss_phase),
+## so the double sweep never double-fires.
+func _breach_and_phase_checks() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var ids: Array = combatants.keys()
 	ids.sort()
@@ -132,6 +150,7 @@ func _open_breaches() -> Array[Dictionary]:
 				if bool(part.get("hidden", false)):
 					part["hidden"] = false
 			events.append({"type": "breach_opened", "combatant": c.id})
+		events.append_array(ai.phase_events(c, cond))
 	return events
 
 
@@ -214,9 +233,10 @@ func _advance_tick() -> Array[Dictionary]:
 		ids.sort()
 		for id: Variant in ids:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
-	# Single-hit / burst breaches must be read BEFORE reset_tick_flags clears the
-	# per-tick hit trackers below (R15/NQ2); condition-tier breaches stay in _post.
-	events.append_array(_open_breaches())
+	# Breach/phase state must be read BEFORE the per-tick flag reset below:
+	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
+	# belong to the completing tick (I-16; _post re-runs this harmlessly).
+	events.append_array(_breach_and_phase_checks())
 	# Everything above happened ON the completing tick — stamp before advancing.
 	for event: Dictionary in events:
 		if not event.has("tick"):
@@ -304,6 +324,32 @@ func _spend_level_point(cmd: Dictionary) -> Array[Dictionary]:
 	return events
 
 
+## Camera Call (compendium §2.2/§11; stacks per R6's Charm over-cap formula).
+## The sim validates the participants — same actor gates and rejection
+## vocabulary as ActionResolver.declare (alive → removed → helpless, R11 #13);
+## stack accounting + the spotlight effect live in the HypeEngine (broadcast
+## plane).
+func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
+	if target == null:
+		return [{"type": "command_rejected", "reason": "unknown_target", "target": String(cmd.get("target", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if not target.alive:
+		return [{"type": "command_rejected", "reason": "target_dead", "target": target.id}]
+	if target.removed_from_play:
+		return [{"type": "command_rejected", "reason": "target_removed_from_play", "target": target.id}]
+	var stacks: int = int(actor.derived_stats().get("camera_call_stacks", 0))
+	return hype.camera_call(actor.id, target.id, stacks)
+
+
 func _set_status(cmd: Dictionary) -> Array[Dictionary]:
 	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
 	if target == null:
@@ -318,6 +364,130 @@ func _set_status(cmd: Dictionary) -> Array[Dictionary]:
 		target.statuses.erase(status)
 	var events: Array[Dictionary] = [{"type": "status_changed", "combatant": target.id, "status": status, "value": value}]
 	return events
+
+
+# ------------------------------------------------------------------ enemy AI (R11 #15)
+
+## AI-controlled combatants ready for an ai_decide this tick (sorted) — the
+## driver-side query; the driver feeds one ai_decide per id, like advance_tick.
+func ai_ready_ids() -> Array[String]:
+	var out: Array[String] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not EnemyAI.is_ai_controlled(c):
+			continue
+		if not c.can_act(clock.tick):
+			continue
+		if clock.tick < c.next_action_tick or c.windup_pending:
+			continue
+		out.append(String(id))
+	return out
+
+
+## One enemy's turn: the EnemyAI policy decides (rng-free, from sorted state),
+## the sim executes the intents through the SAME primitives player commands
+## use. Actor gates and rejection vocabulary mirror declare_action.
+func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if not EnemyAI.is_ai_controlled(actor):
+		return [{"type": "command_rejected", "reason": "not_ai_controlled", "actor": actor.id}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if clock.tick < actor.next_action_tick:
+		return [{"type": "command_rejected", "reason": "not_ready", "actor": actor.id, "ready_at_tick": actor.next_action_tick}]
+	if actor.windup_pending:
+		return [{"type": "command_rejected", "reason": "winding_up", "actor": actor.id}]
+	var decision: Dictionary = ai.decide(actor)
+	var events: Array[Dictionary] = [{
+		"type": "ai_decision",
+		"actor": actor.id,
+		"tier": String(decision.get("tier", "")),
+		"choice": String(decision.get("choice", "wait")),
+		"ability": String(decision.get("ability", "")),
+		"target": String(decision.get("target", "")),
+		"moves": decision.has("move_to"),
+		"reason": String(decision.get("reason", "")),
+	}]
+	if decision.has("move_to"):
+		var to: Vector2i = decision["move_to"]
+		events.append_array(resolver.move(actor.id, to))
+	match String(decision.get("choice", "wait")):
+		"attack", "heal":
+			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
+		"summon":
+			events.append_array(_ai_summon(actor, decision.get("summon", {})))
+	return events
+
+
+## Executes a summon intent: cost-1 instant (declare+resolve same tick, R2),
+## brood spawns on the nearest free hexes and acts from the NEXT tick (R11 #16).
+func _ai_summon(actor: CombatantState, summon: Dictionary) -> Array[Dictionary]:
+	var enemy_key := String(summon.get("enemy_key", ""))
+	var template: Dictionary = CombatantState._find_template(static_data.get("enemies", []), enemy_key)
+	if template.is_empty():
+		return [{"type": "summon_failed", "actor": actor.id, "reason": "unknown_enemy_key", "enemy_key": enemy_key}]
+	actor.next_action_tick = clock.tick + maxi(1, int(summon.get("cost", 1)))
+	actor.took_scheduled_action_this_clock = true
+	var events: Array[Dictionary] = []
+	var spawned: Array[String] = []
+	var claimed: Dictionary = {}
+	var count: int = maxi(1, int(summon.get("count", 1)))
+	var serial: int = int(ai.summons.get(actor.id, 0))
+	for i: int in range(count):
+		serial += 1
+		var id: String = "%s_brood_%d" % [actor.id, serial]
+		while combatants.has(id):
+			serial += 1
+			id = "%s_brood_%d" % [actor.id, serial]
+		var pos: Vector2i = _free_hex_near(actor.position, claimed)
+		claimed[pos] = true
+		events.append_array(_add_combatant({
+			"id": id,
+			"name": String(template.get("name", enemy_key)),
+			"enemy": enemy_key,
+			"team": actor.team,
+			"position": [pos.x, pos.y],
+		}))
+		var brood: CombatantState = combatants.get(id)
+		if brood != null:
+			brood.next_action_tick = clock.tick + 1  # summons act from the next tick
+			spawned.append(id)
+	ai.summons[actor.id] = serial
+	events.append({
+		"type": "enemies_summoned",
+		"actor": actor.id, "ability": String(summon.get("ability", "")),
+		"enemy_key": enemy_key, "count": spawned.size(), "ids": spawned,
+	})
+	return events
+
+
+## Nearest unoccupied hex around `center`, deterministic: growing rings, fixed
+## axial scan order inside each ring. `claimed` holds hexes taken this batch.
+func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
+	var occupied: Dictionary = claimed.duplicate()
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.alive and not c.removed_from_play:
+			occupied[c.position] = true
+	for radius: int in range(1, 9):
+		for dq: int in range(-radius, radius + 1):
+			for dr: int in range(-radius, radius + 1):
+				var candidate := center + Vector2i(dq, dr)
+				if CombatantState.hex_distance(center, candidate) != radius:
+					continue
+				if not occupied.has(candidate):
+					return candidate
+	return center  # arena saturated — stack on the summoner rather than crash
 
 
 # ------------------------------------------------------------------ snapshot
@@ -356,6 +526,7 @@ func to_dict() -> Dictionary:
 		"tick_snapshot": tick_snapshot.duplicate(true),
 		"static_data": static_data.duplicate(true),
 		"hype": hype.to_dict(),
+		"ai": ai.to_dict(),
 	}
 
 
@@ -368,9 +539,17 @@ static func from_dict(data: Dictionary) -> CombatSim:
 		sim.combatants[String(id)] = CombatantState.from_dict(combatant_dicts[id])
 	sim.tick_snapshot = (data.get("tick_snapshot", {}) as Dictionary).duplicate(true)
 	sim.hype = HypeEngine.from_dict(data.get("hype", {}))
-	# Re-wire helper references (clock instance was replaced above).
-	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng)
+	# Pre-I16 saves lack "ai": keep the fresh salted engine (matches a new sim
+	# on the same seed) instead of resuming on state 0 (R11 #15).
+	if data.has("ai"):
+		sim.ai = EnemyAI.from_dict(data.get("ai", {}))
+	# Re-wire helper references (clock instance was replaced above). The goal
+	# table is static data, never serialized; goal_rng/ai_rng states were
+	# restored above.
+	sim.ai.wire(sim.combatants, sim.clock)
+	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng, sim.ai)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
+	sim.hype.set_goal_table(sim._goal_table())
 	return sim
 
 

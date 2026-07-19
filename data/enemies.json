@@ -234,6 +234,8 @@
         "reflexes_9": "auto-dodge + counterattack",
         "below": "roll 4+ on d6 to dodge"
       },
+      "dodge_threshold": 4,
+      "dodge_threshold_note": "live-table homebrew as an authored boss ability (R2/R11 #17): d6 per aimed weapon round, roll >= threshold dodges; never while Exposed/Helpless. Value PLACEHOLDER (R14).",
       "crush_2_disables_part": true,
       "left_hand_disable_removes_flamethrower": true,
       "arena_hexes": [
@@ -260,6 +262,7 @@
         "name": "Dash",
         "moment_cost": 1,
         "area": "line",
+        "range": 6,
         "damage": [
           {
             "type": "crushed",
@@ -267,7 +270,8 @@
             "part_bias": "torso"
           }
         ],
-        "effect": "knock aside"
+        "effect": "knock aside",
+        "note": "range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope — AI v1 treats it as reach"
       },
       {
         "key": "death_spin",
@@ -298,6 +302,7 @@
         "phase_number": 2,
         "name": "Explosion 1 (Pressure Valve I)",
         "trigger_condition": "network at 35 HP",
+        "hp_at_or_below": 35,
         "behavior": {
           "explosion": {
             "radius": 5,
@@ -331,6 +336,7 @@
         "phase_number": 4,
         "name": "Explosion 2",
         "trigger_condition": "network at 18 HP",
+        "hp_at_or_below": 18,
         "behavior": {
           "explosion": {
             "radius": 7,
@@ -365,6 +371,7 @@
         "phase_number": 6,
         "name": "Explosion 3",
         "trigger_condition": "network at 0 HP (death)",
+        "hp_at_or_below": 0,
         "behavior": {
           "explosion": {
             "radius": 19,

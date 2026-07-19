@@ -260,11 +260,109 @@ overturning one is a code change, not a rewrite.
     classes; the ported items.json rows don't carry rpm/magazine yet (content pass open).
 12. **Bleeding T4 kills from any part** (tier table as authored — you can bleed out from a
     limb wound).
+13. **Camera Call (spectacle engine v1):** stacks per R6's Charm over-cap formula, spent
+    per use (`camera_call` command); the "doubled gains AND losses" canon is read as
+    *spectacle points attributed to the spotlit combatant are doubled* — cross-referencing
+    who CAUSED the spotlit combatant's drama is v2. The spotlight ends at the end of the
+    spotlit combatant's current-or-next action (resolved or invalidated), at their death,
+    or after a 2-Clock fallback so it can never dangle; one spotlight at a time. The caller
+    passes the same actor gates as declared actions (alive → not removed → not Helpless): a
+    Helpless contestant cannot call the camera. Session reset of spent stacks (B9: session
+    = one deployment) is controller scope, not sim.
+14. **Crowd Goals (spectacle engine v1):** ONE active goal, offered at Clock resets (the
+    book's reorganization beat) from `data/crowd_goals.json`; selection draws from a
+    dedicated RNG stream seeded off the sim seed (so goal draws never perturb Forced-Action
+    rolls); expiry costs a small hype penalty; completion pays the goal's hype payout
+    (doubled when the completing event is the spotlit combatant's). Kinds implemented:
+    takedown / overkill / part_break / exposed_strike. Goals pay HYPE only — the Patron
+    conversion + Patron-Token reward channel (R10) is KAN-7 scope. Recorded v1 limits:
+    - **Deferred to v2:** weighted / audience-state-driven goal selection (v1 draws
+      uniformly) and the compendium's Solo Action template.
+    - **RULED (owner 2026-07-18) — takedown = a kill YOU caused:** a friendly death
+      completes the takedown goal ONLY IF a contestant dealt the killing blow (friendly
+      fire counts — "it's cinema"); the payout is credited to that killer. IMPLEMENTATION
+      PENDING — this needs kill-attribution + team-awareness in the hype engine (the
+      deferred attribution v2); until then the v1 code over-fires on ANY `combatant_died`,
+      a known tracked gap (task queued). Enemy deaths still complete it.
+    - **RULED (owner 2026-07-18) — same-batch completion ALLOWED:** a goal offered at a
+      clock_reset CAN be completed by later events in that same batch — an insta-win off
+      good preparation or luck is not punished. Current behavior is correct as-is; no
+      change.
+    - **Pre-I9 saves:** envelopes without `goal_rng_state` resume with state 0, which
+      diverges from a full log replay. Pre-release saves are declared disposable; no
+      migration shim.
+
+15. **AI commands enter the log as `ai_decide` (enemy AI v1, I-16):** enemy
+    decision-making is a deterministic policy INSIDE the sim
+    (`simulation/enemy_ai.gd`), driven by an explicit `{"type": "ai_decide",
+    "actor"}` command the driver/controller feeds once per ready enemy per tick
+    (`CombatSim.ai_ready_ids()` / `GameController.run_enemy_turn()`), exactly like
+    `advance_tick`. The decision derives from (sorted sim state, salted `ai_rng`)
+    only, so a log replay recomputes the identical decision — the sim stays
+    passive (never self-advances, never self-decides), and the command log stays
+    the single source of truth. `decide()` itself consumes NO rng (pure
+    priorities); the AI stream exists for the dodge d6 (#17) and future
+    variability, salted like the hype engine's goal stream so AI draws never
+    perturb Forced-Action rolls. Actor gates and rejection vocabulary mirror
+    `declare_action` (`not_ai_controlled` added). AI-controlled = category
+    Mob/Elite/Boss/Super Boss; hostility = a differing `team` string (an enemy
+    with an EMPTY team sees no targets and waits — teams are explicit). AI state
+    (rng state, boss phases, summon counts) serializes under `"ai"` and is
+    covered by `state_hash`; pre-I16 saves resume with a fresh salted stream.
+16. **Policy tiers v1 (all numbers PLACEHOLDER, R14):** MOB — nearest target
+    (ties: lowest total HP, then id), torso-line part pick (`part_bias`
+    honored), free-move up to 3 toward the target (greedy hex steps, fixed
+    neighbor order, occupied hexes skipped, only strictly-improving steps),
+    attack when in reach — move-then-attack can share a tick (free + scheduled,
+    R3); a grappled mob bites its grappler. ELITE — summon once per combat when
+    it has a summon ability (brood spawns on the nearest free hexes,
+    deterministic ids `<elite>_brood_N`, acts from the NEXT tick; the summon is
+    a cost-1 instant), self-heal when a lethal part falls below half (the heal
+    resolves on schedule at the actor's then-most-damaged part, halved by unmet
+    requirements, negated by Whiff), otherwise strikes the LOWEST-HP target in
+    reach (ties: nearest, then id) and punishes exposure — head when targetable,
+    else the lowest-HP part. BOSS — see #18. v1 ability model: `damage` +
+    `range`/`area` = strike (first damage entry only), `summon`, `heal`;
+    `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
+    deferred); "cone N"/"line" resolve as plain reach (true area geometry is
+    KAN-5 scope). Targets with no attackable part are skipped.
+17. **Dodge Threshold (the R2 boss-ability pattern; live-table homebrew
+    adopted):** a combatant with `boss_traits.dodge_threshold` (1..6) rolls the
+    d6 from the salted AI stream once per AIMED weapon round against it; roll ≥
+    threshold negates that round entirely — "miss" stays an explicit authored
+    effect, never a universal rule (R2). No dodge while Helpless or Exposed:
+    windups, grapples and prone are the discoverable punish windows. Collateral,
+    condition, forced-action and environment damage are never dodged, and Burn
+    still feeds `fire_heals` instead of being dodged. Every roll is emitted
+    (`attack_dodged` / `dodge_failed`) — no unlogged randomness. Incinedile
+    ships threshold 4 (PLACEHOLDER, R14).
+18. **Incinedile phase machine v1:** per-boss phase number (AI state, starts
+    at 1); while in a fight phase, the health part (`surface_immunity.
+    health_part`) dropping to a later explosion phase's `hp_at_or_below` fires
+    `boss_phase_changed`. Entering the `breach_resets_after_phase` phase applies
+    the canonical retreat IMMEDIATELY (v1 collapses the explosion beat into the
+    transition): breach closes, the network re-hides (`breach_reset`), and the
+    burst-damage counter clears so the old wound cannot instantly re-breach.
+    **Wounds PERSIST across the valve (owner-ruled 2026-07-18, was PROVISIONAL):**
+    the boss's active conditions and accumulated part damage carry over — only
+    the breach threshold resets, never the harm. The burst-counter clear still
+    blocks a same-tick re-breach; the Bleeding-T2 path can only re-open on a
+    fresh advancement, not from a lingering already-T2 wound. Phase-1 behavior: cone sweep when ≥2 targets stand in
+    reach, else the line charge at the mob-priority target (torso bias), else
+    close distance; the ability set is filtered to the phase's `behavior.
+    abilities` list. Explosion choreography (telegraph, escape window, KO) and
+    phases 3–6 are deferred — past phase 1 the boss idles (`ai_decision` wait,
+    `phase_not_implemented`); the phase-2 beat is the slice's win moment
+    (review-4 §5, DIRECTION Stage 1).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
-dissolution cause-tracking, the dodge-threshold boss ability (enemy AI, KAN-4+), Incinedile's
-phase machine (breach/fire-heals/surface-immunity checks ARE in), Camera Call behavior,
-token economy, Lounge/session mechanics.
+dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
+stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
+ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
+phase-2 transition beat; still open there: explosion choreography + phases 3–6,
+death_spin/drag_back (forced movement), true cone/line geometry (KAN-5), the Dash
+Reflexes-counters (player-side), pack synergy (R15 enemy combos), and AI stances for
+`aura_reading` (skills-audit dependency).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -417,6 +515,8 @@ aesthetic; speech scoring's Charm term: presentability shapes how words land).
 10 unlocks **psychic/radiant-class damage** — each of 6–10 still increasing range and
 damage. (Existing L5+ threshold rows get re-read under this architecture in the skills
 passover; the generalization ladder 6–10 is the authoring template for every skill.)
+**NOTE (owner 2026-07-18): "Explosion" is an ILLUSTRATIVE teaching example only — there is
+NO Explosion skill. Fire Ball generalizes on its own terms; do not seed an Explosion skill.**
 
 ## Rulings batch 2026-07-17 (owner, in chat)
 

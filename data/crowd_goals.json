@@ -1,0 +1,34 @@
+[
+  {
+    "id": "finish_them",
+    "name": "FINISH THEM!",
+    "kind": "takedown",
+    "params": {},
+    "payout": 80,
+    "deadline_clocks": 3
+  },
+  {
+    "id": "overkill",
+    "name": "OVERKILL!",
+    "kind": "overkill",
+    "params": {"threshold": 8},
+    "payout": 60,
+    "deadline_clocks": 3
+  },
+  {
+    "id": "break_something",
+    "name": "Break Something!",
+    "kind": "part_break",
+    "params": {},
+    "payout": 50,
+    "deadline_clocks": 3
+  },
+  {
+    "id": "show_off",
+    "name": "Show-Off!",
+    "kind": "exposed_strike",
+    "params": {},
+    "payout": 45,
+    "deadline_clocks": 2
+  }
+]

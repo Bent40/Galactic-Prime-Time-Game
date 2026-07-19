@@ -116,5 +116,82 @@
       "let an ally bleed out unattended"
     ],
     "influence": 4
+  },
+  {
+    "id": 4,
+    "key": "hephaestus",
+    "name": "Hephaestus",
+    "origin": "Greek",
+    "faction": "olympian_forge",
+    "related": [],
+    "domains": [
+      "forge",
+      "fire"
+    ],
+    "generosity": 2,
+    "power": 4,
+    "buff_multiplier": 0.1,
+    "tier_up_bonus": 0.1,
+    "related_multiplier": 0.02,
+    "affection_modifier": 0.8,
+    "temperament": "patient artisan; morally alien \u2014 wagers to watch the rematch, not the winner; boons arrive as finished work, never as favors",
+    "favor_conditions": [
+      "win a fight while burning",
+      "destroy an enemy body part with a Heavy weapon",
+      "start a fire that outlives the fight"
+    ],
+    "boon_table": [
+      "forged_weapon_drop",
+      "temper_armor_buff",
+      "tier_up_burn"
+    ],
+    "trial_table": [
+      "trial_by_fire"
+    ],
+    "notes": "ARCHETYPE STUB \u2014 forge/fire bidder from slice-contestants-proposal \u00a7RULED item 8 (the perverse bid on Imani: it wants the rematch, not the win). PLACEHOLDER per R14; superseded by the Wave-5 patron-roster generator.",
+    "taboos": [
+      "extinguish a blaze before it has taken its due",
+      "carry the last victim clear of the flames"
+    ],
+    "influence": 3
+  },
+  {
+    "id": 5,
+    "key": "tyche",
+    "name": "Tyche",
+    "origin": "Greek",
+    "faction": "olympian_fortune",
+    "related": [],
+    "domains": [
+      "fortune",
+      "debt",
+      "trickery"
+    ],
+    "generosity": 4,
+    "power": 3,
+    "buff_multiplier": 0.1,
+    "tier_up_bonus": 0.08,
+    "related_multiplier": 0.04,
+    "affection_modifier": 1.1,
+    "temperament": "buys low on desperate contestants; windfalls arrive unearned and are remembered \u2014 every gift is a position taken, not a kindness",
+    "favor_conditions": [
+      "win a fight without landing the first blow",
+      "make the crowd laugh",
+      "call the camera on a gamble and win"
+    ],
+    "boon_table": [
+      "windfall_drop",
+      "loaded_dice_buff",
+      "debt_marker"
+    ],
+    "trial_table": [
+      "reversal_of_fortune"
+    ],
+    "notes": "ARCHETYPE STUB \u2014 fortune/trickster bidder from slice-contestants-proposal \u00a7RULED item 8 (the Plutus-pattern acquirer circling Dario). PLACEHOLDER per R14; superseded by the Wave-5 patron-roster generator.",
+    "taboos": [
+      "refuse an offered wager",
+      "sit on winnings without staking them"
+    ],
+    "influence": 3
   }
 ]

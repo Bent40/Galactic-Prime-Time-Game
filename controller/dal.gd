@@ -16,6 +16,7 @@ const _PATHS: Dictionary = {
 	"tags": "res://data/tags.json",
 	"modifiers": "res://data/modifiers.json",
 	"patron_gods": "res://data/patron_gods.json",
+	"crowd_goals": "res://data/crowd_goals.json",
 }
 
 var _cache: Dictionary = {}
@@ -37,6 +38,7 @@ func skill_thresholds() -> Array: return _collection("skill_thresholds")
 func tags() -> Array: return _collection("tags")
 func modifiers() -> Array: return _collection("modifiers")
 func patron_gods() -> Array: return _collection("patron_gods")
+func crowd_goals() -> Array: return _collection("crowd_goals")
 
 
 ## By-key lookup (rows are keyed by "key" across all collections; "" -> {}).
@@ -61,4 +63,5 @@ func static_data_for_sim() -> Dictionary:
 		"races": races(),
 		"enemies": enemies(),
 		"items": items(),
+		"crowd_goals": crowd_goals(),
 	}

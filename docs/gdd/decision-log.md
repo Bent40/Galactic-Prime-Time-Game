@@ -55,3 +55,78 @@
     amendment: ANY god can all-in regardless of influence, existence can be the stake,
     a god's loss can unlock new stages.** Spec: `docs/design/mythology-research-spec.md`;
     propagated to `docs/design/patron-gods.md` §5 + `docs/cosmic-casino-canon.md` §3/§4.
+11. **Depiction policy v2 RULED (owner, 2026-07-18, in chat):** register = pop-culture
+    mythological fiction (Helltaker / mythology manhwa / Shinto anime precedent). Angels,
+    demons, God-figures, and living-religion deities depictable as characters, positively
+    or negatively — per-figure `living` gate DROPPED; investor-institution frame becomes
+    creative choice, not protective requirement; `depiction_risk` kept as data only.
+    Bar: respectful, never racist; thesis = how the mythos shaped humanity + how each
+    figure is perceived today. **Modern-life pantheon attributions wanted** (Greek =
+    Hawaii vacation, Roman = food-obsessed, Abrahamic = three managers fighting over one
+    company). FSM-class parody figures eligible in principle. **Held for explicit
+    confirmation:** named Islamic prophets (recommend OUT — the line precedent media
+    itself holds) · culturally closed ceremonial material (recommend exclusion stands).
+    Propagated: spec §3.3 v2 + `cosmic-casino-canon.md` §4.
+12. **Wave-2 shortlist + carve-outs RULED (owner, 2026-07-18, in chat):** extraction
+    GO on the 14 wave-1 traditions at **up to 15 entities per tradition** (~210,
+    revising ~150 upward). Both depiction carve-outs **confirmed as recommended**:
+    named Islamic prophets OUT; closed-ceremonial-material collection exclusion
+    stands. Also clarified: **"OC" = player-created character in character creation**
+    (KAN-4 S4.1) — the two drafted slice "premades" exist only as a slice-scoping
+    device; their final role (demo/quick-start loadouts vs creation-first slice)
+    awaiting owner pick.
+14. **Batch rulings (owner, 2026-07-18, in chat).**
+    - **R19 skill framework = ALL DEFAULTS ACCEPTED** (the 10 cross-cutting questions):
+      (1) passives generalize as passives, high rung may add an active toggle where it
+      fits · (2) L10 rule-transcending tier is magic-only + source-gated · (3) the R16
+      4-skill trade does NOT push a starting skill into the 6+ band; 6+ is earned in-run ·
+      (4) chain-opener generalization loosens chain gates only at authored rungs, never
+      automatically · (5) consume/mutate capstones sit OUTSIDE the 6–10 ladder; cap-10
+      always Patron-Token-gated · (6) performance skills: Charm scales the crowd payoff, a
+      shared "spectacle" rung is the standard L10 · (7) locked/NPC skills use the 0–10
+      ladder only if a player could ever acquire them; player-inflicted mind-collapse
+      gated per R5 · (8) NO ladder introduces true HP restoration (HP recovery stays
+      scarce) · (9) approve ladder SHAPES now, tune magnitudes after R14 · (10) data
+      hygiene (legacy cooldowns vs R3, empty effect rows, garbled Camouflage, Nightlurking
+      stat drift) cleaned during implementation. → the 43 skill ladders are being
+      finalized against this framework.
+    - **Tag names: the 2026-07-17 RENAMES stand** (owner corrected 2026-07-18 — the pasted
+      list is OLDER, so its NAMES are superseded; its DESCRIPTIONS are canonical and were
+      ported). Canonical names: **Reckless, Gorefest, What a Beaut, Shill, Heart Melter,
+      Not My Job, Winter Sheep** (Reckless + Gorefest are live slice tags). `data/tags.json`
+      carries the rename name+key with the pasted-list descriptions attached.
+    - **Mycelius Chrom → a SERVANT, not a god** (owner corrected 2026-07-18): a fungal
+      servitor/attendant tied to a decay-and-death myth (retinue of a death/harvest god
+      such as Osiris), not a fully-fledged deity. NOT slice-critical; art reused later.
+    - **R11 #14 RULED (owner 2026-07-18):** (a) **same-batch goal completion is ALLOWED** —
+      a goal can be insta-won off good prep or luck, no penalty (current code is correct as
+      is). (b) **A friendly death completes the "takedown" goal ONLY IF a contestant killed
+      them** (friendly-fire counts — "it's cinema"); credit the killer. (b) needs
+      kill-attribution + team-awareness in the hype engine (the deferred attribution v2) →
+      IMPLEMENTATION QUEUED; the v1 code over-fires on any death until then.
+    - **Skill-ladder residuals RULED (owner 2026-07-18):** (R1 Brace) Intercept + Iron
+      Stance = **separate lower-tier skills** with a merge-into-Brace upgrade path — author
+      all three. (R2 Fire Ball) R19's **"Explosion" was a made-up illustrative example, NOT
+      a skill** — no Explosion skill; Fire Ball generalizes on its own. (R3 Mind Burst) the
+      **mind-collapse stays but as really-high-tier magic only** (L10, magic/source-gated,
+      non-boss, per R5). **NEW OPEN — Telepathy:** owner unsure it fits, since the player
+      **chat function already covers mind-to-mind comms**; leaning cut or repurpose (rec:
+      repurpose to reading enemy/NPC hidden intent). Recorded in
+      `docs/design/skills-r19-ladders-FINAL.md`; 42/43 ladders now final, Telepathy the
+      one open skill.
+13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
+    **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
+    proposal questions answered; rulings recorded in
+    `docs/design/slice-contestants-proposal.md` §RULED). Headlines: 1 Camera Call
+    stack per loadout for system testing (no R6 change) · **bid screen IS in the
+    slice, one chosen patron seeded per loadout** · stub forge/fire +
+    fortune/trickster archetype gods · owner principle: demo content is rewireable to
+    the real story later. **Tag slice APPROVED** (all 9 questions answered; rulings in
+    `docs/design/slice-tags-proposal.md` §RULED). Headlines: `tag_effects.json` ·
+    weighted goals stay deferred · loadouts start tagless, everything earned on
+    camera · 3 new goal rows approved · same-batch attribution blessed ·
+    non-contestants hold no tags · **The Bit constraint: signature actions must be
+    mechanically NULL — pure flavor, zero benefit, spectacle is the only payout.**
+    Char-sheet `passive` fix commit **approved**. Tag descriptions: owner will paste
+    rulebook text into a committed markdown scaffold
+    (`docs/rulebook-tag-descriptions.md`) instead of supplying the docx.

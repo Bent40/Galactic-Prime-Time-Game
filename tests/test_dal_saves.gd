@@ -15,9 +15,9 @@ func test_dal_counts_match_validator() -> void:
 	assert_eq(dal.skills().size(), 43, "skills")
 	assert_eq(dal.skill_thresholds().size(), 78, "thresholds")
 	assert_eq(dal.items().size(), 28, "items")
-	assert_eq(dal.tags().size(), 84, "tags")
+	assert_eq(dal.tags().size(), 100, "tags")
 	assert_eq(dal.modifiers().size(), 27, "modifiers")
-	assert_eq(dal.patron_gods().size(), 3, "patron gods")
+	assert_eq(dal.patron_gods().size(), 5, "patron gods")
 
 
 func test_dal_by_key_lookups() -> void:

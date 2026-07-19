@@ -28,6 +28,8 @@ CONDITION_IDS = {
 }
 FORCED_ACTION_TYPES = {None, "Body", "Tool"}
 ITEM_TYPES = {"consumable", "equipment", "weapon", "system_item", "misc", "key_item", "tool"}
+# Goal kinds the sim's HypeEngine can evaluate (simulation/hype_engine.gd).
+CROWD_GOAL_KINDS = {"takedown", "overkill", "part_break", "exposed_strike"}
 PATRON_DOMAINS_MIN = 1  # sketch: docs/design/patron-gods.md — every god needs at least one domain
 
 failures: list[str] = []
@@ -86,12 +88,34 @@ def main() -> int:
     thresholds = load("skill_thresholds.json") or []
     items = load("items.json") or []
     load("modifiers.json")
-    load("tags.json")
+    tags = load("tags.json") or []
     # Optional stub until KAN-7 (docs/design/patron-gods.md): validate only if present.
     patrons = load("patron_gods.json") if (DATA / "patron_gods.json").is_file() else []
     if not isinstance(patrons, list):
         fail("patron_gods.json", "top level must be a list")
         patrons = []
+    goals = load("crowd_goals.json") if (DATA / "crowd_goals.json").is_file() else []
+    if not isinstance(goals, list):
+        fail("crowd_goals.json", "top level must be a list")
+        goals = []
+    for i, g in enumerate(goals):
+        if not isinstance(g, dict):
+            fail("crowd_goals.json", f"row {i}: must be an object, got {type(g).__name__}")
+    goals = [g for g in goals if isinstance(g, dict)]
+    # Demo loadouts (decision log #13; docs/design/slice-contestants-proposal.md §RULED):
+    # object with _meta + loadouts, not a bare list — validate only if present.
+    demo = load("demo_loadouts.json") if (DATA / "demo_loadouts.json").is_file() else None
+    loadouts: list = []
+    if demo is not None:
+        if not isinstance(demo, dict) or not isinstance(demo.get("loadouts"), list):
+            fail("demo_loadouts.json", "top level must be an object with a 'loadouts' list")
+        else:
+            if not isinstance(demo.get("_meta"), dict):
+                fail("demo_loadouts.json", "_meta object required (R14 placeholder notice)")
+            for i, lo in enumerate(demo["loadouts"]):
+                if not isinstance(lo, dict):
+                    fail("demo_loadouts.json", f"loadout {i}: must be an object, got {type(lo).__name__}")
+            loadouts = [lo for lo in demo["loadouts"] if isinstance(lo, dict)]
 
     # races
     check_unique("races.json", races, "key")
@@ -102,6 +126,7 @@ def main() -> int:
 
     # enemies
     check_unique("enemies.json", enemies, "key")
+    enemy_keys = {e.get("key") for e in enemies}
     for e in enemies:
         k = e.get("key", "?")
         if e.get("category") not in ENEMY_CATEGORIES:
@@ -115,9 +140,38 @@ def main() -> int:
         res = e.get("resistances", {})
         if not set(res).issubset(RESISTANCE_CLASSES - {"None"}):
             fail("enemies.json", f"{k}: resistance keys {sorted(set(res) - RESISTANCE_CLASSES)} invalid")
-        for d in [d for a in e.get("abilities", []) for d in a.get("damage", [])]:
-            if d.get("type") not in CONDITION_IDS:
-                fail("enemies.json", f"{k}: ability damage type {d.get('type')!r} not a condition id")
+        # abilities — the shapes EnemyAI v1 consumes (simulation/enemy_ai.gd):
+        # damage list (strike), range/area reach, summon, heal.
+        for a in e.get("abilities", []):
+            ak = a.get("key", "?")
+            if "moment_cost" in a and (not isinstance(a["moment_cost"], int) or a["moment_cost"] < 0):
+                fail("enemies.json", f"{k}/{ak}: moment_cost must be int >= 0")
+            if "range" in a and (not isinstance(a["range"], int) or a["range"] < 1):
+                fail("enemies.json", f"{k}/{ak}: range must be int >= 1 (spaces, R10/B8)")
+            area = a.get("area")
+            if area is not None and area.startswith("cone"):
+                parts = area.split(" ")
+                if len(parts) != 2 or not parts[1].isdigit() or int(parts[1]) < 1:
+                    fail("enemies.json", f"{k}/{ak}: cone area must be 'cone <spaces>=1>' (AI v1 reach)")
+            for d in a.get("damage", []):
+                if d.get("type") not in CONDITION_IDS:
+                    fail("enemies.json", f"{k}: ability damage type {d.get('type')!r} not a condition id")
+            if "summon" in a:
+                s = a["summon"]
+                if not isinstance(s, dict) or s.get("enemy_key") not in enemy_keys:
+                    fail("enemies.json", f"{k}/{ak}: summon.enemy_key must reference an enemy key")
+                if not isinstance(s.get("count"), int) or s.get("count", 0) < 1:
+                    fail("enemies.json", f"{k}/{ak}: summon.count must be int >= 1")
+            if "heal" in a:
+                h = a["heal"]
+                if not isinstance(h, dict) or not isinstance(h.get("amount"), int) or h["amount"] < 1:
+                    fail("enemies.json", f"{k}/{ak}: heal.amount must be int >= 1")
+                if h.get("target") not in (None, "self"):
+                    fail("enemies.json", f"{k}/{ak}: heal.target {h.get('target')!r} unsupported (AI v1: self only)")
+        # dodge threshold (boss ability pattern, R2/R11 #17): d6 gate, so 1..6.
+        dt = e.get("traits", {}).get("dodge_threshold")
+        if dt is not None and (not isinstance(dt, int) or not (1 <= dt <= 6)):
+            fail("enemies.json", f"{k}: traits.dodge_threshold must be int 1..6 (d6 roll >= threshold dodges)")
         phases = e.get("phases", [])
         nums = [p.get("phase_number") for p in phases]
         if nums != sorted(nums) or len(nums) != len(set(nums)):
@@ -125,6 +179,21 @@ def main() -> int:
         for p in phases:
             if not p.get("trigger_condition"):
                 fail("enemies.json", f"{k}: phase {p.get('phase_number')} missing trigger_condition")
+        # explosion phases drive the machine (R11 #18): each needs a structured
+        # hp_at_or_below, and the thresholds must strictly descend.
+        explosion_thresholds = []
+        for p in phases:
+            if "explosion" in p.get("behavior", {}):
+                t = p.get("hp_at_or_below")
+                if not isinstance(t, int) or t < 0:
+                    fail("enemies.json", f"{k}: explosion phase {p.get('phase_number')} needs hp_at_or_below int >= 0")
+                else:
+                    explosion_thresholds.append(t)
+            elif "hp_at_or_below" in p:
+                fail("enemies.json", f"{k}: phase {p.get('phase_number')} has hp_at_or_below but no explosion (fight bands derive from the previous threshold)")
+        if explosion_thresholds != sorted(explosion_thresholds, reverse=True) or \
+                len(explosion_thresholds) != len(set(explosion_thresholds)):
+            fail("enemies.json", f"{k}: explosion hp_at_or_below sequence {explosion_thresholds} must strictly descend")
         if e.get("category") in ("Boss", "Super Boss"):
             if not phases:
                 fail("enemies.json", f"{k}: {e.get('category')} must have phases")
@@ -202,6 +271,27 @@ def main() -> int:
             if rel not in {p.get("key") for p in patrons}:
                 fail("patron_gods.json", f"{k}: related god {rel!r} is not a patron key")
 
+    # crowd goals (spectacle engine v1 — simulation/hype_engine.gd predicates;
+    # every numeric value here is a PLACEHOLDER pending tuning, R14)
+    check_unique("crowd_goals.json", goals, "id")
+    for g in goals:
+        k = g.get("id", "?")
+        for f_ in ("id", "name", "kind"):
+            if not isinstance(g.get(f_), str) or not g.get(f_):
+                fail("crowd_goals.json", f"{k}: {f_} must be a non-empty string")
+        if g.get("kind") not in CROWD_GOAL_KINDS:
+            fail("crowd_goals.json", f"{k}: kind {g.get('kind')!r} not implemented by HypeEngine")
+        if not isinstance(g.get("params"), dict):
+            fail("crowd_goals.json", f"{k}: params must be an object")
+        if not isinstance(g.get("payout"), int) or g.get("payout", 0) <= 0:
+            fail("crowd_goals.json", f"{k}: payout must be int > 0")
+        if not isinstance(g.get("deadline_clocks"), int) or g.get("deadline_clocks", 0) < 1:
+            fail("crowd_goals.json", f"{k}: deadline_clocks must be int >= 1")
+        if g.get("kind") == "overkill":
+            th = g.get("params", {}).get("threshold") if isinstance(g.get("params"), dict) else None
+            if not isinstance(th, int) or th <= 0:
+                fail("crowd_goals.json", f"{k}: overkill needs params.threshold int > 0")
+
     # skills
     check_unique("skills.json", skills, "key")
     skill_ids = set()
@@ -239,14 +329,85 @@ def main() -> int:
         if not set(json.loads(json.dumps(t.get("stat_requirements", {})))).issubset(STATS):
             fail("skill_thresholds.json", f"id {t.get('id')}: stat_requirements keys invalid")
 
+    # demo loadouts (Imani/Dario demo kits — decision log #13; NOT canon characters,
+    # every number PLACEHOLDER per R14)
+    check_unique("demo_loadouts.json", loadouts, "id")
+    check_unique("demo_loadouts.json", loadouts, "key")
+    race_ids = {r.get("id") for r in races}
+    patron_ids = {p.get("id") for p in patrons}
+    tag_keys = {t.get("key") for t in tags}
+    skills_by_id = {s.get("id"): s for s in skills}
+    for lo in loadouts:
+        k = lo.get("key", "?")
+        for f_ in ("key", "display_name", "broadcast_persona"):
+            if not isinstance(lo.get(f_), str) or not lo.get(f_):
+                fail("demo_loadouts.json", f"{k}: {f_} must be a non-empty string")
+        if lo.get("race") not in race_ids:
+            fail("demo_loadouts.json", f"{k}: race {lo.get('race')!r} is not a races.json id")
+        traits = lo.get("traits")
+        if not isinstance(traits, dict):
+            fail("demo_loadouts.json", f"{k}: traits must be an object")
+        else:
+            for stat in sorted(STATS):
+                if not isinstance(traits.get(stat), int) or traits[stat] < 1:
+                    fail("demo_loadouts.json", f"{k}: trait {stat} must be int >= 1")
+            extra = set(traits) - STATS - {"_placeholder"}
+            if extra:
+                fail("demo_loadouts.json", f"{k}: unknown trait keys {sorted(extra)}")
+        skl = lo.get("skills")
+        if not isinstance(skl, list) or not skl:
+            fail("demo_loadouts.json", f"{k}: skills must be a non-empty list")
+            skl = []
+        for s in skl:
+            if not isinstance(s, dict):
+                fail("demo_loadouts.json", f"{k}: skill entry {s!r} is not an object")
+                continue
+            tpl = skills_by_id.get(s.get("id"))
+            if tpl is None:
+                fail("demo_loadouts.json", f"{k}: skill id {s.get('id')!r} unknown")
+                continue
+            if "key" in s and s["key"] != tpl.get("key"):
+                fail("demo_loadouts.json", f"{k}: skill id {s['id']} key annotation "
+                                           f"{s['key']!r} != skills.json {tpl.get('key')!r}")
+            cap = tpl.get("default_cap", 0)
+            if "cap" in s:
+                # R16 trade: a raised cap must exceed the template default (and obey the
+                # schema's 0..10 CHECK).
+                if not isinstance(s["cap"], int) or not (cap < s["cap"] <= 10):
+                    fail("demo_loadouts.json", f"{k}: {tpl.get('key')}: cap override "
+                                               f"{s['cap']!r} must be int in {cap + 1}..10 (R16 trade)")
+                else:
+                    cap = s["cap"]
+            if not isinstance(s.get("level"), int) or not (1 <= s["level"] <= cap):
+                fail("demo_loadouts.json", f"{k}: {tpl.get('key')}: level {s.get('level')!r} "
+                                           f"outside 1..{cap}")
+        if not isinstance(lo.get("camera_call_stacks"), int) or lo["camera_call_stacks"] < 0:
+            fail("demo_loadouts.json", f"{k}: camera_call_stacks must be int >= 0")
+        if lo.get("chosen_patron") not in patron_ids:
+            fail("demo_loadouts.json", f"{k}: chosen_patron {lo.get('chosen_patron')!r} "
+                                       "is not a patron_gods.json id")
+        lo_tags = lo.get("tags")
+        if not isinstance(lo_tags, list):
+            fail("demo_loadouts.json", f"{k}: tags must be a list "
+                                       "(RULED 2026-07-18: loadouts start tagless)")
+        else:
+            for tg in lo_tags:
+                if tg not in tag_keys:
+                    fail("demo_loadouts.json", f"{k}: tag {tg!r} is not a tags.json key")
+        if lo.get("rewireable") is not True:
+            fail("demo_loadouts.json", f"{k}: rewireable must be true (owner principle, "
+                                       "slice-contestants §RULED item 9)")
+
     if failures:
         print("\n".join(failures))
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
-    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons))
+    n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons,
+                             goals, loadouts))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
-          f"{len(items)} items, {len(patrons)} patron gods — {n} rows checked).")
+          f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals, "
+          f"{len(loadouts)} demo loadouts — {n} rows checked).")
     return 0
 
 
