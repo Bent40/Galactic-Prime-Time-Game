@@ -486,8 +486,8 @@ Each line is a test target; ruling in brackets.
     allowed" preserved [R10/book].
 21. Combined action: two linked same-tick attacks merge into a single hit for breach
     checks (7+); an assist satisfies a partner's requirement; a Forced Action on one
-    partner degrades but does not cancel the others' contributions [R15 — test lands
-    with the combined-actions implementation pass].
+    partner degrades but does not cancel the others' contributions [R15 — IMPLEMENTED
+    (S2.5): `combined_action` command + single-hit breach (NQ2); test_21_combined_action].
 
 ---
 

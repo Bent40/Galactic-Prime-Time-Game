@@ -75,7 +75,13 @@ static func check_breach(c: CombatantState) -> bool:
 			if c.highest_tier_anywhere(String(cond.get("condition", ""))) >= int(cond.get("tier", 1)):
 				return true
 		elif kind == "burst_damage":
-			if c.damage_taken_this_tick >= int(cond.get("amount", 0)):
+			# NQ2 ruling: the default breach window is a SINGLE hit, so a lone
+			# attacker's sub-threshold pokes never breach — a combined action's
+			# merged hit (R15) is the party's path to 7+. An explicit "tick"
+			# window falls back to cumulative same-tick damage.
+			var window := String(cond.get("window", "single_hit"))
+			var dealt: int = c.largest_single_hit_this_tick if window == "single_hit" else c.damage_taken_this_tick
+			if dealt >= int(cond.get("amount", 0)):
 				return true
 	return false
 

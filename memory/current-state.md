@@ -12,8 +12,11 @@
 - **BMAD artifact chain:** brief APPROVED; GDD (`docs/gdd/gdd.md`, supersedes v0.2 PDF) +
   narrative + architecture + KAN-3 stories + readiness all drafted — GDD sits at the owner
   review gate.
-- **Engine (KAN-2): 49/49 green** under Godot 4.5.2 in-container (`scripts/setup_godot.sh`)
-  — determinism suite, hype engine v1 (in state_hash), S2.6 part-legality fix.
+- **Engine (KAN-2): 50/50 green** under Godot 4.5.2 in-container (`scripts/setup_godot.sh`)
+  — determinism suite, hype engine v1 (in state_hash), S2.6 part-legality fix, **S2.5
+  combined actions (criterion 21): `combined_action` command, assist-satisfies-requirement,
+  single-hit breach per NQ2 (fixes the prior cumulative-tick breach bug); breach detection
+  moved pre-reset in advance_tick**.
 - **KAN-3 COMPLETE (2026-07-18):** S1 boot scene + GameController autoload · S2 DAL
   (single data owner, reads `data/*.json`) + SaveManager (`var_to_str` envelope; JSON
   doubles corrupt 64-bit RNG state) + controller-owned command log · S4 clock-driver

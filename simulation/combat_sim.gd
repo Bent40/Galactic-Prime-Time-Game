@@ -17,6 +17,7 @@ extends RefCounted
 ##   {"type": "move", "actor", "to": [q, r]}                 hex movement (R3)
 ##   {"type": "inventory", "actor", "item"?, "interaction"?} inventory interaction (R3)
 ##   {"type": "reaction", "actor", "cost", "target"?, "part"?, "damage"?} (R2)
+##   {"type": "combined_action", "members": [{"actor", "action": {..., "provides"?}}...]} (R15)
 ##   {"type": "treat", "target", "part", "condition", "mode": "delay"|"resolve"} (R4/R10)
 ##   {"type": "heal", "target", "part", "amount"}            explicit field healing only
 ##   {"type": "apply_condition", "target", "part", "condition", "tier"?, "poison_type"?,
@@ -69,6 +70,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = resolver.inventory(String(cmd.get("actor", "")), cmd)
 		"reaction":
 			events = resolver.reaction(String(cmd.get("actor", "")), cmd)
+		"combined_action":
+			events = _combined_action(cmd.get("members", []))
 		"treat":
 			events = _treat(cmd)
 		"heal":
@@ -97,6 +100,25 @@ func _post(events: Array[Dictionary]) -> void:
 			var dead: CombatantState = combatants.get(dead_id)
 			if dead != null:
 				dead.windup_pending = false
+	# Breach can open on non-advance damage (e.g. a reaction) — catch it here.
+	# (advance_tick opens single-hit breaches earlier, before its tick-flag reset.)
+	events.append_array(_open_breaches())
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		events.append_array(ExposureEngine.refresh(combatants[id], clock.tick))
+	events.append_array(hype.ingest(events))
+	for event: Dictionary in events:
+		if not event.has("tick"):
+			event["tick"] = clock.tick
+
+
+## Opens surface-immunity breaches whose conditions are now met (R6 boss hooks;
+## the single-hit burst path is R15/NQ2). Idempotent — check_breach returns false
+## once breached — so calling this from both advance_tick (before tick-flag reset,
+## while single-hit damage is still live) and _post never double-fires.
+func _open_breaches() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -110,11 +132,7 @@ func _post(events: Array[Dictionary]) -> void:
 				if bool(part.get("hidden", false)):
 					part["hidden"] = false
 			events.append({"type": "breach_opened", "combatant": c.id})
-		events.append_array(ExposureEngine.refresh(c, clock.tick))
-	events.append_array(hype.ingest(events))
-	for event: Dictionary in events:
-		if not event.has("tick"):
-			event["tick"] = clock.tick
+	return events
 
 
 # ------------------------------------------------------------------ commands
@@ -130,6 +148,47 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 	combatants[id] = c
 	tick_snapshot[id] = _snapshot_entry(c)
 	var events: Array[Dictionary] = [{"type": "combatant_added", "combatant": id}]
+	return events
+
+
+## R15 — multi-character combined action: a set of LINKED declarations resolving
+## on the same tick (R2 simultaneity is the substrate; each actor pays its own
+## Moment cost). Assist `provides` stats satisfy partners' requirements; linked
+## attacks merge into one hit for breach thresholds (see CombatantState.record_hit).
+## A Forced Action on one member degrades only that member — the rest still
+## resolve. v1 scope: members must be instants (cost <= 1) so same-tick resolution
+## is guaranteed. members: [{"actor", "action": {..., "provides"?}}...].
+func _combined_action(members: Array) -> Array[Dictionary]:
+	if members.size() < 2:
+		return [{"type": "command_rejected", "reason": "combo_needs_two_members"}]
+	var provides: Dictionary = {}
+	var seen: Dictionary = {}
+	var member_ids: Array[String] = []
+	for member: Variant in members:
+		var md: Dictionary = member
+		var aid := String(md.get("actor", ""))
+		if aid == "" or not combatants.has(aid):
+			return [{"type": "command_rejected", "reason": "combo_unknown_actor", "actor": aid}]
+		if seen.has(aid):
+			return [{"type": "command_rejected", "reason": "combo_duplicate_actor", "actor": aid}]
+		seen[aid] = true
+		member_ids.append(aid)
+		var act: Dictionary = md.get("action", {})
+		if int(act.get("cost", 1)) > 1:
+			return [{"type": "command_rejected", "reason": "combo_requires_instants", "actor": aid}]
+		var member_provides: Dictionary = act.get("provides", {})
+		for key: Variant in member_provides:
+			provides[String(key)] = maxi(int(provides.get(String(key), 0)), int(member_provides[key]))
+	var combo_id := "combo:%d:%d" % [clock.tick, clock.next_seq]
+	var events: Array[Dictionary] = [{
+		"type": "combined_action_declared", "combo_id": combo_id, "members": member_ids,
+	}]
+	for member: Variant in members:
+		var md: Dictionary = member
+		var act: Dictionary = (md.get("action", {}) as Dictionary).duplicate(true)
+		act["combo_id"] = combo_id
+		act["combo_provides"] = provides.duplicate(true)
+		events.append_array(resolver.declare(String(md.get("actor", "")), act))
 	return events
 
 
@@ -155,6 +214,9 @@ func _advance_tick() -> Array[Dictionary]:
 		ids.sort()
 		for id: Variant in ids:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
+	# Single-hit / burst breaches must be read BEFORE reset_tick_flags clears the
+	# per-tick hit trackers below (R15/NQ2); condition-tier breaches stay in _post.
+	events.append_array(_open_breaches())
 	# Everything above happened ON the completing tick — stamp before advancing.
 	for event: Dictionary in events:
 		if not event.has("tick"):

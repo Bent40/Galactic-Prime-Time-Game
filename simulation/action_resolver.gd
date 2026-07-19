@@ -501,7 +501,11 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	# Requirements gate (R10): unmet -> still allowed, but effect magnitude is
 	# halved (round down) AND the Tool d6 table triggers.
 	var requirements: Dictionary = action.get("requirements", item.get("stat_requirements", {}))
-	var unmet: bool = _requirements_unmet(actor, requirements)
+	var combo_provides: Dictionary = action.get("combo_provides", {})
+	var unmet: bool = _requirements_unmet(actor, requirements, combo_provides)
+	# R15 spectacle: surface the moment a combo assist covers a partner's shortfall.
+	if not unmet and not combo_provides.is_empty() and _requirements_unmet(actor, requirements):
+		events.append({"type": "combo_assist_applied", "actor": actor.id, "combo_id": String(action.get("combo_id", ""))})
 	var whiffed: bool = false
 	var damage: Dictionary = action.get("damage", {})
 	if damage.is_empty() and item.has("damage_type"):
@@ -581,12 +585,20 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 	return ""
 
 
-func _requirements_unmet(actor: CombatantState, requirements: Dictionary) -> bool:
+## R10 requirements gate. R15: a combined action's assists may `provides` stats
+## (a brace supplies "steady ground", a boost supplies the height for a jump
+## attack) that satisfy a partner's otherwise-unmet requirement — teamwork's
+## primary power is unlocking, not just adding numbers.
+func _requirements_unmet(actor: CombatantState, requirements: Dictionary, provides: Dictionary = {}) -> bool:
 	for stat_key: String in STAT_REQUIREMENT_KEYS:
-		if requirements.has(stat_key) and actor.trait_total(stat_key) < int(requirements[stat_key]):
+		if requirements.has(stat_key):
+			var need: int = int(requirements[stat_key])
+			if actor.trait_total(stat_key) < need and int(provides.get(stat_key, 0)) < need:
+				return true
+	if requirements.has("hands"):
+		var need_hands: int = int(requirements["hands"])
+		if actor.usable_hands(clock.tick) < need_hands and int(provides.get("hands", 0)) < need_hands:
 			return true
-	if requirements.has("hands") and actor.usable_hands(clock.tick) < int(requirements["hands"]):
-		return true
 	return false
 
 
@@ -607,6 +619,9 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# Damage = listed − flat resistance, floor 0 (R4).
 	var reduced: int = Resistance.reduce_damage(amount, target, cond.def_for(condition_id), condition_id)
 	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick))
+	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
+	# linked strikes (shared combo_id) merge into one hit for the threshold.
+	target.record_hit(String(action.get("combo_id", "")), reduced)
 	# Typed damage applies/advances its condition regardless of the post-
 	# resistance HP number (tier immunity, not flat reduction, blocks it — R6).
 	if target.alive and condition_id != "":

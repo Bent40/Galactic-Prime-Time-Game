@@ -12,8 +12,8 @@
 1. **Dev track — KAN-4 (party):** S4.1 OC creation (7/7 spread, race, background →
    4 skills, patron bidding with deal sheets) → S4.2 recruitment flow → S4.4 recruit
    permadeath (R17 run-type rules) → S4.5 plan-runner solo-lite.
-2. **Engine remainder (no ruling needed):** S2.5 combined actions (R15, acceptance
-   criterion 21) · S2.4 actions-per-tick audit · enemy AI v1 + Incinedile phase machine.
+2. **Engine remainder (no ruling needed):** ~~S2.5 combined actions (R15, criterion 21)~~
+   DONE (50/50) · S2.4 actions-per-tick audit · enemy AI v1 + Incinedile phase machine.
 3. **Owner queue:** GDD/narrative/architecture review markups · sprites → drop in
    `docs/art/samples/gpt/` (then run `scripts/spritify.py`) · skills passover (R19
    template — biggest unlock) · R14 force-gate co-design sitting · Q58 stealth ·
