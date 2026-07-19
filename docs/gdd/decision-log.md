@@ -139,6 +139,13 @@
       deep customization (fur color, per-part sizing) DEFERRED, irrelevant to the demo.
       Character-creation UX: choose-by-PROPERTIES-then-filter (deferred to KAN-4/KAN-6, not
       the demo). Recorded in `docs/rules-addendum.md` §R21.
+    - **Build-with-placeholders RULED (owner 2026-07-19):** proceed on PLACEHOLDER (R14)
+      numbers and TUNE BY FEEL through playtest — "we wouldn't know numbers without feeling
+      them out." R14 is no longer a gate on building systems; it becomes a tuning pass after
+      the slice is playable.
+    - **Demo UI mockups (owner 2026-07-19):** produce rendered demo mockups (KAN-6 mockup
+      gate) via the BMAD gds-ux skill, styled after the char-sheet app's palette. Workspace:
+      `docs/ux-designs/demo-slice-2026-07-19/`.
     - **Roster CORRECTION (owner-caught 2026-07-18):** slot #24 Anansi was MY MISTAKE — he's
       `folk`/`patron_capable:false`; I had wrongly authored him a patron_block to cover the
       error. **Reverted** (Anansi restored to folk dealer/contestant-legend) and **swapped
