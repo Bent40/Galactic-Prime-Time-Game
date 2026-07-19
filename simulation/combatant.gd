@@ -58,6 +58,11 @@ var moved_this_tick: bool = false
 var inventory_uses: int = 0
 var took_scheduled_action_this_clock: bool = false
 var damage_taken_this_tick: int = 0
+## R15/NQ2 single-hit breach tracking (reset each tick): the largest single hit
+## landed this tick, where a combined action's linked strikes (shared combo_id)
+## merge into one hit.
+var largest_single_hit_this_tick: int = 0
+var combo_hits_this_tick: Dictionary = {}  # combo_id -> accumulated damage this tick
 var cooldowns: Dictionary = {}  # action key -> tick when available again (R3)
 
 # Status effects / forced-action fallout
@@ -270,6 +275,21 @@ func reset_tick_flags() -> void:
 	reaction_used = false
 	moved_this_tick = false
 	damage_taken_this_tick = 0
+	largest_single_hit_this_tick = 0
+	combo_hits_this_tick.clear()
+
+
+## Records a landed hit for single-hit breach checks (R15/NQ2). A combined
+## action's linked strikes (same combo_id) accumulate into ONE merged hit — the
+## party's designed path to a 7+ single-hit breach no lone attacker can clear.
+func record_hit(combo_id: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	var hit: int = amount
+	if combo_id != "":
+		hit = int(combo_hits_this_tick.get(combo_id, 0)) + amount
+		combo_hits_this_tick[combo_id] = hit
+	largest_single_hit_this_tick = maxi(largest_single_hit_this_tick, hit)
 
 
 func to_dict() -> Dictionary:
@@ -303,6 +323,8 @@ func to_dict() -> Dictionary:
 		"inventory_uses": inventory_uses,
 		"took_scheduled_action_this_clock": took_scheduled_action_this_clock,
 		"damage_taken_this_tick": damage_taken_this_tick,
+		"largest_single_hit_this_tick": largest_single_hit_this_tick,
+		"combo_hits_this_tick": combo_hits_this_tick.duplicate(true),
 		"cooldowns": cooldowns.duplicate(true),
 		"exposed_until_tick": exposed_until_tick,
 		"helpless_until_tick": helpless_until_tick,
@@ -352,6 +374,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.inventory_uses = int(data.get("inventory_uses", 0))
 	c.took_scheduled_action_this_clock = bool(data.get("took_scheduled_action_this_clock", false))
 	c.damage_taken_this_tick = int(data.get("damage_taken_this_tick", 0))
+	c.largest_single_hit_this_tick = int(data.get("largest_single_hit_this_tick", 0))
+	c.combo_hits_this_tick = (data.get("combo_hits_this_tick", {}) as Dictionary).duplicate(true)
 	c.cooldowns = (data.get("cooldowns", {}) as Dictionary).duplicate(true)
 	c.exposed_until_tick = int(data.get("exposed_until_tick", 0))
 	c.helpless_until_tick = int(data.get("helpless_until_tick", 0))

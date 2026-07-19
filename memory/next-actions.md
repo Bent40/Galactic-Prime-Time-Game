@@ -57,7 +57,8 @@ developing on `claude/session-continuation-next-steps-mpycyj`; re-FF main period
   rows + The Bit as a mechanically-NULL flavor action. Via nexus-dev-story-pipeline.
 - **Skill ladders** (on #1): drive the 43 R19 ladders in stat-group chunks.
 - **Wave 5 game mapping** (on #5).
-- **S2.5 combined actions (R15) · S2.4 tick audit · I-11 priming** (I-11 full pass wants R19).
+- **~~S2.5 combined actions (R15)~~ DONE (criterion 21, test_21; 96/96) · S2.4 tick audit ·
+  I-11 priming** (I-11 full pass wants R19).
 - **KAN-4 party stories** (S4.1 OC creation → recruitment → permadeath → plan-runner).
 - **Bid-screen slice story** (ruled IN) → **KAN-6 mockup gate** → slice readiness re-run
   → **W3 vertical slice assembly**.

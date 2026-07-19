@@ -17,6 +17,7 @@ extends RefCounted
 ##   {"type": "move", "actor", "to": [q, r]}                 hex movement (R3)
 ##   {"type": "inventory", "actor", "item"?, "interaction"?} inventory interaction (R3)
 ##   {"type": "reaction", "actor", "cost", "target"?, "part"?, "damage"?} (R2)
+##   {"type": "combined_action", "members": [{"actor", "action": {..., "provides"?}}...]} (R15)
 ##   {"type": "treat", "target", "part", "condition", "mode": "delay"|"resolve"} (R4/R10)
 ##   {"type": "heal", "target", "part", "amount"}            explicit field healing only
 ##   {"type": "apply_condition", "target", "part", "condition", "tier"?, "poison_type"?,
@@ -82,6 +83,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = resolver.inventory(String(cmd.get("actor", "")), cmd)
 		"reaction":
 			events = resolver.reaction(String(cmd.get("actor", "")), cmd)
+		"combined_action":
+			events = _combined_action(cmd.get("members", []))
 		"treat":
 			events = _treat(cmd)
 		"heal":
@@ -114,6 +117,7 @@ func _post(events: Array[Dictionary]) -> void:
 			var dead: CombatantState = combatants.get(dead_id)
 			if dead != null:
 				dead.windup_pending = false
+	# Breach (incl. non-advance damage like reactions) + boss phase machine.
 	events.append_array(_breach_and_phase_checks())
 	var ids: Array = combatants.keys()
 	ids.sort()
@@ -125,11 +129,12 @@ func _post(events: Array[Dictionary]) -> void:
 			event["tick"] = clock.tick
 
 
-## Breach hooks (Resistance.check_breach) + the boss phase machine (R11 #18).
-## Runs in _post after every command AND inside _advance_tick BEFORE the
-## per-tick flags reset — burst damage (damage_taken_this_tick) from scheduled
-## resolutions must be evaluated on the tick it happened. Both flags latch
-## (breached / boss_phase), so the double sweep never double-fires.
+## Breach hooks (Resistance.check_breach — single-hit burst per R15/NQ2, so a
+## combined action's merged hit is the party's path to 7+) + the boss phase
+## machine (R11 #18). Runs in _post after every command AND inside _advance_tick
+## BEFORE the per-tick flags reset — single-hit/burst breach data must be
+## evaluated on the tick it happened. Both flags latch (breached / boss_phase),
+## so the double sweep never double-fires.
 func _breach_and_phase_checks() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var ids: Array = combatants.keys()
@@ -165,6 +170,47 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 	return events
 
 
+## R15 — multi-character combined action: a set of LINKED declarations resolving
+## on the same tick (R2 simultaneity is the substrate; each actor pays its own
+## Moment cost). Assist `provides` stats satisfy partners' requirements; linked
+## attacks merge into one hit for breach thresholds (see CombatantState.record_hit).
+## A Forced Action on one member degrades only that member — the rest still
+## resolve. v1 scope: members must be instants (cost <= 1) so same-tick resolution
+## is guaranteed. members: [{"actor", "action": {..., "provides"?}}...].
+func _combined_action(members: Array) -> Array[Dictionary]:
+	if members.size() < 2:
+		return [{"type": "command_rejected", "reason": "combo_needs_two_members"}]
+	var provides: Dictionary = {}
+	var seen: Dictionary = {}
+	var member_ids: Array[String] = []
+	for member: Variant in members:
+		var md: Dictionary = member
+		var aid := String(md.get("actor", ""))
+		if aid == "" or not combatants.has(aid):
+			return [{"type": "command_rejected", "reason": "combo_unknown_actor", "actor": aid}]
+		if seen.has(aid):
+			return [{"type": "command_rejected", "reason": "combo_duplicate_actor", "actor": aid}]
+		seen[aid] = true
+		member_ids.append(aid)
+		var act: Dictionary = md.get("action", {})
+		if int(act.get("cost", 1)) > 1:
+			return [{"type": "command_rejected", "reason": "combo_requires_instants", "actor": aid}]
+		var member_provides: Dictionary = act.get("provides", {})
+		for key: Variant in member_provides:
+			provides[String(key)] = maxi(int(provides.get(String(key), 0)), int(member_provides[key]))
+	var combo_id := "combo:%d:%d" % [clock.tick, clock.next_seq]
+	var events: Array[Dictionary] = [{
+		"type": "combined_action_declared", "combo_id": combo_id, "members": member_ids,
+	}]
+	for member: Variant in members:
+		var md: Dictionary = member
+		var act: Dictionary = (md.get("action", {}) as Dictionary).duplicate(true)
+		act["combo_id"] = combo_id
+		act["combo_provides"] = provides.duplicate(true)
+		events.append_array(resolver.declare(String(md.get("actor", "")), act))
+	return events
+
+
 ## R1 order of operations for the CURRENT tick:
 ## 1. resolve all actions due this tick (against the tick-start snapshot),
 ## 2. apply Forced-Action consequences queued by step 1,
@@ -188,7 +234,7 @@ func _advance_tick() -> Array[Dictionary]:
 		for id: Variant in ids:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
-	# burst damage (single-hit breaches) and reset-driven condition tiers
+	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
 	events.append_array(_breach_and_phase_checks())
 	# Everything above happened ON the completing tick — stamp before advancing.

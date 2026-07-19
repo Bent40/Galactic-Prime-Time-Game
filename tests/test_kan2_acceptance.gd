@@ -1,6 +1,6 @@
 extends SimTestBase
 ## KAN-2 acceptance tests — one test per criterion from docs/rules-addendum.md
-## ("KAN-2 acceptance criteria", 1–20). Each test quotes its criterion.
+## ("KAN-2 acceptance criteria", 1–21). Each test quotes its criterion.
 ## Criterion 19 has a smoke test here; the thorough version (100 mixed
 ## commands, snapshot/restore/replay) lives in tests/test_determinism.gd.
 
@@ -515,3 +515,106 @@ func test_20_forced_action_requirements_gate() -> void:
 	var body_events: Array[Dictionary] = advance(sim2)
 	var body_forced: Dictionary = assert_event(body_events, "forced_action_triggered", "Exhausted T3: every action is Forced – Body")
 	assert_eq(String(body_forced.get("table", "")), "body", "Body table")
+
+
+## 21. "Combined action: two linked same-tick attacks merge into a single hit
+##     for breach checks (7+); an assist satisfies a partner's requirement; a
+##     Forced Action on one partner degrades but does not cancel the others'
+##     contributions [R15]."
+func test_21_combined_action() -> void:
+	# A boss whose surface immunity breaches only on a SINGLE hit >= 7 (NQ2 ruling).
+	var boss_spec: Dictionary = {
+		"id": "boss", "name": "Puppet", "category": "Boss", "size": "Large",
+		"position": [1, 0],
+		"traits": {"physique": 6, "reflexes": 3, "mind": 3, "charm": 3},
+		"resistances": {"Physical": 0},
+		"body_parts": [
+			{"key": "hide", "hp": 60, "lethal": false},
+			{"key": "network", "hp": 8, "lethal": true, "hidden_until_breach": true},
+		],
+		"boss_traits": {"surface_immunity": {"breach_conditions": [
+			{"type": "burst_damage", "amount": 7, "window": "single_hit"},
+		]}},
+	}
+
+	# (a1) a lone 4-damage hit is below the single-hit threshold — no breach.
+	var sim: CombatSim = make_sim()
+	add_human(sim, "p1", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
+	sim.apply_command({"type": "add_combatant", "combatant": boss_spec})
+	declare(sim, "p1", attack_action("crushed", 4, "boss", "hide"))
+	var lone: Array[Dictionary] = advance(sim)
+	assert_no_event(lone, "breach_opened", "a lone 4-damage hit (<7) does not breach single-hit immunity")
+	assert_false(sim.combatants["boss"].breached, "boss stays armored after one small hit")
+	assert_true(bool(sim.combatants["boss"].parts["network"].get("hidden", false)), "the network stays hidden")
+
+	# (a2) a combined action merges two 4-damage linked hits into one 8-damage hit.
+	var sim2: CombatSim = make_sim()
+	add_human(sim2, "p1", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
+	add_human(sim2, "p2", {"position": [2, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
+	sim2.apply_command({"type": "add_combatant", "combatant": boss_spec})
+	var combo: Array[Dictionary] = sim2.apply_command({"type": "combined_action", "members": [
+		{"actor": "p1", "action": attack_action("crushed", 4, "boss", "hide")},
+		{"actor": "p2", "action": attack_action("crushed", 4, "boss", "hide")},
+	]})
+	assert_event(combo, "combined_action_declared", "the combo is one linked declaration set")
+	assert_eq(events_of(combo, "action_declared").size(), 2, "each partner pays its own Moment cost")
+	var merged: Array[Dictionary] = advance(sim2)
+	assert_eq(events_of(merged, "damage_applied").size(), 2, "both partners' hits land this tick")
+	assert_event(merged, "breach_opened", "4+4 merged into one 8-damage hit clears the 7+ breach")
+	assert_true(sim2.combatants["boss"].breached, "surface immunity broken by the combined hit")
+	assert_false(bool(sim2.combatants["boss"].parts["network"].get("hidden", false)), "the network is now exposed")
+
+	# (b) an assist supplies a partner's otherwise-unmet requirement.
+	var sim3: CombatSim = make_sim()
+	add_human(sim3, "strong", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
+	add_human(sim3, "weak", {"position": [2, 0], "traits": {"physique": 2, "reflexes": 3, "mind": 3, "charm": 3}})
+	add_human(sim3, "t", {"position": [1, 0], "body_parts": [
+		{"key": "head", "hp": 2, "lethal": true},
+		{"key": "torso", "hp": 40, "lethal": true},
+		{"key": "left_arm", "hp": 20, "lethal": false},
+		{"key": "right_arm", "hp": 20, "lethal": false},
+	]})
+	var strong_attack: Dictionary = attack_action("crushed", 4, "t", "torso")
+	strong_attack["provides"] = {"physique": 5}  # a brace supplies "steady ground"
+	var combo_b: Array[Dictionary] = sim3.apply_command({"type": "combined_action", "members": [
+		{"actor": "strong", "action": strong_attack},
+		{"actor": "weak", "action": attack_action("crushed", 4, "t", "torso", {"requirements": {"physique": 5}})},
+	]})
+	assert_event(combo_b, "combined_action_declared", "combo declared")
+	var res_b: Array[Dictionary] = advance(sim3)
+	assert_event(res_b, "combo_assist_applied", "the brace supplies weak's Physique requirement")
+	assert_no_event(res_b, "forced_action_triggered", "a satisfied requirement rolls no d6")
+	var full_hits: int = 0
+	for dmg: Dictionary in events_of(res_b, "damage_applied"):
+		if int(dmg.get("amount", -1)) == 4:
+			full_hits += 1
+	assert_eq(full_hits, 2, "both partners deal full, unhalved 4 damage")
+
+	# (c) a Forced Action on one partner degrades ONLY that partner.
+	var sim4: CombatSim = make_sim()
+	add_human(sim4, "ok", {"position": [0, 0], "traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3}})
+	add_human(sim4, "fail", {"position": [2, 0], "traits": {"physique": 2, "reflexes": 3, "mind": 3, "charm": 3}})
+	add_human(sim4, "t", {"position": [1, 0], "body_parts": [
+		{"key": "head", "hp": 2, "lethal": true},
+		{"key": "torso", "hp": 40, "lethal": true},
+		{"key": "left_arm", "hp": 20, "lethal": false},
+		{"key": "right_arm", "hp": 20, "lethal": false},
+	]})
+	var combo_c: Array[Dictionary] = sim4.apply_command({"type": "combined_action", "members": [
+		{"actor": "ok", "action": attack_action("crushed", 4, "t", "torso")},
+		{"actor": "fail", "action": attack_action("crushed", 4, "t", "torso", {"requirements": {"physique": 5}})},
+	]})
+	assert_event(combo_c, "combined_action_declared", "combo declared")
+	var res_c: Array[Dictionary] = advance(sim4)
+	var forced: Dictionary = assert_event(res_c, "forced_action_triggered", "the unmet partner rolls the Tool d6")
+	assert_eq(String(forced.get("actor", "")), "fail", "only the failing partner is forced")
+	var ok_undegraded: bool = false
+	for resolved: Dictionary in events_of(res_c, "action_resolved"):
+		if String(resolved.get("actor", "")) == "ok":
+			ok_undegraded = not bool(resolved.get("halved", true))
+	assert_true(ok_undegraded, "the healthy partner resolves un-degraded — the combo is not cancelled")
+	var ok_full_damage: bool = false
+	for dmg: Dictionary in events_of(res_c, "damage_applied"):
+		if int(dmg.get("amount", -1)) == 4:
+			ok_full_damage = true
+	assert_true(ok_full_damage, "ok's full 4 damage lands despite fail's Forced Action")
