@@ -187,3 +187,15 @@
     band display names** (enum `cold/warm/hot/on_fire` shown as ELECTRIC / ON FIRE). The
     gds-ux spines (DESIGN.md / EXPERIENCE.md) are marked APPROVED. Scene-building is
     unblocked; numbers stay PLACEHOLDER (R14), tuned by feel through playtest.
+17. **F2 RESOLVED — boss discoverable-win-condition hardened (owner design 2026-07-19).** The slice
+    playtest found the Incinedile could be defeated WITHOUT breaching, via **nine** off-network kill
+    routes (condition-tier death, timer terminals, forced collateral). Owner design: bleeding reworked
+    into a **systemic bleed-out drain** (scales with tier; death only when a LETHAL part empties;
+    treatable), the network is **bleed-immune** ("mycelium doesn't bleed"), crushed/burn/head death gated
+    to lethal parts, and — enforced as one principle — **HP damage never touches a hidden part; death /
+    removal routes ONLY through a lethal, exposed part**. All nine closed at their sinks (attacks,
+    conditions, timers, drain, collateral); verified DRY by an independent adversarial pass (finds
+    converged 4→1→0). 152 sim tests, slice driver still wins via the network, determinism intact.
+    Commits 4377fa2 / ecb867e / 6155e29. Detail: `docs/playtests/slice-playtest-2026-07-19.md` §F2. Open
+    nit (not a bypass, owner call later): whether a lethal *condition* on the *exposed* network is an
+    acceptable finisher, or "destroy the network" must strictly mean HP→0.

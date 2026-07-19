@@ -28,22 +28,28 @@ UP / ELECTRIC / ON FIRE.
 
 ## Findings (surfaced by the driver; verified against the code)
 
-### F2 — DESIGN DECISION NEEDED: condition-tier death bypasses the discoverable win condition
-The Incinedile's identity is "pre-breach damage is cosmetic; you must discover the breach and kill
-the hidden network." But **a condition (crushed/bleeding) on ANY cosmetic limb, left to advance, reaches
-tier 4 and kills the boss unconditionally** — no breach required. Verified:
-- `data/conditions.json` crushed/bleeding T4 = effect `["death"]`; T3 = `["part_destroyed","lethal_if_vital"]`.
-- `simulation/condition_engine.gd:567` — the `death` effect calls `_kill()` with **no lethal-part gate**
-  (unlike `lethal_if_vital` at :557, which checks `lethal`).
-- Both conditions `advance_on_clock_reset`, so a limb goes T1→T2→T3→T4 over four Clocks and kills.
-- The tier's OWN description says "torso/head only" — so the unconditional `death` effect contradicts
-  documented intent (addendum R4 territory). This turns the boss into a condition-grind race, violating
-  the hard rule "bosses need discoverable win conditions, never raw damage races."
+### F2 — RESOLVED (owner ruling 2026-07-19): condition/damage death now routes only through a lethal, exposed part
+The Incinedile's identity is "pre-breach damage is cosmetic; discover the breach and kill the hidden
+network." The playtest found **nine** off-network kill routes that violated that (the "raw damage race"
+the hard rule forbids). All nine are now closed under one enforced principle — **HP damage never touches
+a hidden part; death/removal routes only through a lethal, exposed part** — verified DRY by an
+independent adversarial pass (finds converged 4 → 1 → 0). Commits 4377fa2 / ecb867e / 6155e29.
 
-**Recommended fix (awaiting owner ruling — it changes shared combat mechanics for ALL combatants):**
-gate the T4 `death` effect to lethal/vital parts (data: T4 → `["lethal_if_vital"]`, or engine: `death`
-checks part lethality), matching the documented torso/head-only intent. Then the only path to end the
-Incinedile is the (hidden, post-breach) lethal network — the intended discoverable win.
+| # | Route | Close |
+|---|---|---|
+| 1 | bleeding limb → T4 unconditional death | systemic bleed-out drain; death only when a lethal part empties |
+| 2–3 | crushed T4 / burn T4 `death` on any part | gated to lethal parts (matches R4 "torso/head only") |
+| 4 | `lethal_if_head` on the boss's `lethal:false` head | respects the part's lethal flag |
+| 5 | suffocation → remaps onto hidden network | source gate: no condition applies to a hidden part |
+| 6 | dissolution → mind-collapse off the puppet head | timer terminal gated on `_lethal_exposed` |
+| 7–8 | poison T3 / infected T3 ungated death-timer | `death`/`death_timer_clocks:` gated on a lethal part |
+| 9 | forced-action **collateral** → hidden network via `damage_part` | central HP sink blocks damage to hidden parts; `default_part` skips them |
+
+Owner design calls baked in: the network is **bleed-immune** ("mycelium doesn't bleed"); bleed-out drain
+**scales with tier**. Regression-safe (humans still die to suffocation/dissolution/crushed torso on their
+lethal parts; determinism/serialization intact). Numbers (drain rate) PLACEHOLDER (R14). Open owner nit
+(not a bypass): post-breach, a lethal *condition* on the *exposed* network is currently an acceptable
+finisher — decide later whether "destroy the network" must strictly mean HP→0.
 
 ### F1 — no path to grant the loadout's Camera Call stacks
 `camera_call_stacks` is derived ONLY from Charm over-cap (`combatant.gd:193`, `over_cap(charm,20)` →
