@@ -515,6 +515,8 @@ aesthetic; speech scoring's Charm term: presentability shapes how words land).
 10 unlocks **psychic/radiant-class damage** — each of 6–10 still increasing range and
 damage. (Existing L5+ threshold rows get re-read under this architecture in the skills
 passover; the generalization ladder 6–10 is the authoring template for every skill.)
+**NOTE (owner 2026-07-18): "Explosion" is an ILLUSTRATIVE teaching example only — there is
+NO Explosion skill. Fire Ball generalizes on its own terms; do not seed an Explosion skill.**
 
 ## Rulings batch 2026-07-17 (owner, in chat)
 

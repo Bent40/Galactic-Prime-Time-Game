@@ -113,11 +113,11 @@ Reading key for tags: **[MAGIC]** · **[PASSIVE]** · **[CHAIN: opener/link/fini
 **FINAL 6–10:**
 - **6 — universal guard.** Brace against all damage types (add Bleed and the incoming condition tier), not just Crush/Burn — one flinch covers the whole hit.
 - **7 — guard with a payoff.** Reflect 1 to a melee attacker `[PH]`, or convert prevented damage into a hype tick (spectacle tank).
-- **8 — INTERCEPT.** Brace on behalf of an adjacent ally — take/reduce a hit aimed at them (the core tank move).
-- **9 — IRON STANCE.** Declare a standing brace: until you move, reduced-type hits against you and adjacent allies are reduced — an aura, not a one-shot react.
+- **8 — INTERCEPT (merged-in).** Brace on behalf of an adjacent ally — take/reduce a hit aimed at them. This rung is the **separate `Intercept` skill folding into Brace** (see R1).
+- **9 — IRON STANCE (merged-in).** A standing brace-aura: until you move, reduced-type hits against you and adjacent allies are reduced. This rung is the **separate `Iron Stance` skill folding into Brace** (see R1).
 - **10 (mundane) — immovable object.** Negate one incoming hit entirely, once per Clock `[PH]` — a perfect mundane guard (no radiant/psychic transcendence).
 **1–5 scales:** flat reduction (−1→−4, L2–L4).
-**Residual (R1):** Should **Intercept / Iron Stance** (R12 tank-kit drafts, marked PENDING finalization) live as Brace's L8/L9 rungs — this spec's proposal — or be seeded as **separate skills**? The 10 defaults settle rung *content* but not skill *topology*; this needs an owner call.
+**R1 RULED (owner 2026-07-18):** **Intercept and Iron Stance are SEPARATE lower-tier skills** on their own, with an **upgrade/merge path that folds them into Brace's high rungs** (own Brace + Intercept + Iron Stance → consolidate). Author all three; the L8/L9 above are the merged forms, not Brace-native rungs.
 
 ### #20 — Pounce · physique · 2 Moment · cap 5 · [CHAIN: opener]
 **Identity.** Leap up to 3 spaces, slash the torso for Bleed; opens into Slip Through. Sasha's opener.
@@ -430,15 +430,15 @@ transformation (R16: NPC stats fit the character). It does not use the player tr
 **Residual:** none.
 
 ### #14 — Fire Ball · mind · 2 Moment · cap 5 · [MAGIC]
-**Identity.** Blazing projectile, AoE Burn + Burn T1, ignites flammables. Range 20. The in-game sibling of R19's canonical **Explosion**.
-**FINAL 6–10 (R19's own Explosion example, applied to its obvious vehicle):**
+**Identity.** Blazing projectile, AoE Burn + Burn T1, ignites flammables. Range 20. (R19's "Explosion" was an ILLUSTRATIVE example only — no such skill exists; this ladder is Fire Ball's own fire-native generalization.)
+**FINAL 6–10 (fire-native generalization):**
 - **6 — cluster.** Splits into multiple detonations across the radius (owner's L6).
 - **7 — sub-damage of a chosen type.** Add a chosen secondary channel — shrapnel Bleed or chemical burn — under the Burn (owner's L7).
 - **8 — originate away from the caster.** A delayed rune, an arc lobbed over cover, a proxied detonation (owner's L8).
 - **9 — enhance activation range & conditions.** Longer throw, detonate-on-command, ignite even non-flammable targets (owner's L9).
 - **10 — RULE-TRANSCENDING (magic-only, source-gated · #2, owner's L10).** **Radiant/psychic-class fire that bypasses fire-resistance and standard tiers** `[PH]`.
 **1–5 scales:** Burn damage and radius (L2–L4).
-**Residual (R2):** Is R19's canonical **"Explosion"** a distinct future skill, or is **Fire Ball** the intended vehicle for that example? This spec assumes **Fire Ball inherits it** (the ladder is the Explosion example verbatim). Confirm, or keep a separate Explosion skill and re-generalize Fire Ball independently. *(The 10 defaults settle the ladder SHAPE but not whether a second skill exists.)*
+**R2 RULED (owner 2026-07-18):** R19's "Explosion" was a **made-up illustrative example, not a concrete skill** — there is no Explosion skill. Fire Ball's ladder above stands on its own; the R19 example is just teaching scaffolding.
 
 ### #15 — Fire Wall · mind · 3 Moment · cap 5 · [MAGIC]
 **Identity.** Curtain of fire; passing = Burn T1, starting inside = Burn T2; can't be destroyed, only outlasted; 1 Clock.
@@ -482,7 +482,7 @@ a **separate purchased tier**, not a level-up rung.
 - **9 — pierce the strong-willed.** Affects Mind 4+ targets (overcome the notice threshold).
 - **10 — RULE-TRANSCENDING (magic-only, source-gated · #2) — domination-lite.** A lasting suggestion that shapes a target's next Clock, verging on the Dissolution / **mind-collapse** line `[PH]`. **Player-inflicted mind-collapse is gated per R5** (permanent removal + puppet asset; **non-boss only**; source-gated). See Residual R3.
 **1–5 scales:** **Data-hygiene (#10):** `effects[]` empty — 1–5 scaling unauthored (range? number of thoughts? fidelity?). Author at implementation.
-**Residual:** shares **R3** (player mind-collapse). *(The empty `effects[]` is a data item, not a design residual.)*
+**R3 (Telepathy) — OPEN, owner leaning cut/repurpose (2026-07-18):** the owner questions whether Telepathy fits the game at all, because the **player CHAT function already covers mind-to-mind communication** — telepathy-as-comms is redundant. OPTIONS: **(a) CUT** it; **(b) REPURPOSE** away from player-comms toward what chat can't do — reading an **enemy/NPC's hidden intent** (a recon read of a boss's next move / win-condition) or offensive mind-intrusion. *Recommend (b).* DEPENDENCY: Mind Burst's "Req Telepathy Lv 3" prereq must be re-anchored if Telepathy is cut. Awaiting owner call.
 
 ### #19 — Mind Burst · mind · 2 Moment · cap 5 · [MAGIC]
 **Identity.** Flood a mind with psychic noise → Shock T2 (action fails); escalates if already Shocked; may target the Head regardless of Exposure. Req Telepathy Lv 3.
@@ -493,7 +493,7 @@ a **separate purchased tier**, not a level-up rung.
 - **9 — overcome resistance.** Beats psychic-resistance/Mind gates the base can't.
 - **10 — RULE-TRANSCENDING (magic-only, source-gated · #2) — mind-shatter.** A full **Dissolution-class** strike (or Shock T4 / Helpless) on a **non-boss** `[PH]`. **Player-inflicted mind-collapse gated per R5** (permanent removal + puppet asset; source-gated). See Residual R3.
 **1–5 scales:** range (+5/+10/+15, L2–L4).
-**Residual:** shares **R3** (player mind-collapse).
+**R3 (Mind Burst) RULED (owner 2026-07-18):** the mind-collapse STAYS but is **really-high-tier magic ONLY** — L10, magic-only, source/patron-gated, non-boss, per R5. Confirmed as the design intent.
 
 ### #29 — Aura Reading · mind · 0 Moment · cap 5 · [PASSIVE]
 **Identity.** Sense a visible/adjacent target's dominant emotional state; reveals feeling, never intent or actions. Filipe's.
@@ -639,23 +639,19 @@ Where a default forced a change from the DRAFT worksheet, and the running data-h
 # Residual owner questions (the small set the framework did NOT settle)
 
 The 10 accepted defaults resolved the great majority of the worksheet's ~20 per-skill open questions
-and all 10 cross-cutting questions. **Three residuals remain** (covering four skills):
+and all 10 cross-cutting questions. **All three residuals RULED by the owner 2026-07-18** — one new sub-question opened (Telepathy's fit):
 
-- **R1 — Brace (#8): fold or split the tank kit?** Should **Intercept** (take an adjacent ally's hit)
-  and **Iron Stance** (standing retarget aura) — the R12 tank-kit drafts marked PENDING finalization —
-  live as **Brace's L8/L9 rungs** (this spec's proposal), or be seeded as **separate skills**? The
-  defaults settle rung content, not skill topology.
+- **R1 — Brace (#8): RULED — SPLIT then merge.** Intercept and Iron Stance are **separate lower-tier
+  skills**, with an upgrade/merge path that folds them into Brace's high rungs. Author all three.
 
-- **R2 — Fire Ball (#14): is "Explosion" a separate skill?** R19's canonical **Explosion** example is
-  applied verbatim as Fire Ball's 6–10 ladder here. Confirm **Fire Ball is the vehicle** for that
-  example, or keep a **distinct Explosion skill** and re-generalize Fire Ball independently.
+- **R2 — Fire Ball (#14): RULED — no Explosion skill.** R19's "Explosion" was a made-up illustrative
+  example, "not concrete in any way" — Fire Ball's ladder stands on its own as fire's native generalization.
 
-- **R3 — Mind Burst (#19) L10 & Telepathy (#18) L10: player-inflicted mind-collapse — green-light?**
-  The mechanism is settled by defaults #2 + #7 (magic-only, source-gated, **non-boss only**, following
-  R5: permanent removal + a **puppet asset** for the collapser). The open piece is **product intent**:
-  does the owner want players to be able to inflict Dissolution-class mind-collapse on enemies at all
-  (creating puppet assets), or should these two magic L10s be **capped just below the collapse line**?
-  This touches R5 (a hard, irreversible rule), so it is flagged rather than assumed.
+- **R3 — Mind Burst (#19): RULED — mind-collapse = really-high-tier magic only** (L10, magic-only,
+  source-gated, non-boss, per R5). Confirmed. **Telepathy (#18): NEW OPEN question** — owner is unsure
+  Telepathy fits the game at all, since the **player chat function already covers mind-to-mind comms**.
+  Leaning cut or repurpose (recommend: repurpose to reading enemy/NPC hidden intent, which chat can't do).
+  Re-anchor Mind Burst's "Req Telepathy Lv 3" prereq if Telepathy is cut.
 
 *(Everything else — passives, chains, the elemental line, spectacle skills, Reversion, Seal The Wound,
 Swim's racial question, Dance's stat question, all cooldown/empty-effects/garbled-text items — is

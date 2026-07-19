@@ -104,6 +104,16 @@
       them** (friendly-fire counts — "it's cinema"); credit the killer. (b) needs
       kill-attribution + team-awareness in the hype engine (the deferred attribution v2) →
       IMPLEMENTATION QUEUED; the v1 code over-fires on any death until then.
+    - **Skill-ladder residuals RULED (owner 2026-07-18):** (R1 Brace) Intercept + Iron
+      Stance = **separate lower-tier skills** with a merge-into-Brace upgrade path — author
+      all three. (R2 Fire Ball) R19's **"Explosion" was a made-up illustrative example, NOT
+      a skill** — no Explosion skill; Fire Ball generalizes on its own. (R3 Mind Burst) the
+      **mind-collapse stays but as really-high-tier magic only** (L10, magic/source-gated,
+      non-boss, per R5). **NEW OPEN — Telepathy:** owner unsure it fits, since the player
+      **chat function already covers mind-to-mind comms**; leaning cut or repurpose (rec:
+      repurpose to reading enemy/NPC hidden intent). Recorded in
+      `docs/design/skills-r19-ladders-FINAL.md`; 42/43 ladders now final, Telepathy the
+      one open skill.
 13. **Slice cast + tag slice RULED (owner, 2026-07-18, in chat).** Imani/Dario
     **demoted to demo/quick-start loadouts + test fixtures — and BUILD them** (all 8+1
     proposal questions answered; rulings recorded in
