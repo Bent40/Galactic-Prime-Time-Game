@@ -153,3 +153,65 @@ func test_crushing_the_boss_head_cannot_kill_it() -> void:
 	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "head", "condition": "crushed", "tier": 1})
 	assert_false(died_within_clocks(sim, "boss", 6), "crushing the non-lethal puppet head never kills the boss")
 	assert_true(sim.combatants["boss"].alive, "only the network is lethal")
+
+
+# ---------------------------------------------------------------- timer/terminal death paths (F2 audit)
+
+func test_suffocation_cannot_defeat_the_boss() -> void:
+	# Suffocation targets torso; the boss has none, so it remaps onto the hidden
+	# network — where the surface-immunity source gate resists it.
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "torso", "condition": "suffocation"})
+	assert_false(died_within_clocks(sim, "boss", 8), "suffocation cannot kill the un-breached boss")
+	assert_true(sim.combatants["boss"].alive and not sim.combatants["boss"].removed_from_play, "boss stands, not removed")
+	assert_false(sim.combatants["boss"].breached, "and it never breached")
+
+
+func test_dissolution_cannot_defeat_the_boss() -> void:
+	# Dissolution lands on the cosmetic (lethal:false) puppet head; the terminal
+	# gate refuses to mind-collapse a non-lethal part.
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "head", "condition": "dissolution"})
+	died_within_clocks(sim, "boss", 10)  # run the timer out
+	assert_true(sim.combatants["boss"].alive, "boss still alive")
+	assert_false(sim.combatants["boss"].removed_from_play, "dissolution can't mind-collapse the puppet off its cosmetic head")
+
+
+func test_poison_t3_cannot_kill_boss_on_a_cosmetic_part() -> void:
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "left_leg", "condition": "poison", "tier": 3, "poison_type": "cytotoxin"})
+	assert_false(died_within_clocks(sim, "boss", 8), "poison on a cosmetic leg can't kill the boss (death timer gated to lethal parts)")
+	assert_true(sim.combatants["boss"].alive, "boss survives")
+
+
+func test_infected_t3_cannot_kill_boss_on_a_cosmetic_part() -> void:
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "left_leg", "condition": "infected", "tier": 3})
+	assert_false(died_within_clocks(sim, "boss", 8), "infected on a cosmetic leg can't kill the boss")
+	assert_true(sim.combatants["boss"].alive, "boss survives")
+
+
+# Positive controls — the gates protect cosmetic/hidden parts, NOT vital ones.
+
+func test_suffocation_still_kills_a_human() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h")
+	sim.apply_command({"type": "apply_condition", "target": "h", "part": "torso", "condition": "suffocation"})
+	assert_true(died_within_clocks(sim, "h", 8), "suffocating a human (torso is lethal + exposed) still kills")
+
+
+func test_dissolution_still_removes_a_human() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h")
+	sim.apply_command({"type": "apply_condition", "target": "h", "part": "head", "condition": "dissolution"})
+	var out := false
+	for i: int in range(10):
+		advance(sim, Clock.TICKS_PER_CLOCK)
+		if sim.combatants["h"].removed_from_play:
+			out = true
+			break
+	assert_true(out, "dissolving a human's head (lethal + exposed) still mind-collapses them")

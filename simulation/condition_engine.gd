@@ -153,6 +153,16 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 		events.append({"type": "condition_resisted", "combatant": c.id, "part": part_key, "condition": condition_id, "reason": "bleed_immune"})
 		return events
 
+	# Surface immunity (F2): a part still hidden behind an un-breached surface
+	# immunity (the boss's mycelium network) is undiscovered — NO condition lands
+	# on it until the party breaches (mirrors the attack-block on hidden parts,
+	# action_resolver surface_immunity). This is what stops a torso-routed
+	# condition (e.g. suffocation, which remaps onto the hidden network) from
+	# defeating the boss off-camera.
+	if bool(c.parts.get(part_key, {}).get("hidden", false)):
+		events.append({"type": "condition_resisted", "combatant": c.id, "part": part_key, "condition": condition_id, "reason": "surface_immunity"})
+		return events
+
 	if is_timer_condition(condition_id):
 		return _apply_timer_condition(c, part_key, condition_id, def, events)
 
@@ -568,11 +578,25 @@ func _advance_timers(c: CombatantState) -> Array[Dictionary]:
 	for timer: Dictionary in expired:
 		var kind := String(timer.get("kind", ""))
 		events.append({"type": "timer_expired", "combatant": c.id, "kind": kind})
+		# Death/removal only through a lethal, exposed part (F2): a timer whose part
+		# is cosmetic (lethal:false — e.g. dissolution routed onto the puppet head)
+		# or still hidden never ends the combatant. Only a discovered lethal part can.
+		if not _lethal_exposed(c, String(timer.get("part", ""))):
+			continue
 		if kind == "dissolution":
 			events.append_array(_mind_collapse(c))
 		else:  # death / suffocation / bleed_out
 			events.append_array(_kill(c, kind))
 	return events
+
+
+## A part is a valid kill target only if it is flagged lethal AND currently
+## exposed — a lethal part still hidden behind an un-breached surface immunity
+## (the boss's mycelium network) is undiscovered and cannot yet end the combatant.
+## This is the single F2 principle: death routes ONLY through a lethal, exposed part.
+func _lethal_exposed(c: CombatantState, part_key: String) -> bool:
+	var part: Dictionary = c.parts.get(part_key, {})
+	return bool(part.get("lethal", false)) and not bool(part.get("hidden", false))
 
 
 func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id: String, tier: int, tick: int) -> Array[Dictionary]:
@@ -616,9 +640,15 @@ func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id
 				c.statuses["incapacitated"] = true
 				events.append({"type": "status_changed", "combatant": c.id, "status": "incapacitated", "value": true})
 		elif eff == "death":
-			events.append_array(_kill(c, condition_id + "_t" + str(tier)))
+			# Only a lethal part can end the combatant (F2). The source gate in apply()
+			# already bars a hidden part, so `lethal` here means lethal-and-exposed.
+			if lethal:
+				events.append_array(_kill(c, condition_id + "_t" + str(tier)))
 		elif eff.begins_with("death_timer_clocks:"):
-			events.append_array(_add_death_timer(c, condition_id, part_key, int(eff.get_slice(":", 1))))
+			# Poison/Infected terminal — gate on a lethal part (like burn's
+			# death_timer_clocks_if_vital), so it can't start on a cosmetic limb (F2).
+			if lethal:
+				events.append_array(_add_death_timer(c, condition_id, part_key, int(eff.get_slice(":", 1))))
 		elif eff.begins_with("death_timer_clocks_if_vital:"):
 			if lethal:
 				events.append_array(_add_death_timer(c, condition_id, part_key, int(eff.get_slice(":", 1))))
