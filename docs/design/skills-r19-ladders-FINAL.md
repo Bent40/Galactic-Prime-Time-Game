@@ -482,7 +482,16 @@ a **separate purchased tier**, not a level-up rung.
 - **9 — pierce the strong-willed.** Affects Mind 4+ targets (overcome the notice threshold).
 - **10 — RULE-TRANSCENDING (magic-only, source-gated · #2) — domination-lite.** A lasting suggestion that shapes a target's next Clock, verging on the Dissolution / **mind-collapse** line `[PH]`. **Player-inflicted mind-collapse is gated per R5** (permanent removal + puppet asset; **non-boss only**; source-gated). See Residual R3.
 **1–5 scales:** **Data-hygiene (#10):** `effects[]` empty — 1–5 scaling unauthored (range? number of thoughts? fidelity?). Author at implementation.
-**R3 (Telepathy) — OPEN, owner leaning cut/repurpose (2026-07-18):** the owner questions whether Telepathy fits the game at all, because the **player CHAT function already covers mind-to-mind communication** — telepathy-as-comms is redundant. OPTIONS: **(a) CUT** it; **(b) REPURPOSE** away from player-comms toward what chat can't do — reading an **enemy/NPC's hidden intent** (a recon read of a boss's next move / win-condition) or offensive mind-intrusion. *Recommend (b).* DEPENDENCY: Mind Burst's "Req Telepathy Lv 3" prereq must be re-anchored if Telepathy is cut. Awaiting owner call.
+**R3 (Telepathy) — RESOLVED to the MANIPULATION lane (owner 2026-07-18):** its comms use is
+DROPPED (the player chat function already covers mind-to-mind talk). And reading intent is
+NOT its job — that's **Read the Pattern (#6)**, which reveals an enemy's next scheduled
+action. So Telepathy leans into what those don't do: the **read → WRITE → influence →
+domination** side (implant a thought, compel a soft Forced Action, up to the gated
+mind-collapse capstone) — an offensive/control mind skill, distinct from Read the Pattern's
+passive action-reveal and Aura Reading's emotion-read. Any read facet it keeps is DEEPER
+hidden info (secrets/plans), scaling on **depth**, not the single next-action (owner: "a
+version of intent-reading that scales in a different way"). Mind Burst's "Req Telepathy
+Lv 3" prereq stands. *(Confirm the manipulation-lane framing when convenient — low stakes.)*
 
 ### #19 — Mind Burst · mind · 2 Moment · cap 5 · [MAGIC]
 **Identity.** Flood a mind with psychic noise → Shock T2 (action fails); escalates if already Shocked; may target the Head regardless of Exposure. Req Telepathy Lv 3.
