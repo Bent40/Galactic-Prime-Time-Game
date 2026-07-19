@@ -107,11 +107,13 @@ func bit_spectacle(actor_id: String) -> int:
 	return maxi(0, base + bonus * prior)
 
 
-## Resonance multiplier for HypeEngine: scale `points` by the product of the
-## contestant's HELD tags whose resonance selectors include `token` (an event
-## type, or "goal_completed" for crowd-goal payouts, matched by "*" too).
-## Integer round-half-up — no floats reach serialized state. Held-empty (the
-## start-of-slice default) is the identity, so untagged play is unchanged.
+## Resonance multiplier for HypeEngine: scale `points` by successively applying
+## (round-half-up per step, so a rounded fold rather than one true product) each
+## of the contestant's HELD tags whose resonance selectors include `token` (an
+## event type, or "goal_completed" for crowd-goal payouts, matched by "*" too).
+## Held keys are sorted so the fold is order-stable. Integer math only — no floats
+## reach serialized state. Held-empty (the start-of-slice default) is the
+## identity, so untagged play is unchanged.
 func apply_resonance(id: String, token: String, points: int) -> int:
 	if points <= 0 or not _is_contestant(id):
 		return points
@@ -150,7 +152,14 @@ func _detect(events: Array[Dictionary], i: int, event: Dictionary, etype: String
 		"forced_action_triggered":
 			_award(String(event.get("actor", "")), "blooper_reel", out)
 		"hype_goal_completed":
-			_award(String(event.get("combatant", "")), "scene_stealer", out)
+			# Credit the CONTESTANT who completed the goal (HypeEngine._goal_completer),
+			# not the completing event's subject — for takedown/overkill/part_break that
+			# subject is the maimed victim, not the striker. Fall back to the legacy
+			# `combatant` field for any pre-fix event that lacks completed_by.
+			var completer := String(event.get("completed_by", ""))
+			if completer == "":
+				completer = String(event.get("combatant", ""))
+			_award(completer, "scene_stealer", out)
 		"hype_camera_call_started":
 			_award(String(event.get("actor", "")), "scene_stealer", out)
 		"combined_action_declared":
@@ -165,7 +174,12 @@ func _detect(events: Array[Dictionary], i: int, event: Dictionary, etype: String
 			_award_fan_favorite(event, out)
 			_award_survivor(String(event.get("combatant", "")), out)
 		"condition_advanced":
-			if String(event.get("condition", "")) == "bleeding" and int(event.get("to_tier", 0)) >= 2:
+			# Gorefest is escalating bleeding only: guard the direction so a down-tier
+			# "rested" advance (clock-reset healing, from_tier > to_tier) can never
+			# count, regardless of batch ordering. Up-tier to T2+ is the gore beat.
+			if String(event.get("condition", "")) == "bleeding" \
+					and int(event.get("to_tier", 0)) >= 2 \
+					and int(event.get("from_tier", 0)) < int(event.get("to_tier", 0)):
 				_award(HypeEngine.credited_actor(events, i), "gorefest", out)
 		"bleed_out_stabilized":
 			_award_fan_favorite(event, out)

@@ -148,6 +148,36 @@ func test_gorefest_no_closer_stays_uncredited() -> void:
 	assert_true(tag_events(wrong, "gorefest").is_empty(), "bleeding T1 and non-bleeding advances are not Gorefest")
 
 
+func test_gorefest_reaction_dealt_gore_credits_the_reactor() -> void:
+	# A reaction OPENS with reaction_resolved BEFORE the gore it deals (unlike a
+	# scheduled strike, which closes with action_resolved after). credited_actor's
+	# backward fallback must credit the reactor, or a counter-kill earns nothing.
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	var out: Array[Dictionary] = sim.tags.ingest([
+		{"type": "reaction_resolved", "actor": "a", "cost": 1, "key": "counter"},
+		{"type": "part_destroyed", "combatant": "b", "part": "left_arm"},
+	])
+	var ev: Array[Dictionary] = tag_events(out, "gorefest")
+	assert_eq(ev.size(), 1, "the reaction-dealt part break is a Gorefest beat")
+	assert_eq(String(ev[0].get("combatant", "")), "a", "credited to the reactor, not the victim or nobody")
+	assert_eq(progress_of(sim, "b", "gorefest"), 0, "the maimed victim earns nothing")
+
+
+func test_gorefest_ignores_downtier_bleeding() -> void:
+	# A clock-reset "rested" advance is emitted from_tier > to_tier; even when a
+	# closer sits after it in the batch, an easing wound is not a gore beat.
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	var out: Array[Dictionary] = sim.tags.ingest([
+		{"type": "condition_advanced", "combatant": "b", "part": "torso", "condition": "bleeding", "from_tier": 3, "to_tier": 2, "reason": "rested"},
+		{"type": "action_resolved", "actor": "a", "kind": "attack", "result": "ok", "rounds": 1},
+	])
+	assert_true(tag_events(out, "gorefest").is_empty(), "a down-tier (healing) bleed is not Gorefest even with a closer present")
+
+
 func test_blooper_reel_detects_forced_actions() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a")
@@ -177,6 +207,45 @@ func test_scene_stealer_consumes_hype_outputs() -> void:
 		{"type": "hype_band_changed", "from_band": "warm", "to_band": "hot"},
 	])
 	assert_true(tag_events(noise, "scene_stealer").is_empty(), "unrelated hype events are not Scene Stealer")
+
+
+## The end-to-end attribution the direct-feed test above cannot see: for a
+## victim-subject goal the completing event is ABOUT the victim, so Scene Stealer
+## must ride HypeEngine's completed_by (the striker), not the event subject.
+func test_scene_stealer_credits_goal_completer_not_victim() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	sim.hype.active_goal = {"id": "finish_them", "name": "FINISH THEM!", "kind": "takedown", "params": {}, "payout": 80, "clocks_left": 3}
+	# a lands the lethal blow on b ("friendly death still counts — it's cinema").
+	var batch: Array[Dictionary] = [
+		{"type": "combatant_died", "combatant": "b"},
+		{"type": "action_resolved", "actor": "a", "kind": "attack", "result": "ok", "rounds": 1},
+	]
+	batch.append_array(sim.hype.ingest(batch))  # mirror _post: hype outputs join the batch
+	sim.tags.ingest(batch)
+	assert_eq(progress_of(sim, "a", "scene_stealer"), 1, "the killer who completed the takedown earns Scene Stealer")
+	assert_eq(progress_of(sim, "b", "scene_stealer"), 0, "the dead victim earns nothing")
+
+
+## Guards the regression the naive 'always use credited_actor' fix would cause:
+## body_block's completer is the BLOCKER (the event subject), never the attacker
+## whose action_resolved closes the batch.
+func test_scene_stealer_body_block_credits_blocker_not_attacker() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "d")  # the defender/blocker
+	add_human(sim, "x", {"position": [1, 0]})  # the attacker whose strike is blocked
+	sim.hype.active_goal = {"id": "body_block", "name": "BODY BLOCK!", "kind": "body_block",
+		"params": {"reaction_keys": ["brace"]}, "payout": 45, "clocks_left": 2}
+	# The attacker x strikes; d blocks; x's action_resolved closes the batch.
+	var batch: Array[Dictionary] = [
+		{"type": "attack_blocked", "combatant": "d", "part": "torso", "reason": "surface_immunity"},
+		{"type": "action_resolved", "actor": "x", "kind": "attack", "result": "ok", "rounds": 1},
+	]
+	batch.append_array(sim.hype.ingest(batch))
+	sim.tags.ingest(batch)
+	assert_eq(progress_of(sim, "d", "scene_stealer"), 1, "the blocker completed Body Block! and earns Scene Stealer")
+	assert_eq(progress_of(sim, "x", "scene_stealer"), 0, "the attacker (credited_actor) must NOT be credited the block")
 
 
 func test_fan_favorite_counts_dramatic_beats() -> void:
@@ -564,3 +633,46 @@ func test_held_tag_survives_roundtrip_and_still_resonates() -> void:
 	resumed.hype.ingest(batch)
 	assert_eq(resumed.hype.meter, roundi(HypeEngine.EVENT_WEIGHTS["part_destroyed"] * 1.5),
 		"the restored held tag still resonates (hype.tags re-wired in from_dict)")
+
+
+func test_move_streak_survives_roundtrip() -> void:
+	# move_accum / move_streak_done are serialized; a save taken mid-streak must
+	# resume without dropping the accumulation. Discriminating: the pre-save spaces
+	# are load-bearing for the post-resume credit (a dropped move_accum would NOT
+	# cross the threshold on the resumed single space).
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	var need: int = maxi(2, int(sim.tags.by_key["3am_energy"]["detector"]["streak_spaces"]))
+	assert_true(sim.tags.ingest([{"type": "moved", "actor": "a", "spaces": need - 1}]).is_empty(),
+		"need-1 spaces stays just under the streak window")
+	assert_eq(int(sim.tags.move_accum.get("a", 0)), need - 1, "precondition: mid-streak accumulation present")
+	var resumed: CombatSim = CombatSim.from_dict(sim.to_dict())
+	assert_eq(int(resumed.tags.move_accum.get("a", 0)), need - 1, "move_accum survived the round-trip")
+	var hit: Array[Dictionary] = resumed.tags.ingest([{"type": "moved", "actor": "a", "spaces": 1}])
+	assert_eq(int(tag_events(hit, "3am_energy")[0].get("count", 0)), 1,
+		"the one resumed space completes the streak — proving the pre-save accumulation carried")
+	assert_true(resumed.tags.ingest([{"type": "moved", "actor": "a", "spaces": need}]).is_empty(),
+		"move_streak_done carried too — the same Clock does not re-credit after resume")
+
+
+func test_stacked_resonance_folds_deterministically() -> void:
+	# Two held tags matching the same token (gorefest + formation both select
+	# part_destroyed) fold successively, key-sorted — so the result is an integer,
+	# independent of held-key insertion order, and strictly above a single tag.
+	# Expected value is derived from the live pct (numbers are PLACEHOLDER, R14).
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	sim.tags.held["a"] = {"gorefest": true}
+	var single: int = sim.tags.apply_resonance("a", "part_destroyed", 100)
+	sim.tags.held["a"] = {"gorefest": true, "formation": true}
+	var both_ab: int = sim.tags.apply_resonance("a", "part_destroyed", 100)
+	sim.tags.held["a"] = {"formation": true, "gorefest": true}  # opposite insertion order
+	var both_ba: int = sim.tags.apply_resonance("a", "part_destroyed", 100)
+	assert_eq(typeof(both_ab), TYPE_INT, "resonance returns an int, never a float")
+	assert_eq(both_ab, both_ba, "the fold is independent of held-key insertion order (keys are sorted)")
+	assert_true(both_ab > single, "the second matching held tag compounds on top of the first")
+	# Matches the documented round-half-up per-step fold (formation sorts before gorefest).
+	var pct_f: int = int(sim.tags.by_key["formation"]["resonance"]["resonance_pct"])
+	var pct_g: int = int(sim.tags.by_key["gorefest"]["resonance"]["resonance_pct"])
+	var expected: int = int((int((100 * pct_f + 50) / 100) * pct_g + 50) / 100)
+	assert_eq(both_ab, expected, "compounds per the round-half-up step formula")

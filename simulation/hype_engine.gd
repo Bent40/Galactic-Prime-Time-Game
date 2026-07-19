@@ -133,6 +133,7 @@ func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 				"type": "hype_goal_completed",
 				"goal": String(active_goal.get("id", "")),
 				"combatant": _attribution(event),
+				"completed_by": _goal_completer(event, i, events),
 				"spectacle_points": payout,
 			})
 			active_goal = {}
@@ -217,15 +218,26 @@ func _resonate(events: Array[Dictionary], index: int, event: Dictionary, points:
 
 
 ## Same-batch attacker attribution (RULED item 6, PROVISIONAL extends R11 #14):
-## a victim-attributed offensive event is credited to the actor of the NEXT
-## action_resolved/reaction_resolved in the same batch — the resolver emits
-## strike events BEFORE their closing resolution, so the forward pairing is
-## deterministic and replay-stable. No closer ahead (e.g. clock-driven condition
-## advancement) → uncredited, which is correct: nobody performed it.
+## a victim-attributed offensive event is credited to the actor whose action or
+## reaction produced it, found by the emit-order convention of the two producers:
+##  - A SCHEDULED strike appends its closing action_resolved AFTER its victim
+##    beats (_resolve_strike), so scan FORWARD to the first closer.
+##  - A REACTION opens with reaction_resolved BEFORE the gore it deals (reactions
+##    are out of schedule; CombatSim dispatches them as their own command, so a
+##    reaction batch never also carries a scheduled action_resolved). With no
+##    forward closer, fall back to the nearest PRECEDING reaction_resolved.
+## Both are deterministic and replay-stable. A victim beat with neither (e.g.
+## clock-driven condition advancement) stays uncredited — correct: nobody
+## performed it. NB the forward scan assumes a strike's victim beats and its
+## closer stay contiguous (true for every current emitter); an interleaved
+## foreign action_resolved would miscredit — bound the scan if that ever changes.
 static func credited_actor(events: Array[Dictionary], index: int) -> String:
 	for j: int in range(index, events.size()):
 		var etype := String(events[j].get("type", ""))
 		if etype == "action_resolved" or etype == "reaction_resolved":
+			return String(events[j].get("actor", ""))
+	for j: int in range(index - 1, -1, -1):
+		if String(events[j].get("type", "")) == "reaction_resolved":
 			return String(events[j].get("actor", ""))
 	return ""
 
@@ -325,6 +337,25 @@ func _goal_completed_by(event: Dictionary) -> bool:
 			active_goal["progress"] = moved_total
 			return moved_total >= int(params.get("spaces", 1))
 	return false
+
+
+## The contestant who COMPLETED the active goal — distinct from the completing
+## event's own subject for the three victim-subject kinds (takedown / overkill /
+## part_break), whose completing event is ABOUT the maimed victim, not the
+## striker who earned it. Those resolve to the batch's credited_actor (the
+## striker or reactor). Every other kind is already actor-subject, so its own
+## attribution is the completer — critically body_block, whose attack_blocked
+## completer is the BLOCKER (event.combatant), not credited_actor's attacker.
+## Falls back to _attribution when no closer is found. (Consumed by I-13's Scene
+## Stealer so the tag lands on the performer; the hype LEDGER's own victim-credit
+## for these kinds is the pre-existing provisional attribution, deferred to
+## attribution-v2 / task #13 — this does not touch it.)
+func _goal_completer(event: Dictionary, index: int, events: Array[Dictionary]) -> String:
+	match String(active_goal.get("kind", "")):
+		"takedown", "overkill", "part_break":
+			var a: String = credited_actor(events, index)
+			return a if a != "" else _attribution(event)
+	return _attribution(event)
 
 
 func _credit(event: Dictionary, points: int) -> void:
