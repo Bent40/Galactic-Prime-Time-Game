@@ -215,3 +215,45 @@ func test_dissolution_still_removes_a_human() -> void:
 			out = true
 			break
 	assert_true(out, "dissolving a human's head (lethal + exposed) still mind-collapses them")
+
+
+# ---------------------------------------------------------------- direct-damage sink (forced collateral)
+
+func test_hidden_network_takes_no_damage_from_any_source() -> void:
+	# damage_part (the central HP sink) blocks damage to a part hidden behind an
+	# un-breached surface immunity — forced collateral / environment can't chip or
+	# destroy the undiscovered network pre-breach.
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	var ev: Array[Dictionary] = sim.cond.damage_part(sim.combatants["boss"], "network", 50, "forced", "", 0)
+	var blocked := false
+	for e: Dictionary in ev:
+		if String(e.get("type", "")) == "damage_blocked":
+			blocked = true
+	assert_true(blocked, "damage to the hidden network is blocked by surface immunity")
+	assert_true(sim.combatants["boss"].alive, "the boss does not die to raw damage on its undiscovered core")
+	assert_eq(int(sim.combatants["boss"].parts["network"]["hp"]), 50, "the network takes no HP damage while hidden")
+	assert_false(sim.combatants["boss"].breached, "and it never breached")
+
+
+func test_forced_collateral_default_part_skips_the_hidden_network() -> void:
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	var pk: String = ForcedAction.default_part(sim.combatants["boss"])
+	assert_true(pk != "network", "collateral default part skips the hidden network (got '%s')" % pk)
+	assert_false(bool(sim.combatants["boss"].parts.get(pk, {}).get("hidden", false)), "and skips any hidden part")
+
+
+func test_exposed_network_takes_damage_after_breach() -> void:
+	# Positive control: the sink gate only blocks HIDDEN parts — after the breach the
+	# exposed network takes damage normally (the intended win path).
+	var sim: CombatSim = make_sim()
+	add_boss(sim)
+	sim.apply_command({"type": "apply_condition", "target": "boss", "part": "right_hand", "condition": "bleeding", "tier": 1})
+	for i: int in range(4):
+		advance(sim, Clock.TICKS_PER_CLOCK)
+		if sim.combatants["boss"].breached:
+			break
+	assert_true(sim.combatants["boss"].breached, "precondition: breached")
+	sim.cond.damage_part(sim.combatants["boss"], "network", 10, "weapon", "", sim.clock.tick)
+	assert_eq(int(sim.combatants["boss"].parts["network"]["hp"]), 40, "the exposed network takes damage post-breach")

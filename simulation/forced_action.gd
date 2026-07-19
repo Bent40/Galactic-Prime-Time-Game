@@ -133,16 +133,19 @@ static func collateral_target(actor: CombatantState, original_target: String, co
 static func default_part(c: CombatantState) -> String:
 	var keys: Array = c.parts.keys()
 	keys.sort()
+	# Never route an accidental hit onto a part hidden behind an un-breached surface
+	# immunity (the boss's undiscovered network) — collateral hits visible flesh (F2).
 	for part_key: Variant in keys:
-		if String(part_key).contains("torso"):
+		if String(part_key).contains("torso") and not bool((c.parts[part_key] as Dictionary).get("hidden", false)):
 			return String(part_key)
 	for part_key: Variant in keys:
 		var part: Dictionary = c.parts[part_key]
-		if bool(part.get("lethal", false)) and not String(part_key).contains("head"):
+		if bool(part.get("lethal", false)) and not String(part_key).contains("head") and not bool(part.get("hidden", false)):
 			return String(part_key)
-	if keys.is_empty():
-		return ""
-	return String(keys[0])
+	for part_key: Variant in keys:
+		if not bool((c.parts[part_key] as Dictionary).get("hidden", false)):
+			return String(part_key)
+	return "" if keys.is_empty() else String(keys[0])
 
 
 func to_dict() -> Dictionary:

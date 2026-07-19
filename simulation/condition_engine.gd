@@ -404,6 +404,15 @@ func damage_part(c: CombatantState, part_key: String, amount: int, source_kind: 
 	if not c.alive or not c.parts.has(part_key):
 		return events
 	var part: Dictionary = c.parts[part_key]
+	# Surface immunity (F2): a part still hidden behind an un-breached surface
+	# immunity takes NO damage from ANY source — the central-HP-sink mirror of the
+	# resolver's attack-block, so forced-action collateral / environment / any
+	# future direct-damage route can't chip or destroy the undiscovered network
+	# before the party breaches. (Attacks are already blocked in the resolver, and
+	# the bleed-out drain skips hidden parts; this closes the last direct route.)
+	if Resistance.part_blocked_by_surface_immunity(c, part_key):
+		events.append({"type": "damage_blocked", "combatant": c.id, "part": part_key, "reason": "surface_immunity", "source": source_kind})
+		return events
 	events.append({
 		"type": "damage_applied",
 		"combatant": c.id, "part": part_key, "amount": amount, "source": source_kind,
