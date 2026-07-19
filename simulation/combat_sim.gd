@@ -37,6 +37,7 @@ var combatants: Dictionary = {}  # id -> CombatantState (shared with helpers)
 var cond: ConditionEngine
 var resolver: ActionResolver
 var hype: HypeEngine
+var tags: TagEngine
 var ai: EnemyAI
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
@@ -57,6 +58,12 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	resolver.setup(clock, combatants, cond, rng, ai)
 	hype = HypeEngine.new()
 	hype.setup(_goal_table(), sim_seed)
+	# Slice tags (I-13) — the second broadcast-plane consumer, wired after hype
+	# so its detectors also see hype outputs (Scene Stealer). HypeEngine reads
+	# held tags back through hype.tags for resonance.
+	tags = TagEngine.new()
+	tags.setup(static_data.get("tag_effects", {}), combatants)
+	hype.tags = tags
 	_rebuild_snapshot()
 
 
@@ -99,6 +106,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _set_status(cmd)
 		"camera_call":
 			events = _camera_call(cmd)
+		"bit":
+			events = _bit(cmd)
 		"ai_decide":
 			events = _ai_decide(cmd)
 		_:
@@ -124,6 +133,11 @@ func _post(events: Array[Dictionary]) -> void:
 	for id: Variant in ids:
 		events.append_array(ExposureEngine.refresh(combatants[id], clock.tick))
 	events.append_array(hype.ingest(events))
+	# Tag detection runs AFTER hype so Scene Stealer sees hype_goal_completed /
+	# hype_camera_call_started. Its tag_* outputs are system events (no
+	# spectacle_points), so a second hype pass is unneeded; The Bit's escalating
+	# spectacle already rides the bit_performed event hype scored above.
+	events.append_array(tags.ingest(events))
 	for event: Dictionary in events:
 		if not event.has("tick"):
 			event["tick"] = clock.tick
@@ -350,6 +364,30 @@ func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
 	return hype.camera_call(actor.id, target.id, stacks)
 
 
+## The Bit (I-13, RULED item 8) — the signature action that is MECHANICALLY NULL
+## by construction. It is NOT a normal action: it touches NO combatant state, the
+## clock, the action RNG, scheduling, cost, or conditions. Its ONLY effect is one
+## self-describing bit_performed event carrying escalating spectacle_points (base
+## + bonus per prior bit this deployment, from the TagEngine rider) — scored by
+## HypeEngine's generic spectacle hook, detected by TagEngine for the_bit. The
+## character does the bit despite zero mechanical benefit; spectacle is the only
+## payout. Read-only actor gates (rejections mutate nothing); contestants only.
+func _bit(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if EnemyAI.AI_CATEGORIES.has(actor.category):
+		return [{"type": "command_rejected", "reason": "not_a_contestant", "actor": actor.id}]
+	if not actor.alive or actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	return [{
+		"type": "bit_performed",
+		"actor": actor.id,
+		"key": String(cmd.get("key", "bit")),
+		"spectacle_points": tags.bit_spectacle(actor.id),
+	}]
+
+
 func _set_status(cmd: Dictionary) -> Array[Dictionary]:
 	var target: CombatantState = combatants.get(String(cmd.get("target", "")))
 	if target == null:
@@ -526,6 +564,7 @@ func to_dict() -> Dictionary:
 		"tick_snapshot": tick_snapshot.duplicate(true),
 		"static_data": static_data.duplicate(true),
 		"hype": hype.to_dict(),
+		"tags": tags.to_dict(),
 		"ai": ai.to_dict(),
 	}
 
@@ -539,6 +578,10 @@ static func from_dict(data: Dictionary) -> CombatSim:
 		sim.combatants[String(id)] = CombatantState.from_dict(combatant_dicts[id])
 	sim.tick_snapshot = (data.get("tick_snapshot", {}) as Dictionary).duplicate(true)
 	sim.hype = HypeEngine.from_dict(data.get("hype", {}))
+	# Pre-I13 saves lack "tags": a fresh TagEngine (empty state) matches a new
+	# sim's tagless start, so the resume path stays sound. Refs (effect table,
+	# combatants, hype.tags) are re-wired below.
+	sim.tags = TagEngine.from_dict(data.get("tags", {}))
 	# Pre-I16 saves lack "ai": keep the fresh salted engine (matches a new sim
 	# on the same seed) instead of resuming on state 0 (R11 #15).
 	if data.has("ai"):
@@ -550,6 +593,11 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng, sim.ai)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
 	sim.hype.set_goal_table(sim._goal_table())
+	# Re-wire the tag engine (effect table is static data, never saved; the
+	# combatants ref is a live object) and reconnect hype's resonance lookup.
+	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))
+	sim.tags.wire(sim.combatants)
+	sim.hype.tags = sim.tags
 	return sim
 
 

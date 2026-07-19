@@ -30,5 +30,29 @@
     "params": {},
     "payout": 45,
     "deadline_clocks": 2
+  },
+  {
+    "id": "pratfall",
+    "name": "Pratfall!",
+    "kind": "forced_action",
+    "params": {},
+    "payout": 35,
+    "deadline_clocks": 3
+  },
+  {
+    "id": "body_block",
+    "name": "Body Block!",
+    "kind": "body_block",
+    "params": {"reaction_keys": ["brace", "block", "guard", "shield", "body_block", "intercept"]},
+    "payout": 45,
+    "deadline_clocks": 2
+  },
+  {
+    "id": "zoomies",
+    "name": "Zoomies!",
+    "kind": "move_spaces",
+    "params": {"spaces": 6, "within_clocks": 1},
+    "payout": 40,
+    "deadline_clocks": 1
   }
 ]
