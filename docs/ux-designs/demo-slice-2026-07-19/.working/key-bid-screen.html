@@ -1,0 +1,354 @@
+<meta charset="utf-8">
+<title>GPT — The Bidding (Patron Bid Screen)</title>
+<style>
+  :root{
+    --bg:#04050d; --panel:#090c1a; --panel2:#0d1020; --cyan:#00d4ff; --gold:#c8a84b;
+    --danger:#ff2255; --success:#00ff88; --text:#b8c8e0; --muted:#3a4560; --border:#1a2540;
+    --purple:#a855f7; --mythic:#ec4899; --bronze:#cd7f32; --silver:#c0c0c0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  .mono{font-family:'Courier New',monospace}
+  .lbl{text-transform:uppercase;letter-spacing:3px;font-size:9px;color:var(--muted)}
+  @keyframes blink{0%,45%{opacity:1}50%,100%{opacity:.15}}
+  .live-dot{width:11px;height:11px;border-radius:50%;background:var(--danger);
+    box-shadow:0 0 12px var(--danger),0 0 4px var(--danger);animation:blink 1.1s infinite}
+
+  .screen{width:1600px;height:1000px;position:relative;padding:10px 14px 12px;display:flex;flex-direction:column;gap:11px;
+    background:
+      radial-gradient(1000px 600px at 26% -6%, rgba(0,212,255,.06), transparent 60%),
+      radial-gradient(1000px 600px at 74% -6%, rgba(236,72,153,.06), transparent 60%),
+      radial-gradient(900px 700px at 50% 120%, #0a0714 0%, transparent 55%), var(--bg)}
+
+  /* broadcast bar */
+  .broadcast{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;
+    background:linear-gradient(180deg,#0b1024,#070a17);border:1px solid var(--border);border-radius:5px}
+  .bc-left{display:flex;align-items:center;gap:14px}
+  .live-pill{display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:4px;
+    background:rgba(255,34,85,.12);border:1px solid rgba(255,34,85,.5)}
+  .live-pill b{color:#ff6b88;font-size:12px;letter-spacing:2px}
+  .rec{color:var(--muted);font-size:13px;letter-spacing:1px}.rec b{color:var(--text)}
+  .brand{font-weight:900;font-size:15px;letter-spacing:5px;color:var(--cyan);text-shadow:0 0 16px rgba(0,212,255,.6)}
+  .host-chip{display:flex;align-items:center;gap:7px;padding:4px 11px;border-radius:20px;
+    background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.55)}
+  .host-chip b{color:var(--mythic);font-size:11px;letter-spacing:2px}
+
+  /* gold header */
+  .header{text-align:center;padding:12px 0 6px;position:relative}
+  .header h1{font-weight:900;font-size:30px;letter-spacing:8px;color:var(--gold);
+    text-shadow:0 0 26px rgba(200,168,75,.6),0 0 60px rgba(200,168,75,.2)}
+  .header .sub{font-size:11px;letter-spacing:4px;color:var(--muted);margin-top:6px}
+  .header .sub b{color:var(--text)}
+  .rule{height:1px;background:linear-gradient(90deg,transparent,rgba(200,168,75,.5),transparent);margin:10px 22% 0}
+
+  /* two contestant columns */
+  .columns{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:0}
+  .colwrap{display:flex;flex-direction:column;gap:11px;min-height:0}
+  .chead{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:6px;
+    background:var(--panel);border:1px solid var(--border);position:relative;overflow:hidden}
+  .chead.imani{border-color:rgba(0,212,255,.4);box-shadow:0 0 0 1px rgba(0,212,255,.08) inset}
+  .chead.dario{border-color:rgba(236,72,153,.35);box-shadow:0 0 0 1px rgba(236,72,153,.08) inset}
+  .cavatar{width:52px;height:52px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:26px;
+    border:2px solid var(--border);background:var(--panel2)}
+  .chead.imani .cavatar{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,212,255,.4)}
+  .chead.dario .cavatar{border-color:var(--gold);box-shadow:0 0 16px rgba(200,168,75,.4)}
+  .cinfo{flex:1}
+  .cname{font-size:18px;font-weight:900;letter-spacing:1px}
+  .chead.imani .cname{color:var(--cyan)} .chead.dario .cname{color:var(--gold)}
+  .cname b{opacity:.65;font-weight:700}
+  .ctag{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px}
+  .seeking{font-size:8px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;text-align:right}
+  .seeking .n{font-size:11px;color:var(--text);display:block;margin-top:3px}
+
+  /* god bidder card */
+  .cards{display:flex;flex-direction:column;gap:10px}
+  .god{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:7px;
+    padding:13px 15px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+  .god.signed{border-color:var(--gold);box-shadow:0 0 24px rgba(200,168,75,.22),inset 0 0 0 1px rgba(200,168,75,.15);
+    background:linear-gradient(180deg,rgba(200,168,75,.06),var(--panel))}
+  .god.rival{opacity:.96}
+  .god.outbid{border-color:rgba(255,34,85,.35)}
+  .ribbon{position:absolute;top:11px;right:-34px;transform:rotate(45deg);width:130px;text-align:center;
+    background:linear-gradient(90deg,#8a6a20,var(--gold));color:#180f02;font-weight:900;font-size:10px;letter-spacing:3px;
+    padding:4px 0;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+  .g-top{display:flex;align-items:center;gap:11px}
+  .sigil{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:9px;
+    border:1.5px solid var(--border);background:var(--panel2);color:var(--gold)}
+  .god.signed .sigil{border-color:var(--gold);color:var(--gold);box-shadow:0 0 14px rgba(200,168,75,.4)}
+  .god.rival .sigil{color:var(--cyan)}
+  .g-id{flex:1;min-width:0}
+  .g-name{font-size:16px;font-weight:900;letter-spacing:2px;color:var(--text)}
+  .god.signed .g-name{color:var(--gold);text-shadow:0 0 14px rgba(200,168,75,.4)}
+  .god.signed .g-top{padding-right:44px}
+  .god.signed .stars .il{margin-top:3px}
+  .g-trad{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+  .stars{font-size:12px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
+  .stars .off{color:var(--muted)}
+  .stars .il{display:block;font-size:7px;letter-spacing:2px;color:var(--muted);text-align:right;margin-top:1px}
+
+  .deal{display:grid;grid-template-columns:1fr;gap:6px;border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);padding:9px 0}
+  .drow{display:flex;gap:9px;font-size:11px;line-height:1.35}
+  .dk{flex:0 0 54px;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding-top:2px}
+  .dk.favor{color:var(--success)} .dk.taboo{color:var(--danger)} .dk.boons{color:var(--purple)}
+  .dv{color:var(--text)}
+  .boons{display:flex;gap:6px;flex-wrap:wrap}
+  .domain{font-size:9px;letter-spacing:1px;font-weight:700;padding:3px 8px;border-radius:4px;
+    background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.4);color:#c79cf5;text-transform:uppercase}
+
+  .g-bot{display:flex;align-items:center;justify-content:space-between}
+  .bid{display:flex;align-items:center;gap:9px}
+  .chips{letter-spacing:1px;font-size:15px}
+  .chips .c{color:var(--gold);text-shadow:0 0 8px rgba(200,168,75,.5)}
+  .chips .e{color:var(--muted)}
+  .bidval{font-size:9px;letter-spacing:1px;color:var(--muted)}
+  .bidval b{color:var(--gold);font-size:13px;letter-spacing:1px}
+  .mult{font-size:19px;font-weight:900;letter-spacing:1px;color:var(--gold);
+    text-shadow:0 0 14px rgba(200,168,75,.5)}
+  .god.rival .mult{color:var(--cyan);text-shadow:0 0 14px rgba(0,212,255,.4)}
+  .persona{display:flex;gap:6px}
+  .trait{font-size:8.5px;letter-spacing:1px;font-weight:800;padding:3px 7px;border-radius:12px;text-transform:uppercase}
+  .trait.pos{background:rgba(0,255,136,.09);border:1px solid rgba(0,255,136,.35);color:var(--success)}
+  .trait.neg{background:rgba(255,34,85,.1);border:1px solid rgba(255,34,85,.4);color:#ff6b88}
+  .trait.wry{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.4);color:#c79cf5}
+  .outflag{font-size:8px;letter-spacing:2px;font-weight:800;color:#ff6b88;
+    background:rgba(255,34,85,.1);border:1px solid rgba(255,34,85,.4);padding:2px 7px;border-radius:3px}
+
+  /* footer */
+  .footer{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-radius:6px;
+    background:linear-gradient(180deg,#0b1024,#080b18);border:1px solid var(--border)}
+  .fnote{font-size:11px;letter-spacing:1px;color:var(--muted)}
+  .fnote b{color:var(--mythic)}
+  .lockbtn{padding:14px 28px;border-radius:6px;font-weight:900;letter-spacing:3px;font-size:15px;color:var(--gold);
+    background:linear-gradient(180deg,rgba(200,168,75,.22),rgba(200,168,75,.07));border:1.5px solid var(--gold);
+    box-shadow:0 0 24px rgba(200,168,75,.35);text-shadow:0 0 14px rgba(200,168,75,.6)}
+  .potbar{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:2px;color:var(--muted)}
+  .potbar b{color:var(--gold);font-size:15px}
+
+  .wm{position:fixed;bottom:6px;right:12px;font-size:9px;letter-spacing:3px;color:rgba(184,200,224,.16);
+    transform:rotate(-1deg);font-weight:800;pointer-events:none}
+</style>
+
+<div class="screen">
+
+  <div class="broadcast">
+    <div class="bc-left">
+      <div class="live-pill"><span class="live-dot"></span><b>LIVE</b></div>
+      <div class="rec mono">PRE-RUN · <b>DIVINITY EXCHANGE OPEN</b></div>
+    </div>
+    <div class="brand">GALACTIC PRIME TIME</div>
+    <div class="host-chip"><span>🦩</span><b>MOMUS</b></div>
+  </div>
+
+  <div class="header">
+    <h1>THE BIDDING</h1>
+    <div class="sub">PATRONS WAGER ON <b>TONIGHT'S CONTESTANTS</b> · GODS BUY LOW ON DESPERATE MORTALS</div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="columns">
+
+    <!-- ============ IMANI COLUMN ============ -->
+    <div class="colwrap">
+      <div class="chead imani">
+        <div class="cavatar">🛡️</div>
+        <div class="cinfo">
+          <div class="cname">IMANI <b>"THE DOOR"</b></div>
+          <div class="ctag">Heavy-rescue veteran · the wall between the monster and everyone else</div>
+        </div>
+        <div class="seeking">Patron<span class="n">3 GODS BIDDING</span></div>
+      </div>
+
+      <div class="cards">
+        <!-- HESTIA signed -->
+        <div class="god signed">
+          <div class="ribbon">SIGNED</div>
+          <div class="g-top">
+            <div class="sigil">⬡</div>
+            <div class="g-id">
+              <div class="g-name">HESTIA</div>
+              <div class="g-trad">Greek Pantheon · Hearth &amp; Protection</div>
+            </div>
+            <div class="stars">★★★★<span class="off">★</span><span class="il">Influence 4/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Stabilize an ally's lethal part before it drops.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">Never abandon someone you could have carried out.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain">Protection</span><span class="domain">Warding Fire</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c">●●●●</span><span class="e">●</span></span>
+              <span class="bidval">BID <b class="mono">7,400</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="trait pos">Warm</span><span class="trait pos">Steadfast</span>
+              <span class="mult mono">×2.4</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ARES outbidding -->
+        <div class="god rival outbid">
+          <div class="g-top">
+            <div class="sigil" style="color:var(--danger)">⚔</div>
+            <div class="g-id">
+              <div class="g-name">ARES</div>
+              <div class="g-trad">Greek Pantheon · War &amp; Bloodlust</div>
+            </div>
+            <div class="stars">★★★★★<span class="il">Influence 5/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Finish a fight without giving a single step of ground.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">Never withdraw — retreat voids the pact.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain">Carnage</span><span class="domain">Fury</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c">●●●●●</span></span>
+              <span class="bidval">BID <b class="mono">9,900</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="outflag">▲ OUTBIDDING</span>
+              <span class="trait neg">Hungry</span><span class="trait neg">Misreads Her</span>
+              <span class="mult mono" style="color:var(--danger);text-shadow:0 0 14px rgba(255,34,85,.4)">×2.7</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ATHENA -->
+        <div class="god rival">
+          <div class="g-top">
+            <div class="sigil" style="color:var(--silver)">⬡</div>
+            <div class="g-id">
+              <div class="g-name">ATHENA</div>
+              <div class="g-trad">Greek Pantheon · Strategy &amp; the Shield</div>
+            </div>
+            <div class="stars">★★★★<span class="off">★</span><span class="il">Influence 4/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Win the encounter by outthinking, not outhitting.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">No reckless charge into an untelegraphed line.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain">Tactics</span><span class="domain">Bulwark</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c">●●●</span><span class="e">●●</span></span>
+              <span class="bidval">BID <b class="mono">6,100</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="trait wry">Calculating</span><span class="trait wry">Proud</span>
+              <span class="mult mono">×1.9</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ DARIO COLUMN ============ -->
+    <div class="colwrap">
+      <div class="chead dario">
+        <div class="cavatar">🎭</div>
+        <div class="cinfo">
+          <div class="cname">DARIO <b>"ENCORE"</b></div>
+          <div class="ctag">Boardwalk hustler turned showman · the heel you pay to boo</div>
+        </div>
+        <div class="seeking">Patron<span class="n">3 GODS BIDDING</span></div>
+      </div>
+
+      <div class="cards">
+        <!-- ENYO signed -->
+        <div class="god signed">
+          <div class="ribbon">SIGNED</div>
+          <div class="g-top">
+            <div class="sigil" style="color:var(--mythic);border-color:var(--mythic);box-shadow:0 0 14px rgba(236,72,153,.4)">⬡</div>
+            <div class="g-id">
+              <div class="g-name" style="color:var(--mythic);text-shadow:0 0 14px rgba(236,72,153,.4)">ENYO</div>
+              <div class="g-trad">Greek Pantheon · Carnage &amp; Chaos</div>
+            </div>
+            <div class="stars">★★★★<span class="off">★</span><span class="il">Influence 4/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Trigger three Forced Actions in a single combat.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">Never end a fight in under one Clock — milk it.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain" style="background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:#f5a3cd">Chaos</span><span class="domain" style="background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:#f5a3cd">Dread</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c" style="color:var(--mythic);text-shadow:0 0 8px rgba(236,72,153,.5)">●●●●</span><span class="e">●</span></span>
+              <span class="bidval">BID <b class="mono" style="color:var(--mythic)">8,600</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="trait neg">Gleeful</span><span class="trait neg">Cruel</span>
+              <span class="mult mono" style="color:var(--mythic);text-shadow:0 0 14px rgba(236,72,153,.5)">×3.1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOKI outbidding -->
+        <div class="god rival outbid">
+          <div class="g-top">
+            <div class="sigil" style="color:var(--success)">⬡</div>
+            <div class="g-id">
+              <div class="g-name">LOKI</div>
+              <div class="g-trad">Norse Pantheon · Trickery &amp; Lies</div>
+            </div>
+            <div class="stars">★★★★<span class="off">★</span><span class="il">Influence 4/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Win a fight without landing the first blow.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">Never tell the same lie to the crowd twice.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain">Mischief</span><span class="domain">Illusion</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c">●●●●●</span></span>
+              <span class="bidval">BID <b class="mono">9,300</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="outflag">▲ OUTBIDDING</span>
+              <span class="trait wry">Amused</span><span class="trait neg">Treacherous</span>
+              <span class="mult mono">×2.8</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HERMES -->
+        <div class="god rival">
+          <div class="g-top">
+            <div class="sigil" style="color:var(--gold)">⬡</div>
+            <div class="g-id">
+              <div class="g-name">HERMES</div>
+              <div class="g-trad">Greek Pantheon · Thieves &amp; Showmen</div>
+            </div>
+            <div class="stars">★★★<span class="off">★★</span><span class="il">Influence 3/5</span></div>
+          </div>
+          <div class="deal">
+            <div class="drow"><span class="dk favor">Favor</span><span class="dv">Steal a finishing blow the crowd expected someone else to land.</span></div>
+            <div class="drow"><span class="dk taboo">Taboo</span><span class="dv">Never con the broke — marks who can afford it only.</span></div>
+            <div class="drow"><span class="dk boons">Boons</span><span class="dv boons"><span class="domain">Speed</span><span class="domain">Larceny</span></span></div>
+          </div>
+          <div class="g-bot">
+            <div class="bid">
+              <span class="chips"><span class="c">●●●</span><span class="e">●●</span></span>
+              <span class="bidval">BID <b class="mono">5,700</b> favor</span>
+            </div>
+            <div class="persona">
+              <span class="trait wry">Slick</span><span class="trait wry">Fickle</span>
+              <span class="mult mono">×2.2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="potbar">TABLE POT <b class="mono">47.0k</b> FAVOR · SEEDED PATRONS HELD FOR THE SLICE</div>
+    <div class="fnote"><b>⚠ Rival gods may bless or curse mid-run</b> — an outbid god does not simply walk away.</div>
+    <div class="lockbtn">LOCK IN PATRONS ▶</div>
+  </div>
+
+  <div class="wm">PLACEHOLDER NUMBERS · R14</div>
+</div>
