@@ -3,10 +3,12 @@ extends Control
 ##
 ## PRESENTATION ONLY. This scene never imports or touches `simulation/` classes.
 ## It reads sim state exclusively through the GameController VIEW API
-## (view_clock / view_broadcast / view_combatants) and subscribes to
-## GameController signals so it re-renders as the command stream resolves. It
-## emits no commands in this pass (the action bar / skill chips are visuals only;
-## input wiring is the next increment).
+## (view_clock / view_broadcast / view_combatants), subscribes to GameController
+## signals so it re-renders as the command stream resolves, and drives input the
+## other way: the action bar / skill chips / Camera Call / The Bit / END TURN issue
+## real commands through GameController.apply_command (see the "input -> command"
+## section). It still authors NO sim state — every command is one the sim already
+## understands, and the HUD only re-binds off the resulting sim_event.
 ##
 ## Visual identity: docs/ux-designs/demo-slice-2026-07-19/DESIGN.md (the sister
 ## char-sheet palette, extended). Layout blueprint: .working/key-combat-hud.html.
@@ -42,6 +44,39 @@ const MYTHIC := "#ec4899"
 const FIRE := "#ff7a2f"
 
 var _gc = null  # GameController (untyped: it is the `Game` autoload script, no class_name)
+
+# ---- input wiring (this pass) ----------------------------------------------
+## The "ON THE CLOCK" contestant. The action bar + The Bit + Camera Call act as
+## this id. Defaults to the demo's on-the-clock contestant (Dario). Turn order is
+## not in the view API yet, so END TURN does NOT auto-rotate it (PLACEHOLDER) —
+## the driver / a contestant click sets it via set_active_actor().
+var _active_actor := "dario"
+
+## PLACEHOLDER: per-skill mechanics pending. The sim has NO per-skill mechanics —
+## declare_action takes raw damage — so every skill/attack button declares a REAL
+## attack (windup -> resolve -> damage -> breach) on the boss's flamethrower arm
+## (`left_hand`, the designed path in), TAGGED with the skill key (action.key),
+## differentiated only by a placeholder damage profile [type, amount, cost] (R14).
+## The specific skill effect (feint sets up, dance repositions, brace guards) is a
+## later content pass; today the button does a real thing, honestly labelled.
+const SKILL_PROFILES := {
+	"feint": ["bleeding", 5, 1],            # a probing cut — makes the arm bleed
+	"pressure_strike": ["crushed", 8, 1],   # a committed heavy blow — a 7+ burst
+	"dance": ["bleeding", 4, 1],            # a flourish jab
+	"strong_strike": ["crushed", 6, 1],
+	"overhead_slam": ["crushed", 9, 1],     # heavy — also a 7+ burst
+	"brace": ["bleeding", 3, 1],
+}
+const DEFAULT_SKILL_PROFILE := ["bleeding", 5, 1]
+const BOSS_DEFAULT_PART := "left_hand"  # the flamethrower arm — the designed path in
+const SKILL_ATTACK_RANGE := 2           # PLACEHOLDER reach so the demo's spacing lands (R14)
+
+# bound refs for the input feedback surfaces (set during _build)
+var _spot_title: Label
+var _spot_sub: Label
+var _boss_cond: Label
+var _chyron_line: RichTextLabel
+var _actionbar_who: Label
 
 # fonts
 var f_body: Font
@@ -114,6 +149,128 @@ func bind(game) -> void:
 
 func _on_event(_e: Dictionary = {}) -> void:
 	refresh()
+
+
+# ------------------------------------------------------------------ input -> command
+## Every button funnels through GameController.apply_command (the one command
+## gateway); the HUD re-binds off the resulting sim_event, so a resolved command
+## updates the HUD automatically. These handler methods are what the buttons'
+## click overlays call — and what the scripted preview driver calls directly.
+
+## Sets the on-the-clock contestant (the action bar / Camera Call / The Bit act as
+## this id). No full turn-order system — that needs data not in the view API yet.
+func set_active_actor(id: String) -> void:
+	_active_actor = id
+	if _actionbar_who != null:
+		_actionbar_who.text = _display_name_for(id)
+
+
+## Action-bar skill button (acts as the on-the-clock contestant).
+func _on_skill(skill_key: String) -> void:
+	_declare_skill_attack(_active_actor, skill_key)
+
+
+## Per-contestant skill chip (acts as that contestant).
+func _on_skill_for(actor_id: String, skill_key: String) -> void:
+	_declare_skill_attack(actor_id, skill_key)
+
+
+## Declares a real attack tagged with the skill key on the boss's flamethrower arm.
+## See SKILL_PROFILES — per-skill mechanics are a later content pass (PLACEHOLDER).
+func _declare_skill_attack(actor_id: String, skill_key: String) -> void:
+	var boss := _boss_id()
+	if boss == "":
+		_momus("No boss on the board.")
+		return
+	var prof: Array = SKILL_PROFILES.get(skill_key, DEFAULT_SKILL_PROFILE)
+	_issue({
+		"type": "declare_action",
+		"actor": actor_id,
+		"action": {
+			"kind": "attack",
+			"key": skill_key,  # tags the attack with the skill (content pass later)
+			"cost": int(prof[2]),
+			"attack_range": SKILL_ATTACK_RANGE,
+			"damage": {"type": String(prof[0]), "amount": int(prof[1])},
+			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
+		},
+	}, "%s winds up %s on the flamethrower arm" % [
+		_display_name_for(actor_id), skill_key.replace("_", " ").to_upper()])
+
+
+func _on_camera_call() -> void:
+	_issue({"type": "camera_call", "actor": _active_actor, "target": _active_actor},
+		"%s calls the camera onto themselves — swings now doubled" % _display_name_for(_active_actor))
+
+
+func _on_bit() -> void:
+	_issue({"type": "bit", "actor": _active_actor, "key": "encore_bow"},
+		"%s drops the Bit — pure spectacle for the crowd" % _display_name_for(_active_actor))
+
+
+## PLACEHOLDER: click-to-target movement pending. The arena board is a static
+## placeholder (no hex picking, and sim positions aren't reflected in it yet), so
+## MOVE is a narrated no-op — it issues no command rather than moving off-camera.
+## Wire a real 1-step move once the arena renders live positions.
+func _on_move() -> void:
+	_momus("MOVE — arena targeting is a placeholder this build")
+
+
+## END TURN drives the engine clock: advance_tick resolves every declared windup
+## and advances the Moment (the HUD re-binds off the resulting events). Turn order
+## is not in the view API yet, so the on-the-clock contestant is NOT auto-rotated
+## (PLACEHOLDER) — that needs a turn-order projection.
+func _on_end_turn() -> void:
+	_issue({"type": "advance_tick"}, "END TURN — the Moment resolves")
+
+
+## The one command funnel for the HUD: apply, surface any rejection in the Momus
+## chyron (never crash), otherwise show the flavor line. refresh() already ran via
+## sim_event during apply_command; the trailing refresh() is a belt-and-suspenders
+## repaint (the chyron text is set AFTER so it survives it).
+func _issue(cmd: Dictionary, flavor := "") -> void:
+	if _gc == null:
+		return
+	var events: Array = _gc.apply_command(cmd)
+	var rejected := ""
+	for e in events:
+		if String((e as Dictionary).get("type", "")) == "command_rejected":
+			rejected = String((e as Dictionary).get("reason", ""))
+			break
+	refresh()
+	if rejected != "":
+		_momus("DENIED · %s" % rejected.to_upper().replace("_", " "))
+	elif flavor != "":
+		_momus(flavor)
+
+
+## The boss = the combatant carrying a hidden or `network` part (stable pre- AND
+## post-breach: `hidden` clears on breach but the key still contains "network").
+func _boss_id() -> String:
+	if _gc == null:
+		return ""
+	for cd in _gc.view_combatants():
+		var c: Dictionary = cd
+		for pd in c.get("parts", []):
+			var p: Dictionary = pd
+			if bool(p.get("hidden", false)) or String(p.get("key", "")).contains("network"):
+				return String(c.get("id", ""))
+	return ""
+
+
+func _momus(text: String) -> void:
+	if _chyron_line != null:
+		_chyron_line.text = "[color=#e8d0dc]\"%s\"[/color]" % text
+
+
+## Display name from the view API (falls back to a tidy upper-cased id).
+func _display_name_for(id: String) -> String:
+	if _gc != null:
+		for cd in _gc.view_combatants():
+			var c: Dictionary = cd
+			if String(c.get("id", "")) == id:
+				return String(c.get("name", id)).to_upper()
+	return id.to_upper()
 
 
 # ------------------------------------------------------------------- fonts/util
@@ -671,6 +828,12 @@ func _build_stage() -> Control:
 	cam.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	cam.position = Vector2(14, -22)
 	stage.add_child(cam)
+	# Live boss-condition readout (bleeding/etc. on the boss) — bound in _bind_boss.
+	_boss_cond = _lab("", f_body, 11, _col("#ff6b88"), 2.0, true)
+	_boss_cond.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_boss_cond.position = Vector2(14, -40)
+	_boss_cond.visible = false
+	stage.add_child(_boss_cond)
 	return p
 
 
@@ -873,12 +1036,14 @@ func _build_right() -> Control:
 	var camtop := _hbox(7)
 	camtop.alignment = BoxContainer.ALIGNMENT_CENTER
 	camtop.add_child(_emo("📸", 16))
-	camtop.add_child(_glow("CAMERA CALL ×1", f_body, 14, _col(GOLD), 2.0, 6.0))  # PLACEHOLDER: stack count not in view API
+	# Bound live from view_broadcast().spotlight (empty = available, set = active).
+	_spot_title = _glow("CAMERA CALL", f_body, 14, _col(GOLD), 2.0, 6.0)
+	camtop.add_child(_spot_title)
 	camv.add_child(camtop)
-	var camsub := _lab("CHARM-GATED · AVAILABLE · DOUBLES GAINS & LOSSES", f_body, 9, _col("#8a7a4a"), 2.0, true)
-	camsub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	camsub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	camv.add_child(camsub)
+	_spot_sub = _lab("CHARM-GATED · AVAILABLE · DOUBLES GAINS & LOSSES", f_body, 9, _col("#8a7a4a"), 2.0, true)
+	_spot_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spot_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	camv.add_child(_spot_sub)
 	camm.add_child(camv)
 	spot.add_child(cam)
 	var spotdesc := _rich_line([
@@ -1025,7 +1190,9 @@ func _build_contestant(cfg: Dictionary) -> Control:
 	skills.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	skills.alignment = BoxContainer.ALIGNMENT_END
 	for sk in cfg["skills"]:
-		skills.add_child(_skill_chip(String(sk[0]), bool(sk[1]), accent))
+		var skill_key := String(sk[0]).to_lower().replace(" ", "_")
+		skills.add_child(_skill_chip(String(sk[0]), bool(sk[1]), accent,
+			_on_skill_for.bind(String(cfg["id"]), skill_key)))
 	foot.add_child(skills)
 	v.add_child(_vfill(Control.new()))  # push footer down
 	v.add_child(foot)
@@ -1066,7 +1233,7 @@ func _part_cell(label: String) -> Control:
 	return cell
 
 
-func _skill_chip(text: String, on: bool, accent: Color) -> Control:
+func _skill_chip(text: String, on: bool, accent: Color, on_press := Callable()) -> Control:
 	var c := PanelContainer.new()
 	if on:
 		c.add_theme_stylebox_override("panel", _glow_sb(_col(GOLD, 0.1), _col(GOLD), 4, _col(GOLD, 0.25), 4))
@@ -1080,6 +1247,7 @@ func _skill_chip(text: String, on: bool, accent: Color) -> Control:
 		m.add_theme_constant_override("margin_" + s, 4)
 	c.add_child(m)
 	m.add_child(_lab(text, f_body, 9, _col(GOLD) if on else _col(MUTED), 0.5, on))
+	_attach_click(c, on_press)
 	return c
 
 
@@ -1094,21 +1262,23 @@ func _build_actionbar() -> Control:
 	var row := _hbox(10)
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	m.add_child(row)
-	# who (# PLACEHOLDER: active contestant identity is fixture cfg — turn order not in view API)
+	# who (# PLACEHOLDER: active contestant identity — turn order not in view API)
 	var who := _vbox(2)
 	who.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	who.add_child(_lab("ON THE CLOCK", f_body, 10, _col(GOLD), 2.0, true))
-	who.add_child(_lab("DARIO \"ENCORE\"", f_body, 9, _col(MUTED), 1.0))
+	_actionbar_who = _lab("DARIO \"ENCORE\"", f_body, 9, _col(MUTED), 1.0)
+	who.add_child(_actionbar_who)
 	row.add_child(who)
-	# buttons (visual only — input wiring is the next increment)
+	# buttons — wired to real sim commands through GameController.apply_command.
 	var btns := _hbox(8)
 	btns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btns.add_child(_action_btn("FEINT", "primary"))
-	btns.add_child(_action_btn("PRESSURE STRIKE", "normal"))
-	btns.add_child(_action_btn("DANCE", "normal"))
-	btns.add_child(_action_btn("↔ MOVE", "normal"))
-	btns.add_child(_action_btn("📸 CAMERA CALL", "cam"))
-	btns.add_child(_action_btn("END TURN", "end"))
+	btns.add_child(_action_btn("FEINT", "primary", _on_skill.bind("feint")))
+	btns.add_child(_action_btn("PRESSURE STRIKE", "normal", _on_skill.bind("pressure_strike")))
+	btns.add_child(_action_btn("DANCE", "normal", _on_skill.bind("dance")))
+	btns.add_child(_action_btn("↔ MOVE", "normal", _on_move))
+	btns.add_child(_action_btn("📸 CAMERA CALL", "cam", _on_camera_call))
+	btns.add_child(_action_btn("🎭 THE BIT", "bit", _on_bit))
+	btns.add_child(_action_btn("END TURN", "end", _on_end_turn))
 	row.add_child(btns)
 	# consequence preview
 	var prev := _vbox(2)
@@ -1129,7 +1299,7 @@ func _build_actionbar() -> Control:
 	return p
 
 
-func _action_btn(text: String, kind: String) -> Control:
+func _action_btn(text: String, kind: String, on_press := Callable()) -> Control:
 	var bg := _col(PANEL2)
 	var bd := _col(BORDER)
 	var fg := _col(TEXT)
@@ -1142,6 +1312,9 @@ func _action_btn(text: String, kind: String) -> Control:
 		"cam":
 			bd = _col(GOLD); fg = _col(GOLD); bg = _col(GOLD, 0.1)
 			emoji = "📸"; label = "CAMERA CALL"
+		"bit":
+			bd = _col(MYTHIC); fg = _col(MYTHIC); bg = _col(MYTHIC, 0.1); glow = _col(MYTHIC, 0.22)
+			emoji = "🎭"; label = "THE BIT"
 		"end":
 			bd = _col(DANGER); fg = _col("#ff6b88")
 	var c := PanelContainer.new()
@@ -1158,7 +1331,24 @@ func _action_btn(text: String, kind: String) -> Control:
 		h.add_child(_emo(emoji, 13))
 	h.add_child(_lab(label, f_body, 11, fg, 1.0, true))
 	m.add_child(h)
+	_attach_click(c, on_press)
 	return c
+
+
+## Makes a styled panel clickable without disturbing its look: a flat, focus-less
+## Button is laid over the full rect (added last -> on top). The panel's visuals
+## show through; a left click fires `on_press`. The scripted preview driver can
+## also call the same handler methods directly — both paths hit apply_command.
+func _attach_click(root: Control, on_press: Callable) -> void:
+	if not on_press.is_valid():
+		return
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.pressed.connect(on_press)
+	root.add_child(btn)
 
 
 # ------------------------------------------------------------------------ chyron
@@ -1180,17 +1370,18 @@ func _build_chyron() -> Control:
 	brow.add_child(_emo("🦩", 17))
 	brow.add_child(_lab("MOMUS", f_body, 12, _col(MYTHIC), 3.0, true))
 	row.add_child(badge)
-	# # PLACEHOLDER: Momus commentary line is a static quote (announcer feed not wired)
-	var line := _rich_line([
+	# Momus commentary line — a static quote until an action fires, then live
+	# play-by-play / rejection feedback via _momus() (announcer feed not otherwise wired).
+	_chyron_line = _rich_line([
 		["\"—and Dario bows ", _col("#e8d0dc"), false],
 		["mid-combat", _col("#e8d0dc"), false],
 		[", the absolute professional!\"", _col("#e8d0dc"), false],
 	], 14)
-	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_chyron_line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var lm := MarginContainer.new()
 	lm.add_theme_constant_override("margin_left", 18)
 	lm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	lm.add_child(line)
+	lm.add_child(_chyron_line)
 	row.add_child(lm)
 	return p
 
@@ -1299,6 +1490,17 @@ func _bind_broadcast() -> void:
 		_goal_time.text = "%d CLOCK%s" % [cl, "" if cl == 1 else "S"]
 		# description is presentation copy keyed off goal.kind (view API carries no blurb)
 		_goal_desc.text = _goal_blurb(String(goal.get("kind", "")))
+	# spotlight / camera-call card (empty = available, set = active on a target)
+	var spot: Dictionary = bc.get("spotlight", {})
+	if _spot_title != null and _spot_sub != null:
+		if spot.is_empty():
+			_spot_title.text = "CAMERA CALL"
+			_spot_sub.text = "CHARM-GATED · AVAILABLE · DOUBLES GAINS & LOSSES"
+		else:
+			_spot_title.text = "SPOTLIGHT · %s" % _display_name_for(String(spot.get("target", "")))
+			_spot_sub.text = "ACTIVE · %d CLOCK%s LEFT · SWINGS DOUBLED" % [
+				int(spot.get("clocks_left", 0)),
+				"" if int(spot.get("clocks_left", 0)) == 1 else "S"]
 
 
 func _goal_blurb(kind: String) -> String:
@@ -1333,12 +1535,12 @@ func _bind_combatants() -> void:
 				var p2: Dictionary = pd2
 				if String(p2.get("key", "")).contains("network"):
 					boss_hidden = bool(p2.get("hidden", false))
-			_bind_boss(boss_breached, boss_hidden)
+			_bind_boss(boss_breached, boss_hidden, c)
 		if _cref.has(id):
 			_bind_contestant(id, c)
 
 
-func _bind_boss(breached: bool, network_hidden: bool) -> void:
+func _bind_boss(breached: bool, network_hidden: bool, boss: Dictionary = {}) -> void:
 	if _boss_net_tag != null:
 		_boss_net_tag.text = ("NETWORK 🔒 HIDDEN" if network_hidden else "NETWORK ⚡ EXPOSED")
 	if _boss_phase_tag != null:
@@ -1350,6 +1552,33 @@ func _bind_boss(breached: bool, network_hidden: bool) -> void:
 		else:
 			_obj_status.text = "NETWORK EXPOSED · Phase 2 is in reach — pour in"
 			_obj_status.add_theme_color_override("font_color", _col(CYAN))
+	# Boss stage token HP: pre-breach it tracks the flamethrower arm (the part the
+	# party cracks to get in); post-breach it tracks the exposed network (the real
+	# kill). Keeping the network off the bar pre-breach preserves the hidden win
+	# condition — the arena never leaks it before discovery.
+	var by_key := {}
+	for pd in boss.get("parts", []):
+		by_key[String((pd as Dictionary).get("key", ""))] = pd
+	var show_key := "network" if breached else BOSS_DEFAULT_PART
+	if _boss_hp != null and by_key.has(show_key):
+		var part: Dictionary = by_key[show_key]
+		var hp := int(part.get("hp", 0))
+		var mx := maxi(1, int(part.get("max_hp", 1)))
+		_boss_hp.max_value = mx
+		_boss_hp.value = hp
+		var ramp := _ramp(float(hp) / float(mx))
+		_boss_hp.add_theme_stylebox_override("fill", _sb(ramp, ramp, 3, 0))
+	# Boss condition readout (bleeding etc.) — the highest tier per condition.
+	if _boss_cond != null:
+		var conds := _gather_conditions(boss)
+		if conds.is_empty():
+			_boss_cond.visible = false
+		else:
+			var bits := []
+			for cond in conds:
+				bits.append("%s T%d" % [String(cond[0]).to_upper(), int(cond[1])])
+			_boss_cond.text = "🩸 INCINE-DILE · " + "  ·  ".join(bits)
+			_boss_cond.visible = true
 
 
 func _bind_contestant(id: String, c: Dictionary) -> void:
