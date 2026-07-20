@@ -6,7 +6,7 @@
 # framebuffer. The xvfb screen must be >= the 1600x1000 window or the capture is
 # clipped. ALSA "audio driver failed" lines in the log are harmless.
 #
-# Requires a Godot 4.5 binary: $GODOT_BIN, or `godot` on PATH.
+# Requires a Godot 4.7 binary: $GODOT_BIN, or `godot` on PATH.
 # Output: $HUD_OUT if set, else <project>/hud_render.png.
 # Exit codes: 0 = rendered, 3 = SKIP (no binary).
 set -u
@@ -17,7 +17,7 @@ if [ -z "$GODOT" ]; then
 fi
 if [ -z "$GODOT" ]; then
 	echo "SKIP: no Godot 4 binary — HUD not rendered (this is not a pass)"
-	echo "      install Godot 4.5 and expose it as 'godot' on PATH or via \$GODOT_BIN"
+	echo "      install Godot 4.7 and expose it as 'godot' on PATH or via \$GODOT_BIN"
 	exit 3
 fi
 

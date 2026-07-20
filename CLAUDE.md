@@ -78,7 +78,7 @@ Gates on: dod.product_competitiveness_gate · dod.runs_from_clean_clone. Re-scan
 
 ## Repo conventions
 
-- **Branch:** current work rides `claude/galactic-prime-time-review-kxlelf` (push `-u`).
+- **Branch:** current work rides `claude/session-continuation-next-steps-mpycyj` (push `-u`).
 - Commits: descriptive messages, no signatures.
 - Jira epic order (architecture doc §11): KAN-1 data ✅ → KAN-2 combat engine (headless +
   unit tests, in progress) → KAN-3 scaffolding → KAN-4 party → KAN-5 exploration →

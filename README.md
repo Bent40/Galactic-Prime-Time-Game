@@ -11,8 +11,8 @@ digital rules R0–R19).
 ## Run from a clean clone
 
 ```bash
-# 1. Godot 4.5 (containers: installs 4.5.2 from the SourceForge mirror)
-bash scripts/setup_godot.sh          # or use your own godot 4.5+ on PATH / $GODOT_BIN
+# 1. Godot 4.7 (containers: installs 4.7.1 from the SourceForge mirror)
+bash scripts/setup_godot.sh          # or use your own godot 4.7+ on PATH / $GODOT_BIN
 
 # 2. Verify the engine honestly (exit 3 = SKIPPED, which is NOT a pass)
 python3 scripts/validate_seeds.py    # seed-data integrity

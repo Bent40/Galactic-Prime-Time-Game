@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Headless slice playtest driver — plays the vertical-slice encounter through the
 # real GameController and prints a broadcast trace.
-# Requires a Godot 4.5 binary: $GODOT_BIN, or `godot` on PATH.
+# Requires a Godot 4.7 binary: $GODOT_BIN, or `godot` on PATH.
 # Exit codes: 0 = clean run (win + no rejections), 2 = rejection/engine blocker,
 #             other = Godot error, 3 = SKIP (no binary).
 set -u
@@ -13,7 +13,7 @@ fi
 
 if [ -z "$GODOT" ]; then
 	echo "SKIP: no Godot 4 binary available — slice playtest NOT executed (this is not a pass)"
-	echo "      install Godot 4.5 and expose it as 'godot' on PATH or via \$GODOT_BIN"
+	echo "      install Godot 4.7 and expose it as 'godot' on PATH or via \$GODOT_BIN"
 	exit 3
 fi
 

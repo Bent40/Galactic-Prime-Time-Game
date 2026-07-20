@@ -2,13 +2,13 @@
 
 *Status: draft — owner review. Consolidates: `GPT_ARCHITECTURE.pdf` (base — MVC contract,
 signal catalog, KAN epic order; still authoritative where unamended) + DIRECTION.md
-technical deltas + the live implementation (simulation/, 29/29 tests) + designed-unbuilt
+technical deltas + the live implementation (simulation/, headless test suite — see STATUS.md) + designed-unbuilt
 systems (GDD, patron-gods). This doc owns the HOW; the GDD owns the WHAT. ⟨PROPOSED⟩ =
 new consolidation-time calls; everything else is already decided and dated.*
 
 ## Executive Summary
 
-Headless deterministic simulation core (Godot 4.5 / GDScript, `RefCounted`, zero node
+Headless deterministic simulation core (Godot 4.7 / GDScript, `RefCounted`, zero node
 deps) advanced ONLY by a command stream — state is a pure function of (seed, ordered
 command log), enforced by tests. Presentation (scenes) and control (GameController, DAL,
 save manager) sit on top per the PDF's MVC contract. Everything the ladder needs later —
@@ -21,7 +21,7 @@ without engine change.
 
 | Category | Decision | Affects epics | Source/date |
 |---|---|---|---|
-| Engine | Godot 4.5 / GDScript, 2.5D | all | review-4 + owner 2026-07-13 |
+| Engine | Godot 4.7 / GDScript, 2.5D | all | review-4 + owner 2026-07-13 |
 | Sim contract | command-stream purity; no wall-clock; single seeded RNG advanced only in `apply_command`; every roll logged as an event | KAN-2+ | DIRECTION delta 1 (✅ built) |
 | IDs | string UUIDs at JSON boundaries; ints allowed inside SQLite | all | DIRECTION delta 2 |
 | Clocking | drivers OUTSIDE the sim feed `advance_tick` (paused / declare-window / wall-clock) | KAN-3/5 | DIRECTION delta + R0 (✅ sim side) |
@@ -47,7 +47,7 @@ Galactic-Prime-Time-Game/
 │   └── (KAN-3: JSON-first dal behind the same API the SQLite dal will honor)
 ├── scenes/              # presentation ONLY; talks through GameController signals
 ├── data/                # JSON seeds (validated); migrations/ (SQLite, deferred)
-├── tests/               # test_runner.gd + suites (29/29)
+├── tests/               # test_runner.gd + suites (see STATUS.md)
 └── scripts/             # run_sim_tests.sh (import-guard), setup_godot.sh, validate_seeds.py
 ```
 

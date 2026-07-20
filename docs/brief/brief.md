@@ -26,8 +26,8 @@ we break your essence down in the name of entertainment?"** At the end, the show
 down a **verdict** — what kind of person you were, and what kind of **ruler** you'll be —
 because winning doesn't free you; it makes you one of *them*.
 
-It ships by a ladder, never a big bang: a headless deterministic engine (done, 29/29
-tests), a vertical slice, friends co-op, then an async global show where every party's
+It ships by a ladder, never a big bang: a headless deterministic engine (done, with a
+green headless test suite), a vertical slice, friends co-op, then an async global show where every party's
 runs push the same floors. The fiction is multiplayer-native — spectators are diegetic —
 but every rung is a complete game.
 
@@ -58,7 +58,7 @@ but every rung is a complete game.
 ## Core Fundamentals
 
 **Genre:** 2.5D tactical RPG, single-player-first with a co-op → shared-world ladder
-(DIRECTION D1–D2). **Platform:** PC (Godot 4.5).
+(DIRECTION D1–D2). **Platform:** PC (Godot 4.7).
 
 **Core loop (moment to moment):** enter a combat *field* → the shared Moment clock binds
 everyone in it → declare actions whose requirements auto-succeed (no to-hit); unmet
@@ -102,8 +102,8 @@ coherence + the owner's own IP world (novel-shared cosmology), not a technical m
 ## Scope & MVP
 
 - **Team:** solo owner-designer + AI agents; professional web stack available for the
-  Stage-2 service. **Budget:** hobby. **Engine:** Godot 4.5, headless-tested sim (KAN-2:
-  29/29 green).
+  Stage-2 service. **Budget:** hobby. **Engine:** Godot 4.7, headless-tested sim (KAN-2:
+  a green headless test suite).
 - **MVP (the W3 vertical slice, unchanged from DIRECTION):** one arena, a created-or-default
   player contestant, Sasha & Nikita as recruitment encounters, Incinedile Phase 1, visible
   hype meter, broadcast-framed win/lose. **It validates the hypothesis:** *deterministic

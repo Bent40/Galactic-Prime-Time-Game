@@ -33,7 +33,7 @@ co-op → async global show.
 
 ## Target Platforms
 
-PC (Windows/Linux), Godot 4.5. Stage 0–1 offline single-player is a permanently
+PC (Windows/Linux), Godot 4.7. Stage 0–1 offline single-player is a permanently
 supported mode. Co-op (Stage 1+) is host-based or thin-relay; the Stage-2 service is a
 lightweight web stack. Performance target ⟨PROPOSED⟩: 60 FPS on a 2015-class laptop —
 2.5D sprites over a hex field must never be the bottleneck.
@@ -64,7 +64,7 @@ Target Players; market grounding in review-4.)
 3. **Turnless, diceless tactics** — no to-hit; requirements + consequence tables; a shared
    clock that reads on broadcast.
 4. **Broadcast-native architecture** — command-stream determinism makes replays,
-   spectating, and async multiplayer near-free (already implemented, 29/29 tests).
+   spectating, and async multiplayer near-free (already implemented, headless-tested).
 
 ## Core Gameplay
 
@@ -110,7 +110,7 @@ Target Players; market grounding in review-4.)
 ## Game Mechanics
 
 *The sim is the spec's enforcement: rules below marked ✅ are implemented and tested
-(29/29). Numbers marked PLACEHOLDER await the tuning pass.*
+(headless-tested). Numbers marked PLACEHOLDER await the tuning pass.*
 
 - **Moment clock ✅** — absolute tick counter; `moment = 10 − (tick % 10)`; Clock
   completion advances all conditions (R4) and is the legal join beat for fields.
@@ -352,9 +352,9 @@ frames at the KAN-6 gate.
 
 ## Technical Specifications (GDD-level)
 
-- Godot 4.5 / GDScript; headless `simulation/` (RefCounted, command-stream, seeded RNG,
+- Godot 4.7 / GDScript; headless `simulation/` (RefCounted, command-stream, seeded RNG,
   full serialization, state_hash) — the purity contract is DIRECTION's and is enforced
-  by tests (29/29, incl. determinism + mid-combat save/resume).
+  by tests (headless-tested, incl. determinism + mid-combat save/resume).
 - Clock drivers pluggable (paused / declare-window / wall-clock); director behind one
   interface (procedural v1, LLM-augmentable); saves = snapshot + command-log offset,
   re-derivable from the log; IDs string-UUID at JSON boundaries.
@@ -368,7 +368,7 @@ frames at the KAN-6 gate.
 | Epic | Scope | State |
 |---|---|---|
 | KAN-1 Data | schema + seeds + validator | ✅ done |
-| KAN-2 Combat engine | headless sim, R0–R14, tests | ✅ core done (29/29) — remaining: priming impl, R13 confirm, R14 numbers |
+| KAN-2 Combat engine | headless sim, R0–R14, tests | ✅ core done (headless-tested) — remaining: priming impl, R13 confirm, R14 numbers |
 | KAN-3 Scaffolding | main scene, GameController, DAL (JSON-first), hex renderer | next build block |
 | KAN-4 Party | OC creation, recruitment, no-cap economy, exhaustion rotation | after KAN-3 |
 | KAN-5 Exploration | floors/routes, fields, noise/absorption, overworld clock | |
