@@ -71,7 +71,22 @@ var damage_taken_this_tick: int = 0
 ## merge into one hit.
 var largest_single_hit_this_tick: int = 0
 var combo_hits_this_tick: Dictionary = {}  # combo_id -> accumulated damage this tick
-var cooldowns: Dictionary = {}  # action key -> tick when available again (R3)
+
+# Priming substrate (rules-addendum R3, decision-log #20 — "cooldowns do not
+# exist"). Skills gate on a PRIME (one of 5 canonical types) evaluated at declare
+# by ActionResolver._prime_unmet; the state those predicates read lives here.
+## CHAIN: the key of this actor's LAST resolved action ("" = none / cleared by a
+## non-matching action). A chain prime {"after": k} is met when this equals k.
+var last_action_key: String = ""
+## STANCE: the stance the actor currently holds ("" = none). Set/cleared by the
+## sim's set_stance command; a stance prime {"stance": s} is met when this == s.
+var stance: String = ""
+## PREP-CHANNEL: armed prep primes (key -> true). The sim's `prime` command arms
+## one; using a prep-gated action consumes it (ActionResolver clears it at resolve).
+var armed_primes: Dictionary = {}
+## STACK: generic named-resource counter fallback (resource -> count) for stack
+## primes whose resource is not the camera-call stack (that one reads derived_stats).
+var charges: Dictionary = {}
 
 # Status effects / forced-action fallout
 var exposed_until_tick: int = 0
@@ -357,7 +372,10 @@ func to_dict() -> Dictionary:
 		"damage_taken_this_tick": damage_taken_this_tick,
 		"largest_single_hit_this_tick": largest_single_hit_this_tick,
 		"combo_hits_this_tick": combo_hits_this_tick.duplicate(true),
-		"cooldowns": cooldowns.duplicate(true),
+		"last_action_key": last_action_key,
+		"stance": stance,
+		"armed_primes": armed_primes.duplicate(true),
+		"charges": charges.duplicate(true),
 		"exposed_until_tick": exposed_until_tick,
 		"helpless_until_tick": helpless_until_tick,
 		"unarmed_until_tick": unarmed_until_tick,
@@ -414,7 +432,10 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.damage_taken_this_tick = int(data.get("damage_taken_this_tick", 0))
 	c.largest_single_hit_this_tick = int(data.get("largest_single_hit_this_tick", 0))
 	c.combo_hits_this_tick = (data.get("combo_hits_this_tick", {}) as Dictionary).duplicate(true)
-	c.cooldowns = (data.get("cooldowns", {}) as Dictionary).duplicate(true)
+	c.last_action_key = String(data.get("last_action_key", ""))
+	c.stance = String(data.get("stance", ""))
+	c.armed_primes = (data.get("armed_primes", {}) as Dictionary).duplicate(true)
+	c.charges = (data.get("charges", {}) as Dictionary).duplicate(true)
 	c.exposed_until_tick = int(data.get("exposed_until_tick", 0))
 	c.helpless_until_tick = int(data.get("helpless_until_tick", 0))
 	c.unarmed_until_tick = int(data.get("unarmed_until_tick", 0))
