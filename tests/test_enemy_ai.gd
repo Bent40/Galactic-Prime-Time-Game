@@ -83,8 +83,14 @@ func test_mob_attacks_adjacent_target() -> void:
 	var damage: Dictionary = assert_event(resolved, "damage_applied", "bite landed")
 	assert_eq(String(damage.get("combatant", "")), "h", "damage on the target")
 	assert_eq(String(damage.get("part", "")), "torso", "mob part pick is torso-line")
-	assert_eq(int(damage.get("amount", -1)), 1, "seeded bite damage")
-	assert_event(resolved, "condition_applied", "bleeding applied (R4)")
+	# R14 (decision-log #22): the roach-dog's bite Force = 1 + floor(physique 1 / 2)
+	# = 1 fails to clear a fresh phys-3 human's Robustness (floor(3/2) = 1), so it
+	# nets 0 and opens no wound — bleeding does NOT seed (D3). This is a placeholder
+	# magnitude: a lone phys-1 mob no longer chips a phys-3 contestant (tuned later);
+	# the AI-policy assertions above are the point of this test.
+	assert_eq(int(damage.get("amount", -1)), 0, "R14: bite Force 1 ≤ Robustness 1 → blocked to 0")
+	assert_event(resolved, "attack_no_wound", "a blocked bite seeds no bleeding (R14 D3)")
+	assert_no_event(resolved, "condition_applied", "no wound → no bleeding on a blocked hit")
 
 
 func test_mob_target_priority_nearest_then_weakest_then_id() -> void:
@@ -256,8 +262,10 @@ func test_elite_heals_when_a_lethal_part_drops_below_half() -> void:
 	var healthy: Dictionary = first_event(ai_decide(sim, "elite"), "ai_decision")
 	assert_eq(String(healthy.get("choice", "")), "attack", "no self-care while healthy")
 	advance(sim, 1)
-	# Torso 15 -> 7 (below half): the elite seals the wound.
-	declare(sim, "h", attack_action("bleeding", 8, "elite", "torso"))
+	# Torso 15 -> 7 (below half): the elite seals the wound. R14: the elite's
+	# Robustness = floor(physique 4 / 2) = 2, so to still net 8 the raw force is
+	# bumped 8 → 9: Force = 9 + floor(3/2) = 10, net = 10 − 2 = 8, torso 15 → 7.
+	declare(sim, "h", attack_action("bleeding", 9, "elite", "torso"))
 	advance(sim, 1)
 	var events: Array[Dictionary] = ai_decide(sim, "elite")
 	var decision: Dictionary = first_event(events, "ai_decision")

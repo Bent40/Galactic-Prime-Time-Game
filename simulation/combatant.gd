@@ -182,6 +182,13 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 			# and the systemic bleed-out drain skips it (the mycelium network).
 			"bleed_immune": bool(p.get("bleed_immune", false)),
 		}
+		# R14 (decision-log #22): optional per-part armor feeds Robustness. Added
+		# only when the seed specifies it — an absent field means 0 (see
+		# ActionResolver._strike_round's parts[...].get("armor", 0)), so existing
+		# part dicts and their serialized hashes are unchanged. It round-trips
+		# automatically through parts.duplicate(true) in to_dict/from_dict.
+		if p.has("armor"):
+			c.parts[key]["armor"] = int(p["armor"])
 
 	for item_spec: Variant in spec.get("items", []) as Array:
 		var item: Dictionary = {}

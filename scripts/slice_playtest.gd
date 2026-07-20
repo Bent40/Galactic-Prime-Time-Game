@@ -45,7 +45,11 @@ const SEED: int = 14
 ## All combat magnitudes below are PLACEHOLDER (R14) — the whole point of the trace
 ## is to let the owner FEEL them, not to bless them.
 const POKE: int = 5          # cosmetic pre-breach chip damage to a visible part
-const BREACH_HALF: int = 4   # each half of the combined breach hit (4+4 = 8 >= 7)
+## Each half of the combined breach hit. R14 (decision-log #22): the boss's
+## Robustness = floor(physique 6 / 2) = 3, so a raw 6 nets IMANI (phys 5)
+## 6 + floor(5/2) − 3 = 5 and DARIO (phys 2) 6 + floor(2/2) − 3 = 4 — merged 9 ≥ 7,
+## clearing the single-hit breach threshold. (Pre-R14 this was 4 → merged 8.)
+const BREACH_HALF: int = 6
 const NET_HIT: int = 9       # damage per contestant into the exposed network
 
 ## GameController has no class_name (it is the `Game` autoload script) — preload it.

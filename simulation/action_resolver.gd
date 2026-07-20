@@ -515,7 +515,8 @@ func reaction(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 	var target: CombatantState = combatants.get(String(payload.get("target", "")))
 	if not damage.is_empty() and target != null and target.alive:
 		var condition_id := ConditionEngine.normalize_condition_id(String(damage.get("type", "")))
-		events.append_array(_strike_round(target, String(payload.get("part", "torso")), condition_id, int(damage.get("amount", 0)), payload))
+		# R14: the reactor is the attacker for this out-of-schedule strike.
+		events.append_array(_strike_round(target, String(payload.get("part", "torso")), condition_id, int(damage.get("amount", 0)), payload, actor))
 	return events
 
 
@@ -874,7 +875,8 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 		var target: CombatantState = combatants.get(String(t.get("id", "")))
 		if target == null:
 			continue
-		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, amount, action))
+		# R14: `actor` is the attacker — its Physique feeds Force.
+		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, amount, action, actor))
 	events.append({
 		"type": "action_resolved", "actor": actor.id, "kind": kind,
 		"key": String(action.get("key", String(action.get("item", "")))),
@@ -948,8 +950,12 @@ func _requirements_unmet(actor: CombatantState, requirements: Dictionary, provid
 	return false
 
 
-## One round of typed damage + condition delivery (R4) with boss hooks (R6).
-func _strike_round(target: CombatantState, part_key: String, condition_id: String, amount: int, action: Dictionary) -> Array[Dictionary]:
+## One round of typed damage + condition delivery with boss hooks (R6).
+## R14 (rules-addendum R14, decision-log #22): the force-vs-robustness gate IS the
+## damage — `damage = max(0, Force − Robustness)` on the Physical path. `attacker`
+## may be null (environment / no source), in which case its Physique Force
+## contribution is 0 (Force = amount).
+func _strike_round(target: CombatantState, part_key: String, condition_id: String, amount: int, action: Dictionary, attacker: CombatantState = null) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not target.parts.has(part_key):
 		return events
@@ -978,8 +984,30 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	if Resistance.part_blocked_by_surface_immunity(target, part_key):
 		events.append({"type": "attack_blocked", "combatant": target.id, "part": part_key, "reason": "surface_immunity"})
 		return events
-	# Damage = listed − flat resistance, floor 0 (R4).
-	var reduced: int = Resistance.reduce_damage(amount, target, cond.def_for(condition_id), condition_id)
+	# R14 (rules-addendum R14, decision-log #22): the force-vs-robustness gate IS
+	# the damage on the Physical path. Force = the weapon/skill force + the
+	# attacker's Physique push; Robustness = the target's Physique-derived base +
+	# per-part armor + flat physical resistance. A hit LANDS (opens a real wound)
+	# only when Force > Robustness. This equals max(0, (amount − flat_res) +
+	# floor(atk_phys/2) − floor(tgt_phys/2) − part_armor), so for equal physique +
+	# no armor it reduces to the old (amount − flat resistance) model.
+	# TODO: R14/R15 — merge linked attackers' Force for combined attacks.
+	var atk_physique: int = attacker.trait_total("physique") if attacker != null else 0
+	var force: int = amount + floori(atk_physique / 2.0)
+	var part_armor: int = int((target.parts[part_key] as Dictionary).get("armor", 0))
+	var flat_res: int = Resistance.flat_physical_reduction(target, condition_id)
+	var robustness: int = floori(target.trait_total("physique") / 2.0) + part_armor + flat_res
+	var landed: bool = force > robustness
+	var cond_def: Dictionary = cond.def_for(condition_id)
+	var is_physical: bool = String(cond_def.get("resistance_type", "")) == "Physical"
+	# The force-vs-robustness model governs the PHYSICAL HP number; Affliction/
+	# Psychic keep today's reduce_damage (flat/tier-immunity handled elsewhere) and
+	# are NOT force-gated.
+	var reduced: int
+	if is_physical:
+		reduced = maxi(0, force - robustness)
+	else:
+		reduced = Resistance.reduce_damage(amount, target, cond_def, condition_id)
 	# self_guard (brace): the buffered next Crush/Burn hit is reduced by the guard
 	# (floor 0), AFTER normal resistance, then the guard is consumed regardless of
 	# whether damage remained. Only Crush/Burn consume it; other types pass through.
@@ -999,15 +1027,35 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
 	# linked strikes (shared combo_id) merge into one hit for the threshold.
 	target.record_hit(String(action.get("combo_id", "")), reduced)
-	# Typed damage applies/advances its condition regardless of the post-
-	# resistance HP number (tier immunity, not flat reduction, blocks it — R6).
+	# R14 D3 (decision-log #22): a DAMAGING condition (bleeding/burn/poison + any
+	# Physical-typed condition) seeds a wound only when the hit LANDED
+	# (Force > Robustness). A hit blocked to 0 by robustness opens no wound, so
+	# bleed/burn/poison do NOT land — Shock (applied elsewhere) still may. A landed
+	# condition applies at its tier regardless of the exact HP number, so tier
+	# immunity (not flat reduction) is what blocks it (R6). Non-damaging conditions
+	# (suffocation/chilled/infected/exhausted/dissolution) keep today's behavior.
 	if target.alive and condition_id != "":
-		events.append_array(cond.apply(target, part_key, condition_id, clock.tick, {
-			"source": "attack",
-			"injection": bool(action.get("injection", false)),
-			"poison_type": String(action.get("poison_type", "")),
-		}))
+		if _condition_needs_wound(condition_id, cond_def) and not landed:
+			events.append({
+				"type": "attack_no_wound", "combatant": target.id, "part": part_key,
+				"condition": condition_id, "force": force, "robustness": robustness,
+			})
+		else:
+			events.append_array(cond.apply(target, part_key, condition_id, clock.tick, {
+				"source": "attack",
+				"injection": bool(action.get("injection", false)),
+				"poison_type": String(action.get("poison_type", "")),
+			}))
 	return events
+
+
+## R14 D3: damaging conditions that must seed on a real wound (Force > Robustness) —
+## bleeding/burn/poison and every Physical-typed condition (crushed). A blocked
+## hit (Force ≤ Robustness) opens no wound, so these do not apply.
+func _condition_needs_wound(condition_id: String, cond_def: Dictionary) -> bool:
+	if condition_id == "bleeding" or condition_id == "burn" or condition_id == "poison":
+		return true
+	return String(cond_def.get("resistance_type", "")) == "Physical"
 
 
 func _resolve_reload(actor: CombatantState, action: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:

@@ -58,8 +58,13 @@ func test_boss_dashes_a_lone_target() -> void:
 	var resolved: Array[Dictionary] = advance(sim, 1)
 	var damage: Dictionary = assert_event(resolved, "damage_applied", "dash landed")
 	assert_eq(String(damage.get("part", "")), "torso", "dash honors its torso part_bias")
-	assert_eq(int(damage.get("amount", -1)), 3, "seeded dash damage")
-	assert_event(resolved, "condition_applied", "crushed applied (R4)")
+	# R14 (decision-log #22): dash Force = 3 + floor(boss physique 6 / 2) = 6;
+	# the fresh human's Robustness = floor(physique 3 / 2) = 1 (no armor), so the
+	# dash nets 6 − 1 = 5 — exactly the 5-HP torso, which destroys it and kills.
+	# The buffed hit is now a one-shot on a fresh contestant (placeholder
+	# magnitudes), so crushed is preempted by the kill (cond.apply skips the dead).
+	assert_eq(int(damage.get("amount", -1)), 5, "R14 dash: Force 6 − Robustness 1 = 5")
+	assert_event(resolved, "combatant_died", "the R14-buffed dash destroys the 5-HP torso outright")
 
 
 func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:
@@ -83,8 +88,10 @@ func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:
 	var burned: Dictionary = {}
 	for hit: Dictionary in hits:
 		burned[String(hit.get("combatant", ""))] = int(hit.get("amount", -1))
-	assert_eq(burned.get("ha", -1), 2, "ha took the seeded 2 Burn")
-	assert_eq(burned.get("hb", -1), 2, "hb took the seeded 2 Burn")
+	# R14: burn Force = 2 + floor(boss physique 6 / 2) = 5; each human's
+	# Robustness = floor(physique 3 / 2) = 1 (no armor), so each nets 5 − 1 = 4.
+	assert_eq(burned.get("ha", -1), 4, "R14 burn: Force 5 − Robustness 1 = 4")
+	assert_eq(burned.get("hb", -1), 4, "R14 burn: Force 5 − Robustness 1 = 4")
 
 
 func test_boss_closes_distance_when_nothing_in_reach() -> void:
@@ -208,14 +215,19 @@ func test_burst_breach_then_phase_two_resets_it() -> void:
 	# The network is hidden: aiming at it is rejected pre-breach.
 	assert_rejected(declare(sim, "h", attack_action("bleeding", 15, "boss", "network")),
 		"part_hidden", "no damage race — the win condition must be discovered")
-	# Breach path B: 7+ damage in a single hit (canon, owner 2026-07-14).
-	declare(sim, "h", attack_action("bleeding", 8, "boss", "right_hand"))
+	# Breach path B: 7+ NET damage in a single hit (canon, owner 2026-07-14).
+	# R14: the boss's Robustness = floor(physique 6 / 2) = 3, so to land the same
+	# net 8 the party used pre-R14, the raw force is bumped 8 → 10:
+	# Force = 10 + floor(3/2) = 11, net = 11 − 3 = 8 ≥ 7 → breach.
+	declare(sim, "h", attack_action("bleeding", 10, "boss", "right_hand"))
 	var breach_events: Array[Dictionary] = advance(sim, 1)
-	assert_event(breach_events, "breach_opened", "a 7+ single hit punches through")
+	assert_event(breach_events, "breach_opened", "a 7+ net single hit punches through")
 	assert_true(boss_state(sim).breached, "breached flag set")
 	assert_false(bool(boss_state(sim).parts["network"]["hidden"]), "the network is exposed")
-	# Hit the network down to the phase-2 threshold (50 -> 35).
-	declare(sim, "h", attack_action("bleeding", 15, "boss", "network"))
+	# Hit the network down to the phase-2 threshold (50 -> 35). R14: net 15 needs
+	# raw 17 (Force = 17 + 1 = 18, net = 18 − 3 = 15); the network is bleed_immune
+	# so only the HP lands.
+	declare(sim, "h", attack_action("bleeding", 17, "boss", "network"))
 	var phase_events: Array[Dictionary] = advance(sim, 1)
 	var changed: Dictionary = assert_event(phase_events, "boss_phase_changed", "network at 35 fires the beat")
 	assert_eq(int(changed.get("from_phase", 0)), 1, "left phase 1")
@@ -242,10 +254,13 @@ func test_bleeding_tier_two_breach_path() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
 	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
-	declare(sim, "h", attack_action("bleeding", 1, "boss", "left_leg"))
+	# R14: each bleed must LAND (Force > Robustness) to seed the wound. The boss's
+	# Robustness = floor(physique 6 / 2) = 3, so bleeding 1 (Force 2) would bounce
+	# — bumped 1 → 3: Force = 3 + 1 = 4 > 3 → nets 1 and seeds bleeding T1.
+	declare(sim, "h", attack_action("bleeding", 3, "boss", "left_leg"))
 	var first: Array[Dictionary] = advance(sim, 1)
 	assert_no_event(first, "breach_opened", "T1 is not enough")
-	declare(sim, "h", attack_action("bleeding", 1, "boss", "left_leg"))
+	declare(sim, "h", attack_action("bleeding", 3, "boss", "left_leg"))
 	var second: Array[Dictionary] = advance(sim, 1)
 	assert_event(second, "condition_advanced", "re-application advanced the tier (R4)")
 	assert_event(second, "breach_opened", "Bleeding T2 anywhere exposes the network (path A, canon)")
@@ -255,9 +270,11 @@ func test_phase_state_serializes_and_resumes() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
 	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
-	declare(sim, "h", attack_action("bleeding", 8, "boss", "right_hand"))
+	# R14: raw force bumped to reproduce the pre-R14 net damage against the boss's
+	# Robustness 3 — breach on net 8 (raw 10), then network 50 → 35 on net 15 (raw 17).
+	declare(sim, "h", attack_action("bleeding", 10, "boss", "right_hand"))
 	advance(sim, 1)
-	declare(sim, "h", attack_action("bleeding", 15, "boss", "network"))
+	declare(sim, "h", attack_action("bleeding", 17, "boss", "network"))
 	advance(sim, 1)
 	assert_eq(sim.ai.current_phase("boss"), 2, "phase advanced in AI state")
 	var snapshot: Dictionary = sim.to_dict()
