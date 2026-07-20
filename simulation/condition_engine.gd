@@ -119,7 +119,11 @@ func forced_body_required(c: CombatantState, acting_part_key: String) -> bool:
 			if int(instance.get("activation_delay", 0)) > 0:
 				continue
 			var entry: Dictionary = tier_entry(String(cond_id), int(instance.get("tier", 0)))
-			if String(entry.get("forced_action_type", "")) == "Body":
+			# A tier with no Body forced action carries forced_action_type: null in
+			# the JSON (burn T1/T3, crushed T3, bleeding T1…); .get returns that null
+			# (key present), so coalesce before String() — String(null) hard-errors.
+			var fat: Variant = entry.get("forced_action_type", "")
+			if fat != null and String(fat) == "Body":
 				return true
 	return false
 

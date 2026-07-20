@@ -58,13 +58,17 @@ func test_boss_dashes_a_lone_target() -> void:
 	var resolved: Array[Dictionary] = advance(sim, 1)
 	var damage: Dictionary = assert_event(resolved, "damage_applied", "dash landed")
 	assert_eq(String(damage.get("part", "")), "torso", "dash honors its torso part_bias")
-	# R14 (decision-log #22): dash Force = 3 + floor(boss physique 6 / 2) = 6;
-	# the fresh human's Robustness = floor(physique 3 / 2) = 1 (no armor), so the
-	# dash nets 6 − 1 = 5 — exactly the 5-HP torso, which destroys it and kills.
-	# The buffed hit is now a one-shot on a fresh contestant (placeholder
-	# magnitudes), so crushed is preempted by the kill (cond.apply skips the dead).
-	assert_eq(int(damage.get("amount", -1)), 5, "R14 dash: Force 6 − Robustness 1 = 5")
-	assert_event(resolved, "combatant_died", "the R14-buffed dash destroys the 5-HP torso outright")
+	# R14 TUNING (2026-07-20): dash crushed 3->2 (data/enemies.json). Dash Force =
+	# 2 + floor(boss physique 6 / 2) = 5; the fresh human's Robustness =
+	# floor(physique 3 / 2) = 1 (no armor), so the dash nets 5 − 1 = 4 — the 5-HP
+	# torso drops to 1, NOT 0. The from-full-to-0 one-shot the 3-amount dash was is
+	# GONE (no-one-shot invariant): a lethal part now survives one dash and takes
+	# >=2 hits to destroy. Because the hit LANDED (Force 5 > Robustness 1) it seeds
+	# crushed T1 (no longer preempted by a kill).
+	assert_eq(int(damage.get("amount", -1)), 4, "R14 tuning dash: Force 5 − Robustness 1 = 4")
+	assert_no_event(resolved, "combatant_died", "the tuned dash no longer one-shots a fresh 5-HP torso")
+	assert_eq(int((sim.combatants["h"] as CombatantState).parts["torso"]["hp"]), 1, "the 5-HP torso survives the dash at 1 HP")
+	assert_event(resolved, "condition_applied", "the landed dash seeds crushed T1 (a survivor, not a corpse)")
 
 
 func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:
@@ -88,10 +92,12 @@ func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:
 	var burned: Dictionary = {}
 	for hit: Dictionary in hits:
 		burned[String(hit.get("combatant", ""))] = int(hit.get("amount", -1))
-	# R14: burn Force = 2 + floor(boss physique 6 / 2) = 5; each human's
-	# Robustness = floor(physique 3 / 2) = 1 (no armor), so each nets 5 − 1 = 4.
-	assert_eq(burned.get("ha", -1), 4, "R14 burn: Force 5 − Robustness 1 = 4")
-	assert_eq(burned.get("hb", -1), 4, "R14 burn: Force 5 − Robustness 1 = 4")
+	# R14 TUNING (2026-07-20): flamethrower burn 2->1 (data/enemies.json). Burn
+	# Force = 1 + floor(boss physique 6 / 2) = 4; each human's Robustness =
+	# floor(physique 3 / 2) = 1 (no armor), so each nets 4 − 1 = 3 — an AoE chip
+	# that no longer near-one-shots a 5-HP torso (2 hits to fell it, and burn stacks).
+	assert_eq(burned.get("ha", -1), 3, "R14 tuning burn: Force 4 − Robustness 1 = 3")
+	assert_eq(burned.get("hb", -1), 3, "R14 tuning burn: Force 4 − Robustness 1 = 3")
 
 
 func test_boss_closes_distance_when_nothing_in_reach() -> void:
