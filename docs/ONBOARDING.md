@@ -59,18 +59,18 @@ your decision queue). If you read one file to know "what now," read that.
 
 ## Run it on your PC — see what we've got
 
-### A. The game simulation (the main event) — needs **Godot 4.5+**
+### A. The game simulation (the main event) — needs **Godot 4.7** (standardized 2026-07-20)
 
-1. **Install Godot 4.5** (the standard editor build) from https://godotengine.org/download —
-   it's a single executable, no installer needed. Put it on your PATH as `godot`, or set
-   `$GODOT_BIN` to its path. (On a Linux box you can instead run `bash scripts/setup_godot.sh`,
-   which fetches 4.5.2 from a mirror.)
+1. **Install Godot 4.7** (the standard editor build — NOT the .NET/C# one) from
+   https://godotengine.org/download — it's a single executable, no installer needed. Put it
+   on your PATH as `godot`, or set `$GODOT_BIN` to its path. (On a Linux box you can instead
+   run `bash scripts/setup_godot.sh`, which fetches 4.7.1 from a mirror.)
 2. **Get the code:** clone the repo and check out this branch:
    ```
    git clone <repo-url> gpt-game && cd gpt-game
    git checkout claude/session-continuation-next-steps-mpycyj
    ```
-3. **Run the test suite** (proves the engine works — 95 tests):
+3. **Run the test suite** (proves the engine works — 153 tests):
    ```
    bash scripts/run_sim_tests.sh          # exit 0 = pass; exit 3 = SKIPPED (Godot missing)
    ```

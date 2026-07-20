@@ -89,6 +89,7 @@ Gates on: dod.product_competitiveness_gate · dod.runs_from_clean_clone. Re-scan
 
 ## Running tests
 
-`bash scripts/run_sim_tests.sh` — runs the headless sim test suite; requires a Godot 4.5
-binary (`godot` on PATH or `$GODOT_BIN`). The script prints an explicit SKIP (exit 3) when
-no binary is available — a SKIP is not a pass; record it honestly.
+`bash scripts/run_sim_tests.sh` — runs the headless sim test suite; requires a Godot 4.7
+binary (`godot` on PATH or `$GODOT_BIN`). The project standardized on **Godot 4.7** (owner
+ruling 2026-07-20; `scripts/setup_godot.sh` fetches 4.7.1). The script prints an explicit
+SKIP (exit 3) when no binary is available — a SKIP is not a pass; record it honestly.

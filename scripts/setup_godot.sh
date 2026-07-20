@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Install a headless-capable Godot 4.5 into ~/.local/bin so scripts/run_sim_tests.sh
+# Install a headless-capable Godot 4.7 into ~/.local/bin so scripts/run_sim_tests.sh
 # can execute the sim test suite. Idempotent. Works in a Claude Code remote
 # container ONLY if the environment's network policy allows one of the sources
 # below (see CLAUDE.md "Running tests" + memory/open-risks.md).
 set -euo pipefail
 
-# 4.5.2 = final bugfix patch of the 4.5 line (project targets 4.5 features).
-# NOTE: the SourceForge mirror retains only the ~5 most recent releases; if this
-# version vanishes, check https://sourceforge.net/projects/godot-engine.mirror/files/
-# and pick the closest 4.5.x/4.x patch.
-VERSION="4.5.2-stable"
+# 4.7.1 = the standardized target (project targets 4.7 features; owner ruling
+# 2026-07-20). NOTE: the SourceForge mirror retains only the ~5 most recent
+# releases; if this version vanishes, check
+# https://sourceforge.net/projects/godot-engine.mirror/files/ and pick the
+# closest 4.7.x/4.x patch (the sim suite is GDScript-only and forward-compatible).
+VERSION="4.7.1-stable"
 BIN_DIR="${HOME}/.local/bin"
 DEST="${BIN_DIR}/godot"
 

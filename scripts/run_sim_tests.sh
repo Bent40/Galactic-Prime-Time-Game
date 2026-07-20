@@ -11,7 +11,7 @@ fi
 
 if [ -z "$GODOT" ]; then
 	echo "SKIP: no Godot 4 binary available — sim tests NOT executed (this is not a pass)"
-	echo "      install Godot 4.5 and expose it as 'godot' on PATH or via \$GODOT_BIN"
+	echo "      install Godot 4.7 and expose it as 'godot' on PATH or via \$GODOT_BIN"
 	exit 3
 fi
 
