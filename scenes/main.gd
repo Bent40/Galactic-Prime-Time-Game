@@ -9,10 +9,17 @@ extends Control
 const HUD_SCENE := preload("res://ui/hud/combat_hud.tscn")
 const SEED := 14
 
+## The solo paused-clock driver, kept in a scene var so it isn't freed (it is a
+## RefCounted — dropping the last reference would release it). It drives BOTH
+## sides of the tick: the party declares via the HUD, END TURN runs the enemy
+## turn (boss ai_decide) and feeds the advance through advance_moment().
+var _driver: PausedClockDriver
+
 
 func _ready() -> void:
 	DisplayServer.window_set_size(Vector2i(1600, 1000))
 	_stage_slice()
+	_attach_driver()
 	var hud: Control = HUD_SCENE.instantiate()
 	add_child(hud)
 	hud.bind(Game)
@@ -32,6 +39,17 @@ func _stage_slice() -> void:
 	# Charm 30 on Dario grants his Camera Call stack — stacks derive from Charm
 	# over-cap only, so this realizes the demo loadout's declared stack (F1 gap).
 	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30}, [0, 1])
+
+
+## Attach the solo paused-clock driver AFTER the roster is staged and register it
+## on the controller, so END TURN (advance_moment) routes through the slice gate
+## and the driver runs the boss's turn each Moment. Party = the two contestants;
+## the boss is AI-driven by run_enemy_turn.
+func _attach_driver() -> void:
+	_driver = PausedClockDriver.new()
+	_driver.attach(Game)
+	_driver.set_party(["imani", "dario"] as Array[String])
+	Game.set_clock_driver(_driver)
 
 
 func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:

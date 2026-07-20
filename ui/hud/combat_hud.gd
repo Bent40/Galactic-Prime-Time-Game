@@ -274,12 +274,20 @@ func _arena_click_local(local_pos: Vector2) -> void:
 		"%s slides to hex %d,%d" % [_display_name_for(_active_actor), hex.x, hex.y])
 
 
-## END TURN drives the engine clock: advance_tick resolves every declared windup
-## and advances the Moment (the HUD re-binds off the resulting events). The next
-## refresh re-derives the on-the-clock contestant from view_turn_order(), so the
-## action bar + tick-order highlight rotate automatically.
+## END TURN drives the engine clock through the controller's advance_moment(): the
+## party is marked done declaring and the driver runs the ENEMY turn (boss
+## ai_decide) before feeding the advance, so the enemies fight back this Moment.
+## advance_moment routes its commands through apply_command, so the HUD already
+## re-binds off the resulting sim_event; the explicit refresh() is belt-and-braces
+## (and the Momus line is set after so it survives the repaint). The next refresh
+## re-derives the on-the-clock contestant from view_turn_order(), so the action bar
+## + tick-order highlight rotate automatically.
 func _on_end_turn() -> void:
-	_issue({"type": "advance_tick"}, "END TURN — the Moment resolves")
+	if _gc == null:
+		return
+	_gc.advance_moment()
+	refresh()
+	_momus("END TURN — the Moment resolves; the enemies make their move")
 
 
 ## The one command funnel for the HUD: apply, surface any rejection in the Momus

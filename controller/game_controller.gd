@@ -54,6 +54,15 @@ var dal: Dal = Dal.new()
 var saves: SaveManager = SaveManager.new()
 var command_log: Array[Dictionary] = []
 
+## Optional clock driver (KAN3-S4). The scene attaches a PausedClockDriver so END
+## TURN routes through the slice gate (advance_moment); null in headless tests,
+## which advance the tick directly through apply_command.
+var clock_driver = null
+
+
+func set_clock_driver(d) -> void:
+	clock_driver = d
+
 
 ## Creates a fresh sim. Passing static_data overrides the DAL load (tests).
 func start_combat(sim_seed: int, static_data: Dictionary = {}) -> void:
@@ -93,6 +102,25 @@ func run_enemy_turn() -> Array[Dictionary]:
 	for id: String in sim.ai_ready_ids():
 		events.append_array(apply_command({"type": "ai_decide", "actor": id}))
 	return events
+
+
+## One END TURN "Moment" from the presentation layer. With NO driver (headless
+## tests), this is the unchanged fallback — a bare advance_tick through the command
+## funnel. With the slice driver attached, pressing END TURN first ACKNOWLEDGES the
+## previous tick's forced-action fallout (which the player has now seen on the
+## refreshed HUD), marks the whole party done declaring, then advances — so a
+## forced action shows for one beat but never soft-locks the slice. try_advance()
+## feeds its commands (run_enemy_turn's ai_decides + the advance_tick) through
+## apply_command, so every event already flows out on sim_event; the return here is
+## advisory (an empty array) and the HUD refreshes off the signal regardless.
+func advance_moment() -> Array[Dictionary]:
+	if clock_driver == null:
+		return apply_command({"type": "advance_tick"})
+	clock_driver.acknowledge_all()
+	clock_driver.mark_party_declared()
+	clock_driver.try_advance()
+	var out: Array[Dictionary] = []
+	return out
 
 
 ## Read-only VIEW API (KAN3-S3): plain-Dictionary projections of sim state so
