@@ -138,3 +138,40 @@ func test_turn_order_projects_and_reflects_windup() -> void:
 	assert_true(int(a_entry.get("next_action_tick", 0)) > 0, "a's next action is scheduled later")
 	assert_eq(String((order2[order2.size() - 1] as Dictionary).get("id", "")), "a", "the winding-up actor sorts to the back")
 	game.free()
+
+
+func test_view_bid_projects_signed_patron_and_rivals() -> void:
+	# view_bid reads STATIC data (patrons + demo loadouts) via the DAL — no live sim
+	# needed — and must project the two demo contestants, each with their pre-signed
+	# patron flagged and >=2 patron cards carrying non-empty favor/taboo copy.
+	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
+	game.start_combat(7, load_static_data())
+	var bid: Dictionary = game.view_bid()
+
+	assert_true(int(bid.get("table_pot", 0)) > 0, "table pot is a positive placeholder int")
+	var contestants: Array = bid.get("contestants", [])
+	assert_eq(contestants.size(), 2, "two demo contestants in the bid view")
+
+	# The pre-signed patrons from data/demo_loadouts.json (chosen_patron id -> key).
+	var expected_signed: Dictionary = {"imani_the_door": "hestia", "dario_encore": "enyo"}
+	for cv: Variant in contestants:
+		var c: Dictionary = cv
+		var cid: String = String(c.get("id", ""))
+		var signed_key: String = String(c.get("signed_patron", ""))
+		assert_true(expected_signed.has(cid), "known demo contestant id: %s" % cid)
+		assert_eq(signed_key, String(expected_signed.get(cid, "")), "%s signed to expected patron" % cid)
+
+		var patrons: Array = c.get("patrons", [])
+		assert_true(patrons.size() >= 2, "%s has >=2 patron cards" % cid)
+		var signed_count: int = 0
+		var flagged_signed_key: String = ""
+		for pv: Variant in patrons:
+			var p: Dictionary = pv
+			assert_ne(String(p.get("favor", "")), "", "patron %s favor non-empty" % String(p.get("key", "")))
+			assert_ne(String(p.get("taboo", "")), "", "patron %s taboo non-empty" % String(p.get("key", "")))
+			if bool(p.get("signed", false)):
+				signed_count += 1
+				flagged_signed_key = String(p.get("key", ""))
+		assert_eq(signed_count, 1, "%s has exactly one signed patron flagged" % cid)
+		assert_eq(flagged_signed_key, signed_key, "%s signed flag matches signed_patron" % cid)
+	game.free()

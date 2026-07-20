@@ -208,6 +208,120 @@ func view_broadcast() -> Dictionary:
 	}
 
 
+## Pre-run PATRON BID projection (demo slice — "The Bidding" screen). Unlike the
+## other views this reads STATIC data only (the DAL), never the live sim: the 5
+## Greek patron gods (data/patron_gods.json) and the two demo contestants + their
+## pre-signed patron (data/demo_loadouts.json). Presentation-only; no RNG — every
+## number is DERIVED deterministically from the god's own fields so the rendered
+## screen is stable. Every value here is PLACEHOLDER (R14); a real bidding/economy
+## system replaces the derivations later (see the report's stub list).
+func view_bid() -> Dictionary:
+	var patrons: Array = dal.patron_gods()
+	var by_id: Dictionary = {}
+	for g: Variant in patrons:
+		by_id[int((g as Dictionary).get("id", -1))] = g
+	var loadouts: Array = dal.demo_loadouts().get("loadouts", [])
+
+	var contestants: Array = []
+	var table_pot: int = 0
+	for lo: Variant in loadouts:
+		var loadout: Dictionary = lo
+		var signed: Dictionary = by_id.get(int(loadout.get("chosen_patron", -1)), {})
+		var signed_key: String = String(signed.get("key", ""))
+
+		# Rivals: the other patrons, highest influence first (deterministic key
+		# tie-break), take 2 — "the signed patron + 2 more of the 5 (stable pick)".
+		var rivals: Array = []
+		for g: Variant in patrons:
+			if String((g as Dictionary).get("key", "")) != signed_key:
+				rivals.append(g)
+		rivals.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			if int(a.get("influence", 0)) != int(b.get("influence", 0)):
+				return int(a.get("influence", 0)) > int(b.get("influence", 0))
+			return String(a.get("key", "")) < String(b.get("key", "")))
+		rivals = rivals.slice(0, 2)
+		# Exactly ONE non-signed high-influence god is flagged OUTBIDDING (the top
+		# rival after the influence sort — visually the loudest rival bid).
+		var outbid_key: String = String((rivals[0] as Dictionary).get("key", "")) if not rivals.is_empty() else ""
+
+		var cards: Array = []
+		if not signed.is_empty():
+			cards.append(_bid_card(signed, true, false))
+		for r: Variant in rivals:
+			cards.append(_bid_card(r, false, String((r as Dictionary).get("key", "")) == outbid_key))
+		for c: Variant in cards:
+			table_pot += int((c as Dictionary).get("bid", 0))
+
+		contestants.append({
+			"id": String(loadout.get("key", "")),
+			"name": String(loadout.get("display_name", "")),
+			"persona": String(loadout.get("broadcast_persona", "")),
+			"signed_patron": signed_key,
+			"patrons": cards,
+		})
+
+	return {"table_pot": table_pot, "contestants": contestants}
+
+
+## One patron's bid card (view_bid helper). bid / multiplier / traits are DERIVED
+## deterministically from the god's static fields (influence, generosity, power,
+## buff_multiplier) — no RNG — so the rendered screen never shifts. PLACEHOLDER (R14).
+func _bid_card(g: Dictionary, is_signed: bool, is_outbidding: bool) -> Dictionary:
+	var gen: int = int(g.get("generosity", 3))
+	var power: int = int(g.get("power", 3))
+	var influence: int = clampi(int(g.get("influence", 3)), 1, 5)
+	var buff: float = float(g.get("buff_multiplier", 0.1))
+	var domain_titles: Array = []
+	for d: Variant in g.get("domains", []):
+		domain_titles.append(_titlecase(String(d)))
+	var boons: Array = []
+	for b: Variant in (g.get("boon_table", []) as Array).slice(0, 2):
+		boons.append(_titlecase(String(b)))
+	var favor_conditions: Array = g.get("favor_conditions", [])
+	var taboos: Array = g.get("taboos", [])
+	return {
+		"key": String(g.get("key", "")),
+		"name": String(g.get("name", "")),
+		"pantheon": "%s Pantheon" % String(g.get("origin", "")),
+		"domain": " & ".join(PackedStringArray(domain_titles)),
+		"influence": influence,
+		"favor": String(favor_conditions[0]) if not favor_conditions.is_empty() else "",
+		"taboo": String(taboos[0]) if not taboos.is_empty() else "",
+		"boons": boons,
+		"traits": _bid_traits(gen, power),
+		# influence dominates the bid so the flagged (highest-influence) rival reads
+		# as the top number; generosity*power is a secondary sweetener. PLACEHOLDER.
+		"bid": influence * 2000 + gen * power * 100,
+		"multiplier": snappedf(1.0 + power * 0.4 + buff * 5.0, 0.1),
+		"signed": is_signed,
+		"outbidding": is_outbidding,
+	}
+
+
+## Two personality words derived from a god's generosity (warmth axis) and power
+## (intensity axis). Deterministic; PLACEHOLDER flavor until real patron voice copy.
+func _bid_traits(gen: int, power: int) -> Array:
+	var warmth: String = "Cold"
+	if gen >= 5: warmth = "Doting"
+	elif gen == 4: warmth = "Warm"
+	elif gen == 3: warmth = "Even"
+	elif gen == 2: warmth = "Aloof"
+	var intensity: String = "Meek"
+	if power >= 4: intensity = "Relentless"
+	elif power == 3: intensity = "Assertive"
+	elif power == 2: intensity = "Patient"
+	return [warmth, intensity]
+
+
+## "healing_comp" / "war" -> "Healing Comp" / "War" (view_bid helper).
+func _titlecase(s: String) -> String:
+	var out: Array = []
+	for w: String in s.replace("_", " ").split(" ", false):
+		if not w.is_empty():
+			out.append(w.substr(0, 1).to_upper() + w.substr(1))
+	return " ".join(PackedStringArray(out))
+
+
 ## Turn-order projection (KAN-6): live combatants ordered by when they next act
 ## (next_action_tick, soonest first; deterministic id tie-break). Drives the HUD
 ## tick-order rail and the on-the-clock highlight. `ready` = can act at the current
