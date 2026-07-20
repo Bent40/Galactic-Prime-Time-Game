@@ -823,7 +823,10 @@ func _card(parent: Node) -> VBoxContainer:
 	return v
 
 
-func _h4(text: String) -> Label:
+func _h4(text: String) -> Control:
+	# Returns the padded WRAPPER (_pad_bottom -> MarginContainer), not the bare
+	# Label — the annotation must be Control or the typed return coerces to null at
+	# runtime and the heading silently vanishes (regression fixed 2026-07-20).
 	var l := _lab(text, f_body, 9, _col(MUTED), 3.0, true)
 	return _pad_bottom(l, 8)
 
