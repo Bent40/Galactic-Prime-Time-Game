@@ -5,13 +5,13 @@ run the game and see the current state. (This file is durable — updated as thi
 
 ## Where we are in one paragraph
 
-The headless combat **simulation is real and tested** (95 passing tests under Godot 4.5.2):
+The headless combat **simulation is real and tested** (the headless sim suite — current count in STATUS.md):
 the deterministic Moment-clock engine (KAN-2), the scaffolding that boots it and renders a
 hex field (KAN-3), the **spectacle/hype engine** (crowd goals + camera-call), and **enemy
 AI v1** (mob/elite policies + the Incinedile Phase-1 boss with its dodge-threshold and
 discoverable breach win-condition). Content-wise: the **tag catalog is complete** (100 tags
 with descriptions), **two demo loadouts** (Imani, Dario) exist as test fixtures, and a
-**14-tradition mythology dataset** (210 gods/heroes/beasts + 294 myths) is researched and
+**14-tradition mythology dataset** (224 gods/heroes/beasts + 294 myths) is researched and
 cross-linked, ready to become the patron-god roster. Not yet built: the vertical slice
 assembly (arena + the two contestants + boss + broadcast win/lose), character creation
 (KAN-4), and the UI chrome (KAN-6).
@@ -44,7 +44,7 @@ assembly (arena + the two contestants + boss + broadcast win/lose), character cr
 10. `docs/research/mythology/census-summary.md` — the map + how it was built.
 11. `docs/research/mythology/wave4-crosslink-report.md` — data health, syncretic merges,
     what's still un-extracted (Wave-2b candidates).
-12. The data itself: `data/mythology/entities.jsonl` (210 gods), `data/mythology/myths.jsonl`
+12. The data itself: `data/mythology/entities.jsonl` (224 gods), `data/mythology/myths.jsonl`
     (294 myths), and the per-tradition dossiers in `docs/research/mythology/*.md`
     (Greek, Norse, Egyptian, Hindu, Abrahamic, Arthurian, …). Best browsed with `jq`
     (below) or just opened — each line is one record.
@@ -70,7 +70,7 @@ your decision queue). If you read one file to know "what now," read that.
    git clone <repo-url> gpt-game && cd gpt-game
    git checkout claude/session-continuation-next-steps-mpycyj
    ```
-3. **Run the test suite** (proves the engine works — 154 tests):
+3. **Run the test suite** (proves the engine works — the headless sim suite; current count in STATUS.md):
    ```
    bash scripts/run_sim_tests.sh          # exit 0 = pass; exit 3 = SKIPPED (Godot missing)
    ```

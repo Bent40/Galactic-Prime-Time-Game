@@ -12,13 +12,17 @@ Schema (246-line SQLite migration), JSON seeds (races, enemies incl. Incinedile 
 9 conditions w/ tier tables, 44 skills, 82 thresholds, 28 items, 100 tags, 27 modifiers,
 3 patron-god stubs), `validate_seeds.py` (172 rows green, wired into `wf validate`).
 
-## KAN-2 — Combat engine 🔨 (core ✅ 29/29)
+## KAN-2 — Combat engine 🔨 (core ✅ + S2.5 ✅)
 
 Done: command-stream reducer (R0–R2), Moment clock, per-part HP + deaths/bleed-out (R5),
 all 9 condition engines + treat/heal (R4/R10), Forced Action d6 tables (logged rolls),
 requirements gate (R10), RPM/magazine/reload (R8), grapples (R9), movement/statuses/
 exposure (R3/R7), resistances + boss hooks (R6), shock R13-as-provisional, levels (R6),
-hype engine v1, determinism + save/resume tests.
+hype engine v1, per-skill mechanics (SkillBook + 6 real demo skills), determinism +
+save/resume tests.
+
+Design DECIDED 2026-07-20 (implementation pending): the three engine-work sittings below —
+S2.1 priming, S2.2 shock, S2.3 R14 numbers. The stories stay engine-work-pending until wired.
 - ⬜ **S2.1 Priming system** — replace dormant cooldown path with prime states
   (channels/stacks/stances/conditions), item prime-skips. *Gated on the owner skills
   passover (vocabulary).*
@@ -27,12 +31,15 @@ hype engine v1, determinism + save/resume tests.
   damage table, re-seed placeholders; mutation pass (`wf mutate`) after.
 - ⬜ **S2.4 Free-action/actions-per-tick audit** — verify addendum rulings hold under
   real-time declare windows (APM-contest guard).
-- ⬜ **S2.5 Combined actions (R15)** — linked same-tick declarations; assists as
+- ✅ **S2.5 Combined actions (R15)** — linked same-tick declarations; assists as
   requirement-providers; merged-hit resolution (breach/force thresholds); degraded-combo
   cascade on partner Forced Actions; ally-targeted verbs + item handoff; hype
   choreography bonus. Tests: acceptance criterion 21.
 
-## KAN-3 — Scaffolding ⬜ (next)
+## KAN-3 — Scaffolding ✅
+
+Done: autoload + signal catalog, DAL, `save_manager`, hex renderer, clock driver — plus the
+integrated run loop (title → bid → combat → verdict → restart) and enemy-turn wiring.
 
 - **S3.1** Main scene + `GameController` autoload; signal catalog per architecture PDF.
 - **S3.2** DAL: JSON-first for the slice (SQLite deferral recorded in ISSUES); single
@@ -62,12 +69,15 @@ hype engine v1, determinism + save/resume tests.
 - **S5.3** Noise/absorption: noise budget per fight; eligible-encounter pull at resets.
 - **S5.4** Overworld coarse clock (conditions advance between fields).
 
-## KAN-6 — UI ⬜ (mockup gate before build)
+## KAN-6 — UI 🔨 (S6.1–S6.3 ✅ · S6.4 a11y ⬜)
 
-- **S6.1** Declare UI + consequence preview (the pillar-2 UX; mockup first).
-- **S6.2** Broadcast chrome: hype bar, odds board, lower-thirds, Camera Call moment.
-- **S6.3** Party/condition readouts (per-part states at a glance).
-- **S6.4** A11y baseline (contrast, scale, input remap) — `dod.accessibility_gate`.
+Built: the combat HUD, broadcast chrome, and party/condition readouts, plus the bid and
+verdict screens. The mockup gate is cleared. A11y baseline (S6.4) is the remaining story.
+
+- ✅ **S6.1** Declare UI + consequence preview (the pillar-2 UX; mockup first).
+- ✅ **S6.2** Broadcast chrome: hype bar, odds board, lower-thirds, Camera Call moment.
+- ✅ **S6.3** Party/condition readouts (per-part states at a glance).
+- ⬜ **S6.4** A11y baseline (contrast, scale, input remap) — `dod.accessibility_gate`.
 
 ## KAN-7 — Progression & audience ⬜ (grew 3× with the casino frame)
 

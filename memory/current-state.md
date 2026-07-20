@@ -12,7 +12,7 @@
 - **BMAD artifact chain:** brief APPROVED; GDD (`docs/gdd/gdd.md`, supersedes v0.2 PDF) +
   narrative + architecture + KAN-3 stories + readiness all drafted — GDD sits at the owner
   review gate.
-- **Engine (KAN-2): 96/96 green** under Godot 4.5.2 in-container (`scripts/setup_godot.sh`)
+- **Engine (KAN-2): green headless suite** — see STATUS.md for the current count — under Godot 4.7.1 in-container (`scripts/setup_godot.sh`)
   after integrating `origin/main` (mythology Waves 0–4, enemy AI I-16, Incinedile phase
   machine, hype/spectacle). This session added **S2.5 combined actions (criterion 21):
   `combined_action` command, assist-satisfies-requirement, single-hit breach per NQ2;

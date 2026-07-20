@@ -1,11 +1,11 @@
 # bmad.config.yaml — project config consumed by `wf` (validate/context).
-# Godot 4.5 project; validation commands are wired as the pieces land.
+# Godot 4.7 project; validation commands are wired as the pieces land.
 
 validation:
   # Seed-data integrity (JSON shape + schema-enum cross-checks). Wired 2026-07-13.
   data:
     - "python3 scripts/validate_seeds.py"
-  # KAN-2 headless sim tests. Requires a Godot 4.5 binary (godot on PATH or $GODOT_BIN).
+  # KAN-2 headless sim tests. Requires a Godot 4.7 binary (godot on PATH or $GODOT_BIN).
   # The script exits 3 = explicit SKIP when no binary is available — a SKIP is not a pass.
   test:
     - "bash scripts/run_sim_tests.sh"
