@@ -40,8 +40,9 @@ static func _reject(reason: String, detail: Dictionary = {}) -> Array[Dictionary
 
 ## Declares a scheduled or free (0-Moment) action. Action dict keys:
 ## kind ("attack"|"skill"|"grapple"|"grapple_escape"|"grapple_suffocate"|
-## "reload"|"stand"|"wait"), cost, key (cooldown identity), cooldown /
-## cooldown_clocks, item (key on the actor), damage {"type","amount"},
+## "reload"|"stand"|"wait"), cost, key (action identity), prime (R3 priming
+## gate — a requirement-shaped Dictionary; see _prime_unmet),
+## item (key on the actor), damage {"type","amount"},
 ## attack_range, targets [{"id","part"}], rounds, requirements, injection,
 ## poison_type, target (grapple kinds).
 func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
@@ -60,9 +61,11 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	if not validation.is_empty():
 		return validation
 
-	var cd_key := String(action.get("key", String(action.get("item", ""))))
-	if cd_key != "" and int(actor.cooldowns.get(cd_key, 0)) > clock.tick:
-		return _reject("cooldown", {"actor": actor_id, "key": cd_key, "ready_at_tick": int(actor.cooldowns[cd_key])})
+	# R3 priming gate (decision-log #20): "cooldowns do not exist" — a declared
+	# action instead gates on its PRIME. Unsatisfied primes reject at declare.
+	var prime_reason: String = _prime_unmet(actor, action)
+	if prime_reason != "":
+		return _reject("prime_unmet", {"actor": actor_id, "prime": prime_reason})
 
 	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
 	var eff_cost: int = _effective_cost(actor, kind, action, uses_strained)
@@ -133,6 +136,80 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		if arch == "strike":
 			return not (action.get("targets", []) as Array).is_empty()
 	return false
+
+
+# ------------------------------------------------------------------ priming (R3)
+
+## The prime a declared action gates on: action["prime"] wins; for a skill it
+## falls back to the SkillBook spec's "prime" when the action does not override.
+## Returns {} when the action carries no prime.
+func _effective_prime(action: Dictionary) -> Dictionary:
+	var prime: Dictionary = action.get("prime", {})
+	if prime.is_empty() and String(action.get("kind", "")) == "skill":
+		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		prime = spec.get("prime", {})
+	return prime
+
+
+## R3 priming gate (rules-addendum R3, decision-log #20 — "cooldowns do not
+## exist"). A declared action may gate on ONE of five canonical, requirement-
+## shaped primes. Returns "" when satisfied (or the action carries no prime),
+## else a short unmet reason. Evaluated at DECLARE against live state.
+##   CHAIN          {"type":"chain","after":k}                — actor's last resolved key == k
+##   STANCE         {"type":"stance","stance":s}              — actor holds stance s
+##   STACK          {"type":"stack","resource":r,"count":n}   — actor has >= n of r
+##   STATE-POSITION {"type":"state","who":"self|target","status":s} — subject has status s
+##   PREP-CHANNEL   {"type":"prep","key":k}                   — actor has armed prime k
+func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
+	var prime: Dictionary = _effective_prime(action)
+	if prime.is_empty():
+		return ""
+	match String(prime.get("type", "")):
+		"chain":
+			var after := String(prime.get("after", ""))
+			if actor.last_action_key != after:
+				return "chain_after:%s" % after
+		"stance":
+			var want := String(prime.get("stance", ""))
+			if actor.stance != want:
+				return "stance:%s" % want
+		"stack":
+			var resource := String(prime.get("resource", ""))
+			var need: int = int(prime.get("count", 1))
+			if _stack_count(actor, resource) < need:
+				return "stack:%s<%d" % [resource, need]
+		"state":
+			var who := String(prime.get("who", "self"))
+			var status := String(prime.get("status", ""))
+			var subject: CombatantState = actor if who == "self" else _first_target(action)
+			if subject == null or not _has_status(subject, status):
+				return "state:%s:%s" % [who, status]
+		"prep":
+			var key := String(prime.get("key", ""))
+			if not bool(actor.armed_primes.get(key, false)):
+				return "prep:%s" % key
+		_:
+			return "unknown_prime:%s" % String(prime.get("type", ""))
+	return ""
+
+
+## STACK resource count: the camera-call resource reuses the actor's Charm
+## over-cap camera-call stacks (R6, derived); any other name reads the generic
+## `charges` fallback.
+func _stack_count(actor: CombatantState, resource: String) -> int:
+	if resource == "camera_call":
+		return int(actor.derived_stats().get("camera_call_stacks", 0))
+	return int(actor.charges.get(resource, 0))
+
+
+## STATE-POSITION status read: "exposed"/"helpless" use the live caches the rest
+## of the resolver reads; everything else is a plain statuses flag.
+func _has_status(c: CombatantState, status: String) -> bool:
+	if status == "exposed":
+		return c.exposed_cache
+	if status == "helpless":
+		return c.is_helpless(clock.tick)
+	return bool(c.statuses.get(status, false))
 
 
 func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> Array[Dictionary]:
@@ -507,17 +584,15 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			events.append({"type": "action_resolved", "actor": actor.id, "kind": "stand", "result": "ok"})
 		_:
 			events.append({"type": "action_resolved", "actor": actor.id, "kind": kind, "result": "ok"})
-	var cd_key := String(action.get("key", String(action.get("item", ""))))
-	var cd_ticks: int = _cooldown_ticks(action)
-	if cd_key != "" and cd_ticks > 0:
-		actor.cooldowns[cd_key] = clock.tick + cd_ticks  # R3: absolute-timeline ticks
+	# R3 priming bookkeeping (decision-log #20). Record the CHAIN key: this
+	# action's identity becomes the actor's last_action_key (a different action's
+	# key overwrites it, so a non-matching action "clears" a pending chain). A
+	# PREP-CHANNEL prime is CONSUMED here — using the armed action spends it.
+	actor.last_action_key = String(action.get("key", String(action.get("item", ""))))
+	var eff_prime: Dictionary = _effective_prime(action)
+	if String(eff_prime.get("type", "")) == "prep":
+		actor.armed_primes.erase(String(eff_prime.get("key", "")))
 	return events
-
-
-func _cooldown_ticks(action: Dictionary) -> int:
-	if action.has("cooldown_clocks"):
-		return int(action["cooldown_clocks"]) * Clock.TICKS_PER_CLOCK  # "1 Clock" = 10 ticks
-	return int(action.get("cooldown", 0))
 
 
 # ------------------------------------------------------------------ skills (SkillBook)

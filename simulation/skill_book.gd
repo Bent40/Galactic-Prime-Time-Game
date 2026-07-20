@@ -20,6 +20,23 @@ extends RefCounted
 ## placeholders). The remaining 37 skills in data/skills.json are the
 ## fill-in-later content pass; until encoded they resolve through the generic
 ## `strike` fallback so an unknown key still does a real, honest thing.
+##
+## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
+## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
+## at declare (one of chain / stance / stack / state / prep). Only skills whose
+## prime is safe to enforce for their EXISTING tests carry an encoded prime here;
+## the rest ride a later ladder pass. Documented intents for skills built later:
+##   - pressure_strike -> CHAIN after "feint". NOT encoded as an enforced prime:
+##     the working feint->pressure_strike mechanic (feint_forced) already gates the
+##     bonus at resolve, and test_pressure_strike_no_shock_without_feint declares
+##     pressure_strike with NO preceding feint, which an enforced declare-time CHAIN
+##     would reject. The CHAIN predicate is exercised on a test-only skill instead
+##     (tests/test_priming.gd); this note records the sequence the ladder pass wires.
+##   - tactical_roll (skills.json id 9)   -> STANCE (usable only in a defensive stance)
+##   - acrobatic_save (skills.json id 37) -> STANCE (usable only in a defensive stance)
+##   - slip_through   (skills.json id 21) -> CHAIN  (must follow Pounce immediately)
+## These three are NOT in the demo-6 and are not mechanically built as reactions
+## here; the note above is for when their full reaction mechanics are implemented.
 
 const KNOWN_KEYS: Array[String] = [
 	"strong_strike", "overhead_slam", "brace", "feint", "pressure_strike", "dance",

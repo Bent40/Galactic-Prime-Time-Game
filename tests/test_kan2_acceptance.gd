@@ -169,21 +169,45 @@ func test_08_inventory_interaction_costs() -> void:
 	assert_eq(int(third_decl.get("cost", -1)), 1, "still 1 Moment — reset-loop exploit deleted")
 
 
-## 9. "Cooldown '1 Clock' = exactly 10 ticks regardless of Clock boundary [R3]."
-func test_09_cooldown_absolute_ticks() -> void:
+## 9. "Skills gate on PRIMING, not cooldowns (R3, decision-log #20). A prime-gated
+##    action is rejected without its prime and accepted once it is present; a
+##    prep-gated use CONSUMES its prime." (Supersedes the deleted "'1 Clock' = 10
+##    ticks" cooldown criterion — cooldowns no longer exist.)
+func test_09_priming_replaces_cooldown() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a", {"position": [0, 0]})
-	advance(sim, 5)
-	var declared: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 1, "key": "zap", "cooldown_clocks": 1})
-	assert_event(declared, "action_declared", "skill accepted at tick 5")
-	advance(sim)  # resolves at tick 5 -> available again at tick 15
-	advance(sim, 8)
-	assert_eq(sim.clock.tick, 14, "one tick before cooldown expiry (crossed a Clock reset)")
-	var too_early: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 1, "key": "zap"})
-	assert_rejected(too_early, "cooldown", "still cooling at tick 14")
+	add_human(sim, "b", {"position": [1, 0]})
+	# STANCE prime: a stance-gated skill is rejected until the actor holds the stance.
+	var stance_skill: Dictionary = {
+		"kind": "skill", "cost": 1, "key": "guard_break",
+		"prime": {"type": "stance", "stance": "defensive"},
+		"attack_range": 1, "damage": {"type": "crushed", "amount": 1},
+		"targets": [{"id": "b", "part": "torso"}],
+	}
+	var no_stance: Array[Dictionary] = declare(sim, "a", stance_skill.duplicate(true))
+	assert_rejected(no_stance, "prime_unmet", "a stance-gated skill needs the stance")
+	sim.apply_command({"type": "set_stance", "actor": "a", "stance": "defensive"})
+	var with_stance: Array[Dictionary] = declare(sim, "a", stance_skill.duplicate(true))
+	assert_event(with_stance, "action_declared", "holding the stance satisfies the STANCE prime")
 	advance(sim)
-	var ready: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 1, "key": "zap"})
-	assert_event(ready, "action_declared", "available at exactly resolution + 10 ticks")
+	# PREP prime: rejected until armed, accepted once, then rejected again (consumed).
+	var prep_skill: Dictionary = {
+		"kind": "skill", "cost": 1, "key": "channel_bolt",
+		"prime": {"type": "prep", "key": "bolt"},
+		"attack_range": 1, "damage": {"type": "burn", "amount": 1},
+		"targets": [{"id": "b", "part": "torso"}],
+	}
+	var unprimed: Array[Dictionary] = declare(sim, "a", prep_skill.duplicate(true))
+	assert_rejected(unprimed, "prime_unmet", "a prep-gated skill needs an armed prime")
+	var armed: Array[Dictionary] = sim.apply_command({"type": "prime", "actor": "a", "key": "bolt"})
+	assert_event(armed, "prime_armed", "the prep prime is armed")
+	var primed: Array[Dictionary] = declare(sim, "a", prep_skill.duplicate(true))
+	assert_event(primed, "action_declared", "an armed prep prime lets the action through")
+	advance(sim)  # resolves and CONSUMES the prime
+	var a: CombatantState = sim.combatants["a"]
+	assert_false(bool(a.armed_primes.get("bolt", false)), "using the prep-gated action consumed the prime")
+	var consumed: Array[Dictionary] = declare(sim, "a", prep_skill.duplicate(true))
+	assert_rejected(consumed, "prime_unmet", "the consumed prime no longer satisfies the gate")
 
 
 ## 10. "Damage = listed − flat resistance, floor 0; applies condition T1;

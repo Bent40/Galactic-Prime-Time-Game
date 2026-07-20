@@ -24,6 +24,8 @@ extends RefCounted
 ##            "activation_delay"?}                           environment/GM source
 ##   {"type": "grant_level", "actor"} / {"type": "spend_level_point", "actor", "trait"} (R6)
 ##   {"type": "set_status", "target", "status": "overwhelmed"|"prone"|"slowed", "value"}
+##   {"type": "set_stance", "actor", "stance"}                  0-cost stance for STANCE primes (R3)
+##   {"type": "prime", "actor", "key"}                          arm a PREP-CHANNEL prime (R3)
 ##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
 ##
@@ -104,6 +106,10 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _spend_level_point(cmd)
 		"set_status":
 			events = _set_status(cmd)
+		"set_stance":
+			events = _set_stance(cmd)
+		"prime":
+			events = _prime(cmd)
 		"camera_call":
 			events = _camera_call(cmd)
 		"bit":
@@ -402,6 +408,32 @@ func _set_status(cmd: Dictionary) -> Array[Dictionary]:
 		target.statuses.erase(status)
 	var events: Array[Dictionary] = [{"type": "status_changed", "combatant": target.id, "status": status, "value": value}]
 	return events
+
+
+## Prime substrate (rules-addendum R3, decision-log #20 — "cooldowns do not
+## exist"). A 0-cost STANCE declaration: sets actor.stance ("" clears). Outside
+## the action economy (no Moment cost, no free-slot); the STANCE prime predicate
+## in ActionResolver reads actor.stance.
+func _set_stance(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	var stance := String(cmd.get("stance", ""))
+	actor.stance = stance
+	return [{"type": "stance_changed", "actor": actor.id, "stance": stance}]
+
+
+## Prime substrate (R3, PREP-CHANNEL): arms actor.armed_primes[key]. Using a
+## prep-gated action consumes it (ActionResolver clears it at resolve).
+func _prime(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	var key := String(cmd.get("key", ""))
+	if key == "":
+		return [{"type": "command_rejected", "reason": "missing_prime_key", "actor": actor.id}]
+	actor.armed_primes[key] = true
+	return [{"type": "prime_armed", "actor": actor.id, "key": key}]
 
 
 # ------------------------------------------------------------------ enemy AI (R11 #15)
