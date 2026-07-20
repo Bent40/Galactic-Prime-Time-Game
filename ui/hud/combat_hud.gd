@@ -21,12 +21,28 @@ extends Control
 ##   * SPOTLIGHT / CAMERA CALL card          (view_broadcast.spotlight)
 ##   * per-contestant 6-part HP grid, conditions, shock (view_combatants.parts)
 ##   * SLICE OBJECTIVE network status + boss NETWORK/PHASE tags (breached/hidden)
+##   * ARENA hex board + unit tokens at their LIVE axial positions (view_combatants
+##     .position), boss network masked until breached; MOVE click-to-target
+##   * TICK-ORDER rail + ON-THE-CLOCK highlight + turn rotation (view_turn_order)
 ## PLACEHOLDER-stubbed (laid out faithfully, marked, static content) — see the
-## inline `# PLACEHOLDER:` notes: the tick-order rail, GODS-AT-THE-TABLE
-## multipliers + WAGER FEED, the arena hex board + tokens, contestant
-## persona/patron/skill chips, the Momus chyron line, viewer count, REC timer.
+## inline `# PLACEHOLDER:` notes: GODS-AT-THE-TABLE multipliers + WAGER FEED,
+## contestant persona/patron/skill chips, the flamethrower-cone hazard tint
+## (decorative — no sim hazard model), viewer count, REC timer.
 
 const ArenaFloor := preload("res://ui/hud/arena_floor.gd")
+# field_renderer.gd carries the reusable, unit-tested hex math (axial_to_pixel /
+# hex_points / pixel_to_axial). It is LOADED AT RUNTIME rather than preloaded: its
+# _ready() references the `Game` autoload, and preloading it into this scene forces
+# that reference to resolve during compile (before the autoload is live in the
+# render/test harnesses). Runtime load sidesteps the cycle — see _fr().
+var _field_renderer: GDScript
+
+
+## The reusable hex-math script (lazy-loaded; see the note above).
+func _fr() -> GDScript:
+	if _field_renderer == null:
+		_field_renderer = load("res://scenes/field/field_renderer.gd") as GDScript
+	return _field_renderer
 
 # ---- palette (DESIGN.md — extends the char-sheet app tokens exactly) ----
 const BG := "#04050d"
@@ -46,11 +62,27 @@ const FIRE := "#ff7a2f"
 var _gc = null  # GameController (untyped: it is the `Game` autoload script, no class_name)
 
 # ---- input wiring (this pass) ----------------------------------------------
-## The "ON THE CLOCK" contestant. The action bar + The Bit + Camera Call act as
-## this id. Defaults to the demo's on-the-clock contestant (Dario). Turn order is
-## not in the view API yet, so END TURN does NOT auto-rotate it (PLACEHOLDER) —
-## the driver / a contestant click sets it via set_active_actor().
+## The "ON THE CLOCK" contestant — the action bar / The Bit / Camera Call / MOVE
+## act as this id. DERIVED every refresh() from view_turn_order() as the first
+## `ready && is_contestant` entry (fallback: keep the current one), so END TURN
+## (advance_tick) rotates it automatically. set_active_actor() can force it as an
+## override, but the next refresh re-derives from live turn order.
 var _active_actor := "dario"
+
+# ---- arena / turn-order live state (this pass) ------------------------------
+var _stage: Control              # the center-stage container (arena panel body)
+var _arena_floor                 # ArenaFloor — draws the live hex board
+var _token_layer: Control        # holds the unit-token nodes (origin = disc centre)
+var _click_catcher: Control      # top overlay; catches clicks only in MOVE mode
+var _tick_strip: HBoxContainer   # the tick-order rail chips (rebuilt each refresh)
+var _move_mode := false          # MOVE click-to-target armed?
+var _arena_eff := 40.0           # current on-screen hex size (board transform)
+var _arena_off := Vector2.ZERO   # current board offset (board transform)
+var _arena_qr := Vector2i(-2, 3) # current drawn q range (qlo, qhi)
+var _arena_rr := Vector2i(-2, 3) # current drawn r range (rlo, rhi)
+var _last_combatants: Array = [] # cached view_combatants() for re-layout on resize
+var _emoji_map := {}             # id -> token emoji (boss/contestant), rebuilt each refresh
+var _boss_id_cache := ""         # id of the combatant carrying the hidden network
 
 ## PLACEHOLDER: per-skill mechanics pending. The sim has NO per-skill mechanics —
 ## declare_action takes raw damage — so every skill/attack button declares a REAL
@@ -97,9 +129,6 @@ var _goal_desc: Label
 var _goal_pay: Label
 var _goal_time: Label
 var _obj_status: Label
-var _boss_hp: ProgressBar
-var _boss_net_tag: Label
-var _boss_phase_tag: Label
 # id -> {parts:{key:{val:Label, bar:ProgressBar}}, condbox:HBoxContainer, shock:Label}
 var _cref := {}
 
@@ -157,8 +186,9 @@ func _on_event(_e: Dictionary = {}) -> void:
 ## updates the HUD automatically. These handler methods are what the buttons'
 ## click overlays call — and what the scripted preview driver calls directly.
 
-## Sets the on-the-clock contestant (the action bar / Camera Call / The Bit act as
-## this id). No full turn-order system — that needs data not in the view API yet.
+## Forces the on-the-clock contestant (override). refresh() otherwise DERIVES it
+## from view_turn_order(); a forced id holds only until the next refresh re-derives
+## from live turn order. Kept for drivers that want to pin a specific contestant.
 func set_active_actor(id: String) -> void:
 	_active_actor = id
 	if _actionbar_who != null:
@@ -208,18 +238,46 @@ func _on_bit() -> void:
 		"%s drops the Bit — pure spectacle for the crowd" % _display_name_for(_active_actor))
 
 
-## PLACEHOLDER: click-to-target movement pending. The arena board is a static
-## placeholder (no hex picking, and sim positions aren't reflected in it yet), so
-## MOVE is a narrated no-op — it issues no command rather than moving off-camera.
-## Wire a real 1-step move once the arena renders live positions.
+## MOVE arms click-to-target: the arena highlights the reachable hexes and the
+## next click on a hex issues a real move(active_actor, [q,r]). Toggling MOVE off
+## disarms it. The arena floor draws the highlight ring; the click catcher (a top
+## overlay) is filter-STOP only while armed so it never eats clicks otherwise.
 func _on_move() -> void:
-	_momus("MOVE — arena targeting is a placeholder this build")
+	_move_mode = not _move_mode
+	if _click_catcher != null:
+		_click_catcher.mouse_filter = Control.MOUSE_FILTER_STOP if _move_mode else Control.MOUSE_FILTER_IGNORE
+	if _move_mode:
+		_momus("MOVE — pick a highlighted hex for %s" % _display_name_for(_active_actor))
+	_layout_arena()  # repaint the reachable-hex highlight
+
+
+## gui_input on the click catcher: a left click while armed picks the hex under
+## the cursor. event.position is local to the catcher, which shares the stage's
+## coordinate space (both anchored full-rect), so it maps straight back through
+## the board transform. Also callable directly by the render harness.
+func _on_arena_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_arena_click_local(event.position)
+
+
+## Turns a stage-local pixel into an axial hex (inverse of the board transform)
+## and issues the move. Rejections (already_moved / grappled / winding_up / …)
+## surface in the Momus chyron via _issue — never a crash.
+func _arena_click_local(local_pos: Vector2) -> void:
+	if not _move_mode:
+		return
+	var hex: Vector2i = _fr().pixel_to_axial(local_pos - _arena_off, _arena_eff)
+	_move_mode = false
+	if _click_catcher != null:
+		_click_catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_issue({"type": "move", "actor": _active_actor, "to": [hex.x, hex.y]},
+		"%s slides to hex %d,%d" % [_display_name_for(_active_actor), hex.x, hex.y])
 
 
 ## END TURN drives the engine clock: advance_tick resolves every declared windup
-## and advances the Moment (the HUD re-binds off the resulting events). Turn order
-## is not in the view API yet, so the on-the-clock contestant is NOT auto-rotated
-## (PLACEHOLDER) — that needs a turn-order projection.
+## and advances the Moment (the HUD re-binds off the resulting events). The next
+## refresh re-derives the on-the-clock contestant from view_turn_order(), so the
+## action bar + tick-order highlight rotate automatically.
 func _on_end_turn() -> void:
 	_issue({"type": "advance_tick"}, "END TURN — the Moment resolves")
 
@@ -256,6 +314,39 @@ func _boss_id() -> String:
 			if bool(p.get("hidden", false)) or String(p.get("key", "")).contains("network"):
 				return String(c.get("id", ""))
 	return ""
+
+
+## Recomputes the boss id + the id->emoji map from the live roster, so the arena
+## tokens and the tick-order rail agree on who's who. The boss is masked (🐊) and
+## keeps its network hidden until breached; contestants map by name; anything else
+## falls back to a generic marker.
+func _recompute_identity() -> void:
+	_emoji_map.clear()
+	_boss_id_cache = _boss_id()
+	if _gc == null:
+		return
+	for cd in _gc.view_combatants():
+		var c: Dictionary = cd
+		var id := String(c.get("id", ""))
+		if id == _boss_id_cache:
+			_emoji_map[id] = "🐊"
+		else:
+			_emoji_map[id] = _contestant_emoji(id, String(c.get("name", "")))
+
+
+func _contestant_emoji(id: String, cname: String) -> String:
+	var key := (id + " " + cname).to_lower()
+	if key.contains("imani"):
+		return "🛡️"
+	if key.contains("dario"):
+		return "🎭"
+	if key.contains("roach"):
+		return "🪳"
+	return "🎪"  # generic contestant marker (no bespoke emoji)
+
+
+func _emoji_for_id(id: String) -> String:
+	return String(_emoji_map.get(id, "🎪"))
 
 
 func _momus(text: String) -> void:
@@ -552,24 +643,13 @@ func _build_clockbar() -> Control:
 	sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(sep)
 
-	# tick-order rail. # PLACEHOLDER: turn/tick order is not in the view API yet.
+	# tick-order rail — bound live to view_turn_order() in _bind_turn_order().
 	row.add_child(_lab("TICK ORDER", f_body, 9, _col(MUTED), 3.0))
-	var strip := _hbox(8)
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip.alignment = BoxContainer.ALIGNMENT_BEGIN
-	strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var order := [
-		{"e": "🎭", "n": "DARIO", "now": true, "boss": false, "windup": false},
-		{"e": "🐊", "n": "INCINE-DILE", "now": false, "boss": true, "windup": true},
-		{"e": "🛡️", "n": "IMANI", "now": false, "boss": false, "windup": false},
-		{"e": "🪳", "n": "ROACH", "now": false, "boss": false, "windup": false},
-		{"e": "🪳", "n": "ROACH", "now": false, "boss": false, "windup": false},
-	]
-	for i in order.size():
-		if i > 0:
-			strip.add_child(_lab("→", f_body, 13, _col(MUTED)))
-		strip.add_child(_turn_token(order[i]))
-	row.add_child(strip)
+	_tick_strip = _hbox(8)
+	_tick_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tick_strip.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_tick_strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_tick_strip)
 
 	_nextreset = _lab("NEXT RESET · CLOCK 4", f_body, 9, _col(MUTED), 2.0)
 	_nextreset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -772,132 +852,434 @@ func _wager_row(god: String, note: String, amount: String, sig_col: Color, amt_c
 	return h
 
 
-# ------- center stage / arena (# PLACEHOLDER stub: KAN-6 arena scene owns the real board) -------
+# ------- center stage / arena — LIVE hex board bound to view_combatants -------
+## The arena is now real: ArenaFloor paints the hex board from the board transform
+## the HUD computes each refresh (auto-centred/scaled on the LIVE occupied hexes),
+## and _bind_arena drops one unit token per combatant at
+## FieldRenderer.axial_to_pixel(position, eff) + offset. MOVE arms the click catcher.
 func _build_stage() -> Control:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _sb(_col("#080b18"), _col(BORDER), 5))
 	p.clip_contents = true
-	var stage := Control.new()
-	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	p.add_child(stage)
+	_stage = Control.new()
+	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(_stage)
 
-	var floor := ArenaFloor.new()
-	floor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	stage.add_child(floor)
+	# live hex board (bottom)
+	_arena_floor = ArenaFloor.new()
+	_arena_floor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_stage.add_child(_arena_floor)
 
 	# vignette
 	var vig := TextureRect.new()
 	vig.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vig.texture = _vignette_tex()
-	stage.add_child(vig)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(vig)
 
-	# tokens
-	var boss := _unit_token("🐊", 120, _col(FIRE), "INCINE-DILE", _col("#ff9a5a"), _col(FIRE, 0.6), 1.0, _col(SUCCESS), [
-		{"t": "PHASE 1", "kind": "phase"}, {"t": "NETWORK 🔒 HIDDEN", "kind": "net"},
-	], "#3a1206")
-	_place_ratio(boss, 0.5, 0.30)
-	stage.add_child(boss)
-	_boss_hp = boss.get_meta("hp_bar")
-	_boss_phase_tag = boss.get_meta("tag0")
-	_boss_net_tag = boss.get_meta("tag1")
-
-	var imani := _unit_token("🛡️", 62, _col(CYAN), "IMANI · THE DOOR", _col(CYAN), _col(CYAN, 0.55), 1.0, _col(SUCCESS), [])
-	_place_ratio(imani, 0.26, 0.64)
-	stage.add_child(imani)
-
-	var dario := _unit_token("🎭", 62, _col(GOLD), "DARIO · ENCORE", _col(GOLD), _col(GOLD, 0.5), 0.74, _col(GOLD), [])
-	_place_ratio(dario, 0.66, 0.72)
-	stage.add_child(dario)
-
-	var r1 := _unit_token("🪳", 40, _col("#5a4a2a"), "ROACH", _col(MUTED), Color(0, 0, 0, 0), -1.0, _col(MUTED), [])
-	_place_ratio(r1, 0.42, 0.48)
-	stage.add_child(r1)
-	var r2 := _unit_token("🪳", 40, _col("#5a4a2a"), "ROACH", _col(MUTED), Color(0, 0, 0, 0), -1.0, _col(MUTED), [])
-	_place_ratio(r2, 0.60, 0.45)
-	stage.add_child(r2)
+	# unit-token layer (each token's origin is its disc centre → drop onto a hex)
+	_token_layer = Control.new()
+	_token_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_token_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(_token_layer)
 
 	# broadcast feed corner marks
 	var fl := _lab("◉ FEED 01 · ARENA CAM", f_body, 9, _col(CYAN, 0.55), 2.0)
 	fl.position = Vector2(14, 12)
-	stage.add_child(fl)
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(fl)
 	var fr := _lab("● REC", f_body, 9, _col(DANGER, 0.65), 2.0)
 	fr.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	fr.position = Vector2(-70, 12)
-	stage.add_child(fr)
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(fr)
 	var cam := _lab("▮ FLAMETHROWER WINDUP DETECTED — CONE TELEGRAPHED", f_body, 9, _col(TEXT, 0.42), 2.0)
 	cam.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	cam.position = Vector2(14, -22)
-	stage.add_child(cam)
-	# Live boss-condition readout (bleeding/etc. on the boss) — bound in _bind_boss.
+	cam.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(cam)
+	# Live boss-condition readout (bleeding/etc.) — bound in _update_boss_cond().
 	_boss_cond = _lab("", f_body, 11, _col("#ff6b88"), 2.0, true)
 	_boss_cond.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_boss_cond.position = Vector2(14, -40)
 	_boss_cond.visible = false
-	stage.add_child(_boss_cond)
+	_boss_cond.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(_boss_cond)
+
+	# click catcher — top overlay, filter-STOP only while MOVE is armed
+	_click_catcher = Control.new()
+	_click_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_click_catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_click_catcher.gui_input.connect(_on_arena_input)
+	_stage.add_child(_click_catcher)
+
+	# re-layout tokens/board once the panel gets its real size (and on any resize)
+	_stage.resized.connect(_layout_arena)
 	return p
 
 
-func _place_ratio(node: Control, rx: float, ry: float) -> void:
-	node.anchor_left = rx
-	node.anchor_right = rx
-	node.anchor_top = ry
-	node.anchor_bottom = ry
-	node.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	node.grow_vertical = Control.GROW_DIRECTION_BOTH
+## Rebuilds the arena token layer from view_combatants(), masks the boss network
+## until breach, updates the objective + boss-condition readouts, then lays the
+## board + tokens out with a single shared transform.
+func _bind_arena() -> void:
+	if _token_layer == null:
+		return
+	for ch in _token_layer.get_children():
+		ch.queue_free()
+	var combs: Array = _gc.view_combatants()
+	_last_combatants = combs
+	var boss_hidden := true
+	for cd in combs:
+		var c: Dictionary = cd
+		var is_boss := String(c.get("id", "")) == _boss_id_cache
+		var token := _build_combatant_token(c, is_boss)
+		_token_layer.add_child(token)
+		if is_boss:
+			boss_hidden = _boss_network_hidden(c)
+			_update_boss_cond(c)
+	_bind_objective(boss_hidden)
+	_layout_arena()
 
 
-func _unit_token(emoji: String, disc: int, border: Color, name_text: String, name_col: Color, glow: Color, hp_ratio: float, hp_col: Color, tags: Array, disc_bg := "#0c1428") -> Control:
-	var v := _vbox(5)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	# tags above
-	if not tags.is_empty():
-		var trow := _hbox(5)
-		trow.alignment = BoxContainer.ALIGNMENT_CENTER
-		for i in tags.size():
-			var tg: Dictionary = tags[i]
-			var chip := _unit_tag(String(tg["t"]), String(tg["kind"]))
-			trow.add_child(chip)
-			v.set_meta("tag" + str(i), chip.get_meta("label"))
-		v.add_child(trow)
-	# disc
+## Positions every token onto its live hex and reconfigures the floor's draw spec,
+## all through one board transform (auto-centred/scaled on the occupied hexes).
+func _layout_arena() -> void:
+	if _stage == null or _token_layer == null or _arena_floor == null:
+		return
+	var panel := _stage.size
+	if panel.x < 40.0 or panel.y < 40.0:
+		return  # panel not sized yet; the resized signal will call us again
+	var coords: Array = []
+	for cd in _last_combatants:
+		coords.append(_axial_of(cd))
+	var xf := _arena_transform(coords, panel)
+	_arena_eff = xf["eff"]
+	_arena_off = xf["off"]
+	_arena_qr = Vector2i(xf["qlo"], xf["qhi"])
+	_arena_rr = Vector2i(xf["rlo"], xf["rhi"])
+	for t in _token_layer.get_children():
+		var a: Vector2i = t.get_meta("axial", Vector2i.ZERO)
+		var tp: Vector2 = _fr().axial_to_pixel(a.x, a.y, _arena_eff) + _arena_off
+		(t as Control).position = tp
+	# decorative flamethrower cone off the boss toward the party centroid
+	var cone := _cone_spec(coords)
+	var reach: Array = _reachable_hexes() if _move_mode else []
+	_arena_floor.configure(_arena_eff, _arena_off, _arena_qr, _arena_rr,
+		coords, reach, bool(cone["on"]), cone["origin"], cone["dir"])
+
+
+## Board transform: pick an on-screen hex size + offset that fit the occupied
+## hexes (plus a margin ring) inside the panel, and the drawn q/r range. Since
+## axial_to_pixel scales linearly with size, folding the fit-scale into the hex
+## size is exact — tokens and the floor then share one (eff, off) mapping.
+func _arena_transform(coords: Array, panel: Vector2) -> Dictionary:
+	if coords.is_empty():
+		coords = [Vector2i.ZERO]
+	var minq := 999999
+	var maxq := -999999
+	var minr := 999999
+	var maxr := -999999
+	for c: Vector2i in coords:
+		minq = mini(minq, c.x); maxq = maxi(maxq, c.x)
+		minr = mini(minr, c.y); maxr = maxi(maxr, c.y)
+	var margin := 2
+	var qlo := minq - margin; var qhi := maxq + margin
+	var rlo := minr - margin; var rhi := maxr + margin
+	# pixel bbox of the drawn hex centres at nominal size 1.0
+	var pmin := Vector2(INF, INF)
+	var pmax := Vector2(-INF, -INF)
+	for r: int in range(rlo, rhi + 1):
+		for q: int in range(qlo, qhi + 1):
+			var pp: Vector2 = _fr().axial_to_pixel(q, r, 1.0)
+			pmin.x = minf(pmin.x, pp.x); pmin.y = minf(pmin.y, pp.y)
+			pmax.x = maxf(pmax.x, pp.x); pmax.y = maxf(pmax.y, pp.y)
+	pmin -= Vector2.ONE   # + one hex radius of padding at nominal size
+	pmax += Vector2.ONE
+	var bw := maxf(0.001, pmax.x - pmin.x)
+	var bh := maxf(0.001, pmax.y - pmin.y)
+	var padf := 0.82
+	var scale := minf(panel.x * padf / bw, panel.y * padf / bh)
+	var eff := clampf(scale, 20.0, 70.0)
+	var center_nom := (pmin + pmax) * 0.5
+	var off := panel * 0.5 - center_nom * eff
+	return {"eff": eff, "off": off, "qlo": qlo, "qhi": qhi, "rlo": rlo, "rhi": rhi}
+
+
+## Hexes the active actor can step onto (allowance 3, unoccupied, within range).
+## PLACEHOLDER: prone/slowed would cap the allowance at 1, but the view API does
+## not surface those statuses — an illegal move is still rejected by the sim and
+## narrated in the Momus chyron, so an optimistic highlight never mis-moves.
+func _reachable_hexes() -> Array:
+	var out: Array = []
+	var actor := _find_combatant(_active_actor)
+	if actor.is_empty():
+		return out
+	var ap := _axial_of(actor)
+	var allowance := 3
+	var occ := {}
+	for cd in _last_combatants:
+		occ[_axial_of(cd)] = true
+	for dq: int in range(-allowance, allowance + 1):
+		for dr: int in range(-allowance, allowance + 1):
+			var h := Vector2i(ap.x + dq, ap.y + dr)
+			if h == ap or occ.has(h):
+				continue
+			if _hex_dist(ap, h) > allowance:
+				continue
+			out.append(h)
+	return out
+
+
+func _hex_dist(a: Vector2i, b: Vector2i) -> int:
+	var dq := a.x - b.x
+	var dr := a.y - b.y
+	return int((absi(dq) + absi(dr) + absi(dq + dr)) / 2.0)
+
+
+## Decorative telegraph: a cone off the boss hex toward the party centroid.
+func _cone_spec(coords: Array) -> Dictionary:
+	if _boss_id_cache == "":
+		return {"on": false, "origin": Vector2.ZERO, "dir": Vector2.RIGHT}
+	var boss := _find_combatant(_boss_id_cache)
+	if boss.is_empty():
+		return {"on": false, "origin": Vector2.ZERO, "dir": Vector2.RIGHT}
+	var bhex := _axial_of(boss)
+	var boss_px: Vector2 = _fr().axial_to_pixel(bhex.x, bhex.y, _arena_eff) + _arena_off
+	var centroid := Vector2.ZERO
+	var n := 0
+	for cd in _last_combatants:
+		var c: Dictionary = cd
+		if String(c.get("id", "")) == _boss_id_cache:
+			continue
+		var h := _axial_of(c)
+		var hp: Vector2 = _fr().axial_to_pixel(h.x, h.y, _arena_eff) + _arena_off
+		centroid += hp
+		n += 1
+	if n == 0:
+		return {"on": false, "origin": boss_px, "dir": Vector2.DOWN}
+	centroid /= float(n)
+	var dir := centroid - boss_px
+	if dir.length() < 1.0:
+		dir = Vector2.DOWN
+	return {"on": true, "origin": boss_px, "dir": dir}
+
+
+## A unit token whose ORIGIN (0,0) is the disc CENTRE, so the HUD drops it onto a
+## hex's screen point. Tags sit above the disc, name plate + HP sliver below — all
+## absolutely positioned and re-pinned on resize so layout timing never nudges the
+## disc off its hex. Boss network stays masked (tag + HP) until breached.
+func _build_combatant_token(c: Dictionary, is_boss: bool) -> Control:
+	var id := String(c.get("id", ""))
+	var alive := bool(c.get("alive", true))
+	var breached := bool(c.get("breached", false))
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Non-active contestants carry a subdued cyan ring; the ON-THE-CLOCK one pops in
+	# GOLD with a bigger halo, so the arena agrees with the tick-order rail at a glance.
+	var border := _col(CYAN, 0.7)
+	var name_col := _col(CYAN)
+	var glow := _col(CYAN, 0.3)
+	var glow_px := 8
+	var disc_bg := "#0c1428"
+	var disc := _arena_eff * 1.15
+	if is_boss:
+		border = _col(FIRE); name_col = _col("#ff9a5a"); glow = _col(FIRE, 0.6); glow_px = 14
+		disc_bg = "#3a1206"; disc = _arena_eff * 2.05
+	elif id == _active_actor:
+		border = _col(GOLD); name_col = _col(GOLD); glow = _col(GOLD, 0.95); glow_px = 22
+	if not alive:
+		border = _col(MUTED); name_col = _col(MUTED); glow = Color(0, 0, 0, 0)
+
+	# disc (centred on origin)
 	var d := Panel.new()
 	var radius := int(disc * 0.18)
-	d.add_theme_stylebox_override("panel", _glow_sb(_col(disc_bg), border, radius, glow, 14 if glow.a > 0 else 0))
-	d.custom_minimum_size = Vector2(disc, disc)
+	d.add_theme_stylebox_override("panel", _glow_sb(_col(disc_bg), border, radius, glow, glow_px if glow.a > 0.0 else 0))
+	d.size = Vector2(disc, disc)
+	d.position = Vector2(-disc * 0.5, -disc * 0.5)
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var dc := CenterContainer.new()
 	dc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	d.add_child(dc)
-	dc.add_child(_emo(emoji, int(disc * 0.55)))
-	var dwrap := CenterContainer.new()
-	dwrap.add_child(d)
-	v.add_child(dwrap)
-	# name plate
+	dc.add_child(_emo(_emoji_for_id(id), int(disc * 0.55)))
+	root.add_child(d)
+	if not alive:
+		var x := _lab("✕", f_sym, int(disc * 0.7), _col(DANGER))
+		x.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(x)
+		_pin_row(x, -disc * 0.5, false)
+
+	# tags above (boss PHASE / NETWORK — network masked until breach)
+	var tags := _token_tags(c, is_boss, breached)
+	if not tags.is_empty():
+		var trow := _hbox(5)
+		trow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for tg in tags:
+			trow.add_child(_unit_tag(String(tg["t"]), String(tg["kind"])))
+		root.add_child(trow)
+		_pin_row(trow, -disc * 0.5 - 8.0, true)
+
+	# name plate below the disc
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", _sb(_col(BG, 0.85), Color(name_col.r, name_col.g, name_col.b, 0.4), 3))
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var npm := MarginContainer.new()
 	for s in ["left", "right"]:
 		npm.add_theme_constant_override("margin_" + s, 8)
 	for s in ["top", "bottom"]:
 		npm.add_theme_constant_override("margin_" + s, 2)
 	np.add_child(npm)
-	npm.add_child(_lab(name_text, f_body, 10, name_col, 1.5, true))
-	var npwrap := CenterContainer.new()
-	npwrap.add_child(np)
-	v.add_child(npwrap)
-	# hp bar
-	if hp_ratio >= 0.0:
+	npm.add_child(_lab(String(c.get("name", id)).to_upper(), f_body, 10, name_col, 1.5, true))
+	root.add_child(np)
+	_pin_row(np, disc * 0.5 + 6.0, false)
+
+	# HP sliver (boss: arm pre-breach → network post-breach; never leaks early)
+	var hp_info := _token_hp(c, is_boss, breached)
+	if bool(hp_info["show"]):
+		var mx := maxi(1, int(hp_info["max"]))
 		var hp := ProgressBar.new()
 		hp.show_percentage = false
-		hp.custom_minimum_size = Vector2(64, 5)
-		hp.max_value = 100
-		hp.value = clampf(hp_ratio, 0.0, 1.0) * 100.0
+		hp.custom_minimum_size = Vector2(maxf(48.0, disc * 0.95), 5)
+		hp.max_value = mx
+		hp.value = clampi(int(hp_info["hp"]), 0, mx)
 		hp.add_theme_stylebox_override("background", _sb(_col("#0a0e1c"), _col(BORDER), 3))
-		hp.add_theme_stylebox_override("fill", _sb(hp_col, _col(hp_col.to_html(false), 0.0), 3))
-		var hpwrap := CenterContainer.new()
-		hpwrap.add_child(hp)
-		v.add_child(hpwrap)
-		v.set_meta("hp_bar", hp)
-	return v
+		var ramp := _ramp(float(int(hp_info["hp"])) / float(mx))
+		hp.add_theme_stylebox_override("fill", _sb(ramp, ramp, 3, 0))
+		hp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(hp)
+		_pin_row(hp, disc * 0.5 + 26.0, false)
+
+	root.set_meta("axial", _axial_of(c))
+	return root
+
+
+## Keeps an absolutely-positioned token row centred on the token origin. `edge` is
+## the y of the row's anchored edge (its BOTTOM if `above`, else its TOP); re-pins
+## on the row's `resized` so font/layout timing never leaves it off-centre.
+func _pin_row(node: Control, edge: float, above: bool) -> void:
+	var place := func() -> void:
+		var sz := node.size
+		node.position = Vector2(-sz.x * 0.5, (edge - sz.y) if above else edge)
+	node.resized.connect(place)
+	node.reset_size()
+	place.call()
+
+
+func _axial_of(c: Dictionary) -> Vector2i:
+	var pos: Array = c.get("position", [0, 0])
+	return Vector2i(int(pos[0]), int(pos[1]))
+
+
+func _find_combatant(id: String) -> Dictionary:
+	for cd in _last_combatants:
+		if String((cd as Dictionary).get("id", "")) == id:
+			return cd
+	return {}
+
+
+## The network part reads hidden=true until the boss is breached (the view masks
+## it); pre-breach the arena shows NETWORK 🔒 HIDDEN and never leaks its HP.
+func _boss_network_hidden(c: Dictionary) -> bool:
+	for pd in c.get("parts", []):
+		var p: Dictionary = pd
+		if String(p.get("key", "")).contains("network"):
+			return bool(p.get("hidden", false))
+	return not bool(c.get("breached", false))
+
+
+func _token_tags(c: Dictionary, is_boss: bool, breached: bool) -> Array:
+	if not is_boss:
+		return []
+	return [
+		{"t": ("PHASE 1" if not breached else "PHASE 2"), "kind": "phase"},
+		{"t": ("NETWORK 🔒 HIDDEN" if _boss_network_hidden(c) else "NETWORK ⚡ EXPOSED"), "kind": "net"},
+	]
+
+
+## Which HP the token sliver shows. Boss: the flamethrower arm pre-breach (the
+## designed path in), the exposed network post-breach. Contestants: aggregate HP.
+func _token_hp(c: Dictionary, is_boss: bool, breached: bool) -> Dictionary:
+	if not bool(c.get("alive", true)):
+		return {"show": false}
+	var by_key := {}
+	for pd in c.get("parts", []):
+		by_key[String((pd as Dictionary).get("key", ""))] = pd
+	if is_boss:
+		var show_key := "network" if breached else BOSS_DEFAULT_PART
+		if not by_key.has(show_key):
+			return {"show": false}
+		var part: Dictionary = by_key[show_key]
+		return {"show": true, "hp": int(part.get("hp", 0)), "max": maxi(1, int(part.get("max_hp", 1)))}
+	var hp := 0
+	var mx := 0
+	for pd in c.get("parts", []):
+		var p: Dictionary = pd
+		if bool(p.get("hidden", false)):
+			continue
+		hp += int(p.get("hp", 0))
+		mx += int(p.get("max_hp", 0))
+	if mx <= 0:
+		return {"show": false}
+	return {"show": true, "hp": hp, "max": mx}
+
+
+## Boss-condition readout overlay (bleeding etc.) — highest tier per condition.
+func _update_boss_cond(boss: Dictionary) -> void:
+	if _boss_cond == null:
+		return
+	var conds := _gather_conditions(boss)
+	if conds.is_empty():
+		_boss_cond.visible = false
+		return
+	var bits := []
+	for cond in conds:
+		bits.append("%s T%d" % [String(cond[0]).to_upper(), int(cond[1])])
+	_boss_cond.text = "🩸 %s · %s" % [String(boss.get("name", "BOSS")).to_upper(), "  ·  ".join(bits)]
+	_boss_cond.visible = true
+
+
+## Left-rail SLICE OBJECTIVE network status (mirrors the boss network mask).
+func _bind_objective(network_hidden: bool) -> void:
+	if _obj_status == null:
+		return
+	if network_hidden:
+		_obj_status.text = "NETWORK not yet exposed · surface immune until a breach"
+		_obj_status.add_theme_color_override("font_color", _col(MUTED))
+	else:
+		_obj_status.text = "NETWORK EXPOSED · Phase 2 is in reach — pour in"
+		_obj_status.add_theme_color_override("font_color", _col(CYAN))
+
+
+## Tick-order rail + on-the-clock derivation, both from view_turn_order(). The
+## active actor is the first ready contestant (fallback: keep the current one);
+## END TURN re-runs this, so the rail highlight + action bar rotate automatically.
+func _bind_turn_order() -> void:
+	var order: Array = _gc.view_turn_order()
+	for e in order:
+		var ed: Dictionary = e
+		if bool(ed.get("ready", false)) and bool(ed.get("is_contestant", false)):
+			_active_actor = String(ed.get("id", ""))
+			break
+	if _actionbar_who != null:
+		_actionbar_who.text = _display_name_for(_active_actor)
+	if _tick_strip == null:
+		return
+	for ch in _tick_strip.get_children():
+		ch.queue_free()
+	for i in order.size():
+		var ed: Dictionary = order[i]
+		var id := String(ed.get("id", ""))
+		if i > 0:
+			_tick_strip.add_child(_lab("→", f_body, 13, _col(MUTED)))
+		_tick_strip.add_child(_turn_token({
+			"e": _emoji_for_id(id),
+			"n": String(ed.get("name", id)).to_upper(),
+			"now": id == _active_actor,
+			"boss": id == _boss_id_cache,
+			"windup": bool(ed.get("windup_pending", false)),
+		}))
 
 
 func _unit_tag(text: String, kind: String) -> Control:
@@ -1452,9 +1834,12 @@ func _pad_bottom(node: Control, px: int) -> Control:
 func refresh() -> void:
 	if _gc == null:
 		return
+	_recompute_identity()   # boss id + emoji map (arena + rail agree on who's who)
 	_bind_clock()
 	_bind_broadcast()
-	_bind_combatants()
+	_bind_turn_order()      # derives the on-the-clock actor + rail (before arena)
+	_bind_arena()           # live hex board + tokens + boss mask + objective
+	_bind_contestant_panels()
 
 
 func _bind_clock() -> void:
@@ -1515,70 +1900,14 @@ func _goal_blurb(kind: String) -> String:
 	return "Give the crowd the beat they came for."
 
 
-func _bind_combatants() -> void:
-	var combs: Array = _gc.view_combatants()
-	var boss_hidden := true
-	var boss_breached := false
-	for cd in combs:
+## The bottom contestant PANELS (6-part HP grid / conditions / shock). The arena
+## tokens + boss mask + objective are bound separately in _bind_arena().
+func _bind_contestant_panels() -> void:
+	for cd in _gc.view_combatants():
 		var c: Dictionary = cd
 		var id := String(c.get("id", ""))
-		# boss detection: the combatant that carries a hidden / network part.
-		var is_boss := false
-		for pd in c.get("parts", []):
-			var p: Dictionary = pd
-			if bool(p.get("hidden", false)) or String(p.get("key", "")).contains("network"):
-				is_boss = true
-		if is_boss:
-			boss_breached = bool(c.get("breached", false))
-			boss_hidden = false
-			for pd2 in c.get("parts", []):
-				var p2: Dictionary = pd2
-				if String(p2.get("key", "")).contains("network"):
-					boss_hidden = bool(p2.get("hidden", false))
-			_bind_boss(boss_breached, boss_hidden, c)
 		if _cref.has(id):
 			_bind_contestant(id, c)
-
-
-func _bind_boss(breached: bool, network_hidden: bool, boss: Dictionary = {}) -> void:
-	if _boss_net_tag != null:
-		_boss_net_tag.text = ("NETWORK 🔒 HIDDEN" if network_hidden else "NETWORK ⚡ EXPOSED")
-	if _boss_phase_tag != null:
-		_boss_phase_tag.text = ("PHASE 1" if not breached else "PHASE 2")  # PLACEHOLDER: boss phase not surfaced in view API
-	if _obj_status != null:
-		if network_hidden:
-			_obj_status.text = "NETWORK not yet exposed · surface immune until a breach"
-			_obj_status.add_theme_color_override("font_color", _col(MUTED))
-		else:
-			_obj_status.text = "NETWORK EXPOSED · Phase 2 is in reach — pour in"
-			_obj_status.add_theme_color_override("font_color", _col(CYAN))
-	# Boss stage token HP: pre-breach it tracks the flamethrower arm (the part the
-	# party cracks to get in); post-breach it tracks the exposed network (the real
-	# kill). Keeping the network off the bar pre-breach preserves the hidden win
-	# condition — the arena never leaks it before discovery.
-	var by_key := {}
-	for pd in boss.get("parts", []):
-		by_key[String((pd as Dictionary).get("key", ""))] = pd
-	var show_key := "network" if breached else BOSS_DEFAULT_PART
-	if _boss_hp != null and by_key.has(show_key):
-		var part: Dictionary = by_key[show_key]
-		var hp := int(part.get("hp", 0))
-		var mx := maxi(1, int(part.get("max_hp", 1)))
-		_boss_hp.max_value = mx
-		_boss_hp.value = hp
-		var ramp := _ramp(float(hp) / float(mx))
-		_boss_hp.add_theme_stylebox_override("fill", _sb(ramp, ramp, 3, 0))
-	# Boss condition readout (bleeding etc.) — the highest tier per condition.
-	if _boss_cond != null:
-		var conds := _gather_conditions(boss)
-		if conds.is_empty():
-			_boss_cond.visible = false
-		else:
-			var bits := []
-			for cond in conds:
-				bits.append("%s T%d" % [String(cond[0]).to_upper(), int(cond[1])])
-			_boss_cond.text = "🩸 INCINE-DILE · " + "  ·  ".join(bits)
-			_boss_cond.visible = true
 
 
 func _bind_contestant(id: String, c: Dictionary) -> void:

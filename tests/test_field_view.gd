@@ -54,6 +54,25 @@ func test_renderer_math_pure() -> void:
 		assert_true(is_equal_approx(p.distance_to(Vector2(100, 100)), 30.0), "vertices on the radius")
 
 
+func test_pixel_to_axial_round_trips() -> void:
+	# pixel_to_axial is the inverse the HUD uses to turn a click back into a hex;
+	# it must recover every axial coord axial_to_pixel produces, at any hex size.
+	var script: GDScript = load("res://scenes/field/field_renderer.gd")
+	var coords: Array = [
+		Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
+		Vector2i(0, -1), Vector2i(2, -1), Vector2i(-2, 3), Vector2i(3, 3),
+		Vector2i(-3, -2), Vector2i(4, -5),
+	]
+	for size: float in [18.0, 30.0, 44.0]:
+		for c: Vector2i in coords:
+			var px: Vector2 = script.axial_to_pixel(c.x, c.y, size)
+			var back: Vector2i = script.pixel_to_axial(px, size)
+			assert_eq(back, c, "round-trip %s @ size %s" % [str(c), str(size)])
+	# A click landing anywhere inside a hex still rounds to that hex's centre.
+	var jitter: Vector2 = script.axial_to_pixel(2, -1, 30.0) + Vector2(6.0, -4.0)
+	assert_eq(script.pixel_to_axial(jitter, 30.0), Vector2i(2, -1), "off-centre click snaps to the hex")
+
+
 func test_turn_order_projects_and_reflects_windup() -> void:
 	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
 	game.start_combat(7, load_static_data())
