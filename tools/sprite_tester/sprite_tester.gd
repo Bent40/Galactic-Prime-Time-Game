@@ -1,37 +1,51 @@
 extends Control
-## Standalone sprite-sheet animation tester (DEV TOOL — not part of the game;
-## not wired into scenes/main.tscn, no simulation deps).
+## Standalone sprite animation tester (DEV TOOL — not part of the game; not wired
+## into scenes/main.tscn, no simulation deps).
 ##
-## The point: judge "does this animation read/feel right?" WITHOUT piping a sheet
+## The point: judge "does this animation read/feel right?" WITHOUT piping frames
 ## into an AnimatedSprite2D, attaching it to the game, and running the whole thing.
-## Drop a spritesheet in and it plays with the SAME nearest-neighbor rendering the
-## game uses, so what you see is what ships.
+## Load art and it plays with the SAME nearest-neighbor rendering the game uses.
 ##
-## Run it: open tools/sprite_tester/sprite_tester.tscn in the editor and press F6
-## (Run Current Scene).
+## Two input shapes, auto-detected:
+##   - a single SPRITESHEET PNG  -> sliced into frames by the Frame W/H you set.
+##   - a FOLDER of frame PNGs, or several PNGs dropped at once -> played in
+##     filename order (this is Krita's "Render Animation -> Image Sequence" output;
+##     use zero-padded names like frame_0000.png so they sort right).
+##
+## Run it: open tools/sprite_tester/sprite_tester.tscn and press F6 (Run Scene).
 ##
 ## Controls:
-##   Load… / drag a PNG onto the window    load a spritesheet
-##   Frame W / H spinboxes                 set the cell size (it auto-slices)
-##   FPS spinbox / ↑ ↓                      playback speed
-##   Space                                 play / pause
-##   ← →                                    step one frame (pauses)
-##   Q / E                                  previous / next PNG in the same folder
-##   S                                     silhouette (fill black — silhouette test)
-##   B                                     cycle background (checker / white / black / magenta)
-##   mouse wheel                           zoom
+##   Load Sheet… / Load Folder… / drag files or a folder onto the window
+##   Frame W / H (sheet mode only)   cell size — it auto-slices
+##   FPS / ↑ ↓                        playback speed
+##   Space                           play / pause
+##   ← →                              step one frame (pauses)
+##   Q / E                            prev / next PNG in the folder (sheet mode)
+##   S                               silhouette (fill black — readability test)
+##   B                               cycle background (checker / white / black / magenta)
+##   mouse wheel                     zoom
 
+enum Mode { SHEET, FRAMES }
+
+var _mode: int = Mode.SHEET
+
+# SHEET mode
 var _sheet: Texture2D
 var _atlas: AtlasTexture = AtlasTexture.new()
+var _frame_w: int = 32
+var _frame_h: int = 32
+var _cols: int = 1
+var _rows: int = 1
 var _dir_files: PackedStringArray = []  # sibling PNGs for Q/E cycling
 var _file_index: int = -1
 var _loaded_path: String = ""
 
-var _frame_w: int = 32
-var _frame_h: int = 32
+# FRAMES mode
+var _frames: Array[Texture2D] = []
+
+# shared
+var _source_label: String = ""
 var _fps: float = 8.0
-var _cols: int = 1
-var _rows: int = 1
 var _count: int = 0
 var _current: int = 0
 var _zoom: int = 4
@@ -43,13 +57,15 @@ const _BG_COLORS: Array[Color] = [
 	Color(0.13, 0.13, 0.15), Color.WHITE, Color(0, 0, 0), Color(1, 0, 1),
 ]
 
+# UI
 var _preview: TextureRect
 var _bg: TextureRect
 var _wbox: SpinBox
 var _hbox: SpinBox
 var _fpsbox: SpinBox
 var _status: Label
-var _dialog: FileDialog
+var _file_dialog: FileDialog
+var _dir_dialog: FileDialog
 
 
 func _ready() -> void:
@@ -79,10 +95,15 @@ func _build_ui() -> void:
 	bar.add_theme_constant_override("separation", 8)
 	root.add_child(bar)
 
-	var load_btn := Button.new()
-	load_btn.text = "Load…"
-	load_btn.pressed.connect(_open_dialog)
-	bar.add_child(load_btn)
+	var sheet_btn := Button.new()
+	sheet_btn.text = "Load Sheet…"
+	sheet_btn.pressed.connect(_open_file_dialog)
+	bar.add_child(sheet_btn)
+
+	var folder_btn := Button.new()
+	folder_btn.text = "Load Folder…"
+	folder_btn.pressed.connect(_open_dir_dialog)
+	bar.add_child(folder_btn)
 
 	bar.add_child(_labeled("Frame W"))
 	_wbox = _spin(1, 4096, _frame_w)
@@ -124,13 +145,20 @@ func _build_ui() -> void:
 	_status.add_theme_constant_override("margin_left", 6)
 	root.add_child(_status)
 
-	_dialog = FileDialog.new()
-	_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_dialog.add_filter("*.png", "PNG images")
-	_dialog.use_native_dialog = true
-	_dialog.file_selected.connect(_load_path)
-	add_child(_dialog)
+	_file_dialog = FileDialog.new()
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.add_filter("*.png", "PNG images")
+	_file_dialog.use_native_dialog = true
+	_file_dialog.file_selected.connect(_load_sheet)
+	add_child(_file_dialog)
+
+	_dir_dialog = FileDialog.new()
+	_dir_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	_dir_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_dir_dialog.use_native_dialog = true
+	_dir_dialog.dir_selected.connect(_load_dir_as_frames)
+	add_child(_dir_dialog)
 
 
 func _labeled(text: String) -> Label:
@@ -162,27 +190,59 @@ func _on_fps_changed(v: float) -> void:
 	_fps = maxf(0.0, v)
 
 
-func _open_dialog() -> void:
+func _set_spins_editable(on: bool) -> void:
+	if _wbox != null:
+		_wbox.editable = on
+	if _hbox != null:
+		_hbox.editable = on
+
+
+func _open_file_dialog() -> void:
 	if _loaded_path != "":
-		_dialog.current_dir = _loaded_path.get_base_dir()
-	_dialog.popup_centered_ratio(0.6)
+		_file_dialog.current_dir = _loaded_path.get_base_dir()
+	_file_dialog.popup_centered_ratio(0.6)
+
+
+func _open_dir_dialog() -> void:
+	_dir_dialog.popup_centered_ratio(0.6)
 
 
 func _on_files_dropped(files: PackedStringArray) -> void:
-	if files.size() > 0:
-		_load_path(files[0])
+	if files.is_empty():
+		return
+	if files.size() == 1:
+		var path: String = files[0]
+		if DirAccess.dir_exists_absolute(path):
+			_load_dir_as_frames(path)
+		else:
+			_load_sheet(path)
+		return
+	# multiple files dropped -> treat as an animation's frames, sorted by name
+	var pngs: PackedStringArray = PackedStringArray()
+	for f: String in files:
+		if f.to_lower().ends_with(".png"):
+			pngs.append(f)
+	pngs.sort()
+	_load_frames(pngs, "%d dropped frames" % pngs.size())
 
 
-func _load_path(path: String) -> void:
+func _fail(msg: String) -> void:
+	if _status != null:
+		_status.text = msg
+
+
+# ---------------------------------------------------------------- loading
+
+func _load_sheet(path: String) -> void:
 	var img := Image.new()
 	if img.load(path) != OK:
-		_loaded_path = ""
-		_sheet = null
-		_status.text = "Could not load: " + path
+		_fail("Could not load: " + path)
 		return
+	_mode = Mode.SHEET
 	_sheet = ImageTexture.create_from_image(img)
 	_atlas.atlas = _sheet
 	_loaded_path = path
+	_source_label = path.get_file()
 	_dir_files = PackedStringArray()
 	var dir := DirAccess.open(path.get_base_dir())
 	if dir != null:
@@ -193,14 +253,57 @@ func _load_path(path: String) -> void:
 	_file_index = _dir_files.find(path)
 	_current = 0
 	_accum = 0.0
+	_set_spins_editable(true)
 	_reslice()
 	_fit_zoom()
 
 
+func _load_dir_as_frames(dir_path: String) -> void:
+	var pngs: PackedStringArray = PackedStringArray()
+	var dir := DirAccess.open(dir_path)
+	if dir != null:
+		for f: String in dir.get_files():
+			if f.to_lower().ends_with(".png"):
+				pngs.append(dir_path.path_join(f))
+		pngs.sort()
+	if pngs.is_empty():
+		_fail("No PNG frames in: " + dir_path)
+		return
+	_load_frames(pngs, "folder: %s (%d frames)" % [dir_path.get_file(), pngs.size()])
+
+
+func _load_frames(paths: PackedStringArray, label: String) -> void:
+	var textures: Array[Texture2D] = []
+	for p: String in paths:
+		var img := Image.new()
+		if img.load(p) == OK:
+			textures.append(ImageTexture.create_from_image(img))
+	if textures.is_empty():
+		_fail("Could not load any frames")
+		return
+	_mode = Mode.FRAMES
+	_frames = textures
+	_dir_files = PackedStringArray()
+	_loaded_path = ""
+	_source_label = label
+	_current = 0
+	_accum = 0.0
+	_set_spins_editable(false)
+	_reslice()
+	_fit_zoom()
+
+
+# ---------------------------------------------------------------- frames / view
+
 func _reslice() -> void:
+	if _mode == Mode.FRAMES:
+		_count = _frames.size()
+		_current = clampi(_current, 0, maxi(0, _count - 1))
+		_update_region()
+		return
 	if _sheet == null:
 		_count = 0
-		_refresh()
+		_update_region()
 		return
 	_cols = maxi(1, _sheet.get_width() / _frame_w)
 	_rows = maxi(1, _sheet.get_height() / _frame_h)
@@ -209,37 +312,67 @@ func _reslice() -> void:
 	_update_region()
 
 
+func _eff_frame_size() -> Vector2i:
+	if _mode == Mode.FRAMES and _count > 0:
+		var t: Texture2D = _frames[_current]
+		return Vector2i(t.get_width(), t.get_height())
+	return Vector2i(_frame_w, _frame_h)
+
+
 func _update_region() -> void:
+	if _mode == Mode.FRAMES:
+		if _count > 0 and _preview != null:
+			_preview.texture = _frames[_current]
+		_apply_preview_size()
+		_refresh()
+		return
+	if _preview != null:
+		_preview.texture = _atlas
 	if _sheet == null or _count == 0:
 		_refresh()
 		return
 	var col: int = _current % _cols
 	var row: int = _current / _cols
 	_atlas.region = Rect2(col * _frame_w, row * _frame_h, _frame_w, _frame_h)
-	if _preview != null:
-		_preview.custom_minimum_size = Vector2(_frame_w * _zoom, _frame_h * _zoom)
-		_preview.modulate = Color.BLACK if _silhouette else Color.WHITE
+	_apply_preview_size()
 	_refresh()
+
+
+func _apply_preview_size() -> void:
+	if _preview == null:
+		return
+	var fs: Vector2i = _eff_frame_size()
+	_preview.custom_minimum_size = Vector2(fs.x * _zoom, fs.y * _zoom)
+	_preview.modulate = Color.BLACK if _silhouette else Color.WHITE
 
 
 func _refresh() -> void:
 	if _status == null:
 		return
-	var fname: String = _loaded_path.get_file() if _loaded_path != "" else "(drag a spritesheet PNG onto the window, or Load…)"
+	var idx: int = (_current + 1) if _count > 0 else 0
+	if _mode == Mode.FRAMES:
+		var fs: Vector2i = _eff_frame_size()
+		var src: String = _source_label if _source_label != "" else "(drop a folder or several frame PNGs)"
+		_status.text = "%s   |   frame %d/%d   |   %d×%dpx frames   |   %d fps   |   zoom %dx%s" % [
+			src, idx, _count, fs.x, fs.y, int(_fps), _zoom,
+			"   |   SILHOUETTE" if _silhouette else "",
+		]
+		return
+	var src_sheet: String = _source_label if _source_label != "" else "(drag a spritesheet PNG, a folder, or Load…)"
 	_status.text = "%s   |   frame %d/%d   |   grid %d×%d @ %d×%dpx   |   %d fps   |   zoom %dx%s" % [
-		fname, (_current + 1) if _count > 0 else 0, _count, _cols, _rows,
-		_frame_w, _frame_h, int(_fps), _zoom,
+		src_sheet, idx, _count, _cols, _rows, _frame_w, _frame_h, int(_fps), _zoom,
 		"   |   SILHOUETTE" if _silhouette else "",
 	]
 
 
 func _fit_zoom() -> void:
-	var avail: Vector2 = _preview.get_parent().size
-	if avail.x < 8.0 or avail.y < 8.0 or _frame_w == 0 or _frame_h == 0:
+	var avail: Vector2 = _preview.get_parent().size if _preview != null else Vector2.ZERO
+	var fs: Vector2i = _eff_frame_size()
+	if avail.x < 8.0 or avail.y < 8.0 or fs.x == 0 or fs.y == 0:
 		_zoom = 4
 	else:
-		var zx: int = int(avail.x * 0.8 / _frame_w)
-		var zy: int = int(avail.y * 0.8 / _frame_h)
+		var zx: int = int(avail.x * 0.8 / fs.x)
+		var zy: int = int(avail.y * 0.8 / fs.y)
 		_zoom = clampi(mini(zx, zy), 1, 32)
 	_update_region()
 
@@ -280,7 +413,7 @@ func _cycle_file(direction: int) -> void:
 	if _dir_files.size() == 0:
 		return
 	_file_index = (_file_index + direction + _dir_files.size()) % _dir_files.size()
-	_load_path(_dir_files[_file_index])
+	_load_sheet(_dir_files[_file_index])
 
 
 func _process(delta: float) -> void:
@@ -315,14 +448,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cycle_file(1)
 			KEY_S:
 				_silhouette = not _silhouette
-				_update_region()
+				_apply_preview_size()
+				_refresh()
 			KEY_B:
 				_cycle_bg()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		var button: int = (event as InputEventMouseButton).button_index
 		if button == MOUSE_BUTTON_WHEEL_UP:
 			_zoom = clampi(_zoom + 1, 1, 32)
-			_update_region()
+			_apply_preview_size()
 		elif button == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom = clampi(_zoom - 1, 1, 32)
-			_update_region()
+			_apply_preview_size()
