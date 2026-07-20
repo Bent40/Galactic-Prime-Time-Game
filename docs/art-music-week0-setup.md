@@ -1,53 +1,78 @@
 # Week 0 — Setup & Familiarization Checklist (Art + Music)
 
-*Companion to `docs/making-art-and-music.md`. Windows · Aseprite · FL Studio. This is the
+*Companion to `docs/making-art-and-music.md`. Windows · Krita · FL Studio. This is the
 "install it, then poke at it" phase — like a learn-to-code todo list, each task is one small
 win that teaches one mechanic of the program. Tick them off. Don't aim for good art/music
 yet; aim to know where every button is.*
 
 ---
 
-# PART A — ART (Aseprite)
+# PART A — ART (Krita)
+
+*Why Krita, not Aseprite: it's free and does **both** — your pixel sprites **and** the
+high-fidelity cutscene/portrait art you'll want later (the Danganronpa-contrast idea). The
+one thing Aseprite was better at — a fast animation-feedback loop — is now covered by the
+repo's **sprite tester** (`tools/sprite_tester/`), which previews in the game's exact look.*
 
 ## A0 · Downloads
 
-- [ ] **Aseprite** — $19.99 one-time, Steam or aseprite.org. *(Try-free option: use
-  **piskelapp.com** in a browser for a day first, or **LibreSprite** free if you want $0.
-  But Aseprite is worth it — every tutorial uses it.)*
+- [ ] **Krita** — free, **krita.org** (Windows installer). One program for pixel sprites
+  *and* painted cutscene art.
 - [ ] **A palette** — go to **lospec.com/palette-list**, pick one (**Endesga-32** or any
-  ~32-color palette — matches what `spritify.py` outputs), download the **`.gpl`** or the
-  palette **`.png`**. Save it somewhere you'll find it.
-- [ ] *(optional, for later)* **Kenney.nl** — bookmark it. Free CC0 placeholder art for when
-  you need a whole scene before you can draw one.
+  ~32-color palette — matches what `spritify.py` outputs), download the **`.gpl`** (Krita
+  imports it directly).
+- [ ] *(already in the repo — nothing to download)* the **sprite tester** at
+  `tools/sprite_tester/` — for previewing animations in the game's real rendering.
+- [ ] *(optional, later)* **Kenney.nl** — bookmark it. Free CC0 placeholder art for when you
+  need a whole scene before you can draw one.
 
 ## A1 · Familiarization todo (do these in order)
 
-Each is a ~10–20 min "hello world." Open Aseprite and:
-
-- [ ] **1. Make marks.** `Ctrl+N` → 32×32 canvas. Learn the 6 tools you'll use 90% of the
-  time: **Pencil (B)**, **Eraser (E)**, **Bucket fill (G)**, **Eyedropper (hold Alt)**,
-  **zoom (mouse wheel)**, **pan (Space+drag)**, **undo (Ctrl+Z)**. Scribble. *Goal: the
-  canvas + tools feel like a pencil.*
-- [ ] **2. Load your palette.** Palette panel (left) → the small **folder/Options icon →
-  "Load palette"** → pick your `.gpl`/`.png`. Click swatches to draw with them. *Goal: you
-  never pick random colors again.*
+- [ ] **1. Make Krita behave like a pixel tool (one-time setup).** Krita is a big painting
+  app, so tune it once so it *acts* like a pixel editor on demand:
+  - **New document**, small — e.g. **64×64**.
+  - **Brush:** in the **Brush Presets** docker, choose the **"Pixel Art"** preset tag → a
+    hard 1px pencil (or set any brush to **size 1, no anti-aliasing, no pressure**).
+  - **Palette:** open the **Palette docker** (Settings → Dockers → Palette), **import your
+    `.gpl`** (docker menu → Import Palette), and pick your colors from it.
+  - **Pixel grid:** work at **1:1** and **zoom to view** (Ctrl + mouse wheel) — the pixel
+    grid appears when you zoom in.
+  - **Save the setup:** **File → Create Template From Image** (so "new pixel sprite" is one
+    click) and save a **"Pixel" workspace** (top-right workspace selector → New Workspace).
+    Your full painting setup stays separate for cutscene art.
+  *Goal: Krita is a pixel tool when you want it, a painting suite when you don't.*
+- [ ] **2. Make marks.** Learn the essentials: **Brush (B)**, **Eraser (E)**, **Fill tool**
+  (left toolbox), **pick a color (hold Ctrl)**, **zoom (Ctrl+wheel)**, **pan (Space+drag)**,
+  **undo (Ctrl+Z)**. Scribble. *Goal: the canvas feels like a pencil.*
 - [ ] **3. Draw one clean object.** A potion or apple: a solid **dark outline** first, then
-  **flat fill** inside with the bucket. *Goal: outline discipline + fills.*
+  **flat fill** inside — colors from your palette. *Goal: outline discipline + fills.*
 - [ ] **4. Shade a ball** (the important one). Draw a circle, pick a **light direction
-  (top-left)**, and shade it with 3–4 shades — but **hue-shift**: highlight warmer, shadow
-  cooler, not just darker. *Goal: this is the single skill all pixel art rests on.*
-- [ ] **5. Animate a 2-frame bob.** Bottom **timeline** → **New Frame (Alt+N)** → nudge your
-  object up 1px → toggle **onion skin** → press **Enter/Play**. *Goal: the animation
-  timeline — the thing that makes Aseprite special.*
-- [ ] **6. Export three ways.** `File → Export Sprite Sheet` (spritesheet PNG for the
-  engine), `File → Save As → .gif` (to share), and a plain `.png`. *Goal: getting art OUT —
-  you'll need spritesheet + PNG for Godot.*
+  (top-left)**, shade with 3–4 shades — but **hue-shift**: highlight warmer, shadow cooler,
+  not just darker. *Goal: the single skill all pixel art rests on.*
+- [ ] **5. Animate a 2-frame bob.** Switch to the **Animation** workspace (or add the
+  **Timeline** + **Onion Skins** dockers via Settings → Dockers). Add a 2nd frame, nudge your
+  object up 1px, turn on **onion skin**, and press **Play** on the timeline. *Goal: Krita's
+  animation timeline — and its built-in playback is your fast in-tool loop.*
+- [ ] **6. Export + preview in the game's look.** **File → Export** a **PNG**. For the
+  animation, the simplest spritesheet is to draw the frames **side by side on one wide
+  canvas** (e.g. `128×32` = four `32×32` frames) and export that single PNG — then **drag it
+  into the sprite tester** (open `tools/sprite_tester/sprite_tester.tscn`, press **F6**) to
+  watch it animate with the game's exact nearest-neighbor rendering. *Goal: getting art OUT +
+  the fast judge-it loop, with zero game wiring.*
 
-**✅ Setup done when:** you can open Aseprite, load your palette, draw+shade a small thing,
-make it wiggle in 2 frames, and export a PNG — without googling which button.
+**✅ Setup done when:** you can one-click into your pixel workspace, draw+shade a small thing
+from your palette, animate a 2-frame bob and play it in Krita, export a PNG, and preview it in
+the sprite tester — without googling.
 
-**Then the first real task:** a 3/4-view sprite of a contestant (start ~32px, scale up to
-your 96px project size later). That's milestone 5 in the main guide.
+**Then the first real task:** a 3/4-view sprite of a contestant (start ~32px, scale up to your
+96px project size later). That's milestone 5 in the main guide.
+
+> **Krita → game, the honest note:** for finished animations Krita also exports a **frame
+> sequence** (File → Render Animation → Image Sequence), and Godot's `SpriteFrames` can take
+> those individual frames directly. The side-by-side-on-one-canvas trick above is the
+> zero-friction way to make a single spritesheet the tester loads today. *(Want the sprite
+> tester to also load a **folder of frames** so Krita's exported sequences drop straight in?
+> Say the word — it's a quick add.)*
 
 ---
 
@@ -108,13 +133,13 @@ swap in a LABS instrument, arrange a short loop, and export a WAV — without go
 
 Alternate — art when your ears are tired, music when your eyes are. A sane order:
 
-1. **Day 1:** Bosca Ceoil tune (B1.1) — instant win. Install Aseprite + FL + plugins.
-2. **Day 2:** Art A1.1–A1.3 (tools, palette, one object).
+1. **Day 1:** Bosca Ceoil tune (B1.1) — instant win. Install Krita + FL + plugins.
+2. **Day 2:** Art A1.1–A1.3 (pixel workspace setup, marks, one object).
 3. **Day 3:** Art A1.4 (the shaded ball — the big one).
 4. **Day 4:** FL B1.2–B1.4 (orientation, beat, first melody).
 5. **Day 5:** FL B1.5–B1.7 (LABS swap, arrange, export).
-6. **Weekend:** Art A1.5–A1.6 (animate + export). You've now touched every core mechanic of
-   both programs.
+6. **Weekend:** Art A1.5–A1.6 (animate, export, and preview it in the sprite tester). You've
+   now touched every core mechanic of both programs plus the preview loop.
 
 Don't chase quality yet — chase *coverage*. Once every button is familiar, the main guide's
 milestone ladders (`docs/making-art-and-music.md` §1.10 and §2) turn familiarity into real
