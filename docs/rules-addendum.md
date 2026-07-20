@@ -87,6 +87,19 @@ of the next Clock. Order of operations at each tick:
   cooldown support is deprecated and gets removed in the priming implementation pass;
   (c) acceptance criterion 9 is superseded (see the criteria list). Mechanically, primes
   are requirement-shaped — the engine's existing requirement checks are the substrate.
+- **FINALIZED (owner 2026-07-20, S2.1 — decision-log #20): the prime vocabulary is a
+  canonical 5-type set.** Every skill's prime is one (or a combo) of: **CHAIN** (must
+  immediately follow a named action on the same target — already live via
+  feint→pressure_strike); **STANCE** (hold a declared stance that ends on triggers);
+  **STACK** (consume N accumulated charges — the Camera-Call model); **STATE/POSITION**
+  (target/self in a state or relative position: Exposed, downed, behind); **PREP/CHANNEL**
+  (spend a prep action to arm a one-shot prime). The two literal cooldown-texted defensive
+  reactions (Tactical Roll, Acrobatic Save) are **STANCE-gated** — usable only while holding
+  a light-footed/defensive stance (no timers). Implementation this pass: build the 5 prime
+  predicates into the requirements gate, DELETE the dormant cooldown code, convert the
+  explicitly cooldown-texted skills (Tactical Roll, Acrobatic Save, the "-4 Moment cooldown"
+  threshold → CHAIN discount); per-skill prime tags for the other ~37 ride the R19 ladder
+  finalization. (Engine implementation PENDING — this records the design ruling.)
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -403,17 +416,22 @@ in combat — combat-end reset is the only recovery)**
 at combat end**. Table practice: accumulates per organ; owner open to direct-status,
 non-escalating form.
 
-**PROPOSED (PROVISIONAL — awaiting owner nod):** model Shock as **events, not an
-accumulating stat**:
+**FINALIZED (owner 2026-07-20, S2.2 — decision-log #21):** model Shock as **momentary
+events, not an accumulating stat**:
 - A shock source applies its **stated tier directly** (the book already says "works at the
   tier specified"); escalation is the exception, not the rule.
 - The combatant stores only a **high-water mark** for the combat. A source that "elevates"
   applies `highest_this_combat + 1`.
 - **Per-organ flavor without a per-organ ledger:** a shock source hitting a part that
   already produced shock this combat elevates +1 (repeated abuse of the same wound).
+- **Escalation formula:** an independent stack takes `max(current + 1, source_tier)` — a
+  strong source is never weakened by the target already being lightly shocked.
 - Tier effects are **momentary events**: T1 Shout (noise/stealth break), T2 Stutter
   (current action fails), T3 Faint (Helpless 1 Clock, drop items), T4 Helpless/Exposed for
   the rest of combat.
+- **Burn T1 also inflicts Shock T1** is KEPT (the cauterize cost — cauterizing stops
+  Bleeding + removes Chill, so the Shock is the deliberate price that stops burn-cure
+  dominance).
 - Full reset at combat end. This dissolves the "how does Shock decay" gap (Q21) — it
   doesn't decay; it's not a pool.
 
@@ -432,6 +450,16 @@ principles, canon now:
 - **All currently seeded damage/HP numbers are placeholders pending this pass** (weapon
   values, part HP, resistances, enemy budgets). Supersedes/absorbs NQ5 (tutorial HP tuning)
   — the "hard to hurt without killing" problem gets solved by the rework, not a patch.
+- **FINALIZED FUNCTION (owner 2026-07-20, S2.3 — decision-log #22):** the force-vs-robustness
+  gate IS the damage — **`damage = max(0, Force − Robustness)`** (the gate and the number are
+  one subtraction). **Force** = Physique contribution + weapon force rating (+ merged
+  combined-action force, R15 — the party's answer to high robustness). **Robustness** =
+  Physique-derived base + the struck part's armor/toughness (per-part). On a **blocked hit**
+  (Force ≤ Robustness → 0 HP, no lasting wound): **Shock can still land** (the impact/pain),
+  but damaging conditions (bleed/burn/poison) do NOT — there is no wound to seed them.
+  Scope: implement the function + reseed ALL magnitudes (weapon force, part HP, robustness,
+  enemy budgets) as coherent PLACEHOLDER values, tuned later by a mutation + playtest pass —
+  not final numbers now. (Engine implementation PENDING — this records the design ruling.)
 
 ## R15 — Multi-character combined actions (owner direction, 2026-07-16)
 

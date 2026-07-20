@@ -218,3 +218,34 @@
     the tuning pass. Not scheduled now — a named stretch to pick up after the slice is content-
     complete. (Related tuning/feature debt already flagged: F1 camera-call stacks, F4 boss
     explosion phases, per-skill mechanics, the view-API adds for prone/slowed + hazard + boss phase.)
+20. **S2.1 Priming vocabulary FINALIZED (owner 2026-07-20).** The no-cooldowns ruling
+    (R3/NQ1) is now given a concrete, canonical **5-type prime vocabulary**, every skill's
+    prime expressed as one (or a combo) of: **CHAIN** (must immediately follow a named
+    action on the same target — already live via feint→pressure_strike), **STANCE** (hold a
+    declared stance that ends on triggers), **STACK** (consume N accumulated charges — the
+    Camera-Call model), **STATE/POSITION** (target/self in a state or relative position:
+    Exposed, downed, behind), **PREP/CHANNEL** (spend a prep action to arm a one-shot prime).
+    Primes are requirement-shaped (reuse the requirements gate). The two literal
+    cooldown-texted defensive reactions (Tactical Roll, Acrobatic Save) are **STANCE-gated**
+    (usable only while holding a light-footed/defensive stance — no timers). Implementation
+    scope this pass: build the 5 prime predicates, DELETE the dormant cooldown code, convert
+    the explicitly cooldown-texted skills; per-skill prime tags for the other ~37 ride the
+    R19 ladder finalization. See rules-addendum R3.
+21. **S2.2 R13 Shock FINALIZED — the provisional event-model is now ruled (owner 2026-07-20).**
+    Shock is **momentary events off a per-combat high-water mark** (no pool, no in-combat
+    decay, full reset at combat end). A source applies its **stated tier directly**;
+    escalation is the exception — same-wound re-abuse (or a source that "elevates") gives
+    `highest_this_combat + 1`, and an independent stack takes `max(current+1, source_tier)`
+    so a strong source is never weakened by prior light shock. Tier effects: **T1 Shout**
+    (noise/breaks stealth), **T2 Stutter** (current action fails), **T3 Faint** (Helpless
+    1 Clock + drop items), **T4 Helpless+Exposed** rest of combat. **Burn T1 also inflicts
+    Shock T1** KEPT (the cauterize cost — anti burn-cure-dominance). See rules-addendum R13.
+22. **S2.3 R14 Numbers function DECIDED (owner 2026-07-20).** The force-vs-robustness gate is
+    the damage: **damage = max(0, Force − Robustness)** (the gate and the number are one
+    subtraction). **Force** = Physique contribution + weapon force rating (+ merged
+    combined-action force, R15). **Robustness** = Physique-derived base + per-part
+    armor/toughness. On a **blocked hit** (Force ≤ Robustness → 0 HP): Shock can still land;
+    damaging conditions (bleed/burn/poison) do NOT (no wound to seed them). Scope: implement
+    the function + reseed ALL magnitudes (weapon force, part HP, robustness, enemy budgets)
+    as coherent PLACEHOLDER values, tuned later in a mutation + playtest pass — not final
+    numbers now. See rules-addendum R14.
