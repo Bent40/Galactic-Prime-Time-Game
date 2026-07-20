@@ -14,7 +14,7 @@ spectacle meter), then friends co-op, then an async global show service.
 ## Scope
 
 - Godot 4.7 game (this repo): headless deterministic combat sim (command-stream),
-  2.5D tactical presentation, SQLite static data + JSON saves per `docs/GPT_ARCHITECTURE.pdf`.
+  2.5D tactical presentation, SQLite static data + JSON saves per `docs/architecture/architecture.md` (origin: `docs/archive/GPT_ARCHITECTURE.pdf`).
 - Digital rules addendum (`docs/rules-addendum.md`) answering the rulebook's gaps.
 - Seed data completed from the rulebook + live campaign DB export.
 
