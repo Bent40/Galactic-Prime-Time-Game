@@ -468,6 +468,14 @@ func resolve_due(snapshot: Dictionary) -> Dictionary:
 func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	var kind := String(action.get("kind", "attack"))
+	# Shock T2 (Stutter, R13): the combatant's next resolved scheduled action simply
+	# FAILS — check-and-clear at the same choke point feint uses, but with NO Forced
+	# Action roll (feint collapses into a Tool roll; a stutter just fails). A stutter
+	# is checked first: it invalidates the action outright, so the feint's pending
+	# consequence is preserved and lands on the following action instead.
+	if actor.shock_stutter_pending:
+		actor.shock_stutter_pending = false
+		return [{"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "shock_stutter"}]
 	# Feint (setup_debuff): the target's NEXT resolved scheduled action collapses
 	# into a Forced Action – Tool — the same collapse an invalidated windup takes.
 	# Check-and-clear at the START of the target's next resolution (any kind).
@@ -605,13 +613,14 @@ func _resolve_setup_debuff(actor: CombatantState, action: Dictionary, spec: Dict
 func _resolve_conditional_followup(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	# Which targets are still feint-forced at resolution (captured before the strike;
-	# the strike itself never clears a target's feint flag).
+	# the strike itself never clears a target's feint flag). Value = the struck part,
+	# so the bonus Shock lands per-organ (R13): repeated abuse of the same wound elevates.
 	var feinted: Dictionary = {}
 	for target_entry: Variant in action.get("targets", []) as Array:
 		var t: Dictionary = target_entry
 		var tgt: CombatantState = combatants.get(String(t.get("id", "")))
 		if tgt != null and tgt.feint_forced:
-			feinted[tgt.id] = true
+			feinted[tgt.id] = String(t.get("part", ""))
 	var events: Array[Dictionary] = _free_reposition(actor, action, int(spec.get("reposition", 2)), "pressure_reposition")
 	events.append_array(_strike_via_spec(actor, entry, snapshot, forced_queue, spec))
 	var bonus_tier: int = int(spec.get("bonus_shock_tier", 1))
@@ -620,7 +629,7 @@ func _resolve_conditional_followup(actor: CombatantState, entry: Dictionary, sna
 		if tgt == null or not tgt.alive:
 			continue
 		events.append({"type": "pressure_bonus_shock", "actor": actor.id, "target": tgt.id, "tier": bonus_tier})
-		events.append_array(cond.apply_shock(tgt, bonus_tier, clock.tick))
+		events.append_array(cond.apply_shock(tgt, bonus_tier, clock.tick, String(feinted[tid])))
 	return events
 
 

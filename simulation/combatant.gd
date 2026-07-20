@@ -27,7 +27,15 @@ var conditions: Dictionary = {}
 ##   "condition": String, "part": String, "clocks_remaining": int, "delay": int,
 ##   "paused": bool}
 var timers: Array[Dictionary] = []
+## Shock high-water mark (R13): momentary-event model — no pool, no in-combat
+## decay; reset fresh per combat (field default, like shock itself).
 var shock: int = 0
+## part_key -> true for every wound that has PRODUCED shock this combat. Re-abusing
+## an already-shocked wound elevates the incoming source one tier (R13 per-organ).
+var shocked_parts: Dictionary = {}
+## Shock T2 (Stutter, R13): set when shock newly reaches T2 — the combatant's next
+## resolved scheduled action simply FAILS (no Forced Action roll); cleared there.
+var shock_stutter_pending: bool = false
 
 ## trait -> {"base": int, "bonus": int, "level_bonus": int}
 var stats: Dictionary = {}
@@ -326,6 +334,8 @@ func to_dict() -> Dictionary:
 		"conditions": conditions.duplicate(true),
 		"timers": timers.duplicate(true),
 		"shock": shock,
+		"shocked_parts": shocked_parts.duplicate(true),
+		"shock_stutter_pending": shock_stutter_pending,
 		"stats": stats.duplicate(true),
 		"level_points": level_points,
 		"resistances": resistances.duplicate(true),
@@ -379,6 +389,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	for timer: Variant in data.get("timers", []) as Array:
 		c.timers.append((timer as Dictionary).duplicate(true))
 	c.shock = int(data.get("shock", 0))
+	c.shocked_parts = (data.get("shocked_parts", {}) as Dictionary).duplicate(true)
+	c.shock_stutter_pending = bool(data.get("shock_stutter_pending", false))
 	c.stats = (data.get("stats", {}) as Dictionary).duplicate(true)
 	c.level_points = int(data.get("level_points", 0))
 	c.resistances = (data.get("resistances", {}) as Dictionary).duplicate(true)
