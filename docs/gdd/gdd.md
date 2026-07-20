@@ -5,7 +5,7 @@ platforms: [pc]
 status: draft — OWNER REVIEW GATE
 created: 2026-07-16
 updated: 2026-07-16
-supersedes: docs/GPT_GDD_v02.pdf (kept as history; this document wins where they conflict)
+supersedes: docs/archive/GPT_GDD_v02.pdf (kept as history; this document wins where they conflict)
 ---
 
 # Game Design Document — Galactic Prime Time ⟨working title — OPEN⟩

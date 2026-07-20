@@ -59,7 +59,7 @@ here for the social/exploration layer.
 funded with time. A stage that stalls does not invalidate the previous rung — every rung is a
 complete product.
 
-## Technical contract deltas (amendments to GPT_ARCHITECTURE.pdf)
+## Technical contract deltas (amendments to docs/archive/GPT_ARCHITECTURE.pdf)
 
 1. **Command-stream simulation.** The sim advances only via ordered commands:
    `apply_command(cmd) -> [events]`. State must be a pure function of `(seed, command log)` —

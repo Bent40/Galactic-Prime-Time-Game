@@ -249,3 +249,11 @@
     the function + reseed ALL magnitudes (weapon force, part HP, robustness, enemy budgets)
     as coherent PLACEHOLDER values, tuned later in a mutation + playtest pass — not final
     numbers now. See rules-addendum R14.
+23. **Patron dataset — roster is canonical; slice keeps the 5-god subset (2026-07-20).**
+    Two files coexist: `data/patron_roster.json` (the Wave-5 generated **24-god roster** —
+    CANONICAL) and `data/patron_gods.json` (the **5-god slice subset**, the bid screen's
+    current source). The migration of the slice/bid screen onto the roster is **DEFERRED**
+    (content work, held under the content freeze until the slice proves fun). No duplication
+    bug is introduced meanwhile: the roster is the source of truth; the 5 are an explicit
+    slice subset. Revisit when demo loadouts are re-pointed (memory/next-actions already
+    tracks this).

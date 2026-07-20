@@ -50,7 +50,8 @@ assembly (arena + the two contestants + boss + broadcast win/lose), character cr
     (below) or just opened — each line is one record.
 
 **If you want the deep source of truth:** `docs/GPT_Master_Compendium.md` (your consolidated
-design record) and the PDFs (`docs/GPT_ARCHITECTURE.pdf` for code structure).
+design record) and the archived PDFs (`docs/archive/GPT_ARCHITECTURE.pdf` for code
+structure — the live reference is `docs/architecture/architecture.md`).
 
 **Always-current status:** `memory/next-actions.md` — the by-angle tracker (done / running /
 your decision queue). If you read one file to know "what now," read that.

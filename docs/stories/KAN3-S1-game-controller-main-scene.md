@@ -2,7 +2,7 @@
 
 **Epic:** KAN-3 Scaffolding · **Status:** ready · **Depends on:** — (KAN-2 core ✅)
 **Sources:** `../architecture/architecture.md` (structure, consistency rules),
-GPT_ARCHITECTURE.pdf §signal catalog.
+docs/archive/GPT_ARCHITECTURE.pdf §signal catalog.
 
 ## Context
 The repo currently opens to an empty window. This story stands up the MVC skeleton:

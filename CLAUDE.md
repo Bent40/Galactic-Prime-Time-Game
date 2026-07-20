@@ -28,9 +28,11 @@ conflict.
    v0.91 + GDD v0.1 + boss/modifier design + campaign story + party). Deep source of truth
    for content; conflicts with newer live data are catalogued in
    `docs/review/review-5-compendium-delta.md` (NQ items await owner rulings).
-7. Design PDFs: `docs/GPT_ARCHITECTURE.pdf` (MVC contract, KAN epic order — authoritative
-   for code structure) and `docs/GPT_GDD_v02.pdf` (vision; single-player framing is
-   superseded by DIRECTION.md's ladder).
+7. Design docs: `docs/architecture/architecture.md` (MVC contract, KAN epic order — the
+   live technical reference) and `docs/gdd/gdd.md` (vision; single-player framing is
+   superseded by DIRECTION.md's ladder). The original PDFs are archived at `docs/archive/`
+   (`GPT_ARCHITECTURE.pdf`, `GPT_GDD_v02.pdf`) — historical origins, superseded by the live
+   docs where they conflict.
 
 ## Hard rules (from the architecture doc + direction)
 
