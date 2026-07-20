@@ -199,3 +199,12 @@
     Commits 4377fa2 / ecb867e / 6155e29. Detail: `docs/playtests/slice-playtest-2026-07-19.md` §F2. Open
     nit (not a bypass, owner call later): whether a lethal *condition* on the *exposed* network is an
     acceptable finisher, or "destroy the network" must strictly mean HP→0.
+18. **Art-direction thread PARKED (candidate, NOT ruled — 2026-07-20).** Owner-originated
+    exploration captured in `docs/design/art-direction-pieces.md`: contestants/bosses as the
+    table's **themed game-pieces** (mahjong/chess/totem/bone by the governing god), big beasts
+    as **aggregate swarms of pieces** (procedural formation animation, not sprites — maps 1:1
+    onto the multi-part-body + surface-immunity boss, i.e. the mycelium puppet IS a
+    piece-swarm; breach = pieces part to reveal the core), and a **visceral-injury** layer
+    (cutaway maiming stinger + persistent damage decals on the piece, keyed to the existing
+    part_destroyed / gorefest / hype events) so the brutality survives the abstraction. NOT a
+    ruling — a direction to pressure-test at the UI revamp; open decisions listed in the note.
