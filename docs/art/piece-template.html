@@ -1,0 +1,407 @@
+<title>Piece Asset Contract — v1</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* light — drafting vellum, cool bias */
+    --bg:        #E6E9ED;
+    --panel:     #FBFCFD;
+    --ink:       #191D23;
+    --ink-soft:  #59616C;
+    --line:      #C7CDD6;
+    --line-soft: #DCE1E8;
+    --accent:    #1C7A8C;   /* registration teal */
+    --accent-ink:#136170;
+    --accent-soft: rgba(28,122,140,.10);
+    --warn:      #B0700F;   /* growth-zone amber (semantic) */
+    --warn-ink:  #8C5808;
+    --warn-soft: rgba(176,112,15,.11);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #0E1116;
+      --panel:     #161A21;
+      --ink:       #E8EBEF;
+      --ink-soft:  #9BA3AE;
+      --line:      #2B323C;
+      --line-soft: #232932;
+      --accent:    #4FBACE;
+      --accent-ink:#7FD0E0;
+      --accent-soft: rgba(79,186,206,.13);
+      --warn:      #D89C4E;
+      --warn-ink:  #E4B473;
+      --warn-soft: rgba(216,156,78,.13);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0E1116; --panel:#161A21; --ink:#E8EBEF; --ink-soft:#9BA3AE;
+    --line:#2B323C; --line-soft:#232932; --accent:#4FBACE; --accent-ink:#7FD0E0;
+    --accent-soft: rgba(79,186,206,.13); --warn:#D89C4E; --warn-ink:#E4B473;
+    --warn-soft: rgba(216,156,78,.13);
+  }
+  :root[data-theme="light"] {
+    --bg:#E6E9ED; --panel:#FBFCFD; --ink:#191D23; --ink-soft:#59616C;
+    --line:#C7CDD6; --line-soft:#DCE1E8; --accent:#1C7A8C; --accent-ink:#136170;
+    --accent-soft: rgba(28,122,140,.10); --warn:#B0700F; --warn-ink:#8C5808;
+    --warn-soft: rgba(176,112,15,.11);
+  }
+
+  body {
+    margin: 0;
+    background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0 / 100% 24px,
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    padding: 32px 20px 64px;
+  }
+
+  .sheet {
+    max-width: 968px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 0 var(--line), 0 18px 44px -28px rgba(0,0,0,.45);
+  }
+
+  /* ---- title block ---- */
+  .titleblock {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 28px;
+    align-items: end;
+    padding: 26px 34px 22px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 7px;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: clamp(22px, 3.4vw, 30px);
+    letter-spacing: -.01em;
+    line-height: 1.08;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .subtitle { color: var(--ink-soft); font-size: 14.5px; margin: 8px 0 0; max-width: 52ch; }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-align: right;
+    line-height: 1.9;
+    white-space: nowrap;
+  }
+  .stamp b { color: var(--ink); font-weight: 700; }
+
+  section { padding: 28px 34px; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; }
+  h2 {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 18px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  h2::before {
+    content: attr(data-n);
+    font-size: 11px;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1px 5px;
+  }
+
+  /* ---- diagram ---- */
+  .figure { margin: 0; }
+  .diagram { width: 100%; height: auto; display: block; }
+  .svgroot text { font-family: var(--mono); paint-order: stroke; stroke: var(--panel); stroke-width: 3.2px; stroke-linejoin: round; }
+  .svgroot .lab      { font-size: 15px; font-weight: 600; fill: var(--ink-soft); letter-spacing: .3px; }
+  .svgroot .lab-dim  { font-size: 15px; font-weight: 700; fill: var(--accent-ink); }
+  .svgroot .lab-key  { font-size: 13px; font-weight: 700; fill: var(--warn-ink); letter-spacing: .12em; }
+  .svgroot .lab-anch { font-size: 15px; font-weight: 700; fill: var(--accent-ink); letter-spacing: .04em; }
+  .svgroot .canvasbg { fill: var(--panel); stroke: var(--line); stroke-width: 2; }
+  .svgroot .gridfine { stroke: var(--line-soft); stroke-width: 1; }
+  .svgroot .grid8    { stroke: var(--line); stroke-width: 1.2; }
+  .svgroot .hatch    { stroke: var(--warn); stroke-width: 1.4; opacity: .5; }
+  .svgroot .zonebg   { fill: var(--warn-soft); }
+  .svgroot .envelope { fill: none; stroke: var(--accent); stroke-width: 3; }
+  .svgroot .axis     { stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 3 5; opacity: .8; }
+  .svgroot .ghost    { fill: var(--ink); opacity: .12; }
+  .svgroot .ghostln  { fill: none; stroke: var(--ink); stroke-width: 2; opacity: .32; stroke-linejoin: round; }
+  .svgroot .dimline  { stroke: var(--accent); stroke-width: 1.5; }
+  .svgroot .witness  { stroke: var(--accent); stroke-width: 1; opacity: .5; }
+  .svgroot .ah       { fill: var(--accent); }
+  .svgroot .anchor-r { fill: var(--panel); stroke: var(--accent); stroke-width: 2.5; }
+  .svgroot .anchor-x { stroke: var(--accent); stroke-width: 2.5; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .lg { width: 22px; height: 12px; border-radius: 2px; flex: none; }
+  .lg-env { border: 2px solid var(--accent); }
+  .lg-zone { background: var(--warn-soft); border: 1px solid var(--warn); }
+  .lg-anch { border: 2px solid var(--accent); border-radius: 50%; width: 14px; height: 14px; }
+  .lg-ghost { background: var(--ink); opacity: .16; }
+
+  /* ---- spec + palette ---- */
+  .cols { display: grid; grid-template-columns: 1.05fr .95fr; gap: 30px 40px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; padding: 0 0 9px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 0; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  td.k { color: var(--ink-soft); white-space: nowrap; padding-right: 14px; }
+  td.v { font-family: var(--mono); color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+
+  .ramp { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .chip { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 14px; padding: 0; border-bottom: 1px solid var(--line-soft); }
+  .chip:last-child { border-bottom: 0; }
+  .swatch { align-self: stretch; min-height: 46px; }
+  .chip .role { font-size: 13px; color: var(--ink); }
+  .chip .role small { display: block; color: var(--ink-soft); font-size: 11.5px; }
+  .chip .hex { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); padding-right: 14px; font-variant-numeric: tabular-nums; }
+  .light-note { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); margin: 14px 0 0; }
+  .light-note b { color: var(--accent-ink); }
+
+  /* ---- rules ---- */
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 34px; }
+  .rule { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+  .rule .tag { font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 3px; padding: 2px 6px; white-space: nowrap; margin-top: 2px; }
+  .rule p { margin: 0; font-size: 14px; }
+  .rule strong { color: var(--ink); }
+
+  .draworder { margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--line); }
+  .draworder .h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 12px; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; }
+  .flow .step { font-family: var(--mono); font-size: 12.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 5px 10px; color: var(--ink); }
+  .flow .step b { color: var(--accent-ink); font-weight: 700; }
+  .flow .arw { color: var(--ink-soft); font-family: var(--mono); }
+
+  /* ---- footer / honesty ---- */
+  .callout { display: grid; grid-template-columns: auto 1fr; gap: 12px; background: var(--warn-soft); border-left: 3px solid var(--warn); border-radius: 0 3px 3px 0; padding: 14px 16px; font-size: 13.5px; }
+  .callout .m { font-family: var(--mono); font-weight: 700; color: var(--warn-ink); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+  .callout p { margin: 0; color: var(--ink); }
+  .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; margin-top: 20px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); }
+
+  @media (max-width: 720px) {
+    body { padding: 16px 8px 40px; }
+    .titleblock { grid-template-columns: 1fr; }
+    .stamp { text-align: left; }
+    section { padding: 24px 20px; }
+    .cols, .rules { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="sheet svgroot">
+
+  <header class="titleblock">
+    <div>
+      <p class="eyebrow">Themed Game-Piece · Authoring Contract</p>
+      <h1>Piece Asset Contract</h1>
+      <p class="subtitle">Contestants and bosses are the game-pieces of the table's governing god — marble for a Greek/European table, jade, carved wood, obsidian. This is the shared registration every piece and its gear are authored against, whatever the material. Companion to <b>art-direction-pieces.md</b>.</p>
+    </div>
+    <div class="stamp">
+      REV <b>v1</b><br>
+      CANVAS <b>64×64</b><br>
+      SET <b>2026-07-20</b>
+    </div>
+  </header>
+
+  <section>
+    <h2 data-n="A">Canvas &amp; Registration</h2>
+    <figure class="figure">
+      <svg class="diagram" viewBox="0 0 664 680" role="img" aria-label="Dimensioned 64 by 64 pixel canvas: 6px top and bottom margins, 15px side margins, a 34 by 52 pixel piece envelope, a center axis on the column 32/33 seam, and an anchor point at the center-bottom.">
+        <defs>
+          <pattern id="pxfine" width="8" height="8" patternUnits="userSpaceOnUse">
+            <path d="M8 0 V8 M0 8 H8" class="gridfine" fill="none"/>
+          </pattern>
+          <pattern id="px8" width="64" height="64" patternUnits="userSpaceOnUse">
+            <path d="M64 0 V64 M0 64 H64" class="grid8" fill="none"/>
+          </pattern>
+          <pattern id="growth" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="9" class="hatch"/>
+          </pattern>
+        </defs>
+
+        <!-- canvas ground -->
+        <rect x="96" y="72" width="512" height="512" class="canvasbg"/>
+
+        <!-- growth-zone bands (margins) -->
+        <g>
+          <rect x="96"  y="72"  width="512" height="48"  class="zonebg"/>
+          <rect x="96"  y="536" width="512" height="48"  class="zonebg"/>
+          <rect x="96"  y="120" width="120" height="416" class="zonebg"/>
+          <rect x="488" y="120" width="120" height="416" class="zonebg"/>
+          <rect x="96"  y="72"  width="512" height="48"  fill="url(#growth)"/>
+          <rect x="96"  y="536" width="512" height="48"  fill="url(#growth)"/>
+          <rect x="96"  y="120" width="120" height="416" fill="url(#growth)"/>
+          <rect x="488" y="120" width="120" height="416" fill="url(#growth)"/>
+        </g>
+
+        <!-- pixel grid overlay -->
+        <rect x="96" y="72" width="512" height="512" fill="url(#pxfine)"/>
+        <rect x="96" y="72" width="512" height="512" fill="url(#px8)"/>
+
+        <!-- ghost base piece -->
+        <g class="ghost">
+          <circle cx="352" cy="264" r="72"/>
+          <rect x="320" y="336" width="64" height="72"/>
+          <rect x="288" y="392" width="128" height="32"/>
+          <path d="M280 424 H424 L464 496 H240 Z"/>
+          <rect x="216" y="496" width="272" height="40" rx="8"/>
+        </g>
+        <g class="ghostln">
+          <circle cx="352" cy="264" r="72"/>
+          <path d="M280 424 H424 L464 496 H240 Z"/>
+          <rect x="216" y="496" width="272" height="40" rx="8"/>
+        </g>
+
+        <!-- envelope + axis -->
+        <rect x="216" y="120" width="272" height="416" class="envelope"/>
+        <line x1="352" y1="72" x2="352" y2="584" class="axis"/>
+
+        <!-- growth-zone label -->
+        <text x="352" y="101" text-anchor="middle" class="lab-key">◇ GROWTH ZONE — GEAR MAY EXTEND HERE</text>
+
+        <!-- center-axis label -->
+        <line x1="352" y1="50" x2="352" y2="72" class="witness"/>
+        <text x="352" y="40" text-anchor="middle" class="lab">CENTER AXIS · col 32 │ 33 seam</text>
+
+        <!-- vertical dimension stack (left gutter, x=56) -->
+        <g class="witness">
+          <line x1="96" y1="72"  x2="40" y2="72"/>
+          <line x1="96" y1="120" x2="40" y2="120"/>
+          <line x1="96" y1="536" x2="40" y2="536"/>
+          <line x1="96" y1="584" x2="40" y2="584"/>
+        </g>
+        <g class="dimline">
+          <line x1="56" y1="72"  x2="56" y2="120" marker-start="url(#a1)" marker-end="url(#a2)"/>
+          <line x1="56" y1="120" x2="56" y2="536" marker-start="url(#a1)" marker-end="url(#a2)"/>
+          <line x1="56" y1="536" x2="56" y2="584" marker-start="url(#a1)" marker-end="url(#a2)"/>
+        </g>
+        <text x="34" y="100"  transform="rotate(-90 34 100)"  text-anchor="middle" class="lab-dim">6</text>
+        <text x="34" y="328"  transform="rotate(-90 34 328)"  text-anchor="middle" class="lab-dim">52</text>
+        <text x="34" y="564"  transform="rotate(-90 34 564)"  text-anchor="middle" class="lab-dim">6</text>
+
+        <!-- horizontal dimension stack (bottom gutter, y=624) -->
+        <g class="witness">
+          <line x1="96"  y1="584" x2="96"  y2="640"/>
+          <line x1="216" y1="584" x2="216" y2="640"/>
+          <line x1="488" y1="584" x2="488" y2="640"/>
+          <line x1="608" y1="584" x2="608" y2="640"/>
+        </g>
+        <g class="dimline">
+          <line x1="96"  y1="624" x2="216" y2="624" marker-start="url(#a1)" marker-end="url(#a2)"/>
+          <line x1="216" y1="624" x2="488" y2="624" marker-start="url(#a1)" marker-end="url(#a2)"/>
+          <line x1="488" y1="624" x2="608" y2="624" marker-start="url(#a1)" marker-end="url(#a2)"/>
+        </g>
+        <text x="156" y="619" text-anchor="middle" class="lab-dim">15</text>
+        <text x="352" y="619" text-anchor="middle" class="lab-dim">34 · widest</text>
+        <text x="548" y="619" text-anchor="middle" class="lab-dim">15</text>
+
+        <!-- anchor -->
+        <g class="anchor-x">
+          <line x1="336" y1="536" x2="368" y2="536"/>
+          <line x1="352" y1="520" x2="352" y2="552"/>
+        </g>
+        <circle cx="352" cy="536" r="9" class="anchor-r"/>
+        <text x="352" y="668" text-anchor="middle" class="lab-anch">ANCHOR ⟨32, 58⟩ · feet / registration point</text>
+
+        <!-- arrow markers -->
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="ah"/></marker>
+          <marker id="a1" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M10 0 L0 5 L10 10 z" class="ah"/></marker>
+        </defs>
+      </svg>
+    </figure>
+    <div class="legend">
+      <span><i class="lg lg-env"></i> piece envelope (34×52)</span>
+      <span><i class="lg lg-zone"></i> reserved growth zone</span>
+      <span><i class="lg lg-anch"></i> anchor · align every layer here</span>
+      <span><i class="lg lg-ghost"></i> base chassis (v2, for reference)</span>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-n="B">Dimensions &amp; Palette</h2>
+    <div class="cols">
+      <div>
+        <table>
+          <thead><tr><th>Field</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Canvas</td><td class="v">64 × 64 px · power of two</td></tr>
+            <tr><td class="k">Top / bottom margin</td><td class="v">6 px each</td></tr>
+            <tr><td class="k">Left / right margin</td><td class="v">15 px each</td></tr>
+            <tr><td class="k">Piece envelope</td><td class="v">34 × 52 px</td></tr>
+            <tr><td class="k">Widest point</td><td class="v">34 px · base, centred</td></tr>
+            <tr><td class="k">Center axis</td><td class="v">col 32 │ 33 (seam)</td></tr>
+            <tr><td class="k">Anchor</td><td class="v">⟨32, 58⟩ · center-bottom</td></tr>
+            <tr><td class="k">Growth zone</td><td class="v">the margins · reserved for gear</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <p class="light-note" style="margin:0 0 10px">Per-theme material ramp, pulled from the game's <b>locked global palette</b> (house rule). Values below are <b>PROVISIONAL placeholders</b> eyeballed from the v2 render.</p>
+        <div class="ramp">
+          <div class="chip"><div class="swatch" style="background:#141414"></div><div class="role">Keyline<small>silhouette outline</small></div><div class="hex">#141414</div></div>
+          <div class="chip"><div class="swatch" style="background:#363636"></div><div class="role">Core shadow<small>deepest form shadow</small></div><div class="hex">#363636</div></div>
+          <div class="chip"><div class="swatch" style="background:#565656"></div><div class="role">Body<small>main mass</small></div><div class="hex">#565656</div></div>
+          <div class="chip"><div class="swatch" style="background:#767676"></div><div class="role">Mid<small>lit mid-tone</small></div><div class="hex">#767676</div></div>
+          <div class="chip"><div class="swatch" style="background:#A6A6A6"></div><div class="role">Highlight<small>upper-left planes</small></div><div class="hex">#A6A6A6</div></div>
+          <div class="chip"><div class="swatch" style="background:#D0D0D0"></div><div class="role">Specular<small>sharpest point (head)</small></div><div class="hex">#D0D0D0</div></div>
+        </div>
+        <p class="light-note">Light source: <b>upper-left</b>, single source — on every layer.</p>
+        <p class="light-note" style="margin-top:8px">Material themes · <b>European = marble/stone (active)</b> · jade · carved wood · bone/obsidian — one per god-table.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-n="C">Layering Contract</h2>
+    <div class="rules">
+      <div class="rule"><span class="tag">CANVAS</span><p><strong>One canvas.</strong> Every asset is authored on the same 64×64 with the same margins — base, cloak, totem, crown, all of it.</p></div>
+      <div class="rule"><span class="tag">ANCHOR</span><p><strong>The anchor is law.</strong> Align every overlay's base to ⟨32, 58⟩. Never nudge it per-asset or the whole set drifts.</p></div>
+      <div class="rule"><span class="tag">LIGHT</span><p><strong>One light.</strong> Upper-left, single source, on every layer — otherwise gear reads as pasted on rather than worn.</p></div>
+      <div class="rule"><span class="tag">SYMMETRY</span><p><strong>Mind the seam.</strong> No true center pixel on an even canvas — make central features <strong>2 px wide</strong>, or commit to a consistent 1 px lean.</p></div>
+      <div class="rule"><span class="tag">GROWTH</span><p><strong>Margins are reserved.</strong> The bare piece must not fill them — leave headroom &amp; side-room for crowns, cloaks, and staves.</p></div>
+      <div class="rule"><span class="tag">SILHOUETTE</span><p><strong>Reads at 1×.</strong> Check the shape at actual size. If it turns to mud, simplify the form before adding any detail.</p></div>
+      <div class="rule"><span class="tag">PALETTE</span><p><strong>Locked ramp.</strong> Pull every pixel from the six values above — new gear introduces no new greys, only recolours later.</p></div>
+      <div class="rule"><span class="tag">SHOULDER</span><p><strong>Optional second ref.</strong> If cloaks need a hook, fix one shoulder line now and reuse it — but feet stay the master.</p></div>
+    </div>
+    <div class="draworder">
+      <div class="h">Composite order · back → front</div>
+      <div class="flow">
+        <span class="step"><b>1</b> cast shadow</span><span class="arw">→</span>
+        <span class="step"><b>2</b> base chassis</span><span class="arw">→</span>
+        <span class="step"><b>3</b> body gear <small>(cloak)</small></span><span class="arw">→</span>
+        <span class="step"><b>4</b> head gear <small>(crown)</small></span><span class="arw">→</span>
+        <span class="step"><b>5</b> front props <small>(totem/staff)</small></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="callout">
+      <span class="m">Note</span>
+      <p>The palette hexes are <strong>PROVISIONAL placeholders eyeballed from the v2 render</strong>. House rule (<em>making-art-and-music §1.4</em>): every material ramp is pulled from one <strong>locked global palette</strong>. Lock that first, then replace these values. Every dimension on this sheet is exact.</p>
+    </div>
+    <div class="meta">
+      <span>PIECE-ASSET-CONTRACT · v1 · CANDIDATE</span>
+      <span>see art-direction-pieces.md · figure shapes → perspectives → detail</span>
+    </div>
+  </section>
+
+</div>
