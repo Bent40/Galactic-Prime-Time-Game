@@ -254,10 +254,10 @@
         "damage": [
           {
             "type": "burn",
-            "amount": 2
+            "amount": 1
           }
         ],
-        "note": "trash cans explode at Burn 5 (3 spaces, 2 Burn)"
+        "note": "R14 tuning 2026-07-20: burn 2->1. Force = 1 + floor(phys 6/2)=4; vs a fresh contestant torso (5 HP, Robustness floor(phys/2)) it nets 3 (phys 2) / 2 (phys 5) — a chip+burn that needs 2 hits to fell a torso, never a one-shot. trash cans explode at Burn 5 (3 spaces, 2 Burn)"
       },
       {
         "key": "dash",
@@ -268,12 +268,12 @@
         "damage": [
           {
             "type": "crushed",
-            "amount": 3,
+            "amount": 2,
             "part_bias": "torso"
           }
         ],
         "effect": "knock aside",
-        "note": "range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope — AI v1 treats it as reach"
+        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) — no longer the from-full-to-0 one-shot the 3-amount dash was. range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope — AI v1 treats it as reach"
       },
       {
         "key": "death_spin",

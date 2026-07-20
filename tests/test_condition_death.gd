@@ -41,6 +41,36 @@ func test_burn_limb_caps_never_kills() -> void:
 	assert_true(sim.combatants["h"].alive, "the contestant survives a burned-off leg")
 
 
+# ------------------------------------------------ forced-action null-tier guard (R14 tuning)
+
+func test_burned_actor_acts_without_null_forced_action_crash() -> void:
+	# Regression (R14 tuning, 2026-07-20): a condition tier whose forced_action_type is
+	# JSON null (burn T1/T3, crushed T3, bleeding T1…) must not crash the Body-forced-
+	# action check when a conditioned combatant ACTS. Surfaced by the full-cadence
+	# balance harness (scripts/balance_sim.gd): a flamethrower-burned contestant kept
+	# fighting, and ConditionEngine.forced_body_required hard-errored on String(null).
+	var sim: CombatSim = make_sim()
+	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	sim.apply_command({"type": "add_combatant", "combatant": {
+		"id": "dummy", "name": "dummy", "team": "enemies", "position": [1, 0], "category": "Mob",
+		"traits": {"physique": 3}, "body_parts": [{"key": "torso", "hp": 40, "lethal": true}]}})
+	# burn T1 carries forced_action_type: null — acting must simply NOT roll a Body FA.
+	sim.apply_command({"type": "apply_condition", "target": "h", "part": "torso", "condition": "burn", "tier": 1})
+	assert_eq(sim.combatants["h"].condition_tier("torso", "burn"), 1, "burn T1 seeded on the actor")
+	declare(sim, "h", attack_action("crushed", 3, "dummy", "torso"))
+	var resolved: Array[Dictionary] = advance(sim, 1)
+	assert_event(resolved, "damage_applied", "the burned actor's action resolves (no crash on the null tier)")
+	assert_no_event(resolved, "forced_action_triggered", "burn T1's null forced_action_type rolls NO Body forced action")
+	assert_true(sim.combatants["h"].alive, "the actor is still alive and functioning")
+	# Contrast: burn T2 carries forced_action_type 'Body' — the guard is null-only, so
+	# a real Body tier still fires its Forced Action.
+	sim.apply_command({"type": "apply_condition", "target": "h", "part": "torso", "condition": "burn", "tier": 2})
+	assert_eq(sim.combatants["h"].condition_tier("torso", "burn"), 2, "burn advanced to T2")
+	declare(sim, "h", attack_action("crushed", 3, "dummy", "torso"))
+	var resolved2: Array[Dictionary] = advance(sim, 1)
+	assert_event(resolved2, "forced_action_triggered", "burn T2's Body forced_action_type still fires (guard is null-only)")
+
+
 func test_crushed_torso_still_kills() -> void:
 	# The gate protects limbs, NOT vital parts — a crushed torso is still lethal.
 	var sim: CombatSim = make_sim()
