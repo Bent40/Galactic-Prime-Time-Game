@@ -1,12 +1,14 @@
 {
   "schema": 1,
-  "generated": "2026-07-13T21:57:38Z",
+  "generated": "2026-07-20T17:17:59Z",
   "mode": "brownfield",
   "monorepo": false,
   "monorepo_evidence": [],
   "stack": {
     "langs": [
-      "gd"
+      "gd",
+      "sh",
+      "py"
     ],
     "framework": null,
     "manifests": [
@@ -17,12 +19,13 @@
     "containers": false,
     "git": {
       "repo": true,
-      "branch": "claude/galactic-prime-time-review-kxlelf",
-      "dirty": true,
+      "branch": "claude/session-continuation-next-steps-mpycyj",
+      "dirty": false,
       "last_commit_days": 0
     },
-    "file_count": 76,
-    "walk_capped": false
+    "file_count": 309,
+    "walk_capped": false,
+    "merged_deps": []
   },
   "bmad": {
     "state": "none",
@@ -39,7 +42,7 @@
     },
     "learn": {
       "state": "initialized",
-      "detail": 9
+      "detail": 25
     },
     "context": {
       "state": "initialized"
@@ -54,7 +57,8 @@
       "state": "absent",
       "packs": null,
       "targets": null,
-      "profile": null
+      "profile": null,
+      "satellite_hint": true
     },
     "guard": {
       "state": "off"
@@ -91,20 +95,33 @@
     "invocation_rate_baseline": null
   },
   "receipts": {
-    "last_scan": "2026-07-13T21:57:38Z"
+    "last_scan": "2026-07-20T17:18:01Z"
   },
   "size": {
-    "proposed": "small",
+    "proposed": "medium",
     "risk": [],
     "confirmed": "small",
-    "at": "2026-07-13"
+    "at": "2026-07-20"
   },
+  "posture": "civilian",
   "activation": {
     "profile": "game",
     "confirmed": true,
-    "score": 0.2,
-    "alternates": [],
-    "ambiguous": false,
+    "involvement": "satellite",
+    "involvement_confirmed": false,
+    "involvement_proposed": "satellite",
+    "score": null,
+    "alternates": [
+      {
+        "profile": "cli-tool",
+        "score": 0.2
+      },
+      {
+        "profile": "library",
+        "score": 0.2
+      }
+    ],
+    "ambiguous": true,
     "addons": [],
     "addons_proposed": [],
     "applied_at": null

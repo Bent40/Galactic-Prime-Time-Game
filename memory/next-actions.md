@@ -1,63 +1,53 @@
 # Next Actions
 
 <!-- wf memory: required sections below; keep the headings. -->
-<!-- OWNER-FACING BY-ANGLE TRACKER — every report mirrors this list. -->
+<!-- OWNER-FACING BY-ANGLE TRACKER. Last refreshed 2026-07-20. -->
 
 ## Next actions
 
-### 🔀 main = integration branch
-`origin/main` @ `afc3419` holds BOTH tracks integrated + verified 96/96: the owner's
-art/music branch (S2.5 combined-actions engine, KAN-2 criterion 21; the art/music starter
-guide `docs/making-art-and-music.md`) AND this session's work (mythology Waves 0–5, stealth
-R20, skill ladders, demo loadouts, engine merges). Keep developing on
-`claude/session-continuation-next-steps-mpycyj`; merge origin/main in before pushing when it
-has moved, then FF main.
+### 🔀 branches
+`claude/session-continuation-next-steps-mpycyj` and `main` are kept in **lockstep**
+(every commit pushed to both). Both at the audit/loop work as of 2026-07-20. Develop on
+the session branch; push `-u` to both.
 
-### ⏸️ Owner decision queue (nothing below blocks running work)
+### ▶️ Active dev — implement the 3 DECIDED KAN-2 sittings
+The design is ruled (rules-addendum R3/R13/R14, decision-log #20–22); this is engine work:
+1. **S2.1 Priming** — build the 5 prime predicates (CHAIN/STANCE/STACK/STATE-POSITION/
+   PREP-CHANNEL) into the requirements gate; DELETE the dormant cooldown code; convert the
+   cooldown-texted skills (Tactical Roll + Acrobatic Save → STANCE-gated; the "-4 Moment
+   cooldown" threshold → CHAIN discount).
+2. **S2.2 Shock** — wire the finalized event-model: high-water mark, `max(current+1,
+   source_tier)` escalation, tier effects T1 Shout / T2 Stutter / T3 Faint / T4 Helpless,
+   Burn T1→Shock T1. Regression tests.
+3. **S2.3 R14 numbers** — implement `damage = max(0, Force − Robustness)` (Force = physique +
+   weapon rating + merged combined force; Robustness = physique base + per-part armor);
+   blocked hits land Shock but not bleed/burn/poison; reseed magnitudes as PLACEHOLDER;
+   mutation pass after.
 
-1. **Animal-layout sitting** — the parts research is done (`docs/design/animal-parts-library.md`,
-   38 parts). Decide the structural model (required vital-core + head-equivalent; the
-   `can_manipulate` flag), and green-light the rich mechanics (prehensile tail = 2nd grapple,
-   autotomy = drop-a-limb-to-break-grapple, ink/chromatophore → R20 decoys, multi-heart boss
-   bodies, pit-organ IR anti-camo). → authors R21.
-2. **Telepathy** — confirm the manipulation-lane reframe (low stakes; 43/43 ladders otherwise final).
-3. **Extract-everything?** ~733 more entities across 4 tiers (`docs/research/mythology/full-pull-roadmap.md`);
-   REC: don't bulk it, pull per-need. Wave 2b already closed the referenced-figure gaps.
-4. **Bigger sittings** (any time): R14 force-gate numbers · R2–R10+R13 PROVISIONAL batch ·
-   GDD/narrative/architecture markups.
+### ▶️ Queued (me) — after the sittings, still under the content freeze
+- **Incine-Dile: tuned & fun full fight** (review #2) — phase progression, telegraphed
+  breach, 10–20 min pacing target.
+- **Evidence-based verdict** — record the player's real choices; the card quotes them.
+- **HUD declutter + real visuals** — the "Rework Visuals Properly" epic (decision #19).
+- Remaining **37 skills' mechanics**; **CI** (pin Godot, run tests/seeds/import/smoke);
+  **KAN-4 party** (real OC creation → recruitment → replace the Imani/Dario fixtures + the
+  Charm-30 hack with a proper granted-stacks field).
+- R11 #14 takedown attribution v2 (task #13); I-11 priming impl folds into S2.1 above.
+
+### ⏸️ Owner decision queue (none blocks the work above)
+- LICENSE: substitute your legal name/entity as the copyright holder.
+- Asset provenance: 15 raw photo/screenshot placeholders flagged in
+  `docs/asset-provenance.md` — confirm rights / check watermarks before any public build.
+- Animal-parts sitting (Sasha body plan) · telepathy manipulation-lane confirm ·
+  living-religion cultural review before public release · patron slice→roster migration
+  (deferred, decision-log #23).
 
 ### 🔄 Running now (agent)
-- Nothing. All background waves/agents complete and committed.
+- Nothing. All background agents complete, verified, and merged.
 
-### ▶️ Queued (me) — unblocks on the matching decision
-- **I-13 TagEngine build** (tag names settled): TagEngine + `tag_effects.json` + 3 goal rows +
-  The Bit as a mechanically-NULL flavor action. Unblocks Wave-5's domain→TAG map.
-- **R11 #14 takedown attribution-v2** (task #13): friendly kill = takedown iff you killed them;
-  needs kill-attribution + team-awareness in the hype engine.
-- **Wave 5 remainder:** domain→tag + domain→affix maps (on I-13); LATER migrate the slice
-  patron stubs to the roster (only after demo loadouts are re-pointed).
-- **KAN-4 party stories** (S4.1 OC creation → recruitment → permadeath → plan-runner).
-- **Bid-screen slice story** → **KAN-6 mockup gate** → slice readiness re-run → **W3 vertical
-  slice assembly** (the milestone).
-
-### ✅ Mythology pipeline — WAVES 0–5 essentially COMPLETE
-- Wave 0 calibration · Wave 1 census 26/26 (957 candidates) · **Wave 2: 210 entities** ·
-  **Wave 2b: +14 (224 total)** referenced figures, 13 dangling edges closed, story_only proven ·
-  **Wave 3: 294 myths** · **Wave 4 cross-link** (4 syncretic merges, 15 reciprocities) ·
-  **Wave 5: patron-roster generator + `data/patron_roster.json` (24 gods)** +
-  `data/domain_condition_map.json`. domain→tag/affix deferred to I-13.
-- Data: `data/mythology/{traditions.json, census_candidates.jsonl, calibration.json,
-  entities.jsonl (224), myths.jsonl (294)}` + dossiers + wave reports in `docs/research/mythology/`.
-
-### ✅ RULED / LANDED this session
-- **Skill passover:** 10 framework defaults + **43/43 ladders FINAL** (Telepathy → manipulation lane).
-- **Tag names:** 2026-07-17 renames stand (pasted descriptions ported; 100 tags).
-- **Mycelius** = a servant (Osiris's retinue), not slice-critical.
-- **R11 #14:** same-batch insta-win allowed · friendly takedown iff you killed them (impl queued #13).
-- **R11 #18:** wounds persist on boss retreat. **R20:** full stealth/detection/cover model (Q58 closed).
-- **Caishen** influence 5 (deliberate wealth outlier). **Wave-5 roster** approved (24 gods).
-- **Anansi** promoted to patron (Nyame-wager patron_block).
-- Depiction v2 + carve-outs · Wave-2 shortlist · slice cast = demo loadouts · tag slice.
-- **Engines MERGED:** I-9 spectacle (66/66) · I-16 enemy AI (95/95, incl. a real engine-bug fix) ·
-  **S2.5 combined actions (owner's, criterion 21) — now integrated, 96/96.**
-- I-8 tag port · demo loadouts (Imani/Dario) · assets staged · I-14 verified + `passive` fix.
+### ✅ Landed this session (2026-07-20)
+- Integrated run loop (title→bid→combat→verdict→restart) + the boss fights back.
+- Per-skill mechanics (SkillBook + 6 demo skills, 5 archetypes).
+- The 3 KAN-2 sittings decided + formalized; window responsive.
+- Full repo audit: dead-file cleanup, drift reconciled, STATUS.md, LICENSE, PDF
+  archive, asset manifest, patron ruling. Content freeze adopted.

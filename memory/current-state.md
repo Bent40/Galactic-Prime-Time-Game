@@ -1,56 +1,60 @@
 # Current State
 
 <!-- wf memory: required sections below; keep the headings. -->
+<!-- Last refreshed 2026-07-20 (post loop + KAN-2 sittings + repo audit). -->
 
 ## Done
 
-- **Setting frame fully designed (2026-07-16→18):** Cosmic Casino adopted game-first
-  (DIRECTION.md D3–D5); patron-god system complete (`docs/design/patron-gods.md`, Q1–Q8 +
-  slate + Forsaken any-god-all-in amendment); propose-a-plan + combined actions designed;
-  Nikita + Sasha sheets APPROVED (`docs/characters/`); rules addendum R0–R19 closed except
-  the four gated items below.
-- **BMAD artifact chain:** brief APPROVED; GDD (`docs/gdd/gdd.md`, supersedes v0.2 PDF) +
-  narrative + architecture + KAN-3 stories + readiness all drafted — GDD sits at the owner
-  review gate.
-- **Engine (KAN-2): green headless suite** — see STATUS.md for the current count — under Godot 4.7.1 in-container (`scripts/setup_godot.sh`)
-  after integrating `origin/main` (mythology Waves 0–4, enemy AI I-16, Incinedile phase
-  machine, hype/spectacle). This session added **S2.5 combined actions (criterion 21):
-  `combined_action` command, assist-satisfies-requirement, single-hit breach per NQ2;
-  breach detection moved pre-reset** — reconciled with main's `_breach_and_phase_checks`.
-- **KAN-3 COMPLETE (2026-07-18):** S1 boot scene + GameController autoload · S2 DAL
-  (single data owner, reads `data/*.json`) + SaveManager (`var_to_str` envelope; JSON
-  doubles corrupt 64-bit RNG state) + controller-owned command log · S4 clock-driver
-  contract + PausedClockDriver · S3 read-only view API + placeholder hex renderer, live
-  xvfb screenshot at `docs/stories/notes/KAN3-S3/boot-field.png`.
-- **Three audits (skills/items/campaign residuals) + fix wave executed**; validator green
-  (166 rows). Data: 43 skills, 84 tags, 78 thresholds, patron-god stubs w/ taboos+influence.
-- **Art route RULED:** GPT image generation wins; ComfyUI 100% shelved; Claude Design
-  eliminated; free/code-drawn placeholders interim; pipeline = canon prompt blocks
-  (`docs/art/generation-prompts.md`) → `scripts/spritify.py`; hybrid 64/48 fidelity.
-- **Mythology research spec RULED (2026-07-18):**
-  `docs/design/mythology-research-spec.md` — executable; all decision points ruled incl.
-  messenger carve-out (Metatron/Gabriel-tier as corporate staff), Abrahamic holding-company
-  lore, cosmic horror + internet folklore researched-but-`deferred`, historical figures out.
+- **The slice is a real, uninterrupted runtime loop (2026-07-20):**
+  **Title → Bid → Combat → Verdict → New Run**. Boots to a title screen; the
+  Incine-Dile **fights back** (enemy AI wired into the turn loop via the
+  PausedClockDriver + `advance_moment`); combat-over detection (`combat_status` /
+  `combat_ended`, WIN=no live enemies / LOSS=no live party) transitions to the
+  verdict; the verdict restarts a run. Window is responsive (canvas_items stretch).
+- **Per-skill mechanics un-stubbed (KAN-2):** model-side `simulation/skill_book.gd`
+  maps skill key+level → a structured spec; `ActionResolver` dispatches 5 archetypes
+  (committed_strike / self_guard / setup_debuff / conditional_followup / self_stance).
+  The **6 demo skills** (strong_strike, overhead_slam, brace, feint, pressure_strike,
+  dance) are faithfully implemented with their authored numbers. The other 37 fall
+  back to a generic strike (content pass later).
+- **The 3 KAN-2 design sittings DECIDED + formalized (2026-07-20):** S2.1 priming
+  vocabulary (5 canonical prime types; reactions stance-gated), S2.2 R13 shock
+  (event-model finalized), S2.3 R14 numbers (`damage = max(0, Force − Robustness)`).
+  Recorded in `rules-addendum.md` R3/R13/R14 + `decision-log.md` #20–22.
+  **Engine IMPLEMENTATION of all three is PENDING** (the current dev task).
+- **Repo audit done (2026-07-20):** 18 dead stub files deleted; Godot 4.5→4.7 and
+  all test/entity/seed counts reconciled; generated **`STATUS.md`** + `scripts/status.sh`
+  (single-source-of-truth, no more hand-maintained counts); LICENSE (proprietary);
+  3 design PDFs archived to `docs/archive/`; `docs/asset-provenance.md`; patron
+  dataset ruling (decision-log #23).
+- **Test suite: green — see `STATUS.md` for the live count** (177 at last refresh),
+  real Godot 4.7.1. Determinism + save/resume intact throughout.
+- Earlier foundations (all landed): KAN-1 data; KAN-2 core engine + S2.5 combined
+  actions; KAN-3 scaffolding (autoload/signals, DAL, SaveManager, hex renderer,
+  clock driver); enemy AI + Incinedile phase machine; hype/tag/spectacle engines;
+  F2 boss discoverable-win hardening; mythology Waves 0–5 (224 entities); KAN-6
+  HUD + bid + verdict screens.
 
 ## In progress
 
-- **Mythology research** — owner is booting a dedicated session: read the spec, run
-  Wave 0 (calibration set) + Wave 1 (census). Output lands in `data/mythology/` +
-  `docs/research/mythology/`.
-- **GDD owner review gate** (+ narrative/architecture reviews) — owner reading async.
-- **Sprites** — owner produces via GPT pipeline, drops keepers in `docs/art/samples/gpt/`.
+- **Implement the 3 decided sittings** — priming engine (5 prime predicates, delete
+  dormant cooldown code, convert the cooldown-texted skills), R13 shock finalization
+  (wire the tier effects + escalation), R14 numbers (force-vs-robustness function +
+  reseed magnitudes as placeholders). This is the active dev work.
 
 ## Next
 
-- **KAN-4 (party epic):** S4.1 OC creation (background picks → 4 skills → patron bidding)
-  → S4.2 recruitment → S4.4 recruit permadeath → S4.5 plan-runner solo-lite. Then S2.5
-  combined-actions engine (criterion 21), enemy AI v1 + Incinedile phases, S2.4
-  actions-per-tick audit, KAN-5 exploration.
-- **Wave 5 of mythology research** (game mapping: validator extension, domain→tag table,
-  patron-roster generator) runs in the DEV session after research Waves 1–4 deliver.
+- **Make the Incine-Dile fight tuned & fun** (review #2): full phase progression,
+  telegraphed breach, 10–20 min pacing.
+- **Evidence-based verdict** (quote the player's actual choices, not hype-band flavor).
+- **Reduce/declutter the HUD** + real art — the "Rework Visuals Properly" epic (#19).
+- Remaining 37 skills' mechanics; CI (pin Godot, run tests/seeds/import); KAN-4 party
+  (real OC creation to replace the hardcoded Imani/Dario fixtures + the Charm-30 hack).
 
 ## Blockers
 
-- **Gated on owner:** skills passover (R19 = template; unlocks priming S2.1 + S4.3 kits) ·
-  R14 force-vs-robustness co-design (unlocks numbers pass) · Q58 stealth · animal-parts
-  sitting (unlocks Sasha's body plan).
+- **None critical.** The three sittings are DECIDED (no longer owner-gated).
+- **Content freeze in effect** (owner 2026-07-20): no new mythology / bosses / patrons
+  (>6) / floors / recruitment / shared-world until the slice proves fun to a stranger.
+- Owner decision items still open (non-blocking): animal-parts sitting (Sasha body
+  plan), telepathy lane confirm, living-religion cultural review before any public build.
