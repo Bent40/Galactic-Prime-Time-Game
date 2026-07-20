@@ -101,7 +101,38 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 		"resolve_tick": resolve_tick,
 		"windup": window > 0,
 	}]
+	events.append_array(_apply_declare_riders(actor, kind, action, resolve_tick))
 	return events
+
+
+## Declare-time skill riders. Committed strikes commit the actor: they are Exposed
+## through the windup (the existing exposure system reports it). And the dance
+## stance ends the moment its owner commits to an attack or a damaging skill.
+func _apply_declare_riders(actor: CombatantState, kind: String, action: Dictionary, resolve_tick: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if actor.dancing and _action_is_damaging(kind, action):
+		events.append_array(_end_dance(actor, "declared_attack"))
+	if kind == "skill":
+		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		if String(spec.get("archetype", "")) == "committed_strike":
+			# Exposed for the whole windup and the beat it lands on (R2 channeling).
+			actor.exposed_until_tick = maxi(actor.exposed_until_tick, resolve_tick + 1)
+	return events
+
+
+## True when an action deals damage for the dance-end trigger: any attack, an
+## encoded damaging skill archetype, or a generic-fallback skill with a target.
+func _action_is_damaging(kind: String, action: Dictionary) -> bool:
+	if kind == "attack":
+		return true
+	if kind == "skill":
+		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		var arch := String(spec.get("archetype", ""))
+		if arch == "committed_strike" or arch == "conditional_followup":
+			return true
+		if arch == "strike":
+			return not (action.get("targets", []) as Array).is_empty()
+	return false
 
 
 func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> Array[Dictionary]:
@@ -241,6 +272,12 @@ func _base_cost(actor: CombatantState, kind: String, action: Dictionary) -> int:
 		"attack":
 			var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
 			return int(action.get("cost", int(item.get("base_moment_cost", 1))))
+		"skill":
+			# Cost/windup come from the SkillBook spec (brace/dance 0 = free;
+			# feint 1 = instant; committed strikes 2 = windup). An explicit
+			# action.cost still wins so a future chain discount can override.
+			var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+			return int(action.get("cost", int(spec.get("cost", 1))))
 	return int(action.get("cost", 1))
 
 
@@ -431,10 +468,17 @@ func resolve_due(snapshot: Dictionary) -> Dictionary:
 func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	var kind := String(action.get("kind", "attack"))
+	# Feint (setup_debuff): the target's NEXT resolved scheduled action collapses
+	# into a Forced Action – Tool — the same collapse an invalidated windup takes.
+	# Check-and-clear at the START of the target's next resolution (any kind).
+	if actor.feint_forced:
+		return _collapse_feinted_action(actor, kind, forced_queue)
 	var events: Array[Dictionary] = []
 	match kind:
-		"attack", "skill":
+		"attack":
 			events = _resolve_strike(actor, entry, snapshot, forced_queue)
+		"skill":
+			events = _resolve_skill(actor, entry, snapshot, forced_queue)
 		"move":
 			var to: Array = action.get("to", [actor.position.x, actor.position.y])
 			actor.position = Vector2i(int(to[0]), int(to[1]))
@@ -466,6 +510,190 @@ func _cooldown_ticks(action: Dictionary) -> int:
 	if action.has("cooldown_clocks"):
 		return int(action["cooldown_clocks"]) * Clock.TICKS_PER_CLOCK  # "1 Clock" = 10 ticks
 	return int(action.get("cooldown", 0))
+
+
+# ------------------------------------------------------------------ skills (SkillBook)
+
+## Resolves a kind=="skill" entry: the SkillBook spec supplies the archetype and
+## its numbers; each archetype composes existing primitives (damage/resistance/
+## dodge via _strike_round, Forced Actions, Exposed/Shock) rather than duplicating
+## them. Unknown keys fall through the `strike` fallback so they still resolve.
+func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+	match String(spec.get("archetype", "strike")):
+		"committed_strike":
+			return _resolve_committed_strike(actor, entry, snapshot, forced_queue, spec)
+		"self_guard":
+			return _resolve_self_guard(actor, action, spec)
+		"setup_debuff":
+			return _resolve_setup_debuff(actor, action, spec)
+		"conditional_followup":
+			return _resolve_conditional_followup(actor, entry, snapshot, forced_queue, spec)
+		"self_stance":
+			return _resolve_self_stance(actor, action, spec)
+		_:
+			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+
+
+## Injects the spec's typed damage/reach into the action, then runs the SAME
+## strike path attacks use (windup re-check, Forced Actions, resistance, dodge,
+## RPM, breach). For known skills the spec is the damage authority; the generic
+## fallback honours a caller-supplied damage before its own placeholder.
+func _strike_via_spec(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = (entry["action"] as Dictionary).duplicate(true)
+	if spec.has("damage_type") and (SkillBook.is_known(String(action.get("key", ""))) or not action.has("damage")):
+		action["damage"] = {"type": String(spec["damage_type"]), "amount": int(spec.get("amount", 1))}
+	if spec.has("attack_range") and not action.has("attack_range"):
+		action["attack_range"] = int(spec["attack_range"])
+	var synth_entry: Dictionary = {"actor": actor.id, "action": action, "window": entry["window"]}
+	return _resolve_strike(actor, synth_entry, snapshot, forced_queue)
+
+
+## committed_strike (strong_strike, overhead_slam): a windup single strike. The
+## Exposed rider is set at declare; here overhead_slam's knockdown lands Prone on
+## any standing target that actually took the hit.
+func _resolve_committed_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if bool(spec.get("knockdown", false)):
+		var action: Dictionary = entry["action"]
+		for target_entry: Variant in action.get("targets", []) as Array:
+			var t: Dictionary = target_entry
+			var target: CombatantState = combatants.get(String(t.get("id", "")))
+			if target == null or not target.alive:
+				continue
+			if not _hit_landed(events, target.id):
+				continue
+			if bool(target.statuses.get("prone", false)):
+				continue
+			target.statuses["prone"] = true
+			events.append({
+				"type": "knocked_prone", "combatant": target.id,
+				"source": actor.id, "skill": String(action.get("key", "")),
+			})
+			# Knocked Prone ends the dance stance (a trigger distinct from "hit").
+			events.append_array(_end_dance(target, "knocked_prone"))
+	return events
+
+
+## self_guard (brace): no target, no damage. Buffers the next Crush/Burn hit.
+func _resolve_self_guard(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	actor.brace_guard = int(spec.get("guard_amount", 1))
+	return [
+		{"type": "brace_set", "combatant": actor.id, "amount": actor.brace_guard},
+		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "brace")), "result": "ok", "rounds": 0},
+	]
+
+
+## setup_debuff (feint): no damage. Flags the target so its next resolved action
+## collapses into a Forced Action – Tool; the actor repositions up to 1 free.
+func _resolve_setup_debuff(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var target: CombatantState = _first_target(action)
+	events.append_array(_free_reposition(actor, action, int(spec.get("reposition", 1)), "feint_reposition"))
+	if target != null and target.alive:
+		target.feint_forced = true
+		events.append({"type": "feint_applied", "actor": actor.id, "target": target.id})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "feint")), "result": "ok", "rounds": 0})
+	return events
+
+
+## conditional_followup (pressure_strike): a Bleed strike; if the target is still
+## under Feint's pending consequence it also takes Shock T1. Actor moves up to 2 free.
+func _resolve_conditional_followup(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	# Which targets are still feint-forced at resolution (captured before the strike;
+	# the strike itself never clears a target's feint flag).
+	var feinted: Dictionary = {}
+	for target_entry: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = target_entry
+		var tgt: CombatantState = combatants.get(String(t.get("id", "")))
+		if tgt != null and tgt.feint_forced:
+			feinted[tgt.id] = true
+	var events: Array[Dictionary] = _free_reposition(actor, action, int(spec.get("reposition", 2)), "pressure_reposition")
+	events.append_array(_strike_via_spec(actor, entry, snapshot, forced_queue, spec))
+	var bonus_tier: int = int(spec.get("bonus_shock_tier", 1))
+	for tid: Variant in feinted:
+		var tgt: CombatantState = combatants.get(String(tid))
+		if tgt == null or not tgt.alive:
+			continue
+		events.append({"type": "pressure_bonus_shock", "actor": actor.id, "target": tgt.id, "tier": bonus_tier})
+		events.append_array(cond.apply_shock(tgt, bonus_tier, clock.tick))
+	return events
+
+
+## self_stance (dance): no target, no damage. Enters the dance stance (+Charm).
+func _resolve_self_stance(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	actor.dancing = true
+	actor.dance_charm = int(spec.get("charm_bonus", 1))
+	# TODO: wire dance_charm_bonus() into the camera-call / hype Charm read
+	# (CombatSim._camera_call → derived_stats camera_call_stacks, and HypeEngine's
+	# spectacle scoring) — both live outside this story's file set, so the accessor
+	# + lifecycle are shipped here and the consumer wiring is deferred.
+	return [
+		{"type": "dance_started", "combatant": actor.id, "charm_bonus": actor.dance_charm},
+		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "dance")), "result": "ok", "rounds": 0},
+	]
+
+
+## The feinted actor's next scheduled action collapses: it is invalidated and
+## replaced by a Forced Action – Tool (rolled, emitted, queued), exactly like an
+## invalidated windup. Clears the flag so only the NEXT action is affected.
+func _collapse_feinted_action(actor: CombatantState, kind: String, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	actor.feint_forced = false
+	var events: Array[Dictionary] = [{
+		"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "feinted",
+	}]
+	var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
+	events.append(ForcedAction.make_event(actor.id, collapse, "feinted"))
+	forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {"part": actor.acting_part(clock.tick)}})
+	return events
+
+
+## First target combatant of an action (or null when there is none).
+func _first_target(action: Dictionary) -> CombatantState:
+	var targets: Array = action.get("targets", [])
+	if targets.is_empty():
+		return null
+	return combatants.get(String((targets[0] as Dictionary).get("id", "")))
+
+
+## Free reposition (no Moment cost) up to `max_spaces`. Honours an explicit
+## `reposition_to` when the caller supplies one; otherwise emits the reposition
+## event without auto-pathing (deterministic hex pathing toward the target is the
+## content-pass follow-up — see TODO). Never repositions while grappled.
+func _free_reposition(actor: CombatantState, action: Dictionary, max_spaces: int, event_type: String) -> Array[Dictionary]:
+	if action.has("reposition_to") and actor.grappled_by == "" and actor.grappling == "":
+		var rt: Array = action["reposition_to"]
+		var to := Vector2i(int(rt[0]), int(rt[1]))
+		var dist: int = CombatantState.hex_distance(actor.position, to)
+		if dist >= 1 and dist <= max_spaces:
+			actor.position = to
+			return [{"type": event_type, "actor": actor.id, "to": [to.x, to.y], "spaces": dist, "free": true}]
+	# TODO: deterministic free step toward/around the target when no reposition_to
+	# is supplied; for now the reposition is surfaced but the actor holds position.
+	return [{"type": event_type, "actor": actor.id, "moved": false, "max_spaces": max_spaces}]
+
+
+## Did a strike land a hit on this combatant (a damage_applied event for it)? A
+## dodge / block / whiff produces no damage_applied, so knockdown/riders skip it.
+static func _hit_landed(events: Array[Dictionary], target_id: String) -> bool:
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "damage_applied" and String(event.get("combatant", "")) == target_id:
+			return true
+	return false
+
+
+## Ends the dance stance (self_stance) and emits dance_ended; no-op when not dancing.
+static func _end_dance(c: CombatantState, reason: String) -> Array[Dictionary]:
+	if not c.dancing:
+		return []
+	c.dancing = false
+	c.dance_charm = 0
+	return [{"type": "dance_ended", "combatant": c.id, "reason": reason}]
 
 
 func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
@@ -668,7 +896,22 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		return events
 	# Damage = listed − flat resistance, floor 0 (R4).
 	var reduced: int = Resistance.reduce_damage(amount, target, cond.def_for(condition_id), condition_id)
+	# self_guard (brace): the buffered next Crush/Burn hit is reduced by the guard
+	# (floor 0), AFTER normal resistance, then the guard is consumed regardless of
+	# whether damage remained. Only Crush/Burn consume it; other types pass through.
+	if target.brace_guard > 0 and (condition_id == "crushed" or condition_id == "burn"):
+		var before_guard: int = reduced
+		reduced = maxi(0, reduced - target.brace_guard)
+		events.append({
+			"type": "brace_absorbed", "combatant": target.id, "part": part_key,
+			"guard": target.brace_guard, "condition": condition_id,
+			"damage_before": before_guard, "damage_after": reduced,
+		})
+		target.brace_guard = 0
 	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick))
+	# self_stance (dance): the stance ends when its owner is hit (takes damage).
+	if target.dancing and reduced > 0:
+		events.append_array(_end_dance(target, "hit"))
 	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
 	# linked strikes (shared combo_id) merge into one hit for the threshold.
 	target.record_hit(String(action.get("combo_id", "")), reduced)

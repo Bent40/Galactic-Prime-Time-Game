@@ -84,24 +84,15 @@ var _last_combatants: Array = [] # cached view_combatants() for re-layout on res
 var _emoji_map := {}             # id -> token emoji (boss/contestant), rebuilt each refresh
 var _boss_id_cache := ""         # id of the combatant carrying the hidden network
 
-## PLACEHOLDER: per-skill mechanics pending. The sim has NO per-skill mechanics —
-## declare_action takes raw damage — so every skill/attack button declares a REAL
-## attack (windup -> resolve -> damage -> breach) on the boss's flamethrower arm
-## (`left_hand`, the designed path in), TAGGED with the skill key (action.key),
-## differentiated only by a placeholder damage profile [type, amount, cost] (R14).
-## The specific skill effect (feint sets up, dance repositions, brace guards) is a
-## later content pass; today the button does a real thing, honestly labelled.
-const SKILL_PROFILES := {
-	"feint": ["bleeding", 5, 1],            # a probing cut — makes the arm bleed
-	"pressure_strike": ["crushed", 8, 1],   # a committed heavy blow — a 7+ burst
-	"dance": ["bleeding", 4, 1],            # a flourish jab
-	"strong_strike": ["crushed", 6, 1],
-	"overhead_slam": ["crushed", 9, 1],     # heavy — also a 7+ burst
-	"brace": ["bleeding", 3, 1],
-}
-const DEFAULT_SKILL_PROFILE := ["bleeding", 5, 1]
+## Per-skill MECHANICS now live in the MODEL (simulation/skill_book.gd), consumed
+## by ActionResolver's kind=="skill" path. The HUD is presentation only: a skill
+## button declares a kind=="skill" action carrying just the key + level (and, for
+## targeted skills, the boss target on the flamethrower arm — the designed path
+## in). The sim supplies the damage/riders — the HUD sends NO damage numbers. The
+## model decides self-vs-targeted (SkillBook.is_self_skill), so brace/dance
+## declare with no target.
 const BOSS_DEFAULT_PART := "left_hand"  # the flamethrower arm — the designed path in
-const SKILL_ATTACK_RANGE := 2           # PLACEHOLDER reach so the demo's spacing lands (R14)
+const SKILL_ATTACK_RANGE := 2           # demo reach so the slice's spacing lands
 
 # bound refs for the input feedback surfaces (set during _build)
 var _spot_title: Label
@@ -205,27 +196,36 @@ func _on_skill_for(actor_id: String, skill_key: String) -> void:
 	_declare_skill_attack(actor_id, skill_key)
 
 
-## Declares a real attack tagged with the skill key on the boss's flamethrower arm.
-## See SKILL_PROFILES — per-skill mechanics are a later content pass (PLACEHOLDER).
+## Declares a kind=="skill" action; the sim (SkillBook + ActionResolver) owns the
+## mechanics/damage. Self skills (brace, dance) declare with no target; every
+## other skill targets the boss's flamethrower arm (the designed path in).
 func _declare_skill_attack(actor_id: String, skill_key: String) -> void:
+	# TODO: read the actor's per-skill level from the loadout when the view API
+	# exposes it; the demo slice runs everything at level 1.
+	var level := 1
+	var label := skill_key.replace("_", " ").to_upper()
+	if SkillBook.is_self_skill(skill_key):
+		_issue({
+			"type": "declare_action",
+			"actor": actor_id,
+			"action": {"kind": "skill", "key": skill_key, "level": level},
+		}, "%s uses %s" % [_display_name_for(actor_id), label])
+		return
 	var boss := _boss_id()
 	if boss == "":
 		_momus("No boss on the board.")
 		return
-	var prof: Array = SKILL_PROFILES.get(skill_key, DEFAULT_SKILL_PROFILE)
 	_issue({
 		"type": "declare_action",
 		"actor": actor_id,
 		"action": {
-			"kind": "attack",
-			"key": skill_key,  # tags the attack with the skill (content pass later)
-			"cost": int(prof[2]),
+			"kind": "skill",
+			"key": skill_key,
+			"level": level,
 			"attack_range": SKILL_ATTACK_RANGE,
-			"damage": {"type": String(prof[0]), "amount": int(prof[1])},
 			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
 		},
-	}, "%s winds up %s on the flamethrower arm" % [
-		_display_name_for(actor_id), skill_key.replace("_", " ").to_upper()])
+	}, "%s winds up %s on the flamethrower arm" % [_display_name_for(actor_id), label])
 
 
 func _on_camera_call() -> void:
