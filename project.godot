@@ -18,3 +18,10 @@ config/icon="res://icon.svg"
 [autoload]
 
 Game="*res://controller/game_controller.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=1000
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
