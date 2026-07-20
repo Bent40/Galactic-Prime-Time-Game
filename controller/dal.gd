@@ -51,6 +51,17 @@ func tag_effects() -> Dictionary:
 	return _cache["tag_effects"]
 
 
+## Demo/quick-start loadouts + test fixtures (the two slice contestants and their
+## signed patron). Like tag_effects this file is an OBJECT ({_meta, loadouts:[...]}),
+## so it loads outside _collection; callers read the whole object (view_bid pulls
+## `.loadouts`). All numbers inside are PLACEHOLDER (R14) per the file's own _meta.
+func demo_loadouts() -> Dictionary:
+	if not _cache.has("demo_loadouts"):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/demo_loadouts.json"))
+		_cache["demo_loadouts"] = parsed if parsed is Dictionary else {}
+	return _cache["demo_loadouts"]
+
+
 ## By-key lookup (rows are keyed by "key" across all collections; "" -> {}).
 func by_key(collection: String, key: String) -> Dictionary:
 	for row: Variant in _collection(collection):
