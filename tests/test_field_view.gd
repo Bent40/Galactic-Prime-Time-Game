@@ -73,6 +73,44 @@ func test_pixel_to_axial_round_trips() -> void:
 	assert_eq(script.pixel_to_axial(jitter, 30.0), Vector2i(2, -1), "off-centre click snaps to the hex")
 
 
+func test_verdict_view_projects_outcome_epithet_and_breach() -> void:
+	# Stand up a FINISHED state: Imani alive holding two slice-tags, the Incine-Dile
+	# breached to Phase 2, hype banked. Pokes sim fields directly (harness-only,
+	# exactly like the other sim tests) — view_verdict re-derives everything.
+	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
+	game.start_combat(7, load_static_data())
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "imani", "name": "Imani \"The Door\"", "race": "human", "team": "party",
+		"position": [1, 0], "traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}}})
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "boss", "name": "Incinedile", "enemy": "incinedile", "team": "enemies",
+		"position": [0, 0]}})
+	game.sim.tags.held["imani"] = {"survivor": true, "fan_favorite": true}
+	game.sim.combatants["boss"].breached = true
+	game.sim.hype.meter = 214
+	game.sim.hype.band = "on_fire"
+
+	var v: Dictionary = game.view_verdict("imani")
+	assert_eq(String(v.get("outcome", "")), "SURVIVED", "alive contestant SURVIVED")
+	assert_eq(int(v.get("hype_earned", 0)), 214, "hype meter projected")
+	assert_eq(String(v.get("peak_band", "")), "ON FIRE", "band_display projected")
+	assert_eq(String((v.get("epithet", {}) as Dictionary).get("name", "")), "THE UNBROKEN",
+		"epithet derived from the survivor tag")
+	assert_eq(String((v.get("crowd_verdict", {}) as Dictionary).get("name", "")), "FAN FAVORITE",
+		"crowd verdict derived from the fan_favorite tag")
+	assert_true(int((v.get("crowd_verdict", {}) as Dictionary).get("stars", 0)) >= 1,
+		"stars derived from the peak band")
+	assert_true(bool((v.get("boss", {}) as Dictionary).get("breached", false)), "boss reads breached")
+	assert_eq(int((v.get("boss", {}) as Dictionary).get("phase", 0)), 2, "breach = Phase 2 reached")
+	assert_true(bool(v.get("slice_win", false)), "a breach is a slice win")
+
+	# A DIED contestant flips the outcome (and only the outcome-derived fields).
+	game.sim.combatants["imani"].alive = false
+	assert_eq(String(game.view_verdict("imani").get("outcome", "")), "DIED",
+		"a dead contestant reads DIED")
+	game.free()
+
+
 func test_turn_order_projects_and_reflects_windup() -> void:
 	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
 	game.start_combat(7, load_static_data())
