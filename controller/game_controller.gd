@@ -28,6 +28,10 @@ signal ai_decision(event: Dictionary)
 signal boss_phase_changed(event: Dictionary)
 signal attack_dodged(event: Dictionary)
 signal command_rejected(event: Dictionary)
+## Fired ONCE when the fight first resolves (win/loss detected after a tick). The
+## payload is a synthetic {"type":"combat_ended","outcome":"WIN"|"LOSS"} event; it
+## also flows on the generic sim_event, like every other event (see _emit_event).
+signal combat_ended(event: Dictionary)
 
 ## event type -> typed signal name (generic sim_event fires for every event).
 const TYPED: Dictionary = {
@@ -47,12 +51,18 @@ const TYPED: Dictionary = {
 	"boss_phase_changed": "boss_phase_changed",
 	"attack_dodged": "attack_dodged",
 	"command_rejected": "command_rejected",
+	"combat_ended": "combat_ended",
 }
 
 var sim: CombatSim
 var dal: Dal = Dal.new()
 var saves: SaveManager = SaveManager.new()
 var command_log: Array[Dictionary] = []
+
+## Latch so combat_ended fires EXACTLY ONCE per fight (reset by start_combat). The
+## fight-over check runs after each tick; without this latch it would re-fire on
+## every subsequent tick while the corpse stays down.
+var _combat_ended_emitted: bool = false
 
 ## Optional clock driver (KAN3-S4). The scene attaches a PausedClockDriver so END
 ## TURN routes through the slice gate (advance_moment); null in headless tests,
@@ -70,6 +80,7 @@ func start_combat(sim_seed: int, static_data: Dictionary = {}) -> void:
 		static_data = dal.static_data_for_sim()
 	sim = CombatSim.new(sim_seed, static_data)
 	command_log = []
+	_combat_ended_emitted = false
 
 
 ## The one command funnel: logs the command, applies it, re-emits every event.
@@ -80,11 +91,74 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 	command_log.append(cmd.duplicate(true))
 	var events: Array[Dictionary] = sim.apply_command(cmd)
 	for event: Dictionary in events:
-		sim_event.emit(event)
-		var event_type := String(event.get("type", ""))
-		if TYPED.has(event_type):
-			emit_signal(StringName(TYPED[event_type]), event)
+		_emit_event(event)
+	# Fight-over detection (R0): a tick is the only moment condition/timer death can
+	# land, so we check the win/loss hinge right after each advance_tick — the one
+	# spot both the direct headless path and the driver path funnel through. This
+	# reads state only; it never mutates the sim, so replay stays deterministic.
+	if String(cmd.get("type", "")) == "advance_tick":
+		_maybe_emit_combat_ended()
 	return events
+
+
+## Re-emits one event on the generic sim_event plus its typed signal (if any). The
+## single emit path for BOTH real sim events and the controller's synthetic
+## combat_ended, so every listener sees them the same way.
+func _emit_event(event: Dictionary) -> void:
+	sim_event.emit(event)
+	var event_type := String(event.get("type", ""))
+	if TYPED.has(event_type):
+		emit_signal(StringName(TYPED[event_type]), event)
+
+
+## Read-only fight resolution (KAN-7 run loop): is the fight over, and who won?
+## outcome is "ONGOING" | "WIN" | "LOSS". A combatant is LIVE when alive and not
+## removed_from_play. WIN = combatants exist but no live enemy remains; LOSS = no
+## live party remains (both-empty prefers LOSS, since live_party==0 is tested
+## first). Reads the same sim.combatants view_combatants() projects — pure, no
+## mutation, so it is safe to poll and stays deterministic on replay.
+func combat_status() -> Dictionary:
+	var live_party: int = 0
+	var live_enemies: int = 0
+	var has_party: bool = false    # any party combatant on the roster (alive or fallen)
+	var has_enemies: bool = false  # any enemy combatant on the roster (alive or fallen)
+	if sim != null:
+		for id: Variant in sim.combatants.keys():
+			var c: CombatantState = sim.combatants[id]
+			if c.team == "party":
+				has_party = true
+			elif c.team == "enemies":
+				has_enemies = true
+			if not (c.alive and not c.removed_from_play):
+				continue
+			if c.team == "party":
+				live_party += 1
+			elif c.team == "enemies":
+				live_enemies += 1
+	# Only a staged party-vs-enemies fight can resolve. With neither side on the
+	# roster (pre-staging, or a team-less test fixture) there is nothing to win or
+	# lose, so the fight stays ONGOING.
+	if not has_party and not has_enemies:
+		return {"over": false, "outcome": "ONGOING"}
+	# live_party checked first, so a mutual wipe (both sides emptied in one tick)
+	# resolves LOSS — the "prefer LOSS when both are empty" tie-break.
+	var outcome := "ONGOING"
+	if live_party == 0:
+		outcome = "LOSS"
+	elif live_enemies == 0:
+		outcome = "WIN"
+	return {"over": outcome != "ONGOING", "outcome": outcome}
+
+
+## Emits combat_ended the first time the fight resolves. Latched so it fires once.
+func _maybe_emit_combat_ended() -> void:
+	if _combat_ended_emitted:
+		return
+	var status: Dictionary = combat_status()
+	if not bool(status.get("over", false)):
+		return
+	_combat_ended_emitted = true
+	_emit_event({"type": "combat_ended", "outcome": String(status.get("outcome", "LOSS"))})
 
 
 func state_hash() -> String:
