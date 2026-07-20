@@ -43,6 +43,32 @@ static func hex_points(center: Vector2, size: float) -> PackedVector2Array:
 	return points
 
 
+## Inverse of axial_to_pixel: a pixel offset (relative to the q=r=0 hex centre)
+## back to the nearest pointy-top axial hex (pure; unit-tested headless). Used by
+## the HUD's click-to-target movement — screen click minus the board offset, then
+## rounded to the hex the cursor is over.
+static func pixel_to_axial(px: Vector2, size: float) -> Vector2i:
+	var rf: float = px.y / (1.5 * size)
+	var qf: float = px.x / (sqrt(3.0) * size) - rf * 0.5
+	return _axial_round(qf, rf)
+
+
+## Cube-rounds fractional axial coords to the nearest whole hex (q + r + s == 0).
+static func _axial_round(qf: float, rf: float) -> Vector2i:
+	var sf: float = -qf - rf
+	var q: int = roundi(qf)
+	var r: int = roundi(rf)
+	var s: int = roundi(sf)
+	var dq: float = absf(float(q) - qf)
+	var dr: float = absf(float(r) - rf)
+	var ds: float = absf(float(s) - sf)
+	if dq > dr and dq > ds:
+		q = -r - s
+	elif dr > ds:
+		r = -q - s
+	return Vector2i(q, r)
+
+
 func _draw() -> void:
 	var font: Font = ThemeDB.fallback_font
 	for r: int in range(GRID_ROWS):
