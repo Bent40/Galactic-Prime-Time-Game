@@ -119,7 +119,11 @@ func forced_body_required(c: CombatantState, acting_part_key: String) -> bool:
 			if int(instance.get("activation_delay", 0)) > 0:
 				continue
 			var entry: Dictionary = tier_entry(String(cond_id), int(instance.get("tier", 0)))
-			if String(entry.get("forced_action_type", "")) == "Body":
+			# Compare the Variant directly: a tier's forced_action_type is a String
+			# ("Body") or JSON null (e.g. burn T1). String(null) throws "Invalid call
+			# to constructor" and spams the log every time a burning combatant acts;
+			# `null == "Body"` is cleanly false, no wrapper needed.
+			if entry.get("forced_action_type", "") == "Body":
 				return true
 	return false
 
