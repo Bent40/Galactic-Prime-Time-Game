@@ -74,6 +74,19 @@ var part_locked_until: Dictionary = {}  # part_key -> tick
 var statuses: Dictionary = {}  # "overwhelmed"/"prone"/"slowed"/"incapacitated" -> true
 var exposed_cache: bool = false
 
+# Skill-effect state (SkillBook archetypes; ActionResolver owns the transitions).
+## self_guard (brace): the next incoming Crush/Burn hit is reduced by this, then
+## the guard is consumed (cleared to 0).
+var brace_guard: int = 0
+## setup_debuff (feint): set on the TARGET; its next resolved scheduled action
+## collapses into a Forced Action – Tool, and the flag clears at that resolution.
+var feint_forced: bool = false
+## self_stance (dance): the actor is in the dance stance. Ends when hit, knocked
+## Prone, or the actor commits to an attack / damaging skill.
+var dancing: bool = false
+## The Charm-effect bonus granted while dancing (per the dance level table).
+var dance_charm: int = 0
+
 # Grapple (R9)
 var grappling: String = ""
 var grappled_by: String = ""
@@ -266,6 +279,12 @@ func size_rank() -> int:
 	return int(SIZE_ORDER.get(size, 1))
 
 
+## The Charm-effect bonus from the dance stance (self_stance) — 0 when not
+## dancing. Charm-gated / spectacle consumers add this to the Charm read.
+func dance_charm_bonus() -> int:
+	return dance_charm if dancing else 0
+
+
 ## Axial hex distance — 1 space = 1 hex (R10/B8).
 static func hex_distance(a: Vector2i, b: Vector2i) -> int:
 	var dq: int = a.x - b.x
@@ -336,6 +355,10 @@ func to_dict() -> Dictionary:
 		"part_locked_until": part_locked_until.duplicate(true),
 		"statuses": statuses.duplicate(true),
 		"exposed_cache": exposed_cache,
+		"brace_guard": brace_guard,
+		"feint_forced": feint_forced,
+		"dancing": dancing,
+		"dance_charm": dance_charm,
 		"grappling": grappling,
 		"grappled_by": grappled_by,
 		"bleed_out": bleed_out.duplicate(true),
@@ -387,6 +410,10 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.part_locked_until = (data.get("part_locked_until", {}) as Dictionary).duplicate(true)
 	c.statuses = (data.get("statuses", {}) as Dictionary).duplicate(true)
 	c.exposed_cache = bool(data.get("exposed_cache", false))
+	c.brace_guard = int(data.get("brace_guard", 0))
+	c.feint_forced = bool(data.get("feint_forced", false))
+	c.dancing = bool(data.get("dancing", false))
+	c.dance_charm = int(data.get("dance_charm", 0))
 	c.grappling = String(data.get("grappling", ""))
 	c.grappled_by = String(data.get("grappled_by", ""))
 	c.bleed_out = (data.get("bleed_out", {}) as Dictionary).duplicate(true)
