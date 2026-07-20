@@ -52,3 +52,32 @@ func test_renderer_math_pure() -> void:
 	assert_eq(pts.size(), 6, "six hex vertices")
 	for p: Vector2 in pts:
 		assert_true(is_equal_approx(p.distance_to(Vector2(100, 100)), 30.0), "vertices on the radius")
+
+
+func test_turn_order_projects_and_reflects_windup() -> void:
+	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
+	game.start_combat(7, load_static_data())
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "a", "name": "A", "race": "human", "position": [0, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3}}})
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "b", "name": "B", "race": "human", "position": [1, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3}}})
+	var order: Array = game.view_turn_order()
+	assert_eq(order.size(), 2, "both live combatants in turn order")
+	assert_true(bool(order[0].get("is_contestant", false)), "humans flagged as contestants")
+	assert_true(bool(order[0].get("ready", false)), "everyone is ready at tick 0")
+	# a commits a 2-Moment windup -> next_action_tick advances, winding up, not ready, sorts last.
+	game.apply_command({"type": "declare_action", "actor": "a", "action": {
+		"kind": "attack", "cost": 2, "attack_range": 3,
+		"damage": {"type": "bleeding", "amount": 1}, "targets": [{"id": "b", "part": "torso"}]}})
+	var order2: Array = game.view_turn_order()
+	var a_entry: Dictionary = {}
+	for e: Dictionary in order2:
+		if String(e.get("id", "")) == "a":
+			a_entry = e
+	assert_true(bool(a_entry.get("windup_pending", false)), "a is winding up")
+	assert_false(bool(a_entry.get("ready", true)), "a is not ready mid-windup")
+	assert_true(int(a_entry.get("next_action_tick", 0)) > 0, "a's next action is scheduled later")
+	assert_eq(String((order2[order2.size() - 1] as Dictionary).get("id", "")), "a", "the winding-up actor sorts to the back")
+	game.free()

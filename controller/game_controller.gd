@@ -208,6 +208,37 @@ func view_broadcast() -> Dictionary:
 	}
 
 
+## Turn-order projection (KAN-6): live combatants ordered by when they next act
+## (next_action_tick, soonest first; deterministic id tie-break). Drives the HUD
+## tick-order rail and the on-the-clock highlight. `ready` = can act at the current
+## tick and not still winding up; `windup_pending` marks a committed multi-Moment
+## action mid-resolution.
+func view_turn_order() -> Array[Dictionary]:
+	var order: Array[Dictionary] = []
+	if sim == null:
+		return order
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = sim.combatants[id]
+		if not c.alive or c.removed_from_play:
+			continue
+		order.append({
+			"id": String(id),
+			"name": c.display_name,
+			"category": c.category,
+			"is_contestant": not EnemyAI.AI_CATEGORIES.has(c.category),
+			"next_action_tick": c.next_action_tick,
+			"ready": c.can_act(sim.clock.tick) and not c.windup_pending and c.next_action_tick <= sim.clock.tick,
+			"windup_pending": c.windup_pending,
+		})
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a["next_action_tick"]) != int(b["next_action_tick"]):
+			return int(a["next_action_tick"]) < int(b["next_action_tick"])
+		return String(a["id"]) < String(b["id"]))
+	return order
+
+
 func save_game(save_name: String) -> bool:
 	if sim == null:
 		return false
