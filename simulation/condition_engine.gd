@@ -8,6 +8,11 @@ extends RefCounted
 ## immediate death (R5). Crushed and direct weapon damage kill outright.
 const DELAYABLE: Array[String] = ["bleeding", "poison", "infected", "burn"]
 
+## Shock T4 rest-of-combat sentinel (R13): a Helpless/Exposed window set far beyond
+## any real combat length, so is_helpless()/exposed stay true for the whole fight.
+## (= Clock.TICKS_PER_CLOCK * 100000; kept a literal to avoid const-eval ordering.)
+const REST_OF_COMBAT_TICKS: int = 1000000
+
 ## Damage-type vocabulary normalization (rulebook + seed enums are canonical).
 const DAMAGE_TYPE_TO_CONDITION: Dictionary = {
 	"bleed": "bleeding", "bleeding": "bleeding",
@@ -372,27 +377,62 @@ func _equivalent_part(c: CombatantState, legal_parts: Array) -> String:
 
 
 ## while already Shocked escalates one above current (never below the source
-## tier). T3 (Faint) = Helpless for 1 Clock + drop held items.
-func apply_shock(c: CombatantState, source_tier: int, tick: int) -> Array[Dictionary]:
+## tier). Momentary-event model off a per-combat high-water mark (R13): tier
+## EFFECTS fire only as a tier is newly REACHED (crossing up into it):
+##   T1 Shout (noise) · T2 Stutter (next action fails) · T3 Faint (Helpless 1
+##   Clock + drop items) · T4 Incapacitated (Helpless + Exposed rest-of-combat).
+## `part` (optional, backward compatible): re-abusing an already-shocked wound
+## elevates the incoming source one tier BEFORE the escalation calc (per-organ).
+func apply_shock(c: CombatantState, source_tier: int, tick: int, part: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if source_tier <= 0 or not c.alive:
 		return events
+	# Per-organ elevation (R13): the same wound re-producing shock hits harder.
+	if part != "" and c.shocked_parts.has(part):
+		source_tier += 1
 	var old: int = c.shock
 	var new_shock: int = source_tier if old == 0 else maxi(old + 1, source_tier)
 	new_shock = mini(new_shock, 4)
+	# Record the wound as a shock producer regardless of whether the mark rose.
+	if part != "":
+		c.shocked_parts[part] = true
 	if new_shock == old:
 		return events
 	c.shock = new_shock
 	events.append({"type": "shock_changed", "combatant": c.id, "from_tier": old, "to_tier": new_shock})
-	if new_shock >= 3 and old < 3:
+	# --- Tier effects, each emitted only when its threshold is newly crossed ---
+	if new_shock >= 1 and old < 1:
+		# TODO: R20 stealth/noise consumes shock_shout to break the combatant's stealth
+		events.append({"type": "shock_shout", "combatant": c.id})
+	if new_shock >= 2 and old < 2:
+		c.shock_stutter_pending = true
+		events.append({"type": "shock_stutter", "combatant": c.id})
+	# T3 Faint: Helpless for 1 Clock + drop items — the T3 CASE only (==3), so a
+	# jump straight to T4 does not double-apply the shorter 1-Clock Helpless.
+	if new_shock == 3 and old < 3:
 		c.helpless_until_tick = maxi(c.helpless_until_tick, tick + Clock.TICKS_PER_CLOCK)
-		var item_keys: Array = c.items.keys()
-		item_keys.sort()
-		for item_key: Variant in item_keys:
-			var item: Dictionary = c.items[item_key]
-			if not bool(item.get("dropped", false)):
-				item["dropped"] = true
-				events.append({"type": "item_dropped", "combatant": c.id, "item": String(item_key)})
+		events.append_array(_drop_held_items(c))
+	# T4 Incapacitated: Helpless AND Exposed for the REST of combat (items still drop).
+	if new_shock >= 4 and old < 4:
+		var rest: int = tick + REST_OF_COMBAT_TICKS
+		c.helpless_until_tick = maxi(c.helpless_until_tick, rest)
+		c.exposed_until_tick = maxi(c.exposed_until_tick, rest)
+		events.append_array(_drop_held_items(c))
+		events.append({"type": "shock_incapacitated", "combatant": c.id})
+	return events
+
+
+## Drops every still-held item (R13 T3/T4), deterministic key order. No-op for the
+## already-dropped. Emits one item_dropped per newly dropped item.
+func _drop_held_items(c: CombatantState) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var item_keys: Array = c.items.keys()
+	item_keys.sort()
+	for item_key: Variant in item_keys:
+		var item: Dictionary = c.items[item_key]
+		if not bool(item.get("dropped", false)):
+			item["dropped"] = true
+			events.append({"type": "item_dropped", "combatant": c.id, "item": String(item_key)})
 	return events
 
 
