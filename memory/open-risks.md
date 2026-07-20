@@ -20,7 +20,7 @@
 - **Owner-gated bottleneck**: the skills passover blocks priming (S2.1), both companion
   kits (S4.3), and much content authoring; R14 blocks all real numbers. If both idle,
   the dev track runs out of ungated work around end of KAN-4/KAN-5.
-- **Test execution environment**: Godot 4.5.2 installs in-container
+- **Test execution environment**: Godot 4.7.1 installs in-container
   (`scripts/setup_godot.sh`); stale `.godot` class cache is guarded in the runner. Frame
   time on real GPU hardware still unmeasured (KAN3-S3 note) — measure on owner's machine.
 - **godot-sqlite still not vendored** — DAL currently reads `data/*.json` (KAN3-S2

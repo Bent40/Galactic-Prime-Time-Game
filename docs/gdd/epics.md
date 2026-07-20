@@ -9,8 +9,9 @@ criteria at creation time (that also clears `wf audit`'s SETUP-NEEDED). States:
 ## KAN-1 — Data foundation ✅
 
 Schema (246-line SQLite migration), JSON seeds (races, enemies incl. Incinedile 6-phase,
-9 conditions w/ tier tables, 44 skills, 82 thresholds, 28 items, 100 tags, 27 modifiers,
-3 patron-god stubs), `validate_seeds.py` (172 rows green, wired into `wf validate`).
+9 conditions w/ tier tables, 43 skills, 78 thresholds, 28 items, 100 tags, 27 modifiers,
+5 patron gods + a 24-god roster), `validate_seeds.py` (all seed rows green — live count
+in STATUS.md, wired into `wf validate`).
 
 ## KAN-2 — Combat engine 🔨 (core ✅ + S2.5 ✅)
 

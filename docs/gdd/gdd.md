@@ -358,7 +358,7 @@ frames at the KAN-6 gate.
 - Clock drivers pluggable (paused / declare-window / wall-clock); director behind one
   interface (procedural v1, LLM-augmentable); saves = snapshot + command-log offset,
   re-derivable from the log; IDs string-UUID at JSON boundaries.
-- Data: JSON seeds validated by `scripts/validate_seeds.py` (172 rows green); SQLite
+- Data: JSON seeds validated by `scripts/validate_seeds.py` (all rows green — live count in STATUS.md); SQLite
   static layer per architecture PDF (JSON-first DAL acceptable for the slice — KAN-3
   decision recorded in ISSUES).
 - Tests are the honesty gate: `bash scripts/run_sim_tests.sh` (exit 3 = SKIP ≠ pass).

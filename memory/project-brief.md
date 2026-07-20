@@ -13,7 +13,7 @@ spectacle meter), then friends co-op, then an async global show service.
 
 ## Scope
 
-- Godot 4.5 game (this repo): headless deterministic combat sim (command-stream),
+- Godot 4.7 game (this repo): headless deterministic combat sim (command-stream),
   2.5D tactical presentation, SQLite static data + JSON saves per `docs/GPT_ARCHITECTURE.pdf`.
 - Digital rules addendum (`docs/rules-addendum.md`) answering the rulebook's gaps.
 - Seed data completed from the rulebook + live campaign DB export.
@@ -36,6 +36,6 @@ spectacle meter), then friends co-op, then an async global show service.
 
 - Solo developer, evenings/weekends; scope must respect the stall-risk evidence
   (review-4 §2) — every milestone shippable, smallest honest vertical slice first.
-- Godot 4.5 / GDScript; architecture doc's MVC + headless-sim rules are binding.
+- Godot 4.7 / GDScript; architecture doc's MVC + headless-sim rules are binding.
 - Sim must honor the command-stream contract (docs/DIRECTION.md) at every stage.
 - Test runs require a Godot binary; containers without one must report SKIP, not green.

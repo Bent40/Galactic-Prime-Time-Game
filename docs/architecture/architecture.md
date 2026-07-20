@@ -88,7 +88,7 @@ Galactic-Prime-Time-Game/
 
 - Seeds: races · enemies (phases, traits, resistances) · conditions (tier tables) ·
   skills (+thresholds, `exclusive_to`) · items (flat `rpm`/`magazine`) · tags ·
-  modifiers · patron_gods (stub) — all validated (172 rows, cross-refs, enum mirrors of
+  modifiers · patron_gods (stub) — all validated (row count in STATUS.md, cross-refs, enum mirrors of
   the SQLite CHECKs).
 - Contestant runtime state: CombatantState (traits w/ level_bonus, per-part HP dicts,
   conditions per part, statuses, items, cooldowns[deprecated-dormant], shock,
