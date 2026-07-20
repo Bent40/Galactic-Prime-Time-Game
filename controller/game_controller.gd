@@ -239,6 +239,139 @@ func view_turn_order() -> Array[Dictionary]:
 	return order
 
 
+## Epithet unlocked from a held slice-tag (I-13 TagEngine). One tag -> one earned
+## title; PLACEHOLDER broadcast copy (R14).
+const EPITHET_BY_TAG: Dictionary = {
+	"survivor":       {"name": "THE UNBROKEN",   "note": "essence held · zero shock tiers taken"},
+	"gorefest":       {"name": "THE BUTCHER",    "note": "left the arena painted red"},
+	"reckless":       {"name": "THE DAREDEVIL",  "note": "fought from the exposed edge"},
+	"scene_stealer":  {"name": "THE HEADLINER",  "note": "stole every camera in the room"},
+	"the_bit":        {"name": "THE SHOWSTOPPER","note": "pure spectacle, right on cue"},
+	"blooper_reel":   {"name": "THE PRATFALL",   "note": "comedy is content"},
+	"craft_services": {"name": "THE GUARDIAN",   "note": "took the hit for the team"},
+	"formation":      {"name": "THE ANCHOR",     "note": "held the line together"},
+	"3am_energy":     {"name": "THE BLUR",       "note": "never once stopped moving"},
+	"fan_favorite":   {"name": "THE DARLING",    "note": "the crowd's chosen one"},
+}
+## Priority when a contestant holds several tags (deterministic epithet pick).
+const EPITHET_PRIORITY: Array = [
+	"survivor", "gorefest", "reckless", "scene_stealer", "the_bit",
+	"craft_services", "formation", "3am_energy", "blooper_reel", "fan_favorite",
+]
+## Crowd-verdict headline from a held slice-tag; PLACEHOLDER copy (R14).
+const CROWD_VERDICT_BY_TAG: Dictionary = {
+	"fan_favorite":   "FAN FAVORITE",
+	"scene_stealer":  "SCENE STEALER",
+	"gorefest":       "BLOODTHIRSTY DELIGHT",
+	"reckless":       "EDGE OF THE SEAT",
+	"the_bit":        "COMIC RELIEF",
+	"survivor":       "IRON DARLING",
+	"craft_services": "TEAM PLAYER",
+	"3am_energy":     "LIVE WIRE",
+	"blooper_reel":   "GUILTY PLEASURE",
+	"formation":      "SQUAD GOALS",
+}
+## Crowd-verdict pick priority (kept distinct-leaning from the epithet order so the
+## two cards read differently when a contestant holds both tags).
+const CROWD_VERDICT_PRIORITY: Array = [
+	"fan_favorite", "scene_stealer", "gorefest", "reckless", "the_bit",
+	"survivor", "craft_services", "3am_energy", "blooper_reel", "formation",
+]
+## Star rating derived from the peak hype band (PLACEHOLDER derivation, R14).
+const STARS_BY_BAND: Dictionary = {"cold": 1, "warm": 2, "hot": 4, "on_fire": 5}
+
+
+## Read-only END-OF-RUN VERDICT projection (KAN-7 demo slice) — summarizes the
+## FINAL combat state for the Verdict card ("a verdict, not a victory screen" —
+## DIRECTION.md). Presentation-only, like the other view_* methods: it reads the
+## live sim + the SAME engines the combat views use (view_broadcast()'s HypeEngine
+## meter/band + TagEngine held tags) and authors NO state.
+##
+## DERIVED LIVE: outcome (contestant.alive), hype_earned (hype.meter), peak_band
+## (hype.band_display), epithet + crowd_verdict.name (held slice-tags), boss
+## breached/phase (the boss combatant's `breached` + its `network` part),
+## slice_win (boss breached).
+## PLACEHOLDER (R14, flagged — no backing system yet): patron_standing (no
+## patron-favor ledger), tagline (templated flavor), crowd_verdict.stars
+## (band-derived proxy), peak_band (final band stands in — no peak tracking).
+func view_verdict(contestant_id: String) -> Dictionary:
+	if sim == null or not sim.combatants.has(contestant_id):
+		return {}
+	var c: CombatantState = sim.combatants[contestant_id]
+	var alive: bool = c.alive and not c.removed_from_play
+	var outcome := "SURVIVED" if alive else "DIED"
+
+	var bc: Dictionary = view_broadcast()
+	var hype: Dictionary = bc.get("hype", {})
+	var band := String(hype.get("band", "cold"))
+	var held: Array = ((bc.get("tags", {}) as Dictionary).get(contestant_id, {}) as Dictionary).get("held", [])
+
+	var boss: Dictionary = _verdict_boss()
+	var slice_win: bool = bool(boss.get("breached", false))
+
+	return {
+		"contestant": c.display_name,
+		"outcome": outcome,
+		"hype_earned": int(hype.get("meter", 0)),
+		"peak_band": String(hype.get("band_display", "")),  # PLACEHOLDER: final band as peak proxy
+		"epithet": _epithet_for(held),                       # from a held slice-tag
+		"patron_standing": {                                 # PLACEHOLDER: no patron-favor ledger yet
+			"name": "HESTIA", "state": "PLEASED",
+			"note": "+ BLESSING banked for next run",
+		},
+		"crowd_verdict": _crowd_verdict_for(held, band),     # tag headline + band-derived stars
+		"boss": boss,
+		"slice_win": slice_win,
+		"tagline": _verdict_tagline(outcome),                # PLACEHOLDER templated flavor
+	}
+
+
+## Highest-priority held tag mapped to an earned epithet (safe default if none).
+func _epithet_for(held: Array) -> Dictionary:
+	for key: String in EPITHET_PRIORITY:
+		if held.has(key):
+			return (EPITHET_BY_TAG[key] as Dictionary).duplicate(true)
+	return {"name": "THE CONTENDER", "note": "earned a place on the wall"}
+
+
+## Highest-priority held tag mapped to a crowd headline; stars from the peak band.
+func _crowd_verdict_for(held: Array, band: String) -> Dictionary:
+	var verdict_name := "THE UNDECIDED"
+	for key: String in CROWD_VERDICT_PRIORITY:
+		if held.has(key):
+			verdict_name = String(CROWD_VERDICT_BY_TAG[key])
+			break
+	return {"name": verdict_name, "stars": int(STARS_BY_BAND.get(band, 1))}
+
+
+## The boss = the combatant carrying a `network` part (the Incine-Dile's mycelium
+## core; the key holds "network" stable pre- AND post-breach). Reads its live
+## `breached` flag; PLACEHOLDER phase (breach = Phase 2 reached, F2 rework).
+func _verdict_boss() -> Dictionary:
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = sim.combatants[id]
+		for part_key: Variant in c.parts.keys():
+			if String(part_key).contains("network"):
+				var breached: bool = c.breached
+				return {
+					"name": c.display_name,
+					"breached": breached,
+					"phase": (2 if breached else 1),  # PLACEHOLDER: breach = Phase 2
+					"note": ("network exposed" if breached else "surface immune — no breach yet"),
+				}
+	return {"name": "", "breached": false, "phase": 0, "note": "no boss on the table"}
+
+
+## Templated closing flavor keyed off outcome. PLACEHOLDER (R14) — the real line
+## is a content/narrative concern once the whole-run win/lose system exists.
+func _verdict_tagline(outcome: String) -> String:
+	if outcome == "SURVIVED":
+		return "CARRIED THREE OUT · BURNED FOR NONE · THE DOOR HELD"
+	return "THE ESSENCE BROKE · THE CROWD GOT WHAT IT CAME FOR"
+
+
 func save_game(save_name: String) -> bool:
 	if sim == null:
 		return false
