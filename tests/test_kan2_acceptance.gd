@@ -561,11 +561,15 @@ func test_21_combined_action() -> void:
 		]}},
 	}
 
-	# (a1) a lone 4-damage hit is below the single-hit threshold — no breach.
+	# (a1) a lone 4-NET-damage hit is below the single-hit threshold — no breach.
+	# R14: the boss's Robustness = floor(physique 6 / 2) = 3 and each phys-5 partner
+	# adds floor(5/2) = 2 to Force, so a raw 5 nets 5 + 2 − 3 = 4 — the designed
+	# per-partner 4. (Bumped 4 → 5 across this combo to hold the "4 each / 8 merged"
+	# arithmetic under R14.)
 	var sim: CombatSim = make_sim()
 	add_human(sim, "p1", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
 	sim.apply_command({"type": "add_combatant", "combatant": boss_spec})
-	declare(sim, "p1", attack_action("crushed", 4, "boss", "hide"))
+	declare(sim, "p1", attack_action("crushed", 5, "boss", "hide"))
 	var lone: Array[Dictionary] = advance(sim)
 	assert_no_event(lone, "breach_opened", "a lone 4-damage hit (<7) does not breach single-hit immunity")
 	assert_false(sim.combatants["boss"].breached, "boss stays armored after one small hit")
@@ -577,8 +581,8 @@ func test_21_combined_action() -> void:
 	add_human(sim2, "p2", {"position": [2, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
 	sim2.apply_command({"type": "add_combatant", "combatant": boss_spec})
 	var combo: Array[Dictionary] = sim2.apply_command({"type": "combined_action", "members": [
-		{"actor": "p1", "action": attack_action("crushed", 4, "boss", "hide")},
-		{"actor": "p2", "action": attack_action("crushed", 4, "boss", "hide")},
+		{"actor": "p1", "action": attack_action("crushed", 5, "boss", "hide")},
+		{"actor": "p2", "action": attack_action("crushed", 5, "boss", "hide")},
 	]})
 	assert_event(combo, "combined_action_declared", "the combo is one linked declaration set")
 	assert_eq(events_of(combo, "action_declared").size(), 2, "each partner pays its own Moment cost")
@@ -608,11 +612,15 @@ func test_21_combined_action() -> void:
 	var res_b: Array[Dictionary] = advance(sim3)
 	assert_event(res_b, "combo_assist_applied", "the brace supplies weak's Physique requirement")
 	assert_no_event(res_b, "forced_action_triggered", "a satisfied requirement rolls no d6")
-	var full_hits: int = 0
+	# R14: unhalved nets differ by physique against target "t" (Robustness
+	# floor(physique 3 / 2) = 1) — strong (phys 5): 4 + floor(5/2) − 1 = 5;
+	# weak (phys 2): 4 + floor(2/2) − 1 = 4. A HALVED weak would be raw 2 → net 2,
+	# so seeing net 4 (not 2) proves the assist supplied the requirement unhalved.
+	var b_amounts: Array[int] = []
 	for dmg: Dictionary in events_of(res_b, "damage_applied"):
-		if int(dmg.get("amount", -1)) == 4:
-			full_hits += 1
-	assert_eq(full_hits, 2, "both partners deal full, unhalved 4 damage")
+		b_amounts.append(int(dmg.get("amount", -1)))
+	b_amounts.sort()
+	assert_eq(b_amounts, [4, 5], "both partners deal full, unhalved damage — weak 4, strong 5, neither halved")
 
 	# (c) a Forced Action on one partner degrades ONLY that partner.
 	var sim4: CombatSim = make_sim()
