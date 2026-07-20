@@ -1,50 +1,48 @@
 extends Control
-## Boot scene (KAN3-S1/S3). Presentation only: talks to the Game autoload, never
-## to simulation/ classes. Stages a small demo fight so a launched project shows
-## the field renderer live; `--shot` (user arg) saves a screenshot and quits
-## (the S3 evidence path, run under xvfb in containers).
+## Launch scene (KAN-6) — boots the PLAYABLE demo slice: stands up the Incine-Dile
+## encounter on the Game controller and shows the combat HUD. F5 / Play drops you
+## straight into the fight; every HUD button issues a real command through the
+## GameController. Presentation only — talks to the sim through the Game
+## (GameController) autoload, never simulation/ classes. `--shot` saves a
+## screenshot and quits (headless/CI evidence, run under xvfb).
+
+const HUD_SCENE := preload("res://ui/hud/combat_hud.tscn")
+const SEED := 14
 
 
 func _ready() -> void:
-	var received: Array[Dictionary] = []
-	Game.sim_event.connect(func(event: Dictionary) -> void: received.append(event))
-	_stage_demo_fight()
-	$Title.text = "GALACTIC PRIME TIME"
-	var status: String = "engine online — %d events, state %s…" % [
-		received.size(), Game.state_hash().substr(0, 12)]
-	$Status.text = status
-	print("[boot] ", status)
+	DisplayServer.window_set_size(Vector2i(1600, 1000))
+	_stage_slice()
+	var hud: Control = HUD_SCENE.instantiate()
+	add_child(hud)
+	hud.bind(Game)
 	if OS.get_cmdline_user_args().has("--shot"):
-		_save_screenshot()
+		_shot()
 
 
-func _stage_demo_fight() -> void:
-	Game.start_combat(1234)
-	for spec: Dictionary in [
-		{"id": "hero", "name": "Hero", "race": "human", "position": [2, 2],
-			"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3}},
-		{"id": "nikita", "name": "Nikita", "race": "human", "position": [3, 3],
-			"traits": {"physique": 2, "reflexes": 3, "mind": 3, "charm": 2}},
-		{"id": "stray", "name": "Stray", "race": "animal", "position": [1, 3],
-			"traits": {"physique": 2, "reflexes": 4, "mind": 2, "charm": 3}},
-		{"id": "roach", "name": "Roach", "race": "human", "position": [5, 2],
-			"traits": {"physique": 4, "reflexes": 2, "mind": 1, "charm": 1}},
-	]:
-		Game.apply_command({"type": "add_combatant", "combatant": spec})
-	Game.apply_command({"type": "declare_action", "actor": "hero", "action": {
-		"kind": "attack", "cost": 1, "attack_range": 6,
-		"damage": {"type": "bleeding", "amount": 2},
-		"targets": [{"id": "roach", "part": "torso"}]}})
-	for i: int in range(3):
-		Game.apply_command({"type": "advance_tick"})
+## The demo-slice roster: the Incine-Dile boss + the two demo contestants, FRESH
+## (Clock 1 / full HP / no hype) so the player drives the whole fight from the
+## action bar — declare attacks, Camera Call, The Bit, MOVE, END TURN.
+func _stage_slice() -> void:
+	Game.start_combat(SEED)
+	Game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "boss", "name": "Incine-Dile", "enemy": "incinedile",
+		"team": "enemies", "position": [0, 0]}})
+	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
+	# Charm 30 on Dario grants his Camera Call stack — stacks derive from Charm
+	# over-cap only, so this realizes the demo loadout's declared stack (F1 gap).
+	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30}, [0, 1])
 
 
-func _save_screenshot() -> void:
+func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
+	Game.apply_command({"type": "add_combatant", "combatant": {
+		"id": id, "name": cname, "race": "human", "team": "party",
+		"position": pos, "traits": traits}})
+
+
+func _shot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var image: Image = get_viewport().get_texture().get_image()
-	var dir: String = "res://docs/stories/notes/KAN3-S3"
-	DirAccess.make_dir_recursive_absolute(dir)
-	var err: Error = image.save_png(dir + "/boot-field.png")
-	print("[shot] saved=", err == OK)
-	get_tree().quit(0 if err == OK else 1)
+	var img: Image = get_viewport().get_texture().get_image()
+	img.save_png("res://hud_launch.png")
+	get_tree().quit()
