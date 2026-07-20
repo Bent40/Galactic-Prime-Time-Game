@@ -70,18 +70,19 @@ your decision queue). If you read one file to know "what now," read that.
    git clone <repo-url> gpt-game && cd gpt-game
    git checkout claude/session-continuation-next-steps-mpycyj
    ```
-3. **Run the test suite** (proves the engine works — 153 tests):
+3. **Run the test suite** (proves the engine works — 154 tests):
    ```
    bash scripts/run_sim_tests.sh          # exit 0 = pass; exit 3 = SKIPPED (Godot missing)
    ```
-4. **See it render:** open the project in the Godot editor (`godot` in the repo folder opens
-   it; then press **Play** / F5), OR run headless:
-   ```
-   godot --headless --quit-after 3        # boots the controller, prints engine status
-   ```
-   The main scene boots the GameController wiring and draws the **hex field** with
-   placeholder shapes (the KAN-3 renderer). It's a technical spike, not the styled game yet
-   — no combat UI, no art. What you're confirming is that the sim runs and renders.
+4. **Play the slice:** open the project in the Godot editor (`godot` in the repo folder opens
+   it; then press **Play** / F5). **F5 now drops you straight into the playable demo slice** —
+   the broadcast combat HUD with the Incine-Dile boss + Imani & Dario, a fresh fight you drive
+   from the action bar: declare attacks/skills, **Camera Call**, **The Bit**, **MOVE**
+   (click a highlighted hex), **END TURN**. The audience economy (hype/band/crowd goal), the
+   per-body-part HP, the arena tokens, and the tick-order rail all update live as you play.
+   The boss's hidden **network** stays masked until you discover the breach. Numbers are
+   PLACEHOLDER (R14). Still stubbed: per-skill mechanics (each skill declares a basic attack
+   for now), the gods-at-the-table/wager panels, and some broadcast chrome.
 5. **Validate the seed data:**
    ```
    python3 scripts/validate_seeds.py      # checks all data/*.json (races, skills, tags, …)
