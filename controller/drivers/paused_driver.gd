@@ -36,6 +36,20 @@ func acknowledge_redecision(id: String) -> void:
 	_needs_redecision.erase(id)
 
 
+## Slice UX: one END TURN press is the whole party consenting at once — mark every
+## player-controlled id declared for this tick (equivalent to mark_declared on each).
+func mark_party_declared() -> void:
+	for id: String in player_controlled:
+		_declared[id] = true
+
+
+## Slice UX: the player has now SEEN the prior tick's forced-action fallout on the
+## refreshed HUD — clear every pending re-decision so the clock is free again
+## (bulk acknowledge_redecision for all actors).
+func acknowledge_all() -> void:
+	_needs_redecision = {}
+
+
 func can_advance() -> bool:
 	if not _needs_redecision.is_empty():
 		return false

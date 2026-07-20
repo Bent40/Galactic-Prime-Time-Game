@@ -24,10 +24,16 @@ func can_advance() -> bool:
 
 
 ## Feeds exactly one advance_tick when allowed. Returns whether it advanced.
+## Drives BOTH sides of the tick: after the per-tick reset, it runs the enemy
+## turn (one ai_decide per ready AI-controlled combatant) so the enemies DECLARE
+## before the tick resolves — matching run_enemy_turn's own contract. This still
+## advances EXACTLY ONE tick: run_enemy_turn issues only declarations
+## (ai_decide), never advance_tick.
 func try_advance() -> bool:
 	if game == null or game.sim == null or not can_advance():
 		return false
 	_before_advance()
+	game.run_enemy_turn()
 	game.apply_command({"type": "advance_tick"})
 	return true
 
