@@ -134,7 +134,7 @@ teaches you more than a struggled-over 96px one, and everything transfers straig
 **Optional accelerator — cleaning up a generated frame.** The repo's `scripts/spritify.py`
 can turn a GPT still into a **96px, ~32-color PNG with alpha** — an editable pixel canvas.
 If you ever want a *head start* on a hard pose (or you're low on energy and just want to
-paint over a rough base), open that PNG in Aseprite and **finish it by hand**:
+paint over a rough base), open that PNG in Krita and **finish it by hand**:
 - fix the **jaggy edges** the downscale leaves (§1.5d),
 - kill **orphan pixels** and alpha-fringe halos (§1.5e, §1.5h),
 - **re-shade** muddy areas with the hue-shift trick (§1.5f),
@@ -151,28 +151,31 @@ accelerator and wean off it. **Your real skill comes from the primary path.**
 
 ## §1.3 — Tools (what to install)
 
-**Primary recommendation: Aseprite ($19.99, one-time).** It's the industry standard for
-game pixel art, has the best animation timeline and tilemap tools, and — critically for a
-beginner — **almost every tutorial you'll watch uses it.** Cross-platform (Win/Mac/Linux).
-Buy it on Steam or aseprite.org and stop overthinking it.
+**Primary recommendation: Krita (free).** It's a full painting suite that *also* does pixel
+art — **one program for your pixel sprites AND the high-fidelity cutscene/portrait art you'll
+want later** (the Danganronpa-contrast idea in §0). You set it up once to behave like a pixel
+tool (small canvas, a 1px pixel brush, an imported palette, saved as a "Pixel" workspace —
+step-by-step in `docs/art-music-week0-setup.md` §A1); after that it's a pixel editor on demand
+and a paint studio the rest of the time. Cross-platform, and free means zero commitment.
 
-- *$0 route:* Aseprite is source-available; its license lets you **compile it free from
-  source for personal use** (github.com/aseprite/aseprite). Compiling is a real chore, so
-  most people just pay the $20.
+*What about Aseprite?* It's the specialist favorite with the best **animation/tilemap
+ergonomics** — but it's pixel-only and $20, and its one real edge (a fast animation-feedback
+loop) is already covered here by the repo's **sprite tester** (`tools/sprite_tester/`), which
+previews any spritesheet *or* frame sequence in the game's exact rendering. Start on Krita;
+add Aseprite later *only if* heavy sprite-animation work makes you want its ergonomics.
 
 | Tool | Price | Platforms | When to use it |
 |---|---|---|---|
-| **Aseprite** ⭐ | $19.99 once | Win/Mac/Linux | The answer. Buy it. |
-| **LibreSprite** | Free | Win/Mac/Linux | Best free *desktop* option; near-identical classic workflow (Aseprite tutorials mostly transfer). Missing tilemaps. |
-| **Piskel** | Free | Browser | Fastest possible day-1 start — piskelapp.com, no install. Outgrow it quickly. |
-| **Lospec Pixel Editor** | Free | Browser | Modern in-browser editor, good Piskel alt. |
-| **Krita** | Free | Win/Mac/Linux/Android | Full painting suite w/ pixel brushes; good if you also want to *paint* (handy for later cutscene art). |
-| **GraphicsGale** | Free | Windows only | Fine free fallback, dated UI. |
+| **Krita** ⭐ | Free | Win/Mac/Linux/Android | The pick: pixel sprites *and* painted cutscene/portrait art in one free tool. Needs a one-time pixel-workspace setup. |
+| **Aseprite** | $19.99 once | Win/Mac/Linux | Pixel-only specialist; best animation/tilemap ergonomics. Add later if you do heavy sprite animation. (Source-available — compile free for personal use.) |
+| **Piskel** | Free | Browser | Fastest possible day-1 start — piskelapp.com, no install. Fine for first sprites; outgrow it. |
+| **LibreSprite** | Free | Win/Mac/Linux | Free Aseprite fork; classic pixel workflow. Missing tilemaps. |
 | **Photoshop** | $22.99/mo | Win/Mac | **Not recommended** — subscription, not pixel-first. Only if you already own it. |
 | **Pixquare** | ~$10 once | iPad only | Best pick *if you work on an iPad + Apple Pencil.* |
 
-**Recommended:** buy **Aseprite** today. To try before paying, start in **Piskel** (browser)
-for an afternoon, then commit to Aseprite.
+**Recommended:** install **Krita** (free) and do the one-time pixel-workspace setup in the
+Week-0 checklist. Want to scribble a sprite in the next 5 minutes with zero setup? Poke at
+**Piskel** in a browser first, then move to Krita.
 
 ## §1.4 — Palettes (do this before you draw anything)
 
@@ -362,7 +365,7 @@ change*; (4) replace piece by piece with your own art as your skills grow.
 ## §1.10 — Your 8-milestone practice ladder
 
 Each step adds exactly one skill and ends with something resembling real assets. Do these in
-**Piskel or Aseprite** at **32×32** unless noted.
+**Krita** (or **Piskel** for a zero-setup start) at **32×32** unless noted.
 
 1. **Tool + first object.** Draw a 32×32 object (potion, apple) using a downloaded 4–5 color
    palette + a clean solid outline. *Goal: the editor, palettes, clean fills.*
@@ -390,8 +393,9 @@ the match.
 **Learn-from resources (named):**
 - **AdamCYounis — "Pixel Art Class"** (free YouTube playlist) — the best structured free
   course; use it as your spine.
-- **MortMort** — beginner-friendly; his **"Aseprite Guide for Beginners"** is the tool
-  onboarding to watch first.
+- **MortMort** — beginner-friendly pixel-art fundamentals. (His onboarding video is
+  Aseprite-based, but the *concepts* transfer to any tool; for Krita-specific setup see the
+  Week-0 checklist §A1, or search "Krita pixel art setup".)
 - **Brandon James Greer (BJG)** — sharp technical breakdowns once you're past basics.
 - **Saint11 / Pedro Medeiros — saint11.art/blog/pixel-art-tutorials** — ~80 free bite-size
   technique cards from the artist behind *Celeste*. Superb quick reference.
@@ -743,8 +747,8 @@ Assumes ~1 hr/day; scale to taste.
 **Week 1 — get a win in each, cheaply.**
 - **Day 1 (music, 20 min):** open **Bosca Ceoil Blue** in a browser, do its built-in tutorial,
   make a 30-second casino-glitzy loop. *You made game music today.*
-- **Day 2 (art):** buy/open **Aseprite**, watch MortMort's "Aseprite for Beginners," do
-  **milestone 1** (a 32×32 object with a Lospec palette).
+- **Day 2 (art):** install **Krita** and do the one-time **pixel-workspace setup**
+  (checklist §A1), then **milestone 1** (a 32×32 object with a Lospec palette).
 - **Day 3 (art):** **milestone 2** — the shaded ball with **hue-shifting.** The most important
   art hour you'll spend.
 - **Day 4 (Godot):** do the **§3.7 first-win** — crisp sprite + looping Bosca Ceoil export on
@@ -774,7 +778,8 @@ if you ever want it. That's a real foundation for KAN-6.
 
 | Need | Reach for |
 |---|---|
-| Pixel art tool | **Aseprite** ($20) — or Piskel (free browser) to start |
+| Pixel art tool | **Krita** (free; one-time pixel-workspace setup) — or Piskel to start |
+| Preview an animation | **`tools/sprite_tester/`** (F6) — drop a spritesheet or a folder of frames |
 | Palette | **lospec.com/palette-list** — one ~32-color global palette |
 | Jam music *today* | **Bosca Ceoil Blue** (free) |
 | Real 8-bit NES music | **FamiStudio** (free) |

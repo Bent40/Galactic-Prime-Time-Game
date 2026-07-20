@@ -54,11 +54,11 @@ repo's **sprite tester** (`tools/sprite_tester/`), which previews in the game's 
   object up 1px, turn on **onion skin**, and press **Play** on the timeline. *Goal: Krita's
   animation timeline — and its built-in playback is your fast in-tool loop.*
 - [ ] **6. Export + preview in the game's look.** **File → Export** a **PNG**. For the
-  animation, the simplest spritesheet is to draw the frames **side by side on one wide
-  canvas** (e.g. `128×32` = four `32×32` frames) and export that single PNG — then **drag it
-  into the sprite tester** (open `tools/sprite_tester/sprite_tester.tscn`, press **F6**) to
-  watch it animate with the game's exact nearest-neighbor rendering. *Goal: getting art OUT +
-  the fast judge-it loop, with zero game wiring.*
+  animation, either **Render Animation → Image Sequence** (a folder of frames) or draw the
+  frames **side by side on one wide canvas** (e.g. `128×32` = four `32×32` frames). Then open
+  the **sprite tester** (`tools/sprite_tester/sprite_tester.tscn`, press **F6**) and **drag
+  the folder (or the sheet) in** — it plays with the game's exact nearest-neighbor rendering.
+  *Goal: getting art OUT + the fast judge-it loop, with zero game wiring.*
 
 **✅ Setup done when:** you can one-click into your pixel workspace, draw+shade a small thing
 from your palette, animate a 2-frame bob and play it in Krita, export a PNG, and preview it in
@@ -67,12 +67,11 @@ the sprite tester — without googling.
 **Then the first real task:** a 3/4-view sprite of a contestant (start ~32px, scale up to your
 96px project size later). That's milestone 5 in the main guide.
 
-> **Krita → game, the honest note:** for finished animations Krita also exports a **frame
-> sequence** (File → Render Animation → Image Sequence), and Godot's `SpriteFrames` can take
-> those individual frames directly. The side-by-side-on-one-canvas trick above is the
-> zero-friction way to make a single spritesheet the tester loads today. *(Want the sprite
-> tester to also load a **folder of frames** so Krita's exported sequences drop straight in?
-> Say the word — it's a quick add.)*
+> **Krita → game:** for finished animations, Krita exports a **frame sequence** (File →
+> Render Animation → Image Sequence — use zero-padded names). **Drag that whole folder, or all
+> the frame PNGs, onto the sprite tester and it plays them in order** — and Godot's
+> `SpriteFrames` takes those individual frames directly too. Prefer a single file? Draw frames
+> side-by-side on one wide canvas and export that spritesheet — the tester loads that as well.
 
 ---
 
