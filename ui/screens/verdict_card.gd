@@ -47,6 +47,16 @@ var f_sym: Font
 
 
 func _ready() -> void:
+	# Standalone entry (run loop: change_scene_to_file from combat): self-bind to the
+	# Game autoload so the card reads the PERSISTED final combat state (Game survives
+	# the scene change). A preview/render driver that already called bind() has set
+	# _gc, so this branch is skipped and we just finish building. Mirrors bid_screen's
+	# self-bind pattern.
+	if _gc == null:
+		var g := get_node_or_null("/root/Game")
+		if g != null:
+			bind(g, _cid)
+			return
 	_ensure_built()
 
 
@@ -737,4 +747,43 @@ func _build_chyron() -> Control:
 	nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	nm.add_child(nxt)
 	row.add_child(nm)
+
+	# NEW RUN (far right) — closes the run loop back to the title screen.
+	var rm := MarginContainer.new()
+	rm.add_theme_constant_override("margin_right", 16)
+	rm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rm.add_child(_new_run_button())
+	row.add_child(rm)
 	return p
+
+
+## The run-loop CTA on the verdict card: ▶ NEW RUN returns to the title screen. A
+## primary cyan button sized to sit in the chyron without restructuring the card.
+func _new_run_button() -> Button:
+	var btn := Button.new()
+	btn.text = "▶ NEW RUN"
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_override("font", _tracked(f_body, 2.0))
+	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_color_override("font_color", _col(CYAN))
+	btn.add_theme_color_override("font_hover_color", _col("#b8f4ff"))
+	btn.add_theme_color_override("font_pressed_color", _col("#b8f4ff"))
+	btn.add_theme_color_override("font_outline_color", _col(CYAN, 0.5))
+	btn.add_theme_constant_override("outline_size", 4)
+	var normal := _glow_sb(_col(CYAN, 0.14), _col(CYAN), 5, _col(CYAN, 0.3), 8)
+	var hover := _glow_sb(_col(CYAN, 0.24), _col(CYAN), 5, _col(CYAN, 0.45), 12)
+	for pset in [["normal", normal], ["hover", hover], ["pressed", hover], ["focus", normal]]:
+		var box: StyleBoxFlat = pset[1]
+		box.content_margin_left = 16
+		box.content_margin_right = 16
+		box.content_margin_top = 8
+		box.content_margin_bottom = 8
+		btn.add_theme_stylebox_override(String(pset[0]), box)
+	btn.pressed.connect(_on_new_run)
+	return btn
+
+
+func _on_new_run() -> void:
+	get_tree().change_scene_to_file("res://scenes/title.tscn")

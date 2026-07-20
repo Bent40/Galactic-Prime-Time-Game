@@ -15,16 +15,35 @@ const SEED := 14
 ## turn (boss ai_decide) and feeds the advance through advance_moment().
 var _driver: PausedClockDriver
 
+## Guards the one-shot combat → verdict transition (combat_ended could in principle
+## re-signal; the scene change must happen exactly once).
+var _transitioned := false
+
 
 func _ready() -> void:
 	DisplayServer.window_set_size(Vector2i(1600, 1000))
 	_stage_slice()
 	_attach_driver()
+	# When the fight resolves (win/loss detected after a tick, driven by END TURN),
+	# the run loop moves to the Verdict card. Game is an autoload that persists across
+	# change_scene_to_file, so the final sim state is still there for view_verdict to
+	# read — no serialization needed. In the --shot path the fight has not advanced,
+	# so combat_ended has not fired and this stays dormant.
+	Game.combat_ended.connect(_on_combat_ended)
 	var hud: Control = HUD_SCENE.instantiate()
 	add_child(hud)
 	hud.bind(Game)
 	if OS.get_cmdline_user_args().has("--shot"):
 		_shot()
+
+
+## Combat is over — hand off to the Verdict card. The verdict scene self-binds to
+## the Game autoload in its own _ready and reads the persisted final state.
+func _on_combat_ended(_event: Dictionary) -> void:
+	if _transitioned:
+		return
+	_transitioned = true
+	get_tree().change_scene_to_file("res://ui/screens/verdict_card.tscn")
 
 
 ## The demo-slice roster: the Incine-Dile boss + the two demo contestants, FRESH
