@@ -208,3 +208,13 @@
     (cutaway maiming stinger + persistent damage decals on the piece, keyed to the existing
     part_destroyed / gorefest / hype events) so the brutality survives the abstraction. NOT a
     ruling — a direction to pressure-test at the UI revamp; open decisions listed in the note.
+19. **"Rework Visuals Properly" — deferred epic/stretch PARKED (owner 2026-07-20).** The
+    KAN-6 slice UI + all on-screen writing are **deliberately placeholder** — the goal of this
+    phase was to prove the whole logic renders and plays end-to-end (bid → combat → verdict),
+    which it does. A dedicated post-slice epic will do the real visual+copy pass: replace
+    placeholder art/writing, DECLUTTER the HUD (owner: currently overloaded / no real stage /
+    too much always-on UI), and execute the candidate **themed-game-pieces + visceral-injury**
+    art direction (`docs/design/art-direction-pieces.md`). Numbers stay PLACEHOLDER (R14) until
+    the tuning pass. Not scheduled now — a named stretch to pick up after the slice is content-
+    complete. (Related tuning/feature debt already flagged: F1 camera-call stacks, F4 boss
+    explosion phases, per-skill mechanics, the view-API adds for prone/slowed + hazard + boss phase.)
