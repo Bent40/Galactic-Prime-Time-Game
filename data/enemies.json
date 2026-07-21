@@ -154,7 +154,7 @@
     "id": 3,
     "key": "incinedile",
     "name": "Incinedile",
-    "description": "Tutorial-floor boss ('Incineradile' in the GDD/compendium). Apparent giant flamethrower reptile — actually a mycelium puppet: a network inside controls the body, reattaches limbs, and vents pressure by exploding. Pre-breach damage is cosmetic only; the party must discover the breach. Fully play-tested at the live table. Boss music: God Shattering Star. Cinematic intro: gates close, freeze, 'Party vs Boss' announcement, caged band above the arena.",
+    "description": "Tutorial-floor boss ('Incineradile' in the GDD/compendium). Apparent giant flamethrower reptile \u2014 actually a mycelium puppet: a network inside controls the body, reattaches limbs, and vents pressure by exploding. Pre-breach damage is cosmetic only; the party must discover the breach. Fully play-tested at the live table. Boss music: God Shattering Star. Cinematic intro: gates close, freeze, 'Party vs Boss' announcement, caged band above the arena.",
     "category": "Boss",
     "size": "Huge",
     "body_parts": [
@@ -165,7 +165,9 @@
         "lethal": true,
         "hidden_until_breach": true,
         "bleed_immune": true,
-        "bleed_immune_note": "The mycelium core is a separate organism — it doesn't bleed. Bleeding never applies to it and systemic bleed-out never drains it; the puppet's flesh can be bled, the network cannot. Finish it with crushing/HP damage after the breach (F2 rework, owner ruling 2026-07-19)."
+        "bleed_immune_note": "The mycelium core is a separate organism \u2014 it doesn't bleed. Bleeding never applies to it and systemic bleed-out never drains it; the puppet's flesh can be bled, the network cannot. Finish it with crushing/HP damage after the breach (F2 rework, owner ruling 2026-07-19).",
+        "condition_destruction_immune": true,
+        "condition_destruction_immune_note": "Owner ruling 2026-07-20: the mycelium network cannot be DESTROYED by a condition reaching a terminal tier (crushed T3 no longer one-shots it) \u2014 it must be worn down by HP damage, so its 50 HP + pressure valves pace the fight. EXCEPTION: NEURAL POISON (poison_type 'neural') still destroys it \u2014 mycelium is a neural network. HP-depletion death is unaffected."
       },
       {
         "key": "head",
@@ -257,7 +259,7 @@
             "amount": 1
           }
         ],
-        "note": "R14 tuning 2026-07-20: burn 2->1. Force = 1 + floor(phys 6/2)=4; vs a fresh contestant torso (5 HP, Robustness floor(phys/2)) it nets 3 (phys 2) / 2 (phys 5) — a chip+burn that needs 2 hits to fell a torso, never a one-shot. trash cans explode at Burn 5 (3 spaces, 2 Burn)"
+        "note": "R14 tuning 2026-07-20: burn 2->1. Force = 1 + floor(phys 6/2)=4; vs a fresh contestant torso (5 HP, Robustness floor(phys/2)) it nets 3 (phys 2) / 2 (phys 5) \u2014 a chip+burn that needs 2 hits to fell a torso, never a one-shot. trash cans explode at Burn 5 (3 spaces, 2 Burn)"
       },
       {
         "key": "dash",
@@ -273,7 +275,7 @@
           }
         ],
         "effect": "knock aside",
-        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) — no longer the from-full-to-0 one-shot the 3-amount dash was. range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope — AI v1 treats it as reach"
+        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) \u2014 no longer the from-full-to-0 one-shot the 3-amount dash was. range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope \u2014 AI v1 treats it as reach"
       },
       {
         "key": "death_spin",

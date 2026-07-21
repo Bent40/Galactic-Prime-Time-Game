@@ -257,3 +257,16 @@
     bug is introduced meanwhile: the roster is the source of truth; the 5 are an explicit
     slice subset. Revisit when demo loadouts are re-pointed (memory/next-actions already
     tracks this).
+24. **Network condition-tier-destruction immunity + neural-poison carve-out (owner 2026-07-20).**
+    The mycelium network is **immune to condition-tier DESTRUCTION** — a condition reaching a
+    terminal tier (crushed T3 `part_destroyed`/`lethal_if_vital`, poison/burn death-timers,
+    etc.) can no longer destroy or kill it. It must be **worn down by HP damage** instead, so
+    its 50 HP + the 35/18 pressure-valve phase gates actually pace the fight (this closes the
+    crushed-T3 shortcut the R14 tuning pass surfaced — the fight was ending in ~3 hits).
+    **EXCEPTION: NEURAL POISON** (condition `poison`, `poison_type: "neural"`) still destroys
+    it — mycelium is a neural network, so a neural toxin is its thematic kill switch.
+    HP-depletion death (grinding the part to 0 HP) is unaffected; only condition-tier
+    terminals are gated. Implemented as a part flag `condition_destruction_immune` on the
+    network (data/enemies.json), gated in `ConditionEngine._apply_tier_entry_effects`.
+    Verified: balance harness network-kill 4→7 ticks (longer grind), slice still WINS via
+    `vital_part_destroyed` (HP), F2 discoverable-win intact. Tests: test_network_destruction_immune.gd.
