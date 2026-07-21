@@ -162,6 +162,21 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 		events.append({"type": "condition_resisted", "combatant": c.id, "part": part_key, "condition": condition_id, "reason": "bleed_immune"})
 		return events
 
+	# Per-part condition immunity (owner ruling 2026-07-20): a body part carries its
+	# own condition resistances. A condition in the part's `condition_immunities` never
+	# applies at all — so it never builds tiers and can never destroy the part. The
+	# mycelium network is immune to MOST conditions, which is WHY crushed/poison/chill
+	# can't wear it down as conditions; it is felled only by force (HP damage, which is
+	# never gated here), by FIRE (burn is NOT in its immunity list — see fire_harms),
+	# or by NEURAL poison (mycelium is a neural network, so poison_type "neural"
+	# bypasses the poison immunity).
+	var immunities: Array = c.parts.get(part_key, {}).get("condition_immunities", [])
+	if immunities.has(condition_id):
+		var neural_bypass: bool = condition_id == "poison" and String(ctx.get("poison_type", "")) == "neural"
+		if not neural_bypass:
+			events.append({"type": "condition_resisted", "combatant": c.id, "part": part_key, "condition": condition_id, "reason": "part_immune"})
+			return events
+
 	# Surface immunity (F2): a part still hidden behind an un-breached surface
 	# immunity (the boss's mycelium network) is undiscovered — NO condition lands
 	# on it until the party breaches (mirrors the attack-block on hidden parts,
@@ -661,27 +676,11 @@ func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id
 		return events
 	var part: Dictionary = c.parts.get(part_key, {})
 	var lethal: bool = bool(part.get("lethal", false))
-	# Condition-tier DESTRUCTION immunity (owner ruling 2026-07-20): a part flagged
-	# condition_destruction_immune (the mycelium network) cannot be DESTROYED by a
-	# condition reaching a terminal tier — it must be worn down by HP damage instead,
-	# so its 50 HP + pressure valves actually pace the fight (crushed T3 no longer
-	# one-shots it). HP-depletion death (damage_part -> 0 HP) is unaffected; only the
-	# condition-tier terminals are gated. EXCEPTION — NEURAL POISON: mycelium IS a
-	# neural network, so a neural poison (condition "poison", poison_type "neural")
-	# still destroys it. Non-destruction effects (disable, cures, shock) apply as usual.
-	var on_part_now: Dictionary = c.conditions.get(part_key, {})
-	var instance_now: Dictionary = on_part_now.get(condition_id, {})
-	var is_neural_poison: bool = condition_id == "poison" and String(instance_now.get("poison_type", "")) == "neural"
-	var destruction_blocked: bool = bool(part.get("condition_destruction_immune", false)) and not is_neural_poison
 	events.append_array(apply_shock(c, int(entry.get("shock_tier", 0)), tick))
 	for eff_raw: Variant in entry.get("effects", []) as Array:
 		if not c.alive:
 			break
 		var eff := String(eff_raw)
-		if destruction_blocked and _is_destruction_effect(eff):
-			events.append({"type": "condition_destruction_immune", "combatant": c.id,
-				"part": part_key, "condition": condition_id, "effect": eff})
-			continue
 		if eff.begins_with("cures:"):
 			events.append_array(resolve(c, part_key, eff.get_slice(":", 1), "cured_by_" + condition_id))
 		elif eff == "part_disabled" or (eff == "part_disabled_if_limb" and not lethal):
@@ -725,14 +724,6 @@ func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id
 		# moment_cost_penalty_*, exposed_on_body_hit, *_entry_open) are queried
 		# on demand via effect_value(); no state to write here.
 	return events
-
-
-## The condition-tier effects that DESTROY or KILL (gated by condition_destruction_immune,
-## except neural poison). Disabling / curing / passive effects are NOT destruction.
-func _is_destruction_effect(eff: String) -> bool:
-	return eff == "part_destroyed" or eff == "lethal_if_vital" or eff == "lethal_if_head" \
-		or eff == "death" or eff.begins_with("death_timer_clocks:") \
-		or eff.begins_with("death_timer_clocks_if_vital:")
 
 
 func _add_death_timer(c: CombatantState, condition_id: String, part_key: String, clocks: int) -> Array[Dictionary]:

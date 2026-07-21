@@ -257,16 +257,19 @@
     bug is introduced meanwhile: the roster is the source of truth; the 5 are an explicit
     slice subset. Revisit when demo loadouts are re-pointed (memory/next-actions already
     tracks this).
-24. **Network condition-tier-destruction immunity + neural-poison carve-out (owner 2026-07-20).**
-    The mycelium network is **immune to condition-tier DESTRUCTION** — a condition reaching a
-    terminal tier (crushed T3 `part_destroyed`/`lethal_if_vital`, poison/burn death-timers,
-    etc.) can no longer destroy or kill it. It must be **worn down by HP damage** instead, so
-    its 50 HP + the 35/18 pressure-valve phase gates actually pace the fight (this closes the
-    crushed-T3 shortcut the R14 tuning pass surfaced — the fight was ending in ~3 hits).
-    **EXCEPTION: NEURAL POISON** (condition `poison`, `poison_type: "neural"`) still destroys
-    it — mycelium is a neural network, so a neural toxin is its thematic kill switch.
-    HP-depletion death (grinding the part to 0 HP) is unaffected; only condition-tier
-    terminals are gated. Implemented as a part flag `condition_destruction_immune` on the
-    network (data/enemies.json), gated in `ConditionEngine._apply_tier_entry_effects`.
-    Verified: balance harness network-kill 4→7 ticks (longer grind), slice still WINS via
-    `vital_part_destroyed` (HP), F2 discoverable-win intact. Tests: test_network_destruction_immune.gd.
+24. **Network condition profile — per-part resistances, NOT a special gate (owner 2026-07-20).**
+    The mycelium network is just another **body part with its own resistances** (the important
+    distinction: parts carry per-part condition immunities/effects; we do NOT gate specific
+    damage from it). Its profile: **immune to most conditions** — they never apply, so they
+    never build tiers or destroy it (crushed / non-neural poison / chill / exhaustion /
+    infection / suffocation / dissolution, plus the existing bleed-immunity); **NO resistance
+    to force** — full HP damage grinds its 50 HP down (the intended kill, through the 35/18
+    pressure valves; this closes the crushed-T3 shortcut the R14 tuning surfaced because the
+    crushed *condition* no longer applies, while force HP still does); **fire HARMS it** — the
+    network is exempt from the boss's fire-heal (`fire_harms`), so burn damages the fungus
+    instead of healing it (a valid post-breach weapon); and **neural poison** (`poison_type:
+    "neural"`) bypasses the poison immunity — mycelium is a neural network. Implemented as
+    per-part data on the network (`condition_immunities` + `fire_harms`, data/enemies.json),
+    checked in `ConditionEngine.apply` (immune conditions resist) and the fire-heal hook.
+    Force/HP damage is never gated. Verified: balance harness network-kill 4→7 ticks (grind),
+    slice WINS via `vital_part_destroyed` (HP), F2 intact. Tests: test_network_destruction_immune.gd.

@@ -166,8 +166,17 @@
         "hidden_until_breach": true,
         "bleed_immune": true,
         "bleed_immune_note": "The mycelium core is a separate organism \u2014 it doesn't bleed. Bleeding never applies to it and systemic bleed-out never drains it; the puppet's flesh can be bled, the network cannot. Finish it with crushing/HP damage after the breach (F2 rework, owner ruling 2026-07-19).",
-        "condition_destruction_immune": true,
-        "condition_destruction_immune_note": "Owner ruling 2026-07-20: the mycelium network cannot be DESTROYED by a condition reaching a terminal tier (crushed T3 no longer one-shots it) \u2014 it must be worn down by HP damage, so its 50 HP + pressure valves pace the fight. EXCEPTION: NEURAL POISON (poison_type 'neural') still destroys it \u2014 mycelium is a neural network. HP-depletion death is unaffected."
+        "condition_immunities": [
+          "crushed",
+          "chilled",
+          "exhausted",
+          "infected",
+          "suffocation",
+          "dissolution",
+          "poison"
+        ],
+        "fire_harms": true,
+        "network_profile_note": "Owner ruling 2026-07-20: the network is a body part with its OWN resistances \u2014 immune to most conditions (they never apply, so nothing wears it down as a condition), NO resistance to force (full HP damage grinds its 50 HP), and fire HARMS it (fire_harms exempts it from the boss's fire-heal \u2014 mycelium burns). Neural poison (poison_type 'neural') bypasses the poison immunity \u2014 mycelium is a neural network."
       },
       {
         "key": "head",

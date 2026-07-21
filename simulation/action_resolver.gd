@@ -959,8 +959,11 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	var events: Array[Dictionary] = []
 	if not target.parts.has(part_key):
 		return events
-	# Boss hook: fire heals (Incinedile) — Burn damage restores the part.
-	if condition_id == "burn" and Resistance.fire_heals(target):
+	# Boss hook: fire heals (Incinedile) — Burn damage restores the part. EXCEPT a
+	# `fire_harms` part (the mycelium network): fire HARMS it like the fungus it is
+	# (owner ruling 2026-07-20), so it takes the burn damage + condition normally.
+	if condition_id == "burn" and Resistance.fire_heals(target) \
+			and not bool(target.parts.get(part_key, {}).get("fire_harms", false)):
 		var part: Dictionary = target.parts[part_key]
 		part["hp"] = mini(target.max_hp(part_key), int(part["hp"]) + amount)
 		events.append({"type": "healed", "combatant": target.id, "part": part_key, "amount": amount, "source": "fire_heals"})

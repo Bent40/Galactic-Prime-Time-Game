@@ -181,10 +181,13 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 			# F2 rework: a bleed_immune part has no blood — bleeding never applies
 			# and the systemic bleed-out drain skips it (the mycelium network).
 			"bleed_immune": bool(p.get("bleed_immune", false)),
-			# Owner ruling 2026-07-20: a condition_destruction_immune part cannot be
-			# DESTROYED by a condition-tier terminal (only worn down by HP damage),
-			# except by neural poison — the mycelium network. See ConditionEngine.
-			"condition_destruction_immune": bool(p.get("condition_destruction_immune", false)),
+			# Owner ruling 2026-07-20: per-part condition resistances. A condition in
+			# `condition_immunities` never applies to this part (so it never builds
+			# tiers or destroys it) — the mycelium network is immune to most
+			# conditions. `fire_harms` exempts the part from the boss fire-heal, so
+			# fire damages it instead of healing it. Force/HP damage is never gated.
+			"condition_immunities": (p.get("condition_immunities", []) as Array).duplicate(),
+			"fire_harms": bool(p.get("fire_harms", false)),
 		}
 		# R14 (decision-log #22): optional per-part armor feeds Robustness. Added
 		# only when the seed specifies it — an absent field means 0 (see
