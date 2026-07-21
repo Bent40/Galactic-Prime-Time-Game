@@ -14,8 +14,23 @@ const SAVE_EXT: String = ".save"
 var last_error: String = ""
 
 
+## Save names are normalized to a safe charset before touching the filesystem
+## (review hardening): anything outside [A-Za-z0-9_-] becomes "_", so path
+## separators / ".." / weird glyphs can never escape SAVE_DIR or produce invalid
+## filenames. An empty result falls back to "save".
+static func sanitize_name(save_name: String) -> String:
+	var out := ""
+	for i in range(save_name.length()):
+		var ch := save_name[i]
+		var code := ch.unicode_at(0)
+		var safe := (code >= 48 and code <= 57) or (code >= 65 and code <= 90) \
+			or (code >= 97 and code <= 122) or ch == "_" or ch == "-"
+		out += ch if safe else "_"
+	return out if out != "" else "save"
+
+
 func _path(save_name: String) -> String:
-	return SAVE_DIR + "/" + save_name + SAVE_EXT
+	return SAVE_DIR + "/" + sanitize_name(save_name) + SAVE_EXT
 
 
 func save_game(save_name: String, sim: CombatSim, command_log: Array) -> bool:

@@ -102,7 +102,7 @@ func _initialize() -> void:
 	_add_contestant(IMANI, "Imani \"The Door\" Brandt", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3},
 		Vector2i(1, 0), "Hestia (hearth/protection/mercy)", -1,
 		"heavy-rescue firefighter — the immovable veteran; when the Door opens, somebody gets carried out")
-	_add_contestant(DARIO, "Dario \"Encore\" Vekic", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30},
+	_add_contestant(DARIO, "Dario \"Encore\" Vekic", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5},
 		Vector2i(0, 1), "Enyo (war/carnage)", 30,
 		"boardwalk sleight-of-hand hustler — the heel you pay to boo; steals finishers, bows after every kill")
 	sink.clear()  # discard setup events; roster is rendered from the view API below
@@ -142,7 +142,7 @@ func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Vector2
 	# race id 1 in demo_loadouts.json maps to the "human" template key.
 	gc.apply_command({"type": "add_combatant", "combatant": {
 		"id": id, "name": cname, "race": "human", "team": "party",
-		"position": [pos.x, pos.y], "traits": traits,
+		"position": [pos.x, pos.y], "traits": traits, "camera_call_stacks": 1,
 	}})
 	_persona[id] = persona
 	_patron[id] = patron

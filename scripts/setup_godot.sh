@@ -14,6 +14,15 @@ VERSION="4.7.1-stable"
 BIN_DIR="${HOME}/.local/bin"
 DEST="${BIN_DIR}/godot"
 
+# Pinned SHA-256 of Godot_v4.7.1-stable_linux.x86_64.zip (supply-chain hardening).
+# PROVENANCE (honest): the official checksum endpoints (downloads.godotengine.org /
+# GitHub SHA512-SUMS.txt) are unreachable through the session proxy, so this hash
+# was computed 2026-07-20 from the SourceForge-mirror artifact — trust-on-first-use.
+# The extracted binary is bit-identical to the binary the whole 200+ test suite has
+# run on. TODO(owner): cross-verify against the official SHA512-SUMS.txt from
+# godotengine.org when on an open network, then delete this note.
+ZIP_SHA256="c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba"
+
 if command -v godot >/dev/null 2>&1; then
 	echo "godot already on PATH: $(godot --version 2>/dev/null || true)"
 	exit 0
@@ -40,8 +49,14 @@ for url in "${URLS[@]}"; do
 	echo "trying ${url}"
 	if curl -fsSL -o "${TMP}/godot.zip" "${url}"; then
 		if unzip -tq "${TMP}/godot.zip" >/dev/null 2>&1; then
-			ok="yes"
-			break
+			got_sha="$(sha256sum "${TMP}/godot.zip" | cut -d' ' -f1)"
+			if [ "${got_sha}" = "${ZIP_SHA256}" ]; then
+				ok="yes"
+				break
+			fi
+			echo "  CHECKSUM MISMATCH: got ${got_sha}"
+			echo "  expected           ${ZIP_SHA256} — refusing this artifact, next source"
+			continue
 		fi
 		echo "  downloaded file is not a valid zip (proxy block page?) — next source"
 	else

@@ -40,6 +40,7 @@ var shock_stutter_pending: bool = false
 ## trait -> {"base": int, "bonus": int, "level_bonus": int}
 var stats: Dictionary = {}
 var level_points: int = 0
+var camera_call_stacks_granted: int = 0  # granted by loadout/scenario (F1); adds to charm over-cap
 var resistances: Dictionary = {"Physical": 0, "Affliction": 0, "Psychic": 0}
 ## Player-allocated Reflexes-derived physical resistance: condition_id -> int (R6).
 var allocated_physical: Dictionary = {}
@@ -147,6 +148,11 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 		else:
 			c.stats[key] = {"base": int(value), "bonus": 0, "level_bonus": 0}
 	c.level_points = int(spec.get("level_points", 0))
+	# Granted Camera Call stacks (F1 fix): a loadout/scenario may GRANT stacks
+	# directly (demo_loadouts.json `camera_call_stacks`) instead of manufacturing
+	# them by inflating Charm over-cap (the old Charm-30 hack). Derived stacks =
+	# granted + over-cap, so both sources compose.
+	c.camera_call_stacks_granted = int(spec.get("camera_call_stacks", 0))
 
 	var res_spec: Dictionary = spec.get("resistances", template.get("resistances", {}))
 	for res_key: String in ["Physical", "Affliction", "Psychic"]:
@@ -243,7 +249,7 @@ func derived_stats() -> Dictionary:
 		"hp_bonus_per_part": hp_bonus_per_part(),
 		"physical_resistance_allocatable": over_cap(trait_total("reflexes"), 12),
 		"psychic_resistance": over_cap(trait_total("mind"), 15),
-		"camera_call_stacks": over_cap(trait_total("charm"), 20),
+		"camera_call_stacks": camera_call_stacks_granted + over_cap(trait_total("charm"), 20),
 	}
 
 
@@ -367,6 +373,7 @@ func to_dict() -> Dictionary:
 		"shock_stutter_pending": shock_stutter_pending,
 		"stats": stats.duplicate(true),
 		"level_points": level_points,
+		"camera_call_stacks_granted": camera_call_stacks_granted,
 		"resistances": resistances.duplicate(true),
 		"allocated_physical": allocated_physical.duplicate(true),
 		"boss_traits": boss_traits.duplicate(true),
@@ -425,6 +432,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.shock_stutter_pending = bool(data.get("shock_stutter_pending", false))
 	c.stats = (data.get("stats", {}) as Dictionary).duplicate(true)
 	c.level_points = int(data.get("level_points", 0))
+	c.camera_call_stacks_granted = int(data.get("camera_call_stacks_granted", 0))
 	c.resistances = (data.get("resistances", {}) as Dictionary).duplicate(true)
 	c.allocated_physical = (data.get("allocated_physical", {}) as Dictionary).duplicate(true)
 	c.boss_traits = (data.get("boss_traits", {}) as Dictionary).duplicate(true)

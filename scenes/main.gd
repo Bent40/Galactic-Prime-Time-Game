@@ -55,9 +55,10 @@ func _stage_slice() -> void:
 		"id": "boss", "name": "Incine-Dile", "enemy": "incinedile",
 		"team": "enemies", "position": [0, 0]}})
 	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	# Charm 30 on Dario grants his Camera Call stack — stacks derive from Charm
-	# over-cap only, so this realizes the demo loadout's declared stack (F1 gap).
-	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30}, [0, 1])
+	# Traits per demo_loadouts.json (Dario charm 5, R18). Camera Call stacks are
+	# GRANTED via the spec's camera_call_stacks (both loadouts declare 1) — the
+	# old Charm-30 over-cap hack is gone (F1 fixed).
+	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
 
 
 ## Attach the solo paused-clock driver AFTER the roster is staged and register it
@@ -74,7 +75,7 @@ func _attach_driver() -> void:
 func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
 	Game.apply_command({"type": "add_combatant", "combatant": {
 		"id": id, "name": cname, "race": "human", "team": "party",
-		"position": pos, "traits": traits}})
+		"position": pos, "traits": traits, "camera_call_stacks": 1}})
 
 
 func _shot() -> void:

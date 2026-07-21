@@ -35,7 +35,7 @@ func _initialize() -> void:
 
 	_add_boss(gc)
 	_add_contestant(gc, "imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(gc, "dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30}, [0, 1])
+	_add_contestant(gc, "dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
 
 	# ---- PREVIEW STAGING (harness-only fixture; NOT how the HUD gets its data) ----
 	# Freeze the approved-mockup beat by poking sim state directly, like a test.
@@ -81,5 +81,5 @@ func _add_boss(gc) -> void:
 func _add_contestant(gc, id: String, cname: String, traits: Dictionary, pos: Array) -> void:
 	gc.apply_command({"type": "add_combatant", "combatant": {
 		"id": id, "name": cname, "race": "human", "team": "party",
-		"position": pos, "traits": traits,
+		"position": pos, "traits": traits, "camera_call_stacks": 1,
 	}})

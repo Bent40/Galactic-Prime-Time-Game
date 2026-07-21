@@ -63,7 +63,7 @@ func _initialize() -> void:
 
 	_add_boss()
 	_add_contestant(IMANI, "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 30}, [0, 1])
+	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
 
 	# Freeze the approved-mockup beat (harness-only poke, like a unit test).
 	gc.sim.clock.tick = 23  # Clock 3 · Moment 07
@@ -146,7 +146,7 @@ func _add_boss() -> void:
 func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
 	gc.apply_command({"type": "add_combatant", "combatant": {
 		"id": id, "name": cname, "race": "human", "team": "party",
-		"position": pos, "traits": traits,
+		"position": pos, "traits": traits, "camera_call_stacks": 1,
 	}})
 
 
