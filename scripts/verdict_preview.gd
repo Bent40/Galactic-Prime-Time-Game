@@ -38,14 +38,36 @@ func _initialize() -> void:
 	_add_boss(gc)
 	_add_contestant(gc, "imani", "Imani \"The Door\"", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
 	_add_contestant(gc, "dario", "Dario \"Encore\"", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [2, 1])
+	_add_grunt(gc)
+
+	# ---- REAL DEEDS (through the command funnel, so the EVIDENCE block quotes a
+	# genuine ledger — the record is never poked): a takedown, the breaching hit,
+	# a bit done while bleeding, a wounded camera call, and an un-answered goal.
+	gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
+		"kind": "attack", "cost": 1, "damage": {"type": "crushed", "amount": 5},
+		"attack_range": 1, "targets": [{"id": "grunt", "part": "torso"}]}})
+	gc.apply_command({"type": "advance_tick"})
+	gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
+		"kind": "attack", "cost": 1, "damage": {"type": "bleeding", "amount": 10},
+		"attack_range": 1, "targets": [{"id": "boss", "part": "right_hand"}]}})
+	gc.apply_command({"type": "advance_tick"})  # -> breach_opened (real slice win)
+	gc.apply_command({"type": "apply_condition", "target": "imani", "part": "left_arm", "condition": "bleeding", "tier": 1})
+	gc.apply_command({"type": "bit", "actor": "imani"})
+	gc.apply_command({"type": "camera_call", "actor": "imani", "target": "imani"})
+	gc.apply_command({"type": "treat", "target": "imani", "part": "left_arm", "condition": "bleeding", "mode": "resolve"})
+	for i in range(2 * 10):  # two Clock laps: a goal is offered, then dies un-met
+		gc.apply_command({"type": "advance_tick"})
 
 	# ---- PREVIEW STAGING (harness-only fixture; NOT how the card gets its data) ----
-	# Freeze the approved-mockup end-of-run beat by poking sim state directly.
+	# Freeze the approved-mockup end-of-run beat by poking the NON-evidence state.
 	gc.sim.tags.held["imani"] = {"survivor": true, "fan_favorite": true}  # -> THE UNBROKEN + FAN FAVORITE
-	gc.sim.combatants["boss"].breached = true                             # -> boss BREACHED, Phase 2, slice win
 	gc.sim.hype.meter = 214                                               # -> HYPE EARNED 214
 	gc.sim.hype.band = "on_fire"                                          # -> peak crowd ON FIRE, 5 stars
 	# --------------------------------------------------------------------------
+
+	# Log the real evidence the card will quote (proof the block is ledger-fed).
+	for e in gc.view_verdict("imani").get("evidence", []):
+		print("EVIDENCE  " + String((e as Dictionary).get("line", "")))
 
 	var card := VERDICT_SCENE.instantiate()
 	root.add_child(card)
@@ -66,9 +88,26 @@ func _initialize() -> void:
 
 
 func _add_boss(gc) -> void:
+	# dodge_threshold stripped (same trick as the tests/playtest) so the staged
+	# breaching hit lands deterministically without consuming the AI d6 stream.
+	var boss_traits := {}
+	var enemies = JSON.parse_string(FileAccess.get_file_as_string("res://data/enemies.json"))
+	for entry in enemies as Array:
+		if String((entry as Dictionary).get("key", "")) == "incinedile":
+			boss_traits = ((entry as Dictionary).get("traits", {}) as Dictionary).duplicate(true)
+	boss_traits.erase("dodge_threshold")
+	boss_traits.erase("dodge_threshold_note")
 	gc.apply_command({"type": "add_combatant", "combatant": {
 		"id": "boss", "name": "Incinedile", "enemy": "incinedile",
-		"team": "enemies", "position": [0, 0],
+		"team": "enemies", "position": [0, 0], "boss_traits": boss_traits,
+	}})
+
+
+func _add_grunt(gc) -> void:
+	# A warm body for the staged takedown deed (real kill, real evidence).
+	gc.apply_command({"type": "add_combatant", "combatant": {
+		"id": "grunt", "name": "Pit Grunt", "race": "human", "team": "enemies",
+		"position": [2, 0], "traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3},
 	}})
 
 

@@ -15,9 +15,11 @@ extends Control
 ##
 ## Data-bound (live from view_verdict): outcome (SURVIVED/DIED) · contestant name ·
 ## hype_earned + peak_band · epithet (from a held slice-tag) · crowd_verdict +
-## band-derived stars · boss breached/phase · slice_win. PLACEHOLDER-flagged in the
-## view: patron_standing (no favor ledger) · tagline · the spine verdict-answer +
-## viewer count + REC timer + "NEXT" chyron (broadcast dressing, no view field).
+## band-derived stars · boss breached/phase · slice_win · evidence (the REAL
+## logged deeds the record block quotes) + endured. PLACEHOLDER-flagged in the
+## view: patron_standing (no favor ledger) · tagline · every evidence line's copy ·
+## the spine verdict-answer + viewer count + REC timer + "NEXT" chyron (broadcast
+## dressing, no view field).
 
 # ---- palette (DESIGN.md — extends the char-sheet app tokens exactly) ----
 const BG := "#04050d"
@@ -113,6 +115,12 @@ func _patron() -> Dictionary:
 
 func _boss() -> Dictionary:
 	return _v().get("boss", {"name": "Incinedile", "breached": true, "phase": 2, "note": "network exposed"})
+
+func _evidence() -> Array:
+	return _v().get("evidence", [])
+
+func _endured() -> Dictionary:
+	return _v().get("endured", {})
 
 
 # ------------------------------------------------------------------- fonts/util
@@ -458,9 +466,11 @@ func _build_body() -> Control:
 
 	var colv := _vbox(0)
 	m.add_child(colv)
-	colv.add_child(_expand_spacer(1.15))
-	colv.add_child(_build_stage())
 	colv.add_child(_expand_spacer(1.0))
+	colv.add_child(_build_stage())
+	colv.add_child(_expand_spacer(0.55))
+	colv.add_child(_build_evidence())
+	colv.add_child(_expand_spacer(0.55))
 	colv.add_child(_build_earned_row())
 	colv.add_child(_expand_spacer(0.28))
 
@@ -570,6 +580,89 @@ func _hairline() -> Control:
 	r.custom_minimum_size = Vector2(0, 1)
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return r
+
+
+# ------------------------------- THE RECORD — evidence block -----------------
+## Quotes up to 4 REAL logged deeds from view_verdict's evidence ledger (the
+## public-identity-vs-actual-behavior thesis: the crowd's labels above, the
+## record here). Chronological; actor-specific entries outrank party-level ones
+## when trimming. All copy PLACEHOLDER (R14) — the facts in each line are real.
+func _build_evidence() -> Control:
+	var holder := CenterContainer.new()
+	var box := _vbox(3)
+	box.custom_minimum_size.x = 920
+	holder.add_child(box)
+
+	var kicker := _lab("THE RECORD — EVIDENCE", f_body, 8, _col(MUTED), 3.0, true)
+	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(kicker)
+
+	var picked: Array = _picked_evidence()
+	if picked.is_empty():
+		box.add_child(_pad_top(_evidence_line_label("the record shows a quiet run", true), 5))
+	else:
+		var first := true
+		for entry in picked:
+			var line_lbl := _evidence_line_label(String((entry as Dictionary).get("line", "")), false)
+			box.add_child(_pad_top(line_lbl, 5 if first else 0))
+			first = false
+	# The derived survival detail (view field "endured") rides the same block.
+	var endured := _endured()
+	if endured.has("line"):
+		box.add_child(_evidence_line_label(String(endured.get("line", "")), false))
+
+	# The one-line public-vs-actual juxtaposition (PLACEHOLDER copy).
+	var contrast := _rich_line([
+		["THE SHOW SAW ", _col(MUTED), false],
+		[String(_epithet().get("name", "")), _col(CYAN), true],
+		["  ·  THE RECORD SHOWS ", _col(MUTED), false],
+		["%d DEED%s" % [_evidence().size(), "" if _evidence().size() == 1 else "S"], _col(GOLD), true],
+	], 11, false, true)
+	contrast.add_theme_font_override("normal_font", _tracked(f_body, 2.0))
+	contrast.add_theme_font_override("bold_font", _tracked(_bold_font(), 2.0))
+	box.add_child(_pad_top(contrast, 9))
+	return holder
+
+
+## One mono evidence caption: muted "C2 M04" stamp, body in text colour.
+func _evidence_line_label(line: String, quiet: bool) -> Control:
+	var runs: Array = []
+	var split := line.find(" — ")
+	if not quiet and split > 0:
+		runs.append([line.substr(0, split), _col(MUTED), false])
+		runs.append([" — ", _col(MUTED), false])
+		runs.append([line.substr(split + 3), _col(TEXT), false])
+	else:
+		runs.append([line, _col(MUTED if quiet else TEXT), false])
+	var r := _rich_line(runs, 11, false, true)
+	r.add_theme_font_override("normal_font", f_mono)
+	r.add_theme_font_override("bold_font", f_mono)
+	return r
+
+
+## Up to 4 evidence entries, chronological; when trimming, actor-specific
+## entries (actor != "") are kept ahead of party-level ones.
+func _picked_evidence() -> Array:
+	var entries: Array = _evidence()
+	if entries.size() <= 4:
+		return entries
+	var actor_idx: Array = []
+	var party_idx: Array = []
+	for i in range(entries.size()):
+		if String((entries[i] as Dictionary).get("actor", "")) == "":
+			party_idx.append(i)
+		else:
+			actor_idx.append(i)
+	var chosen: Array = actor_idx.slice(0, 4)
+	for i in party_idx:
+		if chosen.size() >= 4:
+			break
+		chosen.append(i)
+	chosen.sort()  # back to chronological (ledger order)
+	var out: Array = []
+	for i in chosen:
+		out.append(entries[i])
+	return out
 
 
 # ------------------------------------- the 5 "earned" stat cards -------------
