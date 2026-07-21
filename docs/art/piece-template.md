@@ -96,14 +96,18 @@ rotate-and-fall; conditions = **decals** on the piece. Aggregate creatures = swa
 pieces (giant = pile, dragon = train). Real art spend goes to **spectacle beats**. Full animation
 requirements: see [`../design/animation-brief.md`](../design/animation-brief.md) *(draft)*.
 
-## Open decisions
+## Decisions
 
-1. **Global palette lock** — Endesga-32 or another ~32-colour set (now applied as a render-time
-   palette clamp).
-2. **European material** — pale marble vs dark stone / obsidian.
-3. **Tactical camera** — angle steepness; orthographic vs slight perspective.
-4. **Pixel-render internal resolution** — sets how much surface detail / inscription legibility
-   survives on-screen.
+**Locked (provisional, 2026-07-21):**
+- **Global palette = Endesga-32** (`lospec.com/palette-list/endesga-32`) — applied as a
+  render-time palette clamp; every material/ramp samples from it.
+- **European material = dark stone / obsidian** — cool grey → near-black, violet-cool shadow
+  bias (matches the v2 render).
+- **Identity = accent-colour emblem** (per §4) — patron glyph + a per-contestant accent hue.
+
+**Still open:**
+- **Tactical camera** — angle steepness; orthographic vs slight perspective.
+- **Pixel-render internal resolution** — how much surface detail / inscription legibility survives.
 
 ## Files & supersession
 
