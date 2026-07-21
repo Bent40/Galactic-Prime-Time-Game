@@ -1,126 +1,116 @@
-# Themed Game-Piece — Authoring Contract & Palette System
+# Themed Game-Piece — 3D Piece Spec & Identity System
 
-> **STATUS: CANDIDATE / EXPLORATION — NOT RULED.** Technical companion to
-> [`../design/art-direction-pieces.md`](../design/art-direction-pieces.md) (owner-originated,
-> 2026-07-20). That doc is the *why/what* (contestants & bosses rendered as the table-god's
-> game-pieces); this is the *how to actually author one piece* — canvas, registration,
-> palette architecture, layering. Honors the house style in
-> [`../making-art-and-music.md`](../making-art-and-music.md) §1.4 (one global palette,
-> per-material ramps, hue-shift, solid dark outline, 3/4 billboard). **Palette values here
-> are PROVISIONAL** until the global palette is locked (see Open Decisions).
+> **STATUS: CANDIDATE / EXPLORATION — direction updated 2026-07-21.** Owner ruled this
+> session: **pieces are 3D models rendered through a pixel-art lens** (not hand-drawn 2D
+> sprites). This **supersedes the 2D pixel-canvas approach** of the previous revision — the
+> 64/128 canvas contract is kept only as the *conceptual* registration/identity reference (see
+> `piece-template.html`). Technical companion to
+> [`../design/art-direction-pieces.md`](../design/art-direction-pieces.md). **Presentation-layer
+> only** — the deterministic headless sim is untouched. Palette / scale values PROVISIONAL.
 
-Rendered dimensioned sheet: **[`piece-template.html`](piece-template.html)** — open in a
-browser for the visual diagram. This file is the canonical text spec.
+## Direction: 3D pieces · pixel-render identity · multi-camera
 
----
+Why 3D (decided this session): the pieces are geometrically trivial (a pawn is a surface of
+revolution, a mahjong tile a rounded box, a totem stacked primitives), and going 3D **dissolves
+two hard problems at once**:
 
-## 1. Canvas & registration
+- **Perspective** — one model serves *every* camera. The tactical high-3/4 battle view **and** a
+  behind-and-above exploration view come from the same asset; no per-angle sprite sets.
+- **Lighting / shadows** — real-time lights and shadows are native, so "dark hallways with
+  changing light" is free; no baked normal maps or occluder authoring.
 
-| Field | Value |
+**Art identity is preserved by rendering, not by modelling.** Model in 3D; render through the
+pixel pipeline (§3) so the game still *reads* as pixel art. References: Square Enix **HD-2D**
+(Octopath, and **Triangle Strategy** — a tactics game) proves pixel identity + 3D depth +
+dynamic light + a tactical camera ship together; **Delver** proves full 3D geometry rendered as
+pixel art for a dungeon crawler.
+
+## 1. Piece geometry & registration (3D)
+
+- **Model low-poly.** The pixel-render filter embraces low detail — simple is a feature.
+- **Base pivot = the anchor.** Model origin at the **base-centre**, sitting on the hex-cell
+  centre. (3D heir of the old ⟨32,58⟩ anchor — every piece and every gear overlay registers to
+  it.)
+- **One scale unit.** Define **1 hex = N units** plus a target silhouette height, so every piece
+  sits uniformly regardless of theme.
+- **Clear silhouette.** Pieces must read from the tactical camera height (3D heir of "reads at
+  1×"). Simple, distinct shapes.
+- **Gear sockets.** Named attachment points (empties/bones): `base` · `weapon` (hand) · `head`
+  (crown) · `shoulders` (cloak) · `emblem` (face). Gear = a mesh parented to a socket (3D heir of
+  the 2D overlay slots).
+
+## 2. Cameras (one scene, many views)
+
+- **Tactical (battle):** high-3/4 looking down, **orthographic** preferred — clean grid, uniform
+  piece size regardless of position (the Into the Breach read).
+- **Exploration:** over-the-shoulder, behind-and-slightly-above. Later epic (KAN-5); the model
+  already supports it, no new art.
+- Both cameras view the same scene — switching is a camera transform.
+
+## 3. Pixel-render pipeline (the identity)
+
+1. Render the 3D scene into a **low-resolution `SubViewport`** (the game's internal pixel res).
+2. Upscale to screen with **nearest-neighbor** (no smoothing).
+3. **Clamp the output to the locked global palette** (posterize / palette shader) — this carries
+   the pixel-art *colour* identity. The global-palette decision still stands (recommend
+   Endesga-32); ramps become materials/textures instead of hand-placed pixels.
+4. Optional: **dither** + a thin **outline** post-process for extra signature.
+
+## 4. Identity system (decided)
+
+How a piece reads as a *specific* contestant, at a glance:
+
+- **Emblem = patron-god glyph** — a decal/texture (or light engraving) in the `emblem` slot; one
+  glyph per god, reused across that god's stable. Carries *allegiance*.
+- **Colour = the individual** — a material tint (from the global palette) on the emblem + a trim,
+  base material neutral. Disambiguates same-patron contestants; matches character vibe.
+- **Weapon = role-overlay** — a mesh in the `weapon` socket showing the weapon **class**
+  (blade / hammer / bow / staff / claw), updating with loadout. Carries *how they fight* — a
+  tactical signal, not identity, so it may change mid-run.
+- **Unaffiliated = the `Finit hic imperium Dei` seal** ("Here ends god's dominion" — for
+  contestants who took no patron), two resolutions:
+  - **On the piece:** a **broken ring** (the circle of the divine, ended) — legible tiny.
+  - **On the card / inspect / HUD:** the full circular inscription in epigraphic caps, V-for-U
+    with interpuncts — `FINIT · HIC · IMPERIVM · DEI`.
+- **Contestant vs generic:** named contestants = themed base + emblem + colour (+ optional gear);
+  **generic units / swarm-boss pieces = plain themed pieces** (no identity slot). The
+  mahjong-symbol library lives here (emblems + generic tiles).
+
+## 5. Per-theme materials (the god-table)
+
+One material per table (the governing god sets it); per-god reskin = swap material/texture — a
+force-multiplier across the many-tables ladder.
+
+| Theme | Material |
 |---|---|
-| Canvas | **64 × 64 px** (power of two) |
-| Top / bottom margin | 6 px each |
-| Left / right margin | 15 px each |
-| Piece envelope | **34 × 52 px** (max silhouette) |
-| Widest point | 34 px — base, centred |
-| Center axis | between **col 32 & 33** (even canvas → seam, no center pixel) |
-| **Anchor** | **⟨32, 58⟩** — center-bottom / feet / ground contact |
-| Growth zone | the margins — reserved for gear that extends past the bare piece |
+| Greek / European | marble / stone |
+| Chinese | jade |
+| Tribal / totemic | carved wood |
+| Death | bone / obsidian |
 
-- **The anchor is law.** Every layer, and every material theme, aligns its base to ⟨32, 58⟩.
-  A cloak drawn once then lands on any piece; a jade piece and a marble piece register
-  identically. Never nudge the anchor per-asset.
-- **Growth zone.** The bare piece must *not* fill the margins — leave headroom & side-room
-  so crowns, cloaks, staves, and totem-caps have somewhere to go without clipping the frame.
-- **Even-canvas symmetry.** There is no true center pixel; the axis falls between columns 32
-  and 33. Make central features **2 px wide**, or commit to a consistent 1 px lean.
+## 6. Animation model (procedural rigid pieces)
 
-## 2. Perspective & animation (settled by house style)
+From `art-direction-pieces.md`: pieces are rigid bodies, so common motion is **transform
+tweens**, not frames — move = hop between hexes; attack = lunge + topple target; die =
+rotate-and-fall; conditions = **decals** on the piece. Aggregate creatures = swarms of identical
+pieces (giant = pile, dragon = train). Real art spend goes to **spectacle beats**. Full animation
+requirements: see [`../design/animation-brief.md`](../design/animation-brief.md) *(draft)*.
 
-- **Single 3/4 billboard** that faces the camera — per DIRECTION D2 and `making-art-and-music.md`
-  (3/4-view sprites over a hex arena). A rigid piece does **not** get multi-facing sheets
-  unless it proves it needs them, so the usual *(assets × angles)* multiplier collapses to
-  **× 1 angle**.
-- **Procedural motion, not frames** (from art-direction-pieces.md): move = hop between hexes,
-  attack = lunge/topple tween, die = rotate-and-fall. Conditions = **decals** on the piece
-  (crack = crushed, drip = bleeding, flame = burn). Art spend goes to **gear + spectacle
-  beats**, not walk cycles.
+## Open decisions
 
-## 3. Palette architecture
+1. **Global palette lock** — Endesga-32 or another ~32-colour set (now applied as a render-time
+   palette clamp).
+2. **European material** — pale marble vs dark stone / obsidian.
+3. **Tactical camera** — angle steepness; orthographic vs slight perspective.
+4. **Pixel-render internal resolution** — sets how much surface detail / inscription legibility
+   survives on-screen.
 
-House rule (`making-art-and-music.md` §1.4): **don't free-pick colours.** One global
-~32-colour palette; every material ramp is a subset of it; hue-shift shadows cooler /
-highlights warmer; solid dark outline; 3–6 colours per element. The piece palette has five
-layers:
+## Files & supersession
 
-1. **Global palette** — *[LOCKED = TBD — recommend Endesga-32]*. The master; every pixel on
-   every piece and every theme comes from here.
-2. **Per-theme material ramp** — a 5–6 step subset that *is* the god-table's material. One
-   material per table (art-direction-pieces open-decision #2):
-   | Theme | Material | Ramp source |
-   |---|---|---|
-   | Greek / European | marble / stone | *TBD from global* |
-   | Chinese | jade | *TBD from global* |
-   | Tribal / totemic | carved wood | *TBD from global* |
-   | Death | bone / obsidian | *TBD from global* |
-3. **Identity accent** — one signature hue per contestant (emblem / base trim), so
-   same-material pieces still read as different characters (open-decisions #1 & #2: the
-   table's god sets the material, the contestant's own patron shows as an emblem).
-4. **Condition decals** — fixed, cross-theme cues (crack / drip / flame / …), pulled from the
-   global palette and identical on every theme so "arm at half HP" always reads the same.
-5. **Maiming red** — the single red reserved for the visceral-injury stinger and persistent
-   scars (art-direction-pieces "Visceral injury").
-
-### European stone ramp — PROVISIONAL placeholder
-
-Structure: `keyline → core-shadow → body → mid → highlight → specular` (6 steps), hue-shifted
-(shadow toward cool blue-violet, highlight toward warm). Values below are **eyeballed from the
-v2 render — replace with real values pulled from the locked global palette.**
-
-| Role | Placeholder | Use |
-|---|---|---|
-| Keyline | `#141414` | silhouette outline |
-| Core shadow | `#363636` | deepest form shadow |
-| Body | `#565656` | main mass |
-| Mid | `#767676` | lit mid-tone |
-| Highlight | `#A6A6A6` | upper-left planes |
-| Specular | `#D0D0D0` | sharpest point (head) |
-
-Light source: **upper-left, single source, on every layer.**
-
-## 4. Layering contract (invariants)
-
-- **One canvas** — every asset authored on the same 64×64 with the same margins.
-- **Anchor is law** — align every overlay's base to ⟨32, 58⟩; never nudge per-asset.
-- **One light** — upper-left single source on every layer, or gear reads as pasted on.
-- **Mind the seam** — central features 2 px wide (no true center pixel), or a consistent lean.
-- **Margins are reserved** — the bare piece leaves headroom & side-room for gear.
-- **Reads at 1×** — check the silhouette at actual size; if it turns to mud, simplify first.
-- **Locked ramp** — pull every pixel from the material ramp; new gear adds no new greys.
-- **Optional shoulder ref** — if cloaks need a hook, fix one shoulder line and reuse it; feet
-  stay the master.
-
-## 5. Composite order (back → front)
-
-`cast shadow → base piece → body gear (cloak) → head gear (crown) → front props (totem/staff)`
-
-Condition decals and the maiming layer composite **on top** of the piece (per
-art-direction-pieces.md).
-
-## Open decisions (pending owner sign-off)
-
-Mirror and extend the open decisions in `art-direction-pieces.md`:
-
-1. **Global palette lock** — Endesga-32, or a different Lospec ~32-colour set?
-2. **European material** — pale marble (the doc's literal wording) vs. dark stone / obsidian
-   (the v2 render reads as cool charcoal, not white marble). These pick different ramps.
-3. **Identity mechanism** — per-contestant accent emblem, gear/silhouette only, or a small
-   face/emblem sprite.
-4. **Single 3/4 billboard confirmed** — assumed here; flag if any piece needs true facing.
-
-## Files
-
-- `piece-template.html` — rendered dimensioned sheet (open in a browser).
-- `piece-template.md` — this file, the canonical text spec.
-- See also: `../design/art-direction-pieces.md` (the direction), `../making-art-and-music.md`
-  §1.4 (house palette rules), `generation-prompts.md` (generator-route tests).
+- `piece-template.md` — this file, the canonical (now **3D**) spec.
+- `piece-template.html` — the original 2D dimensioned sheet; **retained as the conceptual
+  registration/identity reference** (anchor → base-pivot, silhouette, growth-zone → sockets), not
+  a literal 2D build target.
+- See also: `../design/art-direction-pieces.md` (direction), `../making-art-and-music.md` §1.4
+  (palette rules, now applied at render time), `../design/animation-brief.md` (animation
+  requirements).
