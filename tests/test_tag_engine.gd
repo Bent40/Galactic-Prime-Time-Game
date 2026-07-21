@@ -348,12 +348,14 @@ func test_3am_energy_movement_streak() -> void:
 
 # ---------------------------------------------------------------- The Bit (mechanical nullity)
 
-## Everything about the sim EXCEPT the two broadcast-plane engines. If a command
-## leaves this fingerprint unchanged it touched no combat state.
+## Everything about the sim EXCEPT the broadcast-plane engines (hype, tags,
+## evidence). If a command leaves this fingerprint unchanged it touched no
+## combat state.
 func combat_fingerprint(sim: CombatSim) -> String:
 	var d: Dictionary = sim.to_dict()
 	d.erase("hype")
 	d.erase("tags")
+	d.erase("evidence")
 	return CombatSim.canonical_serialize(d)
 
 

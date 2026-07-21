@@ -531,6 +531,16 @@ func _verdict() -> void:
 			(", ".join(held_keys) if not held_keys.is_empty() else "(none)"),
 			(", ".join(prog_bits) if not prog_bits.is_empty() else "(none)")])
 
+	# The evidence record (view_verdict projection — what the verdict card quotes).
+	print("  Evidence record:")
+	for cid: String in [IMANI, DARIO]:
+		var lines: Array = []
+		for e: Variant in gc.view_verdict(cid).get("evidence", []):
+			lines.append((e as Dictionary).get("line", ""))
+		print("      %-11s %s" % [_who(cid), ("(no logged deeds)" if lines.is_empty() else "")])
+		for line: Variant in lines:
+			print("          - %s" % String(line))
+
 	var last_tick: int = kill_tick if kill_tick >= 0 else int(gc.view_clock()["tick"])
 	print("")
 	print("  ---- FEEL READOUT (the pacing numbers to judge) ----")

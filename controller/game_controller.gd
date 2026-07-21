@@ -506,10 +506,14 @@ const STARS_BY_BAND: Dictionary = {"cold": 1, "warm": 2, "hot": 4, "on_fire": 5}
 ## DERIVED LIVE: outcome (contestant.alive), hype_earned (hype.meter), peak_band
 ## (hype.band_display), epithet + crowd_verdict.name (held slice-tags), boss
 ## breached/phase (the boss combatant's `breached` + its `network` part),
-## slice_win (boss breached).
+## slice_win (boss breached), evidence (the EvidenceEngine ledger — the real
+## decisions the card quotes against the crowd's labels), endured (survival
+## state derived here at view time: parts destroyed/disabled, not an event).
 ## PLACEHOLDER (R14, flagged — no backing system yet): patron_standing (no
 ## patron-favor ledger), tagline (templated flavor), crowd_verdict.stars
-## (band-derived proxy), peak_band (final band stands in — no peak tracking).
+## (band-derived proxy), peak_band (final band stands in — no peak tracking),
+## every evidence "line" (structure/truth are real; the copy awaits the
+## visuals/writing epic).
 func view_verdict(contestant_id: String) -> Dictionary:
 	if sim == null or not sim.combatants.has(contestant_id):
 		return {}
@@ -539,7 +543,91 @@ func view_verdict(contestant_id: String) -> Dictionary:
 		"boss": boss,
 		"slice_win": slice_win,
 		"tagline": _verdict_tagline(outcome),                # PLACEHOLDER templated flavor
+		"evidence": _verdict_evidence(contestant_id),        # the record: real logged deeds
+		"endured": _verdict_endured(c, alive),               # view-derived survival detail
 	}
+
+
+## The contestant's slice of the evidence ledger, chronological (the ledger is
+## append-only): their own actor entries + party-level ("") entries, each with a
+## PLACEHOLDER "line" composed from the entry's real fields.
+func _verdict_evidence(contestant_id: String) -> Array:
+	var out: Array = []
+	for entry: Dictionary in sim.evidence.ledger:
+		var actor := String(entry.get("actor", ""))
+		if actor != contestant_id and actor != "":
+			continue
+		var e: Dictionary = entry.duplicate(true)
+		e["line"] = _evidence_line(entry)
+		out.append(e)
+	return out
+
+
+## PLACEHOLDER copy (R14): one broadcast-caption line per evidence entry. The
+## FACTS in the line come from the entry; only the phrasing is placeholder.
+func _evidence_line(entry: Dictionary) -> String:
+	var d: Dictionary = entry.get("detail", {})
+	var prefix := "C%d M%02d — " % [int(entry.get("clock", 1)), int(entry.get("moment", 10))]
+	match String(entry.get("type", "")):
+		"breach_risk":
+			var line := "took the hit that cracked the network open"
+			if bool(d.get("windup", false)):
+				line += " — committed through the windup, wide open"
+			return prefix + line
+		"goal_answered":
+			return prefix + "answered the crowd's %s demand (+%d hype)" \
+				% [_goal_shout(String(d.get("goal", ""))), int(d.get("payout", 0))]
+		"goal_unanswered":
+			return prefix + "let the crowd's %s demand die un-answered" \
+				% _goal_shout(String(d.get("goal", "")))
+		"bit_under_fire":
+			var line := "did The Bit"
+			if d.has("wounded_part"):
+				line += " with a %s %s" % [
+					"bleeding" if bool(d.get("bleeding", false)) else "wounded",
+					String(d.get("wounded_part", "")).replace("_", " ")]
+				if d.has("enemy_adjacent"):
+					line += " and %s in reach" % _combatant_name(String(d.get("enemy_adjacent", "")))
+			elif d.has("enemy_adjacent"):
+				line += " with %s in reach" % _combatant_name(String(d.get("enemy_adjacent", "")))
+			return prefix + line
+		"spotlight_gamble":
+			return prefix + "called the cameras in on a wounded %s — losses doubled too" \
+				% String(d.get("wounded_part", "")).replace("_", " ")
+		"stabilized":
+			return prefix + "pulled %s back from bleeding out" % _combatant_name(String(d.get("saved", "")))
+		"takedown":
+			return prefix + "put %s down" % _combatant_name(String(d.get("victim", "")))
+	return prefix + String(entry.get("type", ""))
+
+
+## "finish_them" -> "FINISH THEM!" (the goal id is the only field the expiry
+## event carries; the shout styling is PLACEHOLDER broadcast copy).
+func _goal_shout(goal_id: String) -> String:
+	return goal_id.replace("_", " ").to_upper() + "!"
+
+
+func _combatant_name(id: String) -> String:
+	var c: CombatantState = sim.combatants.get(id)
+	return c.display_name if c != null else id
+
+
+## Evidence type 8, "endured" — NOT event-based: derived here from final state.
+## The survivor's body is the record: parts destroyed/disabled at verdict time.
+func _verdict_endured(c: CombatantState, alive: bool) -> Dictionary:
+	var lost: Array = []
+	var part_keys: Array = c.parts.keys()
+	part_keys.sort()
+	for part_key: Variant in part_keys:
+		var part: Dictionary = c.parts[part_key]
+		if bool(part.get("destroyed", false)) or bool(part.get("disabled", false)):
+			lost.append(String(part_key))
+	var endured: Dictionary = {"survived": alive, "parts_lost": lost.size(), "parts": lost}
+	if alive and lost.size() > 0:
+		endured["line"] = "walked out carrying %d broken part%s: %s" % [
+			lost.size(), "" if lost.size() == 1 else "s",
+			", ".join(PackedStringArray(lost)).replace("_", " ")]
+	return endured
 
 
 ## Highest-priority held tag mapped to an earned epithet (safe default if none).

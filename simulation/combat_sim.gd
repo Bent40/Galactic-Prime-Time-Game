@@ -40,6 +40,7 @@ var cond: ConditionEngine
 var resolver: ActionResolver
 var hype: HypeEngine
 var tags: TagEngine
+var evidence: EvidenceEngine
 var ai: EnemyAI
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
@@ -66,6 +67,10 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	tags = TagEngine.new()
 	tags.setup(static_data.get("tag_effects", {}), combatants)
 	hype.tags = tags
+	# Evidence ledger — the third broadcast-plane consumer, wired after tags so
+	# it can also see tag_* outputs; the verdict quotes it.
+	evidence = EvidenceEngine.new()
+	evidence.wire(combatants, clock)
 	_rebuild_snapshot()
 
 
@@ -144,6 +149,9 @@ func _post(events: Array[Dictionary]) -> void:
 	# spectacle_points), so a second hype pass is unneeded; The Bit's escalating
 	# spectacle already rides the bit_performed event hype scored above.
 	events.append_array(tags.ingest(events))
+	# Evidence ledger runs LAST so it can see hype_* and tag_* outputs too. Its
+	# evidence_* outputs carry no spectacle_points and no engine rescans them.
+	events.append_array(evidence.ingest(events))
 	for event: Dictionary in events:
 		if not event.has("tick"):
 			event["tick"] = clock.tick
@@ -597,6 +605,7 @@ func to_dict() -> Dictionary:
 		"static_data": static_data.duplicate(true),
 		"hype": hype.to_dict(),
 		"tags": tags.to_dict(),
+		"evidence": evidence.to_dict(),
 		"ai": ai.to_dict(),
 	}
 
@@ -614,6 +623,9 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	# sim's tagless start, so the resume path stays sound. Refs (effect table,
 	# combatants, hype.tags) are re-wired below.
 	sim.tags = TagEngine.from_dict(data.get("tags", {}))
+	# Pre-evidence saves lack "evidence": an empty ledger matches a fresh sim's
+	# start, so the resume path stays sound (refs re-wired below).
+	sim.evidence = EvidenceEngine.from_dict(data.get("evidence", {}))
 	# Pre-I16 saves lack "ai": keep the fresh salted engine (matches a new sim
 	# on the same seed) instead of resuming on state 0 (R11 #15).
 	if data.has("ai"):
@@ -630,6 +642,8 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))
 	sim.tags.wire(sim.combatants)
 	sim.hype.tags = sim.tags
+	# Re-wire the evidence ledger's live refs (the clock instance was replaced).
+	sim.evidence.wire(sim.combatants, sim.clock)
 	return sim
 
 
