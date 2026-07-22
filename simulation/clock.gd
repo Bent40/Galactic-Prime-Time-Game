@@ -58,6 +58,18 @@ func take_due(at_tick: int) -> Array[Dictionary]:
 	return due
 
 
+## Spectator-contract probe (read-only, ADDITIVE — HUD v2 Phase 2): a
+## deep-copied, seq-ordered snapshot of the pending scheduled entries. Plain
+## dicts, deterministic, ZERO mutation, ZERO rng — callers can never reach the
+## live queue through it.
+func scheduled_entries() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for entry: Dictionary in queue:
+		out.append(entry.duplicate(true))
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["seq"]) < int(b["seq"]))
+	return out
+
+
 func cancel_for(actor_id: String) -> int:
 	var kept: Array[Dictionary] = []
 	var cancelled: int = 0

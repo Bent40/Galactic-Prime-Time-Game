@@ -19,6 +19,8 @@ const LauncherScene := preload("res://ui/hud/components/action_launcher.tscn")
 const FlyoutScene := preload("res://ui/hud/components/action_flyout.tscn")
 const TickerScene := preload("res://ui/hud/components/momus_ticker.tscn")
 const EventLogScene := preload("res://ui/hud/components/event_log_overlay.tscn")
+const ActionPreviewScene := preload("res://ui/hud/components/action_preview.tscn")
+const EndTurnConfirmationScene := preload("res://ui/hud/components/end_turn_confirmation.tscn")
 
 # Component refs are deliberately UNTYPED: each holds an instantiated component
 # scene and is driven dynamically by the facade (typed as Node/Control they would
@@ -33,6 +35,8 @@ var launcher
 var flyout
 var ticker
 var event_log
+var action_preview    # ActionPreview confirm panel (Phase 2, spec Area 10)
+var end_turn_confirm  # EndTurnConfirmation panel (Phase 2, spec Area 12)
 
 var _built := false
 var _launcher_row: Control
@@ -130,6 +134,17 @@ func _ensure_built() -> void:
 	event_log = EventLogScene.instantiate()
 	add_child(event_log)
 
+	# Phase 2 confirm panels: overlays above the launcher (like the flyout, so
+	# they never cover the selected target in the arena — spec Area 10 rule).
+	action_preview = ActionPreviewScene.instantiate()
+	action_preview.visible = false
+	add_child(action_preview)
+	action_preview.resized.connect(func() -> void: _place_above_launcher(action_preview))
+	end_turn_confirm = EndTurnConfirmationScene.instantiate()
+	end_turn_confirm.visible = false
+	add_child(end_turn_confirm)
+	end_turn_confirm.resized.connect(func() -> void: _place_above_launcher(end_turn_confirm))
+
 	# R14 watermark — every number on screen is placeholder until the numbers pass.
 	var wm := UI.lab("PLACEHOLDER NUMBERS · R14", UI.body(), 10, UI.col(UI.TEXT, 0.16), 3.0, true)
 	wm.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -153,15 +168,49 @@ func hide_flyout() -> void:
 		flyout.visible = false
 
 
+## Phase 2 confirm panels — shown above the launcher, one at a time.
+func show_action_preview(data: Dictionary) -> void:
+	_ensure_built()
+	action_preview.update(data)
+	action_preview.visible = true
+	_place_above_launcher(action_preview)
+
+
+func hide_action_preview() -> void:
+	if action_preview != null:
+		action_preview.visible = false
+
+
+func show_end_turn_confirm(data: Dictionary) -> void:
+	_ensure_built()
+	end_turn_confirm.update(data)
+	end_turn_confirm.visible = true
+	_place_above_launcher(end_turn_confirm)
+
+
+func hide_end_turn_confirm() -> void:
+	if end_turn_confirm != null:
+		end_turn_confirm.visible = false
+
+
 func _place_flyout() -> void:
-	if flyout == null or not flyout.visible or _launcher_row == null:
+	_place_above_launcher(flyout)
+	_place_above_launcher(action_preview)
+	_place_above_launcher(end_turn_confirm)
+
+
+## Anchors a transient panel just above the launcher row, horizontally centred
+## on it (spec Area 10: menus open upward from the button that owns them).
+func _place_above_launcher(panel) -> void:
+	if panel == null or not (panel as Control).visible or _launcher_row == null:
 		return
-	flyout.reset_size()
+	var p := panel as Control
+	p.reset_size()
 	var row_rect := _launcher_row.get_global_rect()
 	var local_top := row_rect.position - get_global_rect().position
-	flyout.position = Vector2(
-		clampf(local_top.x + (row_rect.size.x - flyout.size.x) * 0.5, 8.0, size.x - flyout.size.x - 8.0),
-		local_top.y - flyout.size.y - 8.0)
+	p.position = Vector2(
+		clampf(local_top.x + (row_rect.size.x - p.size.x) * 0.5, 8.0, size.x - p.size.x - 8.0),
+		local_top.y - p.size.y - 8.0)
 
 
 func _brand_block() -> Control:

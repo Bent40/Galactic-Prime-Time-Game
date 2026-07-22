@@ -8,14 +8,26 @@ extends PanelContainer
 ## lap's ticks, labelled with their Moment numbers 10..1) with a marker for each
 ## live combatant at its next_action_tick, the current slot highlighted and
 ## windup flags marked. Dumb component: renders the marker dicts it is handed.
+##
+## Phase 2 — DECLARED-ACTION BARS (spec Area 4): under the strip, one
+## horizontal bar per pending view_schedule row spanning declared -> resolve
+## slot on the lap (clamped; carry-over past the lap marked "▸"), labelled
+## actor token + action key. Windup bars are visually distinct (bright border +
+## W tag) and ENEMY windup bars ride the danger accent — the telegraph.
 
 const UI := preload("res://ui/hud/components/hud_theme.gd")
+
+const SLOT_W := 38.0   # tick square min width (px)
+const SLOT_SEP := 4.0  # strip separation (px)
+const BAR_H := 13.0    # one bar lane (px)
+const MAX_LANES := 3
 
 var _built := false
 var _clock_num: Label
 var _moment_num: Label
 var _nextreset: Label
 var _strip: HBoxContainer
+var _bars_lane: Control
 
 
 func _ready() -> void:
@@ -44,9 +56,17 @@ func _ensure_built() -> void:
 	sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(sep)
 
-	_strip = UI.hbox(4)
-	_strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_strip)
+	# strip + the declared-action bars lane share one left origin so bar x
+	# positions line up with the tick squares beneath the markers.
+	var strip_col := UI.vbox(2)
+	strip_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_strip = UI.hbox(int(SLOT_SEP))
+	strip_col.add_child(_strip)
+	_bars_lane = Control.new()
+	_bars_lane.custom_minimum_size = Vector2(10 * SLOT_W + 9 * SLOT_SEP, 0)
+	_bars_lane.clip_contents = true
+	strip_col.add_child(_bars_lane)
+	row.add_child(strip_col)
 
 	_nextreset = UI.lab("", UI.body(), 9, UI.col(UI.MUTED), 2.0)
 	_nextreset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -55,7 +75,9 @@ func _ensure_built() -> void:
 
 ## data: {clock_no: int, moment: int, slot_now: int (0..9), next_reset: String,
 ##        markers: [{slot: 0..9, emoji, name, active: bool, boss: bool,
-##                   windup: bool, late: bool}]}
+##                   windup: bool, late: bool}],
+##        bars: [{from_slot: 0..9, to_slot: 0..9, carry: bool, windup: bool,
+##                enemy: bool, emoji, label, name}]}
 func update(data: Dictionary) -> void:
 	_ensure_built()
 	_clock_num.text = str(int(data.get("clock_no", 1)))
@@ -73,6 +95,79 @@ func update(data: Dictionary) -> void:
 		ch.queue_free()
 	for i in 10:
 		_strip.add_child(_cell(i, i == slot_now, by_slot.get(i, [])))
+	_update_bars(data.get("bars", []))
+
+
+## Declared-action bars: greedy first-fit lane packing (bars that overlap in
+## slot span stack into separate lanes, capped at MAX_LANES).
+func _update_bars(bars: Array) -> void:
+	for ch in _bars_lane.get_children():
+		ch.queue_free()
+	var lanes: Array = []  # per lane: Array of [from, to]
+	var shown := 0
+	for bd in bars:
+		var b: Dictionary = bd
+		var from_slot := clampi(int(b.get("from_slot", 0)), 0, 9)
+		var to_slot := clampi(int(b.get("to_slot", 0)), from_slot, 9)
+		var lane := -1
+		for li in lanes.size():
+			var fits := true
+			for span in lanes[li]:
+				if from_slot <= int((span as Array)[1]) and to_slot >= int((span as Array)[0]):
+					fits = false
+					break
+			if fits:
+				lane = li
+				break
+		if lane < 0:
+			if lanes.size() >= MAX_LANES:
+				lane = lanes.size() - 1  # overflow rides the last lane (demo scale)
+			else:
+				lanes.append([])
+				lane = lanes.size() - 1
+		(lanes[lane] as Array).append([from_slot, to_slot])
+		_bars_lane.add_child(_bar(b, from_slot, to_slot, lane))
+		shown += 1
+	_bars_lane.custom_minimum_size.y = (BAR_H + 2.0) * float(mini(lanes.size(), MAX_LANES)) if shown > 0 else 0.0
+
+
+func _bar(b: Dictionary, from_slot: int, to_slot: int, lane: int) -> Control:
+	var windup := bool(b.get("windup", false))
+	var enemy := bool(b.get("enemy", false))
+	var carry := bool(b.get("carry", false))
+	# The telegraph accents: enemy windups = DANGER; party windups = FIRE;
+	# instants/moves = muted cyan. Windups get the bright border + W tag.
+	var accent := UI.col(UI.CYAN)
+	if windup:
+		accent = UI.col(UI.DANGER) if enemy else UI.col(UI.FIRE)
+	elif enemy:
+		accent = UI.col("#ff6b88")
+	var bar := PanelContainer.new()
+	bar.position = Vector2(float(from_slot) * (SLOT_W + SLOT_SEP), float(lane) * (BAR_H + 2.0))
+	bar.custom_minimum_size = Vector2(
+		float(to_slot - from_slot) * (SLOT_W + SLOT_SEP) + SLOT_W, BAR_H)
+	bar.add_theme_stylebox_override("panel", UI.glow_sb(
+		Color(accent.r, accent.g, accent.b, 0.30 if windup else 0.16),
+		Color(accent.r, accent.g, accent.b, 0.95 if windup else 0.45), 3,
+		Color(accent.r, accent.g, accent.b, 0.5) if windup else Color(0, 0, 0, 0),
+		4 if windup else 0))
+	bar.clip_contents = true
+	bar.tooltip_text = String(b.get("name", ""))
+	var m := UI.margin(4, 4, 0, 0)
+	bar.add_child(m)
+	var h := UI.hbox(3)
+	m.add_child(h)
+	h.add_child(UI.emo(String(b.get("emoji", "")), 8))
+	var text := String(b.get("label", ""))
+	if windup:
+		text = "W· " + text
+	if carry:
+		text += " ▸"  # resolves past this lap's edge
+	var l := UI.lab(text, UI.body(), 7, accent, 0.5, windup)
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	return bar
 
 
 func _cell(i: int, now: bool, markers: Array) -> Control:

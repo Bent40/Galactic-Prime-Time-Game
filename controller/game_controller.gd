@@ -336,6 +336,59 @@ func view_clock() -> Dictionary:
 	return {"tick": sim.clock.tick, "moment": sim.clock.moment()}
 
 
+## Read-only SCHEDULE probe (spectator contract — HUD v2 Phase 2): one plain
+## row per PENDING scheduled entry, seq-ordered, deep-copied — the declared-
+## action bars + the End-Turn "what resolves next" telegraph read this. Never
+## mutates; deterministic (same state, same rows).
+##   actor:         combatant id
+##   kind:          the action dict's kind ("attack"/"skill"/"move"/...)
+##   key:           the action's identity — skill key, else item, else the kind
+##   declared_tick: resolve_tick − window when window > 0, else resolve_tick
+##   resolve_tick:  the tick the entry resolves on
+##   windup:        window > 0 (a committed multi-Moment declare/resolve gap)
+##   combo_id:      present only on R15 combined-action members
+func view_schedule() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if sim == null:
+		return out
+	for entry: Dictionary in sim.clock.scheduled_entries():
+		var action: Dictionary = entry.get("action", {})
+		var window: int = int(entry.get("window", 0))
+		var resolve_tick: int = int(entry.get("tick", 0))
+		var kind := String(action.get("kind", "attack"))
+		var key := String(action.get("key", ""))
+		if key == "":
+			key = String(action.get("item", ""))
+		if key == "":
+			key = kind
+		var row: Dictionary = {
+			"actor": String(entry.get("actor", "")),
+			"kind": kind,
+			"key": key,
+			"declared_tick": (resolve_tick - window) if window > 0 else resolve_tick,
+			"resolve_tick": resolve_tick,
+			"windup": window > 0,
+		}
+		if action.has("combo_id"):
+			row["combo_id"] = String(action.get("combo_id", ""))
+		out.append(row)
+	return out
+
+
+## Read-only ACTION PREVIEW probe (spectator contract — HUD v2 Phase 2):
+## forwards to ActionResolver.preview_action. Plain dicts, deterministic, ZERO
+## mutation and ZERO rng consumption (dodge is reported as uncertainty, never
+## rolled). {} for an unknown actor or before start_combat. A combined preview
+## passes action["combo_members"] and reads the members' own actor ids.
+func preview_action(actor_id: String, action: Dictionary) -> Dictionary:
+	if sim == null:
+		return {}
+	var actor: CombatantState = sim.combatants.get(actor_id)
+	if actor == null and not action.has("combo_members"):
+		return {}
+	return sim.resolver.preview_action(actor, action)
+
+
 ## Owner-blessed band display names (2026-07-19): the sim enum -> broadcast copy.
 const BAND_DISPLAY: Dictionary = {
 	"cold": "COLD OPEN", "warm": "WARMING UP", "hot": "ELECTRIC", "on_fire": "ON FIRE",

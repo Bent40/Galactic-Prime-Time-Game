@@ -23,6 +23,16 @@ extends Control
 ## _on_camera_call / _on_bit / _on_move / _on_arena_input plus the readable
 ## _active_actor / _arena_eff / _arena_off keep their v1 semantics exactly.
 ##
+## PHASE 2 — CONFIRM STEP (spec Areas 10 + 12): the confirm panels
+## (ActionPreview / EndTurnConfirmation) are inserted ONLY on the INTERACTIVE
+## path — the inspector part-click, the flyout self-skill / combined picks and
+## the END TURN button route through _on_inspector_part_clicked /
+## _on_end_turn_pressed, whose CONFIRM buttons then call the existing direct
+## methods above. Drivers that call the direct methods bypass the panels by
+## construction; `confirm_enabled = false` collapses the interactive path onto
+## the direct one too. Panel contents come from the READ-ONLY probes
+## (GameController.preview_action / view_schedule) — never invented numbers.
+##
 ## VOCABULARY (ADOPTION.md — owner question OPEN, engine terms KEPT): CLOCK =
 ## the 10-tick lap, MOMENT = the tick position ("CLOCK 3 · MOMENT 07").
 ## Every NUMBER on screen is PLACEHOLDER (R14) — the watermark says so.
@@ -46,6 +56,13 @@ var _focus_id := ""           # inspector focus (card / token / boss click)
 var _armed: Dictionary = {}   # armed action awaiting a target part ({} = none)
 var _open_cat := ""           # open flyout category ("" = closed)
 var _move_mode := false       # MOVE click-to-target armed?
+
+## Phase 2 confirm flow. confirm_enabled is a plain toggle drivers may flip to
+## collapse the interactive path onto the direct methods (drivers calling the
+## direct methods bypass the panels anyway). _pending_confirm remembers what
+## the open ActionPreview would declare: {kind: "part"|"self"|"combo", ...}.
+var confirm_enabled := true
+var _pending_confirm: Dictionary = {}
 
 # ---- identity / caches (facade-owned meaning joins) ------------------------
 var _last_combatants: Array = []
@@ -125,12 +142,19 @@ func _ensure_built() -> void:
 	_shell.party_rail.card_clicked.connect(_on_card_clicked)
 	_shell.arena.click_input.connect(_on_arena_input)
 	_shell.arena.token_clicked.connect(_on_token_clicked)
-	_shell.inspector.part_clicked.connect(_on_inspector_part)
+	# INTERACTIVE paths route through the Phase 2 confirm panels; the direct
+	# methods (_on_inspector_part / _on_end_turn) keep their v1 semantics for
+	# drivers and are what the panels' CONFIRM buttons call.
+	_shell.inspector.part_clicked.connect(_on_inspector_part_clicked)
 	_shell.launcher.category_pressed.connect(_on_category)
-	_shell.launcher.end_turn_pressed.connect(_on_end_turn)
+	_shell.launcher.end_turn_pressed.connect(_on_end_turn_pressed)
 	_shell.flyout.entry_pressed.connect(_on_flyout_entry)
 	_shell.ticker.clicked.connect(_open_log)
 	_shell.event_log.close_requested.connect(_close_log)
+	_shell.action_preview.confirmed.connect(_on_preview_confirmed)
+	_shell.action_preview.back_requested.connect(_on_preview_back)
+	_shell.end_turn_confirm.confirmed.connect(_on_end_turn_confirmed)
+	_shell.end_turn_confirm.cancelled.connect(_on_end_turn_cancelled)
 	_momus("—and Dario bows mid-combat, the absolute professional!")
 
 
@@ -333,6 +357,11 @@ func _issue(cmd: Dictionary, flavor := "") -> void:
 
 # --------------------------------------------------------- component interactions
 func _on_category(cat: String) -> void:
+	# A category press supersedes any open confirm panel (one transient at a time).
+	if _shell != null:
+		_shell.hide_action_preview()
+		_shell.hide_end_turn_confirm()
+	_pending_confirm = {}
 	if cat == "move":
 		_close_flyout()
 		_on_move()
@@ -351,7 +380,12 @@ func _on_flyout_entry(id: String) -> void:
 		_arm({"kind": "attack", "key": "unarmed_strike", "cost": 1,
 			"damage_type": "crushed", "amount": 1, "label": "UNARMED STRIKE"})
 	elif id == "combined":
-		_on_combined_strike()
+		# Interactive pick -> confirm step (Area 10); Confirm calls the direct
+		# _on_combined_strike (the v1 command shape, unchanged).
+		if confirm_enabled:
+			_open_combo_preview()
+		else:
+			_on_combined_strike()
 	elif id == "camera_call":
 		_on_camera_call()
 	elif id == "bit":
@@ -359,7 +393,11 @@ func _on_flyout_entry(id: String) -> void:
 	elif id.begins_with("skill:"):
 		var key := id.substr(6)
 		if SkillBook.is_self_skill(key):
-			_on_skill(key)
+			# Self skills have no part pick — the pick IS the confirm moment.
+			if confirm_enabled:
+				_open_self_preview(key)
+			else:
+				_on_skill(key)
 		else:
 			_arm({"kind": "skill", "key": key,
 				"cost": int(SkillBook.mechanics(key, 1).get("cost", 1)),
@@ -420,6 +458,266 @@ func _declare_skill_attack_at(actor_id: String, skill_key: String, target_id: St
 		skill_key.replace("_", " ").to_upper(), _part_label(part)])
 
 
+# ------------------------------------------------- Phase 2 confirm flow (Areas 10/12)
+## INTERACTIVE part pick while armed: opens the ActionPreview confirm panel fed
+## by the READ-ONLY probe. The armed state STAYS set — BACK returns to it; the
+## panel's CONFIRM calls the existing direct _on_inspector_part (v1 semantics).
+func _on_inspector_part_clicked(part_key: String) -> void:
+	if _armed.is_empty():
+		return
+	if not confirm_enabled or _gc == null:
+		_on_inspector_part(part_key)
+		return
+	var action := _armed_action_for(_armed, _focus_id, part_key)
+	var probe: Dictionary = _gc.preview_action(_active_actor, action)
+	var archetype := ""
+	if String(action.get("kind", "")) == "skill":
+		archetype = String(SkillBook.mechanics(String(action.get("key", "")), 1).get("archetype", ""))
+	_pending_confirm = {"kind": "part", "part": part_key}
+	var title := String(_armed.get("label", String(action.get("key", "")).replace("_", " ").to_upper()))
+	var route := "%s → %s · %s" % [_display_name_for(_active_actor),
+		_display_name_for(_focus_id), _part_label(part_key)]
+	_shell.show_action_preview(_preview_display(title, route, probe, archetype))
+
+
+## The action dict the armed action WOULD declare at (target, part) — the exact
+## twin of _on_inspector_part's declare, used only to feed the preview probe.
+func _armed_action_for(a: Dictionary, target_id: String, part_key: String) -> Dictionary:
+	if String(a.get("kind", "")) == "attack":
+		return {
+			"kind": "attack",
+			"key": String(a.get("key", "unarmed_strike")),
+			"cost": int(a.get("cost", 1)),
+			"attack_range": 1,
+			"damage": {"type": String(a.get("damage_type", "crushed")), "amount": int(a.get("amount", 1))},
+			"targets": [{"id": target_id, "part": part_key}],
+		}
+	return {
+		"kind": "skill",
+		"key": String(a.get("key", "")),
+		"level": 1,
+		"attack_range": SKILL_ATTACK_RANGE,
+		"targets": [{"id": target_id, "part": part_key}],
+	}
+
+
+## Self-skill pick (no part step): the pick IS the confirm moment.
+func _open_self_preview(key: String) -> void:
+	if _gc == null:
+		_on_skill(key)
+		return
+	var action := {"kind": "skill", "key": key, "level": 1}
+	var probe: Dictionary = _gc.preview_action(_active_actor, action)
+	var spec: Dictionary = SkillBook.mechanics(key, 1)
+	_pending_confirm = {"kind": "self", "key": key}
+	var display := _preview_display(key.replace("_", " ").to_upper(),
+		"%s → SELF" % _display_name_for(_active_actor), probe, String(spec.get("archetype", "")))
+	# Honest self-effect line straight from the SkillBook numbers.
+	var lines: Array = display.get("result_lines", [])
+	match String(spec.get("archetype", "")):
+		"self_guard":
+			lines.append({"text": "▸ Buffers the next Crush/Burn hit by %d (guard then consumed)."
+				% int(spec.get("guard_amount", 1)), "color": UI.col(UI.SUCCESS)})
+		"self_stance":
+			lines.append({"text": "▸ +%d Charm effect while dancing — ends when hit, knocked prone, or attacking."
+				% int(spec.get("charm_bonus", 1)), "color": UI.col(UI.SUCCESS)})
+	display["result_lines"] = lines
+	_shell.show_action_preview(display)
+
+
+## COMBINED STRIKE pick: previews the R15 merged gate before committing both
+## contestants. CONFIRM calls the direct _on_combined_strike (v1 command shape).
+func _open_combo_preview() -> void:
+	if _gc == null:
+		return
+	var boss := _boss_id()
+	if boss == "":
+		_momus("No boss on the board.")
+		return
+	if not _combo_ready():
+		_momus("DENIED · COMBINED STRIKE NEEDS BOTH CONTESTANTS READY")
+		return
+	var members: Array = []
+	var names: Array = []
+	for m in COMBO_MEMBERS:
+		names.append(_display_name_for(String(m[0])))
+		members.append({"actor_id": String(m[0]), "action": {
+			"kind": "skill",
+			"key": String(m[1]),
+			"level": 1,
+			"attack_range": SKILL_ATTACK_RANGE,
+			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
+		}})
+	var probe: Dictionary = _gc.preview_action(String(COMBO_MEMBERS[0][0]), {"combo_members": members})
+	_pending_confirm = {"kind": "combo"}
+	var route := "%s → %s · %s" % [" + ".join(PackedStringArray(names)),
+		_display_name_for(boss), _part_label(BOSS_DEFAULT_PART)]
+	_shell.show_action_preview(_preview_display("COMBINED STRIKE", route, probe, "committed_strike"))
+
+
+## ActionPreview display dict from a probe result. Every number shown comes
+## from the probe (or SkillBook) — the panel invents nothing.
+func _preview_display(title: String, route_line: String, probe: Dictionary, archetype: String) -> Dictionary:
+	var cost := int(probe.get("cost", 1))
+	var windup := bool(probe.get("windup", false))
+	var windup_line := ""
+	if windup:
+		windup_line = "⚠ COMMITS THROUGH THE WINDUP — EXPOSED" if archetype == "committed_strike" \
+			else "⚠ COMMITS THROUGH THE WINDUP"
+	var lines: Array = []
+	for rd in probe.get("per_target", []):
+		var r: Dictionary = rd
+		var tgt := _display_name_for(String(r.get("id", "")))
+		var part := _part_label(String(r.get("part", "")))
+		match String(r.get("blocked_reason", "")):
+			"robustness":
+				lines.append({"text": "▸ BLOCKED — robustness (force %d ≤ robustness %d) · net 0"
+					% [int(r.get("force", 0)), int(r.get("robustness", 0))], "color": UI.col(UI.MUTED)})
+			"surface_immunity":
+				lines.append({"text": "▸ BLOCKED — surface immunity · %s %s can't be reached yet"
+					% [tgt, part], "color": UI.col(UI.MUTED)})
+			"fire_heals":
+				lines.append({"text": "▸ WOULD HEAL %s — it drinks fire" % tgt, "color": UI.col(UI.FIRE)})
+			_:
+				lines.append({"text": "▸ NET %d DAMAGE to %s %s (force %d vs robustness %d)"
+					% [int(r.get("net", 0)), tgt, part, int(r.get("force", 0)), int(r.get("robustness", 0))],
+					"color": UI.col(UI.SUCCESS) if int(r.get("net", 0)) > 0 else UI.col(UI.GOLD)})
+		for cid in r.get("conditions", []):
+			var chip := _cond_chip_data(String(cid), 1)
+			lines.append({"text": "   + %s would ride the wound" % String(cid).to_upper(),
+				"color": chip.get("color", UI.col(UI.TEXT))})
+		if bool(r.get("dodge_possible", false)):
+			lines.append({"text": "   ⚠ %s may dodge — threshold %d+" % [tgt, int(r.get("dodge_threshold", 0))],
+				"color": UI.col(UI.GOLD)})
+	if probe.has("merged"):
+		var mg: Dictionary = probe.get("merged", {})
+		lines.append({"text": "Σ MERGED FORCE %d vs ROBUSTNESS %d → NET %d (one linked hit)"
+			% [int(mg.get("force", 0)), int(mg.get("robustness", 0)), int(mg.get("net", 0))],
+			"color": UI.col(UI.GOLD)})
+	if lines.is_empty():
+		lines.append({"text": "Self action — no target.", "color": UI.col(UI.TEXT)})
+	var prime := String(probe.get("prime_unmet", ""))
+	return {
+		"title": title,
+		"route_line": route_line,
+		"cost_line": "MOMENT COST %d" % cost,
+		"windup_line": windup_line,
+		"result_lines": lines,
+		"prime_line": "" if prime == "" else "✕ PRIME UNMET · %s — cannot declare"
+			% prime.replace(":", " ").replace("_", " ").to_upper(),
+		"confirm_enabled": prime == "",
+	}
+
+
+func _on_preview_confirmed() -> void:
+	var pending := _pending_confirm
+	_pending_confirm = {}
+	_shell.hide_action_preview()
+	match String(pending.get("kind", "")):
+		"part":
+			_on_inspector_part(String(pending.get("part", "")))
+		"self":
+			_on_skill(String(pending.get("key", "")))
+		"combo":
+			_on_combined_strike()
+
+
+func _on_preview_back() -> void:
+	_pending_confirm = {}
+	_shell.hide_action_preview()
+	if not _armed.is_empty():
+		_momus("BACK — still armed: pick a part row in the inspector (Esc cancels)")
+	refresh()
+
+
+## INTERACTIVE END TURN (spec Area 12): the button opens the confirmation;
+## its CONFIRM calls the direct _on_end_turn (v1 semantics, driver surface).
+func _on_end_turn_pressed() -> void:
+	if not confirm_enabled or _gc == null:
+		_on_end_turn()
+		return
+	_close_flyout()
+	_shell.hide_action_preview()
+	_pending_confirm = {}
+	_shell.show_end_turn_confirm(_end_turn_display())
+
+
+func _on_end_turn_confirmed() -> void:
+	_shell.hide_end_turn_confirm()
+	_on_end_turn()
+
+
+func _on_end_turn_cancelled() -> void:
+	_shell.hide_end_turn_confirm()
+	refresh()
+
+
+## EndTurnConfirmation display dict — every line from the read-only views
+## (view_clock / view_turn_order / view_schedule / view_combatants).
+func _end_turn_display() -> Dictionary:
+	var clock: Dictionary = _gc.view_clock()
+	var tick := int(clock.get("tick", 0))
+	var next_tick := tick + 1
+	var order: Array = _gc.view_turn_order()
+	var active_entry: Dictionary = {}
+	for e in order:
+		if String((e as Dictionary).get("id", "")) == _active_actor:
+			active_entry = e
+			break
+	var who := _display_name_for(_active_actor)
+	var actor_line := "%s will wait." % who
+	if bool(active_entry.get("windup_pending", false)):
+		actor_line = "%s is committed — the windup keeps rolling." % who
+	elif not bool(active_entry.get("ready", true)):
+		actor_line = "%s has declared this Moment." % who
+	var next_line := ""
+	for e in order:
+		var ed: Dictionary = e
+		if String(ed.get("id", "")) != _active_actor:
+			next_line = "NEXT TO ACT · %s" % String(ed.get("name", "")).to_upper()
+			break
+	var resolve_lines: Array = []
+	for rd in _gc.view_schedule():
+		var r: Dictionary = rd
+		if int(r.get("resolve_tick", -1)) != next_tick:
+			continue
+		var rid := String(r.get("actor", ""))
+		var enemy := not _is_party(rid)
+		var text := "⚔ %s — %s resolves" % [_display_name_for(rid),
+			String(r.get("key", "")).replace("_", " ").to_upper()]
+		if bool(r.get("windup", false)):
+			text += " (committed windup)"
+		resolve_lines.append({"text": text,
+			"color": UI.col(UI.DANGER) if enemy else UI.col(UI.CYAN)})
+	var cond_lines: Array = []
+	for cd in _last_combatants:
+		var c: Dictionary = cd
+		if String(c.get("team", "")) != "party":
+			continue
+		for pd in c.get("parts", []):
+			var p: Dictionary = pd
+			var conds: Dictionary = p.get("conditions", {})
+			var cond_keys: Array = conds.keys()
+			cond_keys.sort()
+			for cid in cond_keys:
+				if not ["bleeding", "burn", "poison"].has(String(cid)):
+					continue
+				var chip := _cond_chip_data(String(cid), int(conds[cid]))
+				cond_lines.append({
+					"text": "%s · %s %s — keeps ticking" % [String(chip.get("text", "")),
+						String(c.get("name", "")).to_upper(), _part_label(String(p.get("key", "")))],
+					"color": chip.get("color", UI.col(UI.TEXT)),
+				})
+	return {
+		"actor_line": actor_line,
+		"clock_line": "CLOCK %d · MOMENT %02d  →  CLOCK %d · MOMENT %02d" % [
+			int(tick / 10) + 1, 10 - (tick % 10), int(next_tick / 10) + 1, 10 - (next_tick % 10)],
+		"next_line": next_line,
+		"resolve_lines": resolve_lines,
+		"cond_lines": cond_lines,
+	}
+
+
 func _on_card_clicked(id: String) -> void:
 	_selected_id = id
 	_focus_id = id
@@ -448,8 +746,9 @@ func _close_flyout() -> void:
 	_update_launcher()
 
 
-## Esc / right-click: close the topmost transient thing (log > armed action >
-## flyout > move targeting) — spec Areas 3/10 close rules.
+## Esc / right-click: close the topmost transient thing (log > end-turn
+## confirmation > action preview [= BACK, one step] > armed action > flyout >
+## move targeting) — spec Areas 3/10/12 close rules.
 func _unhandled_input(event: InputEvent) -> void:
 	var esc: bool = event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE
 	var rmb: bool = event is InputEventMouseButton and event.pressed \
@@ -458,6 +757,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _shell != null and _shell.event_log.visible:
 		_close_log()
+	elif _shell != null and _shell.end_turn_confirm.visible:
+		_on_end_turn_cancelled()
+	elif _shell != null and _shell.action_preview.visible:
+		_on_preview_back()
 	elif not _armed.is_empty():
 		_armed = {}
 		_momus("Cancelled.")
@@ -526,12 +829,35 @@ func _bind_timeline(order: Array) -> void:
 			"boss": id == _boss_id_cache,
 			"windup": bool(ed.get("windup_pending", false)),
 		})
+	# Phase 2 — declared-action bars (Area 4): one bar per pending schedule row,
+	# spanning declared -> resolve slot on the lap (clamped; carry-over marked).
+	var bars: Array = []
+	for rd in _gc.view_schedule():
+		var r: Dictionary = rd
+		var rid := String(r.get("actor", ""))
+		var from_raw := int(r.get("declared_tick", 0)) - lap0
+		var to_raw := int(r.get("resolve_tick", 0)) - lap0
+		var key_label := String(r.get("key", "")).replace("_", " ").to_upper()
+		bars.append({
+			"from_slot": clampi(from_raw, 0, 9),
+			"to_slot": clampi(maxi(to_raw, from_raw), 0, 9),
+			"carry": to_raw > 9,
+			"windup": bool(r.get("windup", false)),
+			"enemy": not _is_party(rid),
+			"emoji": _emoji_for_id(rid),
+			"label": key_label,
+			"name": "%s — %s · declared M%02d, resolves M%02d%s" % [
+				_display_name_for(rid), key_label,
+				10 - (int(r.get("declared_tick", 0)) % 10), 10 - (int(r.get("resolve_tick", 0)) % 10),
+				" (windup)" if bool(r.get("windup", false)) else ""],
+		})
 	_shell.timeline.update({
 		"clock_no": clock_no,
 		"moment": moment,
 		"slot_now": tick % 10,
 		"next_reset": "NEXT RESET · CLOCK %d" % (clock_no + 1),
 		"markers": markers,
+		"bars": bars,
 	})
 
 
