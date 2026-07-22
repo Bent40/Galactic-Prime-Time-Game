@@ -541,10 +541,16 @@ func test_20_forced_action_requirements_gate() -> void:
 	assert_eq(String(body_forced.get("table", "")), "body", "Body table")
 
 
-## 21. "Combined action: two linked same-tick attacks merge into a single hit
-##     for breach checks (7+); an assist satisfies a partner's requirement; a
-##     Forced Action on one partner degrades but does not cancel the others'
-##     contributions [R15]."
+## 21. "Combined action: two linked same-tick attacks MERGE FORCE into a single
+##     hit — one robustness gate, one net-damage application — clearing breach
+##     checks (7+) no lone attacker can; an assist satisfies a partner's
+##     requirement; a Forced Action on one partner degrades but does not cancel
+##     the others' contributions [R15]."
+##     MODEL CHANGE (merged force, closes the R14 TODO): linked strikes used to
+##     land as SEPARATE per-strike damage applications whose amounts merely
+##     summed for the breach threshold (record_hit). They now merge BEFORE the
+##     robustness gate: net = max(0, F1 + F2 − Robustness) as ONE damage_applied
+##     + a combined_force event. Every damage number below is recomputed for it.
 func test_21_combined_action() -> void:
 	# A boss whose surface immunity breaches only on a SINGLE hit >= 7 (NQ2 ruling).
 	var boss_spec: Dictionary = {
@@ -563,9 +569,8 @@ func test_21_combined_action() -> void:
 
 	# (a1) a lone 4-NET-damage hit is below the single-hit threshold — no breach.
 	# R14: the boss's Robustness = floor(physique 6 / 2) = 3 and each phys-5 partner
-	# adds floor(5/2) = 2 to Force, so a raw 5 nets 5 + 2 − 3 = 4 — the designed
-	# per-partner 4. (Bumped 4 → 5 across this combo to hold the "4 each / 8 merged"
-	# arithmetic under R14.)
+	# adds floor(5/2) = 2 to Force, so a raw 5 nets 5 + 2 − 3 = 4 solo — well below
+	# 7. Only the MERGED gate in (a2) clears it (R15 merged force).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "p1", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
 	sim.apply_command({"type": "add_combatant", "combatant": boss_spec})
@@ -575,7 +580,10 @@ func test_21_combined_action() -> void:
 	assert_false(sim.combatants["boss"].breached, "boss stays armored after one small hit")
 	assert_true(bool(sim.combatants["boss"].parts["network"].get("hidden", false)), "the network stays hidden")
 
-	# (a2) a combined action merges two 4-damage linked hits into one 8-damage hit.
+	# (a2) a combined action MERGES the linked strikes' FORCE before the gate:
+	# each partner's Force = 5 + floor(phys 5 / 2) = 7, merged 7 + 7 = 14 −
+	# Robustness 3 = ONE 11-net hit (old model: two separate 4-damage hits that
+	# summed to 8 only for the breach threshold). 11 ≥ 7 → breach.
 	var sim2: CombatSim = make_sim()
 	add_human(sim2, "p1", {"position": [0, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
 	add_human(sim2, "p2", {"position": [2, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
@@ -587,8 +595,14 @@ func test_21_combined_action() -> void:
 	assert_event(combo, "combined_action_declared", "the combo is one linked declaration set")
 	assert_eq(events_of(combo, "action_declared").size(), 2, "each partner pays its own Moment cost")
 	var merged: Array[Dictionary] = advance(sim2)
-	assert_eq(events_of(merged, "damage_applied").size(), 2, "both partners' hits land this tick")
-	assert_event(merged, "breach_opened", "4+4 merged into one 8-damage hit clears the 7+ breach")
+	assert_eq(events_of(merged, "damage_applied").size(), 1, "the linked strikes land as ONE merged hit (R15 merged force)")
+	var cf_a: Dictionary = assert_event(merged, "combined_force", "the merged gate is surfaced as one combined_force event")
+	assert_eq(int(cf_a.get("force", -1)), 14, "merged Force (5+2) + (5+2) = 14")
+	assert_eq(int(cf_a.get("robustness", -1)), 3, "one merged gate: boss Robustness floor(6/2) = 3")
+	assert_eq(int(cf_a.get("net", -1)), 11, "net = 14 − 3 = 11")
+	var dmg_a: Dictionary = assert_event(merged, "damage_applied", "one merged damage application")
+	assert_eq(int(dmg_a.get("amount", -1)), 11, "the one hit carries the full merged net")
+	assert_event(merged, "breach_opened", "the 11-net merged hit clears the 7+ single-hit breach")
 	assert_true(sim2.combatants["boss"].breached, "surface immunity broken by the combined hit")
 	assert_false(bool(sim2.combatants["boss"].parts["network"].get("hidden", false)), "the network is now exposed")
 
@@ -612,15 +626,18 @@ func test_21_combined_action() -> void:
 	var res_b: Array[Dictionary] = advance(sim3)
 	assert_event(res_b, "combo_assist_applied", "the brace supplies weak's Physique requirement")
 	assert_no_event(res_b, "forced_action_triggered", "a satisfied requirement rolls no d6")
-	# R14: unhalved nets differ by physique against target "t" (Robustness
-	# floor(physique 3 / 2) = 1) — strong (phys 5): 4 + floor(5/2) − 1 = 5;
-	# weak (phys 2): 4 + floor(2/2) − 1 = 4. A HALVED weak would be raw 2 → net 2,
-	# so seeing net 4 (not 2) proves the assist supplied the requirement unhalved.
-	var b_amounts: Array[int] = []
-	for dmg: Dictionary in events_of(res_b, "damage_applied"):
-		b_amounts.append(int(dmg.get("amount", -1)))
-	b_amounts.sort()
-	assert_eq(b_amounts, [4, 5], "both partners deal full, unhalved damage — weak 4, strong 5, neither halved")
+	# R15 merged force (was: separate per-strike amounts [4, 5]): the partners'
+	# linked strikes on the same target+part now land as ONE merged hit. Unhalved
+	# Forces — strong (phys 5): 4 + floor(5/2) = 6; weak (phys 2): 4 + floor(2/2)
+	# = 5 — merge to 11; target "t" Robustness = floor(physique 3 / 2) = 1, so
+	# net = 11 − 1 = 10. A HALVED weak (raw 4 → 2) would contribute Force 3 for a
+	# net of 8, so seeing net 10 proves the assist supplied the requirement unhalved.
+	assert_eq(events_of(res_b, "damage_applied").size(), 1, "one merged damage application (R15 merged force)")
+	var cf_b: Dictionary = assert_event(res_b, "combined_force", "the assisted combo resolves through one merged gate")
+	assert_eq(int(cf_b.get("force", -1)), 11, "merged Force (4+2) + (4+1) = 11 — weak unhalved")
+	assert_eq(int(cf_b.get("net", -1)), 10, "net = 11 − 1 = 10 (a halved weak would net 8)")
+	var dmg_b: Dictionary = assert_event(res_b, "damage_applied", "the merged hit lands")
+	assert_eq(int(dmg_b.get("amount", -1)), 10, "full, unhalved merged damage — neither partner halved")
 
 	# (c) a Forced Action on one partner degrades ONLY that partner.
 	var sim4: CombatSim = make_sim()
@@ -645,8 +662,18 @@ func test_21_combined_action() -> void:
 		if String(resolved.get("actor", "")) == "ok":
 			ok_undegraded = not bool(resolved.get("halved", true))
 	assert_true(ok_undegraded, "the healthy partner resolves un-degraded — the combo is not cancelled")
-	var ok_full_damage: bool = false
-	for dmg: Dictionary in events_of(res_c, "damage_applied"):
-		if int(dmg.get("amount", -1)) == 4:
-			ok_full_damage = true
-	assert_true(ok_full_damage, "ok's full 4 damage lands despite fail's Forced Action")
+	# R15 merged force (was: ok's separate 4-damage hit): the degraded combo still
+	# resolves as ONE merged gate. ok (phys 3): Force 4 + floor(3/2) = 5. fail
+	# (phys 2): halved raw 4 → 2, Force 2 + floor(2/2) = 3 — UNLESS the Tool d6
+	# whiffs fail entirely (the one negating consequence, D6), in which case fail
+	# contributes no Force and ok's strike lands alone. Target "t" Robustness =
+	# floor(3/2) = 1. Seed 1234 rolls a 1 → WHIFF: ok-only merge, net 5 − 1 = 4
+	# (a both-connect run would net (5 + 3) − 1 = 7 — asserted on that branch).
+	var cf_c: Dictionary = assert_event(res_c, "combined_force", "the degraded combo still resolves through the merged gate")
+	if String(forced.get("consequence", "")) == "whiff":
+		assert_eq(cf_c.get("actors", []), ["ok"], "the whiffed partner contributes no Force to the merge")
+		assert_eq(int(cf_c.get("net", -1)), 4, "ok-only merge: Force 5 − Robustness 1 = 4")
+	else:
+		assert_eq(int(cf_c.get("net", -1)), 7, "degraded merge: (5 + 3) − 1 = 7 — fail halved, not cancelled")
+	var dmg_c: Dictionary = assert_event(res_c, "damage_applied", "ok's contribution lands despite fail's Forced Action")
+	assert_eq(int(dmg_c.get("amount", -1)), int(cf_c.get("net", -2)), "one damage application, equal to the merged net")

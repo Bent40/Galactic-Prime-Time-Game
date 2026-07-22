@@ -20,6 +20,12 @@ var cond: ConditionEngine
 var rng: RandomNumberGenerator
 var ai: EnemyAI
 
+## R15 merged-force groups for the CURRENT resolve_due batch ONLY (never across
+## commands — built by _prescan_merge_groups, flushed + cleared before resolve_due
+## returns, so serialization stays trivially correct: the field is always empty
+## between commands). Key "combo_id|target_id|part" -> group Dictionary.
+var _merge_groups: Dictionary = {}
+
 
 func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngine, rng_ref: RandomNumberGenerator, ai_ref: EnemyAI) -> void:
 	clock = clock_ref
@@ -528,7 +534,9 @@ func reaction(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 func resolve_due(snapshot: Dictionary) -> Dictionary:
 	var events: Array[Dictionary] = []
 	var forced_queue: Array[Dictionary] = []
-	for entry: Dictionary in clock.take_due(clock.tick):
+	var due: Array[Dictionary] = clock.take_due(clock.tick)
+	_prescan_merge_groups(due)
+	for entry: Dictionary in due:
 		var actor: CombatantState = combatants.get(String(entry["actor"]))
 		if actor == null:
 			continue
@@ -540,7 +548,188 @@ func resolve_due(snapshot: Dictionary) -> Dictionary:
 			events.append({"type": "action_invalidated", "actor": actor.id, "reason": "actor_helpless"})
 			continue
 		events.append_array(_resolve_entry(actor, entry, snapshot, forced_queue))
+	# R15: any merged group whose expected members did not all reach _strike_round
+	# (whiff, invalidated windup, feint collapse, shock stutter, death mid-tick)
+	# still lands what DID connect — flushed before forced consequences apply.
+	events.append_array(_flush_merge_groups())
 	return {"events": events, "forced": forced_queue}
+
+
+# ------------------------------------------------------- merged force (R15)
+
+## R15 merged force (rules-addendum R15 — "combined attacks merge force"; closes
+## the R14 TODO): linked strikes (shared combo_id) that resolve on the SAME tick
+## against the SAME target+part merge their Force values BEFORE the robustness
+## gate — one merged gate, one merged net-damage hit. The pre-scan establishes
+## GROUP MEMBERSHIP only (who is expected to strike); each member's ACTUAL Force
+## is contributed at its own _strike_round — after requirement-halving is known
+## and after its own dodge/surface checks — so the merged hit is always built
+## from real, resolved contributions and the AI d6 stream is consumed in exactly
+## the same order as un-merged play. Solo strikes (no combo_id, or a group of
+## one) are completely unchanged.
+func _prescan_merge_groups(due: Array[Dictionary]) -> void:
+	_merge_groups.clear()
+	for entry: Dictionary in due:
+		var action: Dictionary = entry["action"]
+		var combo_id := String(action.get("combo_id", ""))
+		if combo_id == "":
+			continue
+		var kind := String(action.get("kind", ""))
+		if kind != "attack" and kind != "skill":
+			continue
+		var targets: Array = action.get("targets", [])
+		if targets.is_empty():
+			continue
+		var t: Dictionary = targets[0]
+		var key := "%s|%s|%s" % [combo_id, String(t.get("id", "")), String(t.get("part", ""))]
+		if not _merge_groups.has(key):
+			_merge_groups[key] = {
+				"combo_id": combo_id,
+				"target_id": String(t.get("id", "")),
+				"part": String(t.get("part", "")),
+				"pending": 0,      # expected _strike_round check-ins still outstanding
+				"connected": [],   # [{actor, force, condition, injection, poison_type}] in check-in order
+				"applied": false,
+			}
+		var group: Dictionary = _merge_groups[key]
+		group["pending"] = int(group["pending"]) + 1
+	# A lone linked strike (no partner due on this tick+target+part) is a solo
+	# strike — drop its group so the un-merged path handles it unchanged. (Its
+	# recorded hit still accumulates per combo_id for the breach threshold.)
+	for key: Variant in _merge_groups.keys():
+		if int((_merge_groups[key] as Dictionary)["pending"]) < 2:
+			_merge_groups.erase(key)
+
+
+## The merged group this strike round belongs to, or {} for the solo path.
+## Only Physical-path strikes merge force (R14: the force-vs-robustness model
+## governs the Physical HP number; Affliction/Psychic keep reduce_damage and are
+## not force-gated) — a non-Physical member drops out and resolves solo.
+func _merge_group_for(action: Dictionary, target: CombatantState, part_key: String) -> Dictionary:
+	var combo_id := String(action.get("combo_id", ""))
+	if combo_id == "" or _merge_groups.is_empty():
+		return {}
+	var group: Dictionary = _merge_groups.get("%s|%s|%s" % [combo_id, target.id, part_key], {})
+	if group.is_empty() or bool(group.get("applied", false)):
+		return {}  # post-application rounds (rpm > 1 edge) fall back to solo
+	return group
+
+
+## A member that cannot contribute (dodged, surface-blocked, fire-healed, or
+## non-Physical) drops out: its Force leaves the sum. Closing the group (last
+## expected member accounted for) applies the merged hit NOW.
+func _merge_drop(group: Dictionary, target: CombatantState) -> Array[Dictionary]:
+	group["pending"] = int(group["pending"]) - 1
+	if int(group["pending"]) <= 0:
+		return _merge_apply(group, target)
+	return []
+
+
+## A member that connected contributes its ACTUAL Force (halving already applied
+## to `force`'s amount component) + its condition rider. The LAST member to be
+## accounted for applies the one merged hit.
+func _merge_connect(group: Dictionary, target: CombatantState, condition_id: String, force: int, action: Dictionary, attacker: CombatantState) -> Array[Dictionary]:
+	(group["connected"] as Array).append({
+		"actor": attacker.id if attacker != null else "",
+		"force": force,
+		"condition": condition_id,
+		"injection": bool(action.get("injection", false)),
+		"poison_type": String(action.get("poison_type", "")),
+	})
+	return _merge_drop(group, target)
+
+
+## Applies the ONE merged hit: net = max(0, sum(connected Forces) − Robustness).
+## One damage application, one combined_force event, one recorded hit for the
+## breach threshold. The merged hit is ONE wound: when it LANDS every connected
+## member's condition rides it (a crushing + a bleeding component both apply);
+## blocked to 0, the D3 rule holds (no bleed/burn/poison — non-wound conditions
+## keep today's behavior).
+func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary]:
+	group["applied"] = true
+	var events: Array[Dictionary] = []
+	var connected: Array = group["connected"]
+	if connected.is_empty():
+		return events  # every member missed — nothing lands
+	var part_key := String(group["part"])
+	var sum_force: int = 0
+	var actors: Array = []
+	for m: Variant in connected:
+		sum_force += int((m as Dictionary)["force"])
+		actors.append(String((m as Dictionary)["actor"]))
+	# Robustness (R14): one merged gate. The flat physical reduction uses the
+	# LOWEST value among the component damage types — the merged wound opens
+	# along the least-resisted vector (all zero for the slice roster).
+	var part_armor: int = int((target.parts[part_key] as Dictionary).get("armor", 0))
+	var flat_res: int = -1
+	for m: Variant in connected:
+		var fr: int = Resistance.flat_physical_reduction(target, String((m as Dictionary)["condition"]))
+		flat_res = fr if flat_res < 0 else mini(flat_res, fr)
+	var robustness: int = floori(target.trait_total("physique") / 2.0) + part_armor + maxi(0, flat_res)
+	var landed: bool = sum_force > robustness
+	var reduced: int = maxi(0, sum_force - robustness)
+	events.append({
+		"type": "combined_force", "combo_id": String(group["combo_id"]),
+		"combatant": target.id, "part": part_key,
+		"actors": actors, "force": sum_force, "robustness": robustness, "net": reduced,
+	})
+	# self_guard (brace): the merged hit is ONE wound — a Crush/Burn component
+	# lets the buffered guard absorb it once, exactly like a solo hit.
+	var crush_or_burn: bool = false
+	for m: Variant in connected:
+		var cid := String((m as Dictionary)["condition"])
+		if cid == "crushed" or cid == "burn":
+			crush_or_burn = true
+	if target.brace_guard > 0 and crush_or_burn:
+		var before_guard: int = reduced
+		reduced = maxi(0, reduced - target.brace_guard)
+		events.append({
+			"type": "brace_absorbed", "combatant": target.id, "part": part_key,
+			"guard": target.brace_guard, "condition": String((connected[0] as Dictionary)["condition"]),
+			"damage_before": before_guard, "damage_after": reduced,
+		})
+		target.brace_guard = 0
+	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", String((connected[0] as Dictionary)["condition"]), clock.tick))
+	if target.dancing and reduced > 0:
+		events.append_array(_end_dance(target, "hit"))
+	# ONE recorded hit for the single-hit breach threshold (R15/NQ2).
+	target.record_hit(String(group["combo_id"]), reduced)
+	for m: Variant in connected:
+		var md: Dictionary = m
+		var cid := String(md["condition"])
+		if not target.alive or cid == "":
+			continue
+		var cdef: Dictionary = cond.def_for(cid)
+		if _condition_needs_wound(cid, cdef) and not landed:
+			events.append({
+				"type": "attack_no_wound", "combatant": target.id, "part": part_key,
+				"condition": cid, "force": sum_force, "robustness": robustness,
+			})
+		else:
+			events.append_array(cond.apply(target, part_key, cid, clock.tick, {
+				"source": "attack",
+				"injection": bool(md["injection"]),
+				"poison_type": String(md["poison_type"]),
+			}))
+	return events
+
+
+## End-of-batch safety net (see resolve_due): applies every un-applied group
+## (sorted key order — deterministic), then clears the transient table.
+func _flush_merge_groups() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var keys: Array = _merge_groups.keys()
+	keys.sort()
+	for key: Variant in keys:
+		var group: Dictionary = _merge_groups[key]
+		if bool(group["applied"]):
+			continue
+		var target: CombatantState = combatants.get(String(group["target_id"]))
+		if target == null or not target.parts.has(String(group["part"])):
+			continue
+		events.append_array(_merge_apply(group, target))
+	_merge_groups.clear()
+	return events
 
 
 func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
@@ -636,7 +825,11 @@ func _strike_via_spec(actor: CombatantState, entry: Dictionary, snapshot: Dictio
 
 ## committed_strike (strong_strike, overhead_slam): a windup single strike. The
 ## Exposed rider is set at declare; here overhead_slam's knockdown lands Prone on
-## any standing target that actually took the hit.
+## any standing target that actually took the hit. R15 note: in a MERGED group
+## the one damage_applied is emitted by the group's closing member, so a
+## non-closing overhead_slam member's knockdown does not fire — the demo combo
+## (strong_strike, knockdown=false) is unaffected; revisit if a knockdown skill
+## joins a combo.
 func _resolve_committed_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
 	if bool(spec.get("knockdown", false)):
@@ -959,6 +1152,11 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	var events: Array[Dictionary] = []
 	if not target.parts.has(part_key):
 		return events
+	# R15 merged force: is this strike a member of a same-tick merged group?
+	# ({} on the solo path — the overwhelming default — and outside resolve_due.)
+	var group: Dictionary = _merge_group_for(action, target, part_key)
+	var cond_def: Dictionary = cond.def_for(condition_id)
+	var is_physical: bool = String(cond_def.get("resistance_type", "")) == "Physical"
 	# Boss hook: fire heals (Incinedile) — Burn damage restores the part. EXCEPT a
 	# `fire_harms` part (the mycelium network): fire HARMS it like the fungus it is
 	# (owner ruling 2026-07-20), so it takes the burn damage + condition normally.
@@ -967,11 +1165,15 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		var part: Dictionary = target.parts[part_key]
 		part["hp"] = mini(target.max_hp(part_key), int(part["hp"]) + amount)
 		events.append({"type": "healed", "combatant": target.id, "part": part_key, "amount": amount, "source": "fire_heals"})
+		if not group.is_empty():
+			events.append_array(_merge_drop(group, target))  # a healed member adds no Force
 		return events
 	# Boss hook: dodge threshold (I-16, R11 #17) — an aimed round against an
 	# agile boss rolls the AI d6 stream; roll >= threshold negates the round.
 	# Never fires while the boss is Exposed/Helpless (punish windows); the roll
-	# is always emitted (no unlogged randomness).
+	# is always emitted (no unlogged randomness). R15: EACH merged member rolls
+	# its own dodge here, at the same point in the d6 stream as un-merged play;
+	# a dodged member's Force drops out of the merged sum.
 	var dodge: Dictionary = ai.try_dodge(target, clock.tick)
 	if not dodge.is_empty():
 		if bool(dodge.get("dodged", false)):
@@ -979,6 +1181,8 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				"type": "attack_dodged", "combatant": target.id, "part": part_key,
 				"roll": int(dodge.get("roll", 0)), "threshold": int(dodge.get("threshold", 0)),
 			})
+			if not group.is_empty():
+				events.append_array(_merge_drop(group, target))
 			return events
 		events.append({
 			"type": "dodge_failed", "combatant": target.id,
@@ -986,6 +1190,8 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		})
 	if Resistance.part_blocked_by_surface_immunity(target, part_key):
 		events.append({"type": "attack_blocked", "combatant": target.id, "part": part_key, "reason": "surface_immunity"})
+		if not group.is_empty():
+			events.append_array(_merge_drop(group, target))
 		return events
 	# R14 (rules-addendum R14, decision-log #22): the force-vs-robustness gate IS
 	# the damage on the Physical path. Force = the weapon/skill force + the
@@ -994,15 +1200,22 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# only when Force > Robustness. This equals max(0, (amount − flat_res) +
 	# floor(atk_phys/2) − floor(tgt_phys/2) − part_armor), so for equal physique +
 	# no armor it reduces to the old (amount − flat resistance) model.
-	# TODO: R14/R15 — merge linked attackers' Force for combined attacks.
 	var atk_physique: int = attacker.trait_total("physique") if attacker != null else 0
 	var force: int = amount + floori(atk_physique / 2.0)
+	# R15 (rules-addendum R15; the R14 TODO, now closed): a linked Physical strike
+	# CONTRIBUTES its Force to the group instead of resolving alone — the group's
+	# last accounted-for member applies the ONE merged gate + merged net hit (see
+	# _merge_apply). A non-Physical member is not force-gated (R14) and falls back
+	# to the solo path below, its Force leaving the merged sum.
+	if not group.is_empty():
+		if is_physical:
+			events.append_array(_merge_connect(group, target, condition_id, force, action, attacker))
+			return events
+		events.append_array(_merge_drop(group, target))
 	var part_armor: int = int((target.parts[part_key] as Dictionary).get("armor", 0))
 	var flat_res: int = Resistance.flat_physical_reduction(target, condition_id)
 	var robustness: int = floori(target.trait_total("physique") / 2.0) + part_armor + flat_res
 	var landed: bool = force > robustness
-	var cond_def: Dictionary = cond.def_for(condition_id)
-	var is_physical: bool = String(cond_def.get("resistance_type", "")) == "Physical"
 	# The force-vs-robustness model governs the PHYSICAL HP number; Affliction/
 	# Psychic keep today's reduce_damage (flat/tier-immunity handled elsewhere) and
 	# are NOT force-gated.
