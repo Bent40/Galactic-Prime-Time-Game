@@ -45,10 +45,12 @@ const SEED: int = 14
 ## All combat magnitudes below are PLACEHOLDER (R14) — the whole point of the trace
 ## is to let the owner FEEL them, not to bless them.
 const POKE: int = 5          # cosmetic pre-breach chip damage to a visible part
-## Each half of the combined breach hit. R14 (decision-log #22): the boss's
-## Robustness = floor(physique 6 / 2) = 3, so a raw 6 nets IMANI (phys 5)
-## 6 + floor(5/2) − 3 = 5 and DARIO (phys 2) 6 + floor(2/2) − 3 = 4 — merged 9 ≥ 7,
-## clearing the single-hit breach threshold. (Pre-R14 this was 4 → merged 8.)
+## Each half of the combined breach hit. R15 MERGED FORCE (the R14 TODO, now
+## implemented): the linked halves merge BEFORE the robustness gate — IMANI
+## (phys 5) Force 6 + 2 = 8 and DARIO (phys 2) Force 6 + 1 = 7 merge to 15 −
+## Robustness floor(6/2) = 3 → ONE 12-net hit ≥ 7, clearing the single-hit
+## breach threshold. (Pre-merged-force these landed as separate 5- and 4-damage
+## hits that summed to 9 only for the threshold.)
 const BREACH_HALF: int = 6
 const NET_HIT: int = 9       # damage per contestant into the exposed network
 
@@ -251,7 +253,14 @@ func _fmt(e: Dictionary, tick: int) -> String:
 			var names: Array = []
 			for m: Variant in e.get("members", []):
 				names.append(_who(m))
-			return "[COMBO] %s link up (linked strikes merge into ONE hit for the breach threshold)" % " + ".join(names)
+			return "[COMBO] %s link up (linked strikes MERGE FORCE into one gate + one hit, R15)" % " + ".join(names)
+		"combined_force":
+			var actors: Array = []
+			for a: Variant in e.get("actors", []):
+				actors.append(_who(a))
+			return "[MERGED FORCE] %s: force %d vs robustness %d = ONE %d-net hit on %s" % [
+				" + ".join(actors), int(e.get("force", 0)), int(e.get("robustness", 0)),
+				int(e.get("net", 0)), String(e.get("part", ""))]
 		"combo_assist_applied":
 			return "  . assist covers %s's requirement (teamwork UNLOCKS the hit)" % _who(e.get("actor"))
 		"breach_opened":
@@ -381,10 +390,10 @@ func _clock1() -> void:
 		+ _cmd({"type": "treat", "target": DARIO, "part": "torso", "condition": "burn", "mode": "resolve"}))
 	_adv(3, "-- resolve M7 --")
 
-	# M6 (t4): THE DISCOVERY — a combined action merges into a 7+ hit -> breach.
+	# M6 (t4): THE DISCOVERY — the linked strikes MERGE FORCE into a 7+ hit -> breach.
 	_beat(4, "IMANI + DARIO time a COMBINED strike on the flamethrower arm — the party's designed path in.",
 		_cmd(_combo("left_hand")))
-	_adv(4, "-- resolve M6: 4+4 merge into one 8-damage hit --")
+	_adv(4, "-- resolve M6: merged force 8+7 = 15 − 3 = one 12-net hit --")
 
 	# M5 (t5): the escalating Bit tops out.
 	_beat(5, "DARIO milks the reveal — third Bit of the run.",

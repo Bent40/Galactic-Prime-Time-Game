@@ -1,9 +1,17 @@
 extends SceneTree
 ## HUD INTERACTION DRIVER (KAN-6) — proves the combat HUD is PLAYABLE: it drives a
 ## scripted CLICK SEQUENCE through the SAME handler methods the HUD's buttons call
-## (hud._on_camera_call / _declare_skill_attack / _on_bit / _on_end_turn), rendering
+## (hud._on_camera_call / _on_combined_strike / _on_bit / _on_end_turn), rendering
 ## a PNG after each step so the live loop can be verified by eye. Each command goes
 ## through GameController.apply_command; the HUD re-binds off the resulting sim_event.
+##
+## THE BREACH PATH IS THE HUD'S REAL ONE (R15 merged force): the COMBINED STRIKE
+## button links Imani's strong_strike + Dario's pressure_strike into one
+## combined_action; the sim merges their Forces before the robustness gate —
+## Imani (6 + floor(5/2)) + Dario (2 + floor(2/2)) = 11 − Robustness 3 = net 8
+## ≥ 7 → BREACH. No lone HUD input clears the threshold (Imani's best solo nets
+## 5; Dario's bleed is blocked outright) — the linked strike is the designed
+## human path, and this driver proves it exists on the actual buttons.
 ##
 ## Run:  xvfb-run -a godot --path . -s scripts/hud_interact.gd
 ##   (NOT --headless — a real GL renderer is needed to capture the framebuffer;
@@ -82,28 +90,32 @@ func _initialize() -> void:
 	await _render("hud_step1.png")
 	_probe("step1 (camera call + bit)")
 
-	# ---- STEP 2: attack the flamethrower arm + END TURN ------------------------
-	# FEINT declares a real bleeding attack on left_hand; END TURN resolves it.
-	hud._declare_skill_attack(DARIO, "feint")
-	hud._on_end_turn()
+	# ---- STEP 2: COMBINED STRIKE — the party's designed breach path ------------
+	# The new action-bar button links Imani's strong_strike + Dario's
+	# pressure_strike (both cost-2 windups, shared combo_id "party_combo") onto
+	# the flamethrower arm. The declaration renders with both WINDUP markers up.
+	hud._on_combined_strike()
 	await _render("hud_step2.png")
-	_probe("step2 (one feint resolved — arm bleeds, no breach yet)")
+	_probe("step2 (combined strike declared — both wind up)")
 
-	# ---- STEP 3: keep attacking until the BREACH -------------------------------
-	# The next bleeding hit advances bleeding T1 -> T2 (one attack-advance per tick),
-	# which is the boss's condition_tier breach — the network unmasks.
+	# ---- STEP 3: END TURN through the windup until the BREACH ------------------
+	# The cost-2 windups resolve two Moments after declaration; the sim merges
+	# the linked Forces (8 + 3 = 11 − 3 = net 8 ≥ 7) — breach, network unmasks.
 	var safety := 0
 	while not _boss_breached() and safety < 6:
 		safety += 1
-		hud._declare_skill_attack(DARIO, "feint")
 		hud._on_end_turn()
 	await _render("hud_step3.png")
-	_probe("step3 (BREACH — network exposed)")
+	_probe("step3 (BREACH — merged force 11 − 3 = 8 ≥ 7, network exposed)")
 
-	# ---- STEP 4: THE BIT (escalating spectacle) --------------------------------
+	# ---- STEP 4: pour into the boss + THE BIT ----------------------------------
+	# Post-breach the HUD's skill funnel keeps hammering the flamethrower arm
+	# (BOSS_DEFAULT_PART — network targeting is not in the HUD's v1 surface),
+	# and Dario milks the reveal with a second escalating Bit.
+	hud._on_skill_for(IMANI, "strong_strike")
 	hud._on_bit()
 	await _render("hud_step4.png")
-	_probe("step4 (second bit — spectacle up)")
+	_probe("step4 (follow-up windup + second bit — spectacle up)")
 
 	print("")
 	print("BREACHED = %s   (0 = clean run)" % str(_boss_breached()))

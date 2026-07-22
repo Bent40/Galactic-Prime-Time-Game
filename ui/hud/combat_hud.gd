@@ -5,9 +5,9 @@ extends Control
 ## It reads sim state exclusively through the GameController VIEW API
 ## (view_clock / view_broadcast / view_combatants), subscribes to GameController
 ## signals so it re-renders as the command stream resolves, and drives input the
-## other way: the action bar / skill chips / Camera Call / The Bit / END TURN issue
-## real commands through GameController.apply_command (see the "input -> command"
-## section). It still authors NO sim state — every command is one the sim already
+## other way: the action bar / skill chips / COMBINED STRIKE / Camera Call /
+## The Bit / END TURN issue real commands through GameController.apply_command
+## (see the "input -> command" section). It still authors NO sim state — every command is one the sim already
 ## understands, and the HUD only re-binds off the resulting sim_event.
 ##
 ## Visual identity: docs/ux-designs/demo-slice-2026-07-19/DESIGN.md (the sister
@@ -97,12 +97,24 @@ var _boss_id_cache := ""         # id of the view-flagged boss (view_combatants.
 const BOSS_DEFAULT_PART := "left_hand"  # the flamethrower arm — the designed path in
 const SKILL_ATTACK_RANGE := 2           # demo reach so the slice's spacing lands
 
+## COMBINED STRIKE (R15 merged force): the two contestants' signature strikes as
+## ONE linked declaration set (shared combo_id) — the sim merges the linked
+## Forces before the robustness gate, the party's designed breach path (no lone
+## HUD input can clear the boss's Robustness + 7-burst threshold). Fixture cfg
+## like the contestant panels; both members pay their own Moment cost (R15).
+const COMBO_ID := "party_combo"
+const COMBO_MEMBERS := [
+	["imani", "strong_strike"],
+	["dario", "pressure_strike"],
+]
+
 # bound refs for the input feedback surfaces (set during _build)
 var _spot_title: Label
 var _spot_sub: Label
 var _boss_cond: Label
 var _chyron_line: RichTextLabel
 var _actionbar_who: Label
+var _combo_btn: Control  # COMBINED STRIKE — dimmed while a member is not ready
 
 # fonts
 var f_body: Font
@@ -230,6 +242,51 @@ func _declare_skill_attack(actor_id: String, skill_key: String) -> void:
 			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
 		},
 	}, "%s winds up %s on the flamethrower arm" % [_display_name_for(actor_id), label])
+
+
+## COMBINED STRIKE: issues the sim's combined_action command — Imani's
+## strong_strike + Dario's pressure_strike, linked under COMBO_ID, both on the
+## boss's flamethrower arm. The sim owns every number (SkillBook + merged
+## force); the HUD sends no damage and fakes nothing — each member pays its own
+## cost-2 windup. Clickable only while BOTH members are alive and ready (the
+## button dims otherwise, and a click while unready is rejected via Momus).
+func _on_combined_strike() -> void:
+	if _gc == null:
+		return
+	var boss := _boss_id()
+	if boss == "":
+		_momus("No boss on the board.")
+		return
+	if not _combo_ready():
+		_momus("DENIED · COMBINED STRIKE NEEDS BOTH CONTESTANTS READY")
+		return
+	var members: Array = []
+	for m in COMBO_MEMBERS:
+		members.append({"actor": String(m[0]), "action": {
+			"kind": "skill",
+			"key": String(m[1]),
+			"level": 1,
+			"attack_range": SKILL_ATTACK_RANGE,
+			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
+		}})
+	_issue({"type": "combined_action", "combo_id": COMBO_ID, "members": members},
+		"IMANI and DARIO strike as one — linked force on the flamethrower arm")
+
+
+## Both combo members alive and ready this tick, straight from view_turn_order()
+## (ready = alive && can act && not winding up && next_action_tick <= tick; a
+## dead member simply isn't in the turn order).
+func _combo_ready() -> bool:
+	if _gc == null:
+		return false
+	var ready := {}
+	for e in _gc.view_turn_order():
+		var ed: Dictionary = e
+		ready[String(ed.get("id", ""))] = bool(ed.get("ready", false))
+	for m in COMBO_MEMBERS:
+		if not bool(ready.get(String(m[0]), false)):
+			return false
+	return true
 
 
 func _on_camera_call() -> void:
@@ -1691,6 +1748,10 @@ func _build_actionbar() -> Control:
 	btns.add_child(_action_btn("FEINT", "primary", _on_skill.bind("feint")))
 	btns.add_child(_action_btn("PRESSURE STRIKE", "normal", _on_skill.bind("pressure_strike")))
 	btns.add_child(_action_btn("DANCE", "normal", _on_skill.bind("dance")))
+	# COMBINED STRIKE (R15): the party-wide linked strike — dims via refresh()
+	# whenever a member is not ready (dead / mid-windup / spent this tick).
+	_combo_btn = _action_btn("COMBINED STRIKE", "primary", _on_combined_strike)
+	btns.add_child(_combo_btn)
 	btns.add_child(_action_btn("↔ MOVE", "normal", _on_move))
 	btns.add_child(_action_btn("📸 CAMERA CALL", "cam", _on_camera_call))
 	btns.add_child(_action_btn("🎭 THE BIT", "bit", _on_bit))
@@ -1874,6 +1935,10 @@ func refresh() -> void:
 	_bind_turn_order()      # derives the on-the-clock actor + rail (before arena)
 	_bind_arena()           # live hex board + tokens + boss mask + objective
 	_bind_contestant_panels()
+	# COMBINED STRIKE availability: full when both members are ready, dimmed
+	# otherwise (a click while dimmed is also rejected in _on_combined_strike).
+	if _combo_btn != null:
+		_combo_btn.modulate.a = 1.0 if _combo_ready() else 0.45
 
 
 func _bind_clock() -> void:

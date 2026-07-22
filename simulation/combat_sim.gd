@@ -98,7 +98,7 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 		"reaction":
 			events = resolver.reaction(String(cmd.get("actor", "")), cmd)
 		"combined_action":
-			events = _combined_action(cmd.get("members", []))
+			events = _combined_action(cmd.get("members", []), String(cmd.get("combo_id", "")))
 		"treat":
 			events = _treat(cmd)
 		"heal":
@@ -201,16 +201,23 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 ## R15 — multi-character combined action: a set of LINKED declarations resolving
 ## on the same tick (R2 simultaneity is the substrate; each actor pays its own
 ## Moment cost). Assist `provides` stats satisfy partners' requirements; linked
-## attacks merge into one hit for breach thresholds (see CombatantState.record_hit).
-## A Forced Action on one member degrades only that member — the rest still
-## resolve. v1 scope: members must be instants (cost <= 1) so same-tick resolution
-## is guaranteed. members: [{"actor", "action": {..., "provides"?}}...].
-func _combined_action(members: Array) -> Array[Dictionary]:
+## strikes on the same target+part MERGE FORCE into one gate + one net hit
+## (ActionResolver merged-force pre-scan), and linked hits merge for breach
+## thresholds (CombatantState.record_hit). A Forced Action on one member degrades
+## only that member — the rest still resolve. Members must share ONE nominal
+## Moment cost (instants OR equal-cost windups like two cost-2 skills) so they
+## resolve on the same tick; a per-actor cost penalty (Exhausted) can still
+## desync them, in which case the strikes resolve separately and simply don't
+## merge — the resolve-tick pre-scan is the authority, this gate is the courtesy.
+## members: [{"actor", "action": {..., "provides"?}}...]. An explicit_combo_id
+## ("" = auto) lets a caller name the link (e.g. the HUD's "party_combo").
+func _combined_action(members: Array, explicit_combo_id: String = "") -> Array[Dictionary]:
 	if members.size() < 2:
 		return [{"type": "command_rejected", "reason": "combo_needs_two_members"}]
 	var provides: Dictionary = {}
 	var seen: Dictionary = {}
 	var member_ids: Array[String] = []
+	var shared_cost: int = -1
 	for member: Variant in members:
 		var md: Dictionary = member
 		var aid := String(md.get("actor", ""))
@@ -221,12 +228,17 @@ func _combined_action(members: Array) -> Array[Dictionary]:
 		seen[aid] = true
 		member_ids.append(aid)
 		var act: Dictionary = md.get("action", {})
-		if int(act.get("cost", 1)) > 1:
-			return [{"type": "command_rejected", "reason": "combo_requires_instants", "actor": aid}]
+		var cost: int = _member_nominal_cost(act)
+		if shared_cost < 0:
+			shared_cost = cost
+		elif cost != shared_cost:
+			return [{"type": "command_rejected", "reason": "combo_requires_same_tick", "actor": aid}]
 		var member_provides: Dictionary = act.get("provides", {})
 		for key: Variant in member_provides:
 			provides[String(key)] = maxi(int(provides.get(String(key), 0)), int(member_provides[key]))
-	var combo_id := "combo:%d:%d" % [clock.tick, clock.next_seq]
+	var combo_id := explicit_combo_id
+	if combo_id == "":
+		combo_id = "combo:%d:%d" % [clock.tick, clock.next_seq]
 	var events: Array[Dictionary] = [{
 		"type": "combined_action_declared", "combo_id": combo_id, "members": member_ids,
 	}]
@@ -237,6 +249,18 @@ func _combined_action(members: Array) -> Array[Dictionary]:
 		act["combo_provides"] = provides.duplicate(true)
 		events.append_array(resolver.declare(String(md.get("actor", "")), act))
 	return events
+
+
+## A combo member's nominal Moment cost, mirroring ActionResolver._base_cost's
+## defaults: an explicit action.cost wins; a skill falls back to its SkillBook
+## spec cost; everything else defaults to 1 (the members are strikes).
+func _member_nominal_cost(act: Dictionary) -> int:
+	if act.has("cost"):
+		return int(act["cost"])
+	if String(act.get("kind", "")) == "skill":
+		var spec: Dictionary = SkillBook.mechanics(String(act.get("key", "")), int(act.get("level", 1)))
+		return int(spec.get("cost", 1))
+	return 1
 
 
 ## R1 order of operations for the CURRENT tick:
