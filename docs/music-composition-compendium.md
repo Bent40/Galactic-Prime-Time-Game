@@ -180,6 +180,26 @@ The D#5 falsetto extension is a genuine asset (Penkin-style wordless top layer i
 *(Method: single-take phone clips, YIN tracker, median-smoothed; percentile stats are robust
 to octave blips. Falsetto top is a light D#5, not a belt.)*
 
+**Voice profile v1 — baseline for monthly re-measurement (2026-07-21):**
+
+| Metric | Value | Read |
+|---|---|---|
+| Vibrato | none (straight tone; drift 3.5 Hz, aperiodic) | normal untrained; stylistically fine |
+| Intonation scatter (MAD) | **39 cents** | loosest metric — main practice target |
+| Onset scoop (median) | **+428 c, 71% of onsets** | approaches notes from far below — drill target |
+| Phrase length | median 4.3 s, max 7.9 s | solid breath support already |
+| Jitter / shimmer | 0.41% / 4.1% (indicative) | stable phonation |
+| Chest timbre (slide) | H1-H2 ≈ 0.7 dB, HNR 9.6 dB | firm, pressed low register |
+| Falsetto timbre | H1-H2 ≈ 24 dB, HNR 15.8 dB | pure flute falsetto |
+| Song timbre | H1-H2 ≈ 8.8 dB | moderately breathy comfort tone (on-brand) |
+| Singer's formant | −17 dB ratio; no 2.8–3.2 kHz cluster | not yet developed (expected) |
+| **Registers at A3–C4** | chest 6.8 vs falsetto 9.1 dB H1-H2; HNR ≈ equal | **already converging — small mix gap** |
+
+Priority order from the data: **1)** onset precision (land the note centre from the attack),
+**2)** drone/keyboard pitch-matching to shrink scatter 39→~20 c, **3)** light sirens through
+A3–C4 (the registers nearly meet — cheapest win). Caveats: phone mic + AGC, a-cappella,
+small n; indicative baselines, not clinical.
+
 ---
 
 ## 4 · Tools (decided) & starter kit
