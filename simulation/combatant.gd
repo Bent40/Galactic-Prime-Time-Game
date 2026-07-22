@@ -13,6 +13,11 @@ var id: String = ""
 var display_name: String = ""
 var team: String = ""
 var category: String = "Contestant"  # Contestant / Mob / Elite / Boss
+## The enemy-template key this combatant was built from (from_spec's "enemy"
+## field); "" for race-built contestants and explicit no-template specs.
+## Serialized so the view API's stable display token (view_combatants "token")
+## survives save/load and replay identically.
+var template_key: String = ""
 var size: String = "Medium"
 var position: Vector2i = Vector2i.ZERO
 
@@ -129,6 +134,7 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 		template = _find_template(static_data.get("races", []), String(spec["race"]))
 	elif spec.has("enemy"):
 		template = _find_template(static_data.get("enemies", []), String(spec["enemy"]))
+		c.template_key = String(spec["enemy"])
 		c.category = String(template.get("category", "Mob"))
 	c.category = String(spec.get("category", c.category))
 	c.size = String(spec.get("size", template.get("size", "Medium")))
@@ -363,6 +369,7 @@ func to_dict() -> Dictionary:
 		"display_name": display_name,
 		"team": team,
 		"category": category,
+		"template_key": template_key,
 		"size": size,
 		"position": [position.x, position.y],
 		"parts": parts.duplicate(true),
@@ -420,6 +427,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.display_name = String(data.get("display_name", ""))
 	c.team = String(data.get("team", ""))
 	c.category = String(data.get("category", "Contestant"))
+	c.template_key = String(data.get("template_key", ""))
 	c.size = String(data.get("size", "Medium"))
 	var pos: Array = data.get("position", [0, 0])
 	c.position = Vector2i(int(pos[0]), int(pos[1]))
