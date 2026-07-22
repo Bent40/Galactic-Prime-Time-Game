@@ -151,9 +151,34 @@ thin — your #1), **Johnny Cash** (owning depth via resonance), **Sinatra/Nat K
 (phrasing + breath), Matt Berninger (full expression in a narrow low range), Eddie Vedder
 (chest power), Elvis (baritone↔tenor movement).
 
-**Range analysis:** record 3 clips (low→high comfortable slide · light falsetto slide ·
-20–30 s of a song) and drop them in a session — a pitch-tracker maps your range, passaggio,
-and tessitura, which then picks the keys we write in. **Pending: owner's clips.**
+### Range analysis — MEASURED 2026-07-21 (owner's clips, YIN pitch-track)
+
+| Metric | Result |
+|---|---|
+| Chest floor (sustained) | **D2** |
+| Chest ceiling (connected, no crack — voluntary stop) | **C4** |
+| Falsetto span | **A3 → D#5** (light) |
+| Tessitura (song, p25–p75) | **C3–D#3**, centre **C#3** |
+| Song range actually used | F2 → G3 |
+| Passaggio / mix zone (chest-top ∩ falsetto-floor) | **A3–C4** |
+
+**Voice type: bass-baritone, leaning bass** — D2 sustained floor + comfort centred C#3.
+The D#5 falsetto extension is a genuine asset (Penkin-style wordless top layer is available
+*today*; no mix voice needed for it).
+
+**Personal transposition defaults:**
+- **Female refs (Ado / Cassie Wei / Hana-tan):** sing the melody an octave down, then nudge
+  the key ±2 st so phrase peaks land ≤ G3 (or deliberately in A3–C4 as the "reach" colour).
+- **High male refs (Yosh etc.):** transpose down ~5–7 st; climaxes land F3–G3.
+- **Writing original melodies:** verses orbit **B2–E3**; rises to F3–G3; three climax moves —
+  full chest G3–C4 (the reach), flip to falsetto A3–D5 (colour), or octave-drop for weight.
+- **Default writing keys: D minor or E minor** (majors F / G) — melody naturally spans
+  A2–G3. Use these for the Week-2/4 exercises.
+- **Mix-voice training target = A3–C4** — sirens/lip-trills bridge exactly the zone where
+  chest and falsetto already overlap.
+
+*(Method: single-take phone clips, YIN tracker, median-smoothed; percentile stats are robust
+to octave blips. Falsetto top is a light D#5, not a belt.)*
 
 ---
 
