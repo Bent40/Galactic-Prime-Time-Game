@@ -24,9 +24,12 @@ extends Control
 ##   * ARENA hex board + unit tokens at their LIVE axial positions (view_combatants
 ##     .position), boss network masked until breached; MOVE click-to-target
 ##   * TICK-ORDER rail + ON-THE-CLOCK highlight + turn rotation (view_turn_order)
+##   * boss identity + token emoji + contestant persona/patron chips
+##     (view_combatants.is_boss/token/persona/patron — no part sniffing,
+##     no fixture identity)
 ## PLACEHOLDER-stubbed (laid out faithfully, marked, static content) — see the
 ## inline `# PLACEHOLDER:` notes: GODS-AT-THE-TABLE multipliers + WAGER FEED,
-## contestant persona/patron/skill chips, the flamethrower-cone hazard tint
+## contestant skill chips, the flamethrower-cone hazard tint
 ## (decorative — no sim hazard model), viewer count, REC timer.
 
 const ArenaFloor := preload("res://ui/hud/arena_floor.gd")
@@ -81,8 +84,8 @@ var _arena_off := Vector2.ZERO   # current board offset (board transform)
 var _arena_qr := Vector2i(-2, 3) # current drawn q range (qlo, qhi)
 var _arena_rr := Vector2i(-2, 3) # current drawn r range (rlo, rhi)
 var _last_combatants: Array = [] # cached view_combatants() for re-layout on resize
-var _emoji_map := {}             # id -> token emoji (boss/contestant), rebuilt each refresh
-var _boss_id_cache := ""         # id of the combatant carrying the hidden network
+var _emoji_map := {}             # id -> token emoji (keyed by the view's `token`), rebuilt each refresh
+var _boss_id_cache := ""         # id of the view-flagged boss (view_combatants.is_boss)
 
 ## Per-skill MECHANICS now live in the MODEL (simulation/skill_book.gd), consumed
 ## by ActionResolver's kind=="skill" path. The HUD is presentation only: a skill
@@ -123,8 +126,9 @@ var _obj_status: Label
 # id -> {parts:{key:{val:Label, bar:ProgressBar}}, condbox:HBoxContainer, shock:Label}
 var _cref := {}
 
-# contestant presentation cfg. persona/patron/skills are fixture cfg (no view-API
-# field yet) — see the report's "needs a view-API addition" list.
+# contestant presentation cfg. persona + patron bind LIVE from the widened
+# view_combatants() fields in _bind_contestant (no fixture identity); skills
+# remain fixture cfg (per-loadout skills are not in the view API yet).
 const PART_ORDER := ["head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"]
 const PART_LABEL := {
 	"head": "HEAD", "torso": "TORSO", "left_arm": "L-ARM", "right_arm": "R-ARM",
@@ -310,24 +314,35 @@ func _issue(cmd: Dictionary, flavor := "") -> void:
 		_momus(flavor)
 
 
-## The boss = the combatant carrying a hidden or `network` part (stable pre- AND
-## post-breach: `hidden` clears on breach but the key still contains "network").
+## The boss straight from the view API (`is_boss` = CombatantState.category) —
+## no part sniffing (spectator-contract rule: meaning over internals). "" when
+## no boss is on the roster. Name/signature kept so call sites don't churn.
 func _boss_id() -> String:
 	if _gc == null:
 		return ""
 	for cd in _gc.view_combatants():
 		var c: Dictionary = cd
-		for pd in c.get("parts", []):
-			var p: Dictionary = pd
-			if bool(p.get("hidden", false)) or String(p.get("key", "")).contains("network"):
-				return String(c.get("id", ""))
+		if bool(c.get("is_boss", false)):
+			return String(c.get("id", ""))
 	return ""
 
 
+## Purely-visual display-art table: the view API's stable `token` (enemy
+## template key, else combatant id) -> the token emoji. Unknown tokens fall
+## back to the generic contestant marker.
+const TOKEN_EMOJI := {
+	"incinedile": "🐊",
+	"imani": "🛡️",
+	"dario": "🎭",
+	"roach_dog": "🪳",
+	"little_brother_roach": "🪳",
+}
+const TOKEN_EMOJI_DEFAULT := "🎪"
+
+
 ## Recomputes the boss id + the id->emoji map from the live roster, so the arena
-## tokens and the tick-order rail agree on who's who. The boss is masked (🐊) and
-## keeps its network hidden until breached; contestants map by name; anything else
-## falls back to a generic marker.
+## tokens and the tick-order rail agree on who's who — both straight from the
+## view API (is_boss / token), no hardcoded ids and no part sniffing.
 func _recompute_identity() -> void:
 	_emoji_map.clear()
 	_boss_id_cache = _boss_id()
@@ -335,26 +350,12 @@ func _recompute_identity() -> void:
 		return
 	for cd in _gc.view_combatants():
 		var c: Dictionary = cd
-		var id := String(c.get("id", ""))
-		if id == _boss_id_cache:
-			_emoji_map[id] = "🐊"
-		else:
-			_emoji_map[id] = _contestant_emoji(id, String(c.get("name", "")))
-
-
-func _contestant_emoji(id: String, cname: String) -> String:
-	var key := (id + " " + cname).to_lower()
-	if key.contains("imani"):
-		return "🛡️"
-	if key.contains("dario"):
-		return "🎭"
-	if key.contains("roach"):
-		return "🪳"
-	return "🎪"  # generic contestant marker (no bespoke emoji)
+		_emoji_map[String(c.get("id", ""))] = String(
+			TOKEN_EMOJI.get(String(c.get("token", "")), TOKEN_EMOJI_DEFAULT))
 
 
 func _emoji_for_id(id: String) -> String:
-	return String(_emoji_map.get(id, "🎪"))
+	return String(_emoji_map.get(id, TOKEN_EMOJI_DEFAULT))
 
 
 func _momus(text: String) -> void:
@@ -1476,18 +1477,27 @@ func _chip(content: Control, bg: Color, border: Color) -> Control:
 
 
 # ------------------------------------------------------------- contestant panels
+## Purely-visual patron accent colours (patron KEY from the view API -> badge
+## colour). Identity itself — which patron, which persona — comes from the
+## widened view_combatants() fields, bound in _bind_contestant.
+const PATRON_COLORS := {"hestia": GOLD, "enyo": MYTHIC}
+const PATRON_COLOR_DEFAULT := PURPLE
+
+
+func _patron_col(patron_key: String) -> Color:
+	return _col(String(PATRON_COLORS.get(patron_key, PATRON_COLOR_DEFAULT)))
+
+
 func _build_contestants() -> Control:
 	var row := _hbox(9)
 	row.add_child(_expand(_build_contestant({
 		"id": "imani", "accent": _col(CYAN), "avatar": "🛡️", "name": "IMANI", "epithet": "\"THE DOOR\"",
-		"tagline": "The wall between the monster and everyone else",
-		"patron": "HESTIA", "patron_col": _col(GOLD), "active": false, "steady": true,
+		"active": false, "steady": true,
 		"skills": [["STRONG STRIKE", false], ["OVERHEAD SLAM", false], ["BRACE", false]],
 	})))
 	row.add_child(_expand(_build_contestant({
 		"id": "dario", "accent": _col(GOLD), "avatar": "🎭", "name": "DARIO", "epithet": "\"ENCORE\"",
-		"tagline": "The heel you pay to boo — bows after every kill",
-		"patron": "ENYO", "patron_col": _col(MYTHIC), "active": true, "steady": false,
+		"active": true, "steady": false,
 		"skills": [["FEINT", true], ["PRESSURE STRIKE", false], ["DANCE", false]],
 	})))
 	return row
@@ -1529,12 +1539,19 @@ func _build_contestant(cfg: Dictionary) -> Control:
 		[String(cfg["epithet"]), Color(accent.r, accent.g, accent.b, 0.7), true],
 	], 14)
 	info.add_child(nrow)
-	info.add_child(_lab(String(cfg["tagline"]), f_body, 9, _col(MUTED), 1.0))  # PLACEHOLDER: persona/tagline is fixture cfg
+	# persona line — bound LIVE from view_combatants().persona in _bind_contestant
+	# (broadcast identity from the view API, not fixture copy); elided to one line
+	# like the bid screen's persona chip so long copy never disturbs the layout.
+	var persona := _lab("", f_body, 9, _col(MUTED), 1.0)
+	persona.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	persona.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(persona)
 	head.add_child(info)
-	# patron badge (# PLACEHOLDER: patron identity is fixture cfg — patron_manager not in view API)
+	# patron badge — the patron KEY binds LIVE from view_combatants().patron in
+	# _bind_contestant (PATRON_COLORS is the purely-visual accent table); hidden
+	# until a patron is bound, so an unsigned contestant shows no badge.
 	var patron := PanelContainer.new()
-	var pc: Color = cfg["patron_col"]
-	patron.add_theme_stylebox_override("panel", _sb(Color(pc.r, pc.g, pc.b, 0.1), Color(pc.r, pc.g, pc.b, 0.5), 14))
+	patron.visible = false
 	patron.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var patm := MarginContainer.new()
 	for s in ["left", "right"]:
@@ -1543,8 +1560,10 @@ func _build_contestant(cfg: Dictionary) -> Control:
 		patm.add_theme_constant_override("margin_" + s, 4)
 	patron.add_child(patm)
 	var patrow := _hbox(5)
-	patrow.add_child(_lab("⬢", f_sym, 10, pc))
-	patrow.add_child(_lab(String(cfg["patron"]), f_body, 9, pc, 1.0, true))
+	var patron_sig := _lab("⬢", f_sym, 10, _col(MUTED))
+	patrow.add_child(patron_sig)
+	var patron_label := _lab("", f_body, 9, _col(MUTED), 1.0, true)
+	patrow.add_child(patron_label)
 	patm.add_child(patrow)
 	if active:
 		var vv := _vbox(2)
@@ -1590,7 +1609,11 @@ func _build_contestant(cfg: Dictionary) -> Control:
 	v.add_child(_vfill(Control.new()))  # push footer down
 	v.add_child(foot)
 
-	_cref[String(cfg["id"])] = {"parts": parts_ref, "condbox": condbox, "shock": shock}
+	_cref[String(cfg["id"])] = {
+		"parts": parts_ref, "condbox": condbox, "shock": shock,
+		"persona": persona, "patron_box": patron,
+		"patron_sig": patron_sig, "patron_label": patron_label,
+	}
 	return p
 
 
@@ -1957,6 +1980,22 @@ func _bind_contestant(id: String, c: Dictionary) -> void:
 		condbox.add_child(_cond_chip(String(cond[0]), int(cond[1])))
 	var shock: Label = ref["shock"]
 	shock.text = "SHOCK %d" % int(c.get("shock", 0))
+	# persona + patron chips — LIVE from the widened view API (replaces the old
+	# fixture identity constants; empty view fields render as blank/no badge).
+	(ref["persona"] as Label).text = String(c.get("persona", ""))
+	var patron_key := String(c.get("patron", ""))
+	var patron_box: PanelContainer = ref["patron_box"]
+	patron_box.visible = patron_key != ""
+	if patron_key != "":
+		var pc := _patron_col(patron_key)
+		patron_box.add_theme_stylebox_override("panel",
+			_sb(Color(pc.r, pc.g, pc.b, 0.1), Color(pc.r, pc.g, pc.b, 0.5), 14))
+		(ref["patron_sig"] as Label).add_theme_color_override("font_color", pc)
+		var patron_label: Label = ref["patron_label"]
+		patron_label.text = patron_key.to_upper()
+		patron_label.add_theme_color_override("font_color", pc)
+		# bold labels fake weight with a same-colour outline (_lab) — recolour it too
+		patron_label.add_theme_color_override("font_outline_color", pc)
 
 
 func _ramp(ratio: float) -> Color:

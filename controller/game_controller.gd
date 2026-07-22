@@ -200,6 +200,14 @@ func advance_moment() -> Array[Dictionary]:
 ## Read-only VIEW API (KAN3-S3): plain-Dictionary projections of sim state so
 ## scenes can render without importing simulation classes. Sorted, primitive,
 ## and safe to call every frame.
+##
+## Spectator contract (docs/design/view-api-spectator-contract.md): consumers
+## must never reverse-engineer game meaning (e.g. sniffing part names to find
+## "the boss"), so each entry carries the MEANING fields directly — team /
+## category / is_boss, a stable display `token` for presentation art lookup
+## (the enemy template key for template-built enemies, else the combatant id),
+## and the contestant's broadcast identity (persona + signed patron key, joined
+## from the demo loadouts; "" when nothing matches — never guessed).
 func view_combatants() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if sim == null:
@@ -208,6 +216,9 @@ func view_combatants() -> Array[Dictionary]:
 	ids.sort()
 	for id: Variant in ids:
 		var c: CombatantState = sim.combatants[id]
+		var identity: Dictionary = {"persona": "", "patron": ""}
+		if not EnemyAI.AI_CATEGORIES.has(c.category):
+			identity = _loadout_identity(String(id))
 		var parts: Array[Dictionary] = []
 		var part_keys: Array = c.parts.keys()
 		part_keys.sort()
@@ -233,6 +244,14 @@ func view_combatants() -> Array[Dictionary]:
 		out.append({
 			"id": String(id),
 			"name": c.display_name,
+			"team": c.team,
+			"category": c.category,
+			"is_boss": c.category == "Boss",
+			# Stable presentation-art key: the enemy template this combatant was
+			# built from, else its own id (contestants are race-built, no template).
+			"token": c.template_key if c.template_key != "" else String(id),
+			"persona": String(identity["persona"]),
+			"patron": String(identity["patron"]),
 			"position": [c.position.x, c.position.y],
 			"alive": c.alive,
 			"shock": c.shock,
@@ -241,6 +260,70 @@ func view_combatants() -> Array[Dictionary]:
 			"parts": parts,
 		})
 	return out
+
+
+## Broadcast identity join for view_combatants: the demo loadout matching this
+## combat id, projected to {persona, patron} (persona = broadcast_persona;
+## patron = the signed patron KEY via chosen_patron -> patron_gods, exactly the
+## join view_bid already does). JOIN WRINKLE (verified against the data): loadout
+## keys are namespaced ("imani_the_door" / "dario_encore") while combat ids are
+## the bare first name ("imani" / "dario"), so the honest rule is: a loadout
+## matches the combatant whose id equals the loadout key's FIRST "_"-separated
+## token. Holds for both demo loadouts; no match -> empty strings, never guessed.
+func _loadout_identity(id: String) -> Dictionary:
+	for lo: Variant in dal.demo_loadouts().get("loadouts", []):
+		var loadout: Dictionary = lo
+		if String(loadout.get("key", "")).split("_")[0] != id:
+			continue
+		var patron_key: String = ""
+		for g: Variant in dal.patron_gods():
+			if int((g as Dictionary).get("id", -1)) == int(loadout.get("chosen_patron", -2)):
+				patron_key = String((g as Dictionary).get("key", ""))
+				break
+		return {
+			"persona": String(loadout.get("broadcast_persona", "")),
+			"patron": patron_key,
+		}
+	return {"persona": "", "patron": ""}
+
+
+## Read-only ENCOUNTER-LEVEL probe (spectator contract —
+## docs/design/view-api-spectator-contract.md): one plain Dictionary a
+## spectator/replay/highlights consumer (or the HUD) can poll for the fight's
+## meaning without sniffing internals — overall status, the boss beat, and the
+## slice objective. Reads LIVE sim state only (combat_status + the same boss
+## lookup view_verdict uses); deterministic — same state, same output — and
+## never cached, so "probe at tick N" is just re-sim to N and call this.
+##   status:    combat_status() verbatim ({over, outcome}).
+##   boss:      {id, name, phase, breached, network_exposed} or {} when no boss.
+##              phase is the _verdict_boss PLACEHOLDER (breach = Phase 2, F2);
+##              network_exposed mirrors the live breached flag (a breach is what
+##              exposes the network; a pressure-valve reset re-hides it).
+##   objective: {kind, discovered, text} — the slice's discoverable win
+##              condition; `text` is one PLACEHOLDER (R14) line of copy.
+func view_encounter() -> Dictionary:
+	if sim == null:
+		return {}
+	var boss: Dictionary = {}
+	var c: CombatantState = _boss_combatant()
+	if c != null:
+		boss = {
+			"id": c.id,
+			"name": c.display_name,
+			"phase": (2 if c.breached else 1),  # PLACEHOLDER: breach = Phase 2 (F2)
+			"breached": c.breached,
+			"network_exposed": c.breached,
+		}
+	return {
+		"status": combat_status(),
+		"boss": boss,
+		"objective": {
+			"kind": "breach_network",
+			"discovered": bool(boss.get("breached", false)),
+			# PLACEHOLDER (R14) broadcast copy — the objective's one-line card text.
+			"text": "Find & breach the hidden network — force Phase 2",
+		},
+	}
 
 
 func view_clock() -> Dictionary:
@@ -649,23 +732,34 @@ func _crowd_verdict_for(held: Array, band: String) -> Dictionary:
 
 
 ## The boss = the combatant carrying a `network` part (the Incine-Dile's mycelium
-## core; the key holds "network" stable pre- AND post-breach). Reads its live
-## `breached` flag; PLACEHOLDER phase (breach = Phase 2 reached, F2 rework).
-func _verdict_boss() -> Dictionary:
+## core; the key holds "network" stable pre- AND post-breach). The ONE boss
+## lookup both view_verdict and view_encounter derive from — null when no boss.
+## (This scan is controller-internal; consumers get the meaning via the views'
+## is_boss / boss fields and never sniff part names themselves.)
+func _boss_combatant() -> CombatantState:
 	var ids: Array = sim.combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
 		var c: CombatantState = sim.combatants[id]
 		for part_key: Variant in c.parts.keys():
 			if String(part_key).contains("network"):
-				var breached: bool = c.breached
-				return {
-					"name": c.display_name,
-					"breached": breached,
-					"phase": (2 if breached else 1),  # PLACEHOLDER: breach = Phase 2
-					"note": ("network exposed" if breached else "surface immune — no breach yet"),
-				}
-	return {"name": "", "breached": false, "phase": 0, "note": "no boss on the table"}
+				return c
+	return null
+
+
+## The verdict card's boss block. Reads the live `breached` flag off the shared
+## _boss_combatant() lookup; PLACEHOLDER phase (breach = Phase 2 reached, F2).
+func _verdict_boss() -> Dictionary:
+	var c: CombatantState = _boss_combatant()
+	if c == null:
+		return {"name": "", "breached": false, "phase": 0, "note": "no boss on the table"}
+	var breached: bool = c.breached
+	return {
+		"name": c.display_name,
+		"breached": breached,
+		"phase": (2 if breached else 1),  # PLACEHOLDER: breach = Phase 2
+		"note": ("network exposed" if breached else "surface immune — no breach yet"),
+	}
 
 
 ## Templated closing flavor keyed off outcome. PLACEHOLDER (R14) — the real line
