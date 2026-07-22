@@ -273,3 +273,23 @@
     checked in `ConditionEngine.apply` (immune conditions resist) and the fire-heal hook.
     Force/HP damage is never gated. Verified: balance harness network-kill 4→7 ticks (grind),
     slice WINS via `vital_part_destroyed` (HP), F2 intact. Tests: test_network_destruction_immune.gd.
+25. **The Bit is AUTHORED, per-character content (owner 2026-07-22).** A bit is a specific
+    thing a character canonically does all the time — mocking a downed enemy, a signature
+    pose, a catchphrase — not a generic "The Bit" button. **Not everyone has a bit**; if a
+    character has one, it is authored content on their loadout/character sheet. Mechanically
+    The Bit stays NULL (decision #15's guarantee holds); what changes: the character data
+    carries `bit {key, name, line}`, the sim REJECTS the_bit from an actor with no authored
+    bit, bit_performed carries which bit, and the UI offers it (inside Free Actions) only
+    for characters who have one. Slice: Dario's bit is **The Bow** (canonical — "bows after
+    every kill"); **Imani has NO bit** (canonical — zero interest in the camera).
+26. **HUD v2 structural spec ADOPTED as the front-rework build target (owner 2026-07-22).**
+    `docs/ux-designs/hud-v2/ARCHITECTURE.md` (owner-supplied) governs the HUD rebuild:
+    world-dominant center, party rail left, selected-summary top-left, Moment/Clock
+    timeline top-center, crowd + contextual entity inspector right, action launcher with
+    temporary flyouts + End Turn bottom, Momus ticker with a full event log; three
+    visibility layers (persistent shell / contextual / modal). Corrections riding the
+    adoption: skills menus scale past 4; individual allies show part-based HP everywhere
+    (cards flag urgent parts; inspector shows full anatomy). Phased per
+    docs/ux-designs/hud-v2/ADOPTION.md — v1 builds only what real systems back (odds/chat/
+    popups/recruits wait for their systems). OPEN: the spec's Moment/Clock vocabulary is
+    inverted vs the engine — engine vocabulary stands until the owner rules (ADOPTION.md).
