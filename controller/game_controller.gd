@@ -252,6 +252,10 @@ func view_combatants() -> Array[Dictionary]:
 			"token": c.template_key if c.template_key != "" else String(id),
 			"persona": String(identity["persona"]),
 			"patron": String(identity["patron"]),
+			# Authored bit (decision log #25): the actor's bit dict verbatim
+			# ({key, name, line}), {} for the many combatants with none — the UI
+			# offers The Bit only to characters who actually have one.
+			"bit": c.bit.duplicate(true),
 			"position": [c.position.x, c.position.y],
 			"alive": c.alive,
 			"shock": c.shock,

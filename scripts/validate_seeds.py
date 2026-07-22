@@ -441,6 +441,17 @@ def main() -> int:
         for f_ in ("key", "display_name", "broadcast_persona"):
             if not isinstance(lo.get(f_), str) or not lo.get(f_):
                 fail("demo_loadouts.json", f"{k}: {f_} must be a non-empty string")
+        # Authored bit (decision log #25) — OPTIONAL: not everyone has a bit. When
+        # present it must be exactly {key, name, line}, all non-empty strings.
+        if "bit" in lo:
+            bit = lo["bit"]
+            if not isinstance(bit, dict) or set(bit) != {"key", "name", "line"}:
+                fail("demo_loadouts.json", f"{k}: bit must be an object with exactly "
+                                           "{key, name, line} (decision log #25)")
+            else:
+                for bf in ("key", "name", "line"):
+                    if not isinstance(bit.get(bf), str) or not bit.get(bf):
+                        fail("demo_loadouts.json", f"{k}: bit.{bf} must be a non-empty string")
         if lo.get("race") not in race_ids:
             fail("demo_loadouts.json", f"{k}: race {lo.get('race')!r} is not a races.json id")
         traits = lo.get("traits")

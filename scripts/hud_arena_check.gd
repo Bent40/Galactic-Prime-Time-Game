@@ -63,7 +63,10 @@ func _initialize() -> void:
 
 	_add_boss()
 	_add_contestant(IMANI, "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
+	# Dario carries his AUTHORED bit (decision log #25) verbatim from
+	# demo_loadouts.json; Imani has none (canonical — zero camera interest).
+	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 
 	# Freeze the approved-mockup beat (harness-only poke, like a unit test).
 	gc.sim.clock.tick = 23  # Clock 3 · Moment 07
@@ -143,11 +146,13 @@ func _add_boss() -> void:
 	}})
 
 
-func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
-	gc.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array, extra: Dictionary = {}) -> void:
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
 		"position": pos, "traits": traits, "camera_call_stacks": 1,
-	}})
+	}
+	combatant.merge(extra, true)
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})
 
 
 ## The active actor's on-screen token point, via the HUD's live board transform.

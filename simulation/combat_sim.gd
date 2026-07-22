@@ -410,6 +410,12 @@ func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
 ## HypeEngine's generic spectacle hook, detected by TagEngine for the_bit. The
 ## character does the bit despite zero mechanical benefit; spectacle is the only
 ## payout. Read-only actor gates (rejections mutate nothing); contestants only.
+##
+## AUTHORED bit (decision log #25): a bit is per-character authored content —
+## not everyone has one. An actor whose spec carried no bit is rejected
+## ("no_bit"); on success the event names WHICH bit was performed ("bit" =
+## authored key, "bit_name" = display name) alongside the pre-existing
+## "key"/"spectacle_points" fields, kept verbatim for compatibility.
 func _bit(cmd: Dictionary) -> Array[Dictionary]:
 	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
 	if actor == null:
@@ -418,10 +424,14 @@ func _bit(cmd: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "not_a_contestant", "actor": actor.id}]
 	if not actor.alive or actor.removed_from_play:
 		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.bit.is_empty():
+		return [{"type": "command_rejected", "reason": "no_bit", "actor": actor.id}]
 	return [{
 		"type": "bit_performed",
 		"actor": actor.id,
 		"key": String(cmd.get("key", "bit")),
+		"bit": String(actor.bit.get("key", "")),
+		"bit_name": String(actor.bit.get("name", "")),
 		"spectacle_points": tags.bit_spectacle(actor.id),
 	}]
 

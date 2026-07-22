@@ -46,6 +46,12 @@ var shock_stutter_pending: bool = false
 var stats: Dictionary = {}
 var level_points: int = 0
 var camera_call_stacks_granted: int = 0  # granted by loadout/scenario (F1); adds to charm over-cap
+## AUTHORED signature bit (decision log #25): {} for the many characters who have
+## none, else {"key": String, "name": String, "line": String} straight off the
+## loadout/spec. Not everyone has a bit — the sim REJECTS the_bit from an actor
+## with an empty bit. Mechanically The Bit stays NULL (decision #15): this field
+## is static identity data, never mutated by any command.
+var bit: Dictionary = {}
 var resistances: Dictionary = {"Physical": 0, "Affliction": 0, "Psychic": 0}
 ## Player-allocated Reflexes-derived physical resistance: condition_id -> int (R6).
 var allocated_physical: Dictionary = {}
@@ -159,6 +165,8 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 	# them by inflating Charm over-cap (the old Charm-30 hack). Derived stacks =
 	# granted + over-cap, so both sources compose.
 	c.camera_call_stacks_granted = int(spec.get("camera_call_stacks", 0))
+	# Authored bit (decision log #25): carried only when the spec declares one.
+	c.bit = (spec.get("bit", {}) as Dictionary).duplicate(true)
 
 	var res_spec: Dictionary = spec.get("resistances", template.get("resistances", {}))
 	for res_key: String in ["Physical", "Affliction", "Psychic"]:
@@ -381,6 +389,7 @@ func to_dict() -> Dictionary:
 		"stats": stats.duplicate(true),
 		"level_points": level_points,
 		"camera_call_stacks_granted": camera_call_stacks_granted,
+		"bit": bit.duplicate(true),
 		"resistances": resistances.duplicate(true),
 		"allocated_physical": allocated_physical.duplicate(true),
 		"boss_traits": boss_traits.duplicate(true),
@@ -441,6 +450,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.stats = (data.get("stats", {}) as Dictionary).duplicate(true)
 	c.level_points = int(data.get("level_points", 0))
 	c.camera_call_stacks_granted = int(data.get("camera_call_stacks_granted", 0))
+	c.bit = (data.get("bit", {}) as Dictionary).duplicate(true)
 	c.resistances = (data.get("resistances", {}) as Dictionary).duplicate(true)
 	c.allocated_physical = (data.get("allocated_physical", {}) as Dictionary).duplicate(true)
 	c.boss_traits = (data.get("boss_traits", {}) as Dictionary).duplicate(true)

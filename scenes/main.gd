@@ -57,8 +57,11 @@ func _stage_slice() -> void:
 	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
 	# Traits per demo_loadouts.json (Dario charm 5, R18). Camera Call stacks are
 	# GRANTED via the spec's camera_call_stacks (both loadouts declare 1) — the
-	# old Charm-30 over-cap hack is gone (F1 fixed).
-	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
+	# old Charm-30 over-cap hack is gone (F1 fixed). Dario carries his AUTHORED
+	# bit (decision log #25) verbatim from the loadout; Imani has NONE (canonical
+	# — zero interest in the camera), so the sim rejects the_bit from her.
+	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 
 
 ## Attach the solo paused-clock driver AFTER the roster is staged and register it
@@ -72,10 +75,12 @@ func _attach_driver() -> void:
 	Game.set_clock_driver(_driver)
 
 
-func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
-	Game.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array, extra: Dictionary = {}) -> void:
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
-		"position": pos, "traits": traits, "camera_call_stacks": 1}})
+		"position": pos, "traits": traits, "camera_call_stacks": 1}
+	combatant.merge(extra, true)
+	Game.apply_command({"type": "add_combatant", "combatant": combatant})
 
 
 func _shot() -> void:

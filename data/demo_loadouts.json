@@ -1,7 +1,7 @@
 {
   "_meta": {
     "note": "DEMO/QUICK-START LOADOUTS + TEST FIXTURES — NOT canon characters. Imani and Dario were demoted from slice premades to demo loadouts by owner ruling 2026-07-18 (decision log #13; docs/design/slice-contestants-proposal.md §RULED). All numbers here — trait spreads, skill levels, caps, Camera Call stacks — are PLACEHOLDER (R14) pending the numbers rework. Everything is rewireable to the real story/entities later; do not over-invest in canon (owner principle, §RULED item 9).",
-    "schema": "loadout: { id, key, display_name, broadcast_persona, race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], rewireable, notes }"
+    "schema": "loadout: { id, key, display_name, broadcast_persona, bit? { key, name, line } (decision log #25 — AUTHORED signature bit; OPTIONAL: not everyone has one, the sim rejects the_bit from an actor without it), race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], rewireable, notes }"
   },
   "loadouts": [
     {
@@ -39,6 +39,7 @@
       "key": "dario_encore",
       "display_name": "Dario \"Encore\" Vekić",
       "broadcast_persona": "The heel you pay to boo — a boardwalk sleight-of-hand hustler who works the crowd mid-fight, steals finishing blows, and bows after every kill; the boo is the applause.",
+      "bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
       "race": 1,
       "traits": {
         "physique": 2,

@@ -7,6 +7,11 @@ extends SimTestBase
 ## and the view_verdict projection (evidence array + endured + intact fields).
 
 
+## Authored-bit spec fragment (decision log #25): the sim rejects the_bit from
+## an actor with no authored bit, so every test actor who PERFORMS one carries this.
+const TEST_BIT: Dictionary = {"key": "bow", "name": "The Bow", "line": "a bow, mid-combat"}
+
+
 func add_incinedile(sim: CombatSim, id: String = "boss") -> Array[Dictionary]:
 	# Strip dodge_threshold (same trick as test_incinedile) so breach staging
 	# stays pin-exact without consuming the AI d6 stream.
@@ -129,7 +134,7 @@ func test_goal_unanswered_records_party_level_expiry() -> void:
 
 func test_bit_with_bleeding_part_is_evidence() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a", {"team": "party"})
+	add_human(sim, "a", {"team": "party", "bit": TEST_BIT})
 	sim.apply_command({"type": "apply_condition", "target": "a", "part": "left_arm", "condition": "bleeding", "tier": 1})
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a"})
 	assert_event(events, "bit_performed", "precondition: the bit resolved")
@@ -143,7 +148,7 @@ func test_bit_with_bleeding_part_is_evidence() -> void:
 
 func test_bit_with_adjacent_enemy_is_evidence() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a", {"team": "party"})
+	add_human(sim, "a", {"team": "party", "bit": TEST_BIT})
 	add_human(sim, "m", {"team": "enemies", "position": [1, 0]})
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a"})
 	assert_event(events, "bit_performed", "precondition: the bit resolved")
@@ -156,7 +161,7 @@ func test_bit_with_adjacent_enemy_is_evidence() -> void:
 func test_safe_bit_is_not_evidence() -> void:
 	# Unhurt, and the only hostile is 4 hexes away — a safe bit proves nothing.
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a", {"team": "party"})
+	add_human(sim, "a", {"team": "party", "bit": TEST_BIT})
 	add_human(sim, "m", {"team": "enemies", "position": [4, 0]})
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a"})
 	assert_event(events, "bit_performed", "precondition: the bit resolved")
@@ -240,7 +245,8 @@ func test_party_death_is_not_a_takedown() -> void:
 ## Drives a mixed evidence-earning sequence: a takedown, a wounded bit, a
 ## windup breach, and idle Clocks (goal traffic).
 func _earn_some_evidence(sim: CombatSim) -> void:
-	add_human(sim, "h", {"team": "party", "position": [1, 0]})
+	# h performs a wounded bit below — h carries an authored bit (decision #25).
+	add_human(sim, "h", {"team": "party", "position": [1, 0], "bit": TEST_BIT})
 	add_human(sim, "m", {"team": "enemies", "position": [2, 0]})
 	add_incinedile(sim)
 	declare(sim, "h", attack_action("crushed", 5, "m", "torso"))
@@ -315,9 +321,13 @@ func test_ledger_is_chronological() -> void:
 func test_view_verdict_evidence_projection() -> void:
 	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
 	game.start_combat(7, load_static_data())
+	# This staged "imani" performs a wounded bit below, so the spec grants her an
+	# authored bit (decision #25) — a TEST fixture choice, not the canon loadout
+	# (canonically Imani has NO bit; Dario does).
 	game.apply_command({"type": "add_combatant", "combatant": {
 		"id": "imani", "name": "Imani \"The Door\"", "race": "human", "team": "party",
-		"position": [1, 0], "traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}}})
+		"position": [1, 0], "traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3},
+		"bit": TEST_BIT}})
 	game.apply_command({"type": "add_combatant", "combatant": {
 		"id": "m", "name": "Grunt", "race": "human", "team": "enemies", "position": [2, 0],
 		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3}}})

@@ -59,7 +59,11 @@ func _initialize() -> void:
 
 	_add_boss()
 	_add_contestant(IMANI, "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
+	# Dario carries his AUTHORED bit (decision log #25) verbatim from
+	# demo_loadouts.json; Imani has none — the sim now rejects the_bit from her,
+	# so every bit step below is explicitly performed as Dario.
+	_add_contestant(DARIO, "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 
 	# Freeze the approved-mockup beat (harness-only poke, like a unit test / hud_preview).
 	gc.sim.clock.tick = 23  # Clock 3 · Moment 07
@@ -111,8 +115,12 @@ func _initialize() -> void:
 	# ---- STEP 4: pour into the boss + THE BIT ----------------------------------
 	# Post-breach the HUD's skill funnel keeps hammering the flamethrower arm
 	# (BOSS_DEFAULT_PART — network targeting is not in the HUD's v1 surface),
-	# and Dario milks the reveal with a second escalating Bit.
+	# and Dario milks the reveal with a second escalating Bit. The HUD issues
+	# the_bit for its ACTIVE actor, and only Dario has an authored bit (decision
+	# log #25) — force him active so the bit is his regardless of how the END
+	# TURN loop rotated the on-the-clock highlight.
 	hud._on_skill_for(IMANI, "strong_strike")
+	hud.set_active_actor(DARIO)
 	hud._on_bit()
 	await _render("hud_step4.png")
 	_probe("step4 (follow-up windup + second bit — spectacle up)")
@@ -140,11 +148,13 @@ func _add_boss() -> void:
 	}})
 
 
-func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array) -> void:
-	gc.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Array, extra: Dictionary = {}) -> void:
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
 		"position": pos, "traits": traits, "camera_call_stacks": 1,
-	}})
+	}
+	combatant.merge(extra, true)
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})
 
 
 func _boss_breached() -> bool:

@@ -52,6 +52,9 @@ func test_view_broadcast_projects_the_audience_economy() -> void:
 	game.apply_command({"type": "add_combatant", "combatant": {
 		"id": "a", "name": "A", "race": "human", "position": [0, 1],
 		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3},
+		# a performs a bit below — the sim now rejects the_bit from an actor with
+		# no authored bit (decision log #25), so the spec grants one.
+		"bit": {"key": "bow", "name": "The Bow", "line": "a bow, mid-combat"},
 	}})
 	game.apply_command({"type": "add_combatant", "combatant": {
 		"id": "boss", "enemy": "incinedile", "position": [0, 0],
