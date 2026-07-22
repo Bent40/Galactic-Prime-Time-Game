@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/hud/components/momus_ticker.gd" id="1_momus_ticker"]
+
+[node name="MomusTicker" type="PanelContainer"]
+script = ExtResource("1_momus_ticker")
