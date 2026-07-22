@@ -94,13 +94,10 @@ const COMBO_MEMBERS := [
 	["dario", "pressure_strike"],
 ]
 
-## FIXTURE skill lists (per-loadout skills are still not in the view API — the
-## same v1 limitation, now carried by the SKILLS flyout; SkillBook supplies the
-## honest cost / self-vs-target line per key).
-const ACTOR_SKILLS := {
-	"imani": ["strong_strike", "overhead_slam", "brace"],
-	"dario": ["feint", "pressure_strike", "dance"],
-}
+## Per-loadout SKILLS are combatant STATE now (the last fixture holdover is
+## gone): the SKILLS flyout and every skill declare read the active actor's
+## `skills` rows off view_combatants ({key, level, name, cost, self}) — see
+## _flyout_data / _skill_level_of. No fixture list, no hardcoded level 1.
 
 ## Purely-visual display-art table: view `token` -> emoji (v1, unchanged).
 const TOKEN_EMOJI := {
@@ -212,9 +209,8 @@ func _on_skill_for(actor_id: String, skill_key: String) -> void:
 ## the mechanics. Self skills declare with no target; every other skill targets
 ## `part` on the boss (default: the flamethrower arm — the designed path in).
 func _declare_skill_attack(actor_id: String, skill_key: String, part := BOSS_DEFAULT_PART) -> void:
-	# TODO: read the actor's per-skill level from the loadout when the view API
-	# exposes it; the demo slice runs everything at level 1 (v1 rule, kept).
-	var level := 1
+	# The REAL granted level from the view row (loadout state); 1 when not granted.
+	var level := _skill_level_of(actor_id, skill_key)
 	var label := skill_key.replace("_", " ").to_upper()
 	if SkillBook.is_self_skill(skill_key):
 		_issue({
@@ -257,7 +253,7 @@ func _on_combined_strike() -> void:
 		members.append({"actor": String(m[0]), "action": {
 			"kind": "skill",
 			"key": String(m[1]),
-			"level": 1,
+			"level": _skill_level_of(String(m[0]), String(m[1])),
 			"attack_range": SKILL_ATTACK_RANGE,
 			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
 		}})
@@ -400,7 +396,7 @@ func _on_flyout_entry(id: String) -> void:
 				_on_skill(key)
 		else:
 			_arm({"kind": "skill", "key": key,
-				"cost": int(SkillBook.mechanics(key, 1).get("cost", 1)),
+				"cost": int(SkillBook.mechanics(key, _skill_level_of(_active_actor, key)).get("cost", 1)),
 				"label": key.replace("_", " ").to_upper()})
 
 
@@ -450,7 +446,7 @@ func _declare_skill_attack_at(actor_id: String, skill_key: String, target_id: St
 		"action": {
 			"kind": "skill",
 			"key": skill_key,
-			"level": 1,
+			"level": _skill_level_of(actor_id, skill_key),
 			"attack_range": SKILL_ATTACK_RANGE,
 			"targets": [{"id": target_id, "part": part}],
 		},
@@ -472,7 +468,8 @@ func _on_inspector_part_clicked(part_key: String) -> void:
 	var probe: Dictionary = _gc.preview_action(_active_actor, action)
 	var archetype := ""
 	if String(action.get("kind", "")) == "skill":
-		archetype = String(SkillBook.mechanics(String(action.get("key", "")), 1).get("archetype", ""))
+		archetype = String(SkillBook.mechanics(String(action.get("key", "")),
+			int(action.get("level", 1))).get("archetype", ""))
 	_pending_confirm = {"kind": "part", "part": part_key}
 	var title := String(_armed.get("label", String(action.get("key", "")).replace("_", " ").to_upper()))
 	var route := "%s → %s · %s" % [_display_name_for(_active_actor),
@@ -495,20 +492,23 @@ func _armed_action_for(a: Dictionary, target_id: String, part_key: String) -> Di
 	return {
 		"kind": "skill",
 		"key": String(a.get("key", "")),
-		"level": 1,
+		"level": _skill_level_of(_active_actor, String(a.get("key", ""))),
 		"attack_range": SKILL_ATTACK_RANGE,
 		"targets": [{"id": target_id, "part": part_key}],
 	}
 
 
-## Self-skill pick (no part step): the pick IS the confirm moment.
+## Self-skill pick (no part step): the pick IS the confirm moment. The preview
+## runs at the actor's GRANTED level, so the panel shows the real numbers
+## (e.g. brace Lv2 -> guard 2, dance Lv2 -> +2 Charm).
 func _open_self_preview(key: String) -> void:
 	if _gc == null:
 		_on_skill(key)
 		return
-	var action := {"kind": "skill", "key": key, "level": 1}
+	var level := _skill_level_of(_active_actor, key)
+	var action := {"kind": "skill", "key": key, "level": level}
 	var probe: Dictionary = _gc.preview_action(_active_actor, action)
-	var spec: Dictionary = SkillBook.mechanics(key, 1)
+	var spec: Dictionary = SkillBook.mechanics(key, level)
 	_pending_confirm = {"kind": "self", "key": key}
 	var display := _preview_display(key.replace("_", " ").to_upper(),
 		"%s → SELF" % _display_name_for(_active_actor), probe, String(spec.get("archetype", "")))
@@ -544,7 +544,7 @@ func _open_combo_preview() -> void:
 		members.append({"actor_id": String(m[0]), "action": {
 			"kind": "skill",
 			"key": String(m[1]),
-			"level": 1,
+			"level": _skill_level_of(String(m[0]), String(m[1])),
 			"attack_range": SKILL_ATTACK_RANGE,
 			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
 		}})
@@ -1092,22 +1092,27 @@ func _flyout_data(cat: String) -> Dictionary:
 					"enabled": _combo_ready(), "accent": UI.col(UI.GOLD)},
 			]}
 		"skills":
+			# VIEW-DRIVEN (no fixture): the active actor's granted `skills` rows
+			# off view_combatants — name, honest Moment cost, self/target tag and
+			# the GRANTED level, all from the view. Scrollable past 4 entries.
 			var entries: Array = []
-			for k in ACTOR_SKILLS.get(_active_actor, []):
-				var key := String(k)
-				var mech: Dictionary = SkillBook.mechanics(key, 1)
-				var is_self := SkillBook.is_self_skill(key)
+			for rd in _skills_of(_active_actor):
+				var row: Dictionary = rd
+				var key := String(row.get("key", ""))
 				entries.append({
 					"id": "skill:" + key,
-					"label": key.replace("_", " ").to_upper(),
-					"sub": "COST %d · %s" % [int(mech.get("cost", 1)),
-						"SELF" if is_self else "TARGETED · arms part-targeting"],
+					"label": "%s · LV %d" % [String(row.get("name", key)).to_upper(),
+						int(row.get("level", 1))],
+					"sub": "COST %d · %s" % [int(row.get("cost", 1)),
+						"SELF" if bool(row.get("self", false)) else "TARGETED · arms part-targeting"],
 					"enabled": true,
 					"accent": UI.col(UI.CYAN),
 				})
 			if entries.is_empty():
-				entries.append({"id": "", "label": "NO SKILLS KNOWN",
-					"sub": "per-loadout skills are not in the view API yet (fixture list covers the demo pair)",
+				# Honest empty state — a combatant with NO granted skills gets one
+				# disabled entry, never a fixture fallback.
+				entries.append({"id": "", "label": "NO SKILLS GRANTED",
+					"sub": "this combatant has no granted loadout skills — nothing to declare",
 					"enabled": false, "accent": UI.col(UI.MUTED)})
 			return {"title": "SKILLS — %s (scrolls past 4)" % who, "entries": entries}
 		"free":
@@ -1203,6 +1208,29 @@ func _display_name_for(id: String) -> String:
 			if String(c.get("id", "")) == id:
 				return String(c.get("name", id)).to_upper()
 	return id.to_upper()
+
+
+## The combatant's granted-skill rows ({key, level, name, cost, self}) from the
+## view API. Reads the live view (not the cache) so it works before the first
+## refresh — same rule as _display_name_for. [] when unknown / nothing granted.
+func _skills_of(id: String) -> Array:
+	if _gc != null:
+		for cd in _gc.view_combatants():
+			var c: Dictionary = cd
+			if String(c.get("id", "")) == id:
+				var rows: Variant = c.get("skills", [])
+				return rows if rows is Array else []
+	return []
+
+
+## The actor's GRANTED level for a skill, off the view row. Default 1 when not
+## granted — a declare for an ungranted key still does the honest Lv1 thing.
+func _skill_level_of(id: String, skill_key: String) -> int:
+	for rd in _skills_of(id):
+		var r: Dictionary = rd
+		if String(r.get("key", "")) == skill_key:
+			return maxi(1, int(r.get("level", 1)))
+	return 1
 
 
 func _part_label(key: String) -> String:

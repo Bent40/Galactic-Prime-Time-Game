@@ -18,6 +18,20 @@ const HUD_SCENE := preload("res://ui/hud/combat_hud.tscn")
 
 const SEED := 14
 
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json (per-loadout skills are combatant STATE now; the
+## HUD's SKILLS flyout reads them back through view_combatants).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
+
 
 func _initialize() -> void:
 	var out := OS.get_environment("HUD_OUT")
@@ -34,11 +48,14 @@ func _initialize() -> void:
 	gc.start_combat(SEED)
 
 	_add_boss(gc)
-	_add_contestant(gc, "imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
+	_add_contestant(gc, "imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0],
+		{"skills": IMANI_SKILLS})
 	# Dario carries his AUTHORED bit (decision log #25) verbatim from
 	# demo_loadouts.json; Imani has none (canonical — zero camera interest).
+	# Both carry their loadout SKILL grants (keys + levels).
 	_add_contestant(gc, "dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
-		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
 
 	# ---- PREVIEW STAGING (harness-only fixture; NOT how the HUD gets its data) ----
 	# Freeze the approved-mockup beat by poking sim state directly, like a test.

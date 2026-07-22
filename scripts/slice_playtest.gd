@@ -61,6 +61,20 @@ const IMANI := "imani"
 const DARIO := "dario"
 const BOSS := "boss"
 
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json (per-loadout skills are combatant STATE now; this
+## trace declares plain attacks, so the grants are staging-only state here).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
+
 # band -> owner-facing display name (owner maps cold/warm/hot/on_fire; hot/on_fire
 # read on air as ELECTRIC / ON FIRE). Raw band kept in parens for the HUD contract.
 const BAND_DISPLAY := {
@@ -103,14 +117,17 @@ func _initialize() -> void:
 	_add_boss()
 	_add_contestant(IMANI, "Imani \"The Door\" Brandt", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3},
 		Vector2i(1, 0), "Hestia (hearth/protection/mercy)", -1,
-		"heavy-rescue firefighter — the immovable veteran; when the Door opens, somebody gets carried out")
+		"heavy-rescue firefighter — the immovable veteran; when the Door opens, somebody gets carried out",
+		{"skills": IMANI_SKILLS})
 	# Dario carries his AUTHORED bit (decision log #25) verbatim from
 	# demo_loadouts.json — every "bit" command in this arc is his. Imani has NO
 	# bit (canonical — zero camera interest); the sim would reject one from her.
+	# Both carry their loadout SKILL grants (keys + levels).
 	_add_contestant(DARIO, "Dario \"Encore\" Vekic", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5},
 		Vector2i(0, 1), "Enyo (war/carnage)", 30,
 		"boardwalk sleight-of-hand hustler — the heel you pay to boo; steals finishers, bows after every kill",
-		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
 	sink.clear()  # discard setup events; roster is rendered from the view API below
 
 	_print_roster()

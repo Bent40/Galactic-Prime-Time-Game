@@ -256,6 +256,10 @@ func view_combatants() -> Array[Dictionary]:
 			# ({key, name, line}), {} for the many combatants with none — the UI
 			# offers The Bit only to characters who actually have one.
 			"bit": c.bit.duplicate(true),
+			# Granted loadout skills (the last fixture holdover removed): one row
+			# per grant, {key, level, name, cost, self} — see _view_skills. [] for
+			# enemies / anyone with no grants, never guessed.
+			"skills": _view_skills(c),
 			"position": [c.position.x, c.position.y],
 			"alive": c.alive,
 			"shock": c.shock,
@@ -264,6 +268,34 @@ func view_combatants() -> Array[Dictionary]:
 			"parts": parts,
 		})
 	return out
+
+
+## Per-combatant granted-skill projection for view_combatants: one plain row per
+## GRANTED loadout skill, in grant order (deterministic — the grant array is
+## command-stream state). Per row:
+##   key:   the skill key (state)
+##   level: the GRANTED level (state — what the HUD's declares now send)
+##   name:  skills.json display name via the DAL; fallback: title-cased key
+##          (an un-catalogued key still reads honestly, never guessed)
+##   cost:  the honest Moment cost from SkillBook.mechanics at the granted level
+##   self:  SkillBook.is_self_skill — self-buff vs targeted (the HUD's flyout tag)
+## Read-only over static authorities; [] for enemies / skill-less combatants.
+func _view_skills(c: CombatantState) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for sk: Dictionary in c.skills:
+		var key := String(sk.get("key", ""))
+		var level: int = int(sk.get("level", 1))
+		var display := String(dal.skill(key).get("name", ""))
+		if display == "":
+			display = _titlecase(key)
+		rows.append({
+			"key": key,
+			"level": level,
+			"name": display,
+			"cost": int(SkillBook.mechanics(key, level).get("cost", 1)),
+			"self": SkillBook.is_self_skill(key),
+		})
+	return rows
 
 
 ## Broadcast identity join for view_combatants: the demo loadout matching this
