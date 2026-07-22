@@ -52,6 +52,11 @@ var camera_call_stacks_granted: int = 0  # granted by loadout/scenario (F1); add
 ## with an empty bit. Mechanically The Bit stays NULL (decision #15): this field
 ## is static identity data, never mutated by any command.
 var bit: Dictionary = {}
+## GRANTED loadout skills (same grant pattern as camera_call_stacks_granted /
+## bit): normalized {"key": String, "level": int} rows straight off the spec's
+## "skills", grant order preserved. Static grant data — never mutated by any
+## command; skill_level() is the read. [] for enemies / skill-less specs.
+var skills: Array[Dictionary] = []
 var resistances: Dictionary = {"Physical": 0, "Affliction": 0, "Psychic": 0}
 ## Player-allocated Reflexes-derived physical resistance: condition_id -> int (R6).
 var allocated_physical: Dictionary = {}
@@ -167,6 +172,16 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 	c.camera_call_stacks_granted = int(spec.get("camera_call_stacks", 0))
 	# Authored bit (decision log #25): carried only when the spec declares one.
 	c.bit = (spec.get("bit", {}) as Dictionary).duplicate(true)
+	# Granted loadout skills (view-API grant pattern, like camera_call_stacks /
+	# bit): each spec row is normalized to {key, level} — loadout annotations
+	# (id / cap / cap_note / ...) are dropped; unkeyed rows are skipped. Fresh
+	# dicts (deep-copied by construction); [] default.
+	for skill_spec: Variant in spec.get("skills", []) as Array:
+		var s: Dictionary = skill_spec
+		var skill_key := String(s.get("key", ""))
+		if skill_key == "":
+			continue
+		c.skills.append({"key": skill_key, "level": int(s.get("level", 1))})
 
 	var res_spec: Dictionary = spec.get("resistances", template.get("resistances", {}))
 	for res_key: String in ["Physical", "Affliction", "Psychic"]:
@@ -242,6 +257,16 @@ static func _find_template(entries: Variant, key: String) -> Dictionary:
 		if String(d.get("key", "")) == key:
 			return d
 	return {}
+
+
+## The granted level for a loadout skill — 0 when the skill is NOT granted
+## (callers treat 0 as "not known"; a declare may still run any key at an
+## explicit level, exactly as before — the grant is state, not a gate).
+func skill_level(key: String) -> int:
+	for s: Dictionary in skills:
+		if String(s.get("key", "")) == key:
+			return int(s.get("level", 1))
+	return 0
 
 
 func trait_total(trait_key: String) -> int:
@@ -390,6 +415,7 @@ func to_dict() -> Dictionary:
 		"level_points": level_points,
 		"camera_call_stacks_granted": camera_call_stacks_granted,
 		"bit": bit.duplicate(true),
+		"skills": skills.duplicate(true),
 		"resistances": resistances.duplicate(true),
 		"allocated_physical": allocated_physical.duplicate(true),
 		"boss_traits": boss_traits.duplicate(true),
@@ -451,6 +477,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.level_points = int(data.get("level_points", 0))
 	c.camera_call_stacks_granted = int(data.get("camera_call_stacks_granted", 0))
 	c.bit = (data.get("bit", {}) as Dictionary).duplicate(true)
+	for skill: Variant in data.get("skills", []) as Array:
+		c.skills.append((skill as Dictionary).duplicate(true))
 	c.resistances = (data.get("resistances", {}) as Dictionary).duplicate(true)
 	c.allocated_physical = (data.get("allocated_physical", {}) as Dictionary).duplicate(true)
 	c.boss_traits = (data.get("boss_traits", {}) as Dictionary).duplicate(true)

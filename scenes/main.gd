@@ -9,6 +9,20 @@ extends Control
 const HUD_SCENE := preload("res://ui/hud/combat_hud.tscn")
 const SEED := 14
 
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json; the HUD's SKILLS flyout + declares read them back
+## through view_combatants (per-loadout skills are combatant STATE now).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
+
 ## The solo paused-clock driver, kept in a scene var so it isn't freed (it is a
 ## RefCounted — dropping the last reference would release it). It drives BOTH
 ## sides of the tick: the party declares via the HUD, END TURN runs the enemy
@@ -54,14 +68,18 @@ func _stage_slice() -> void:
 	Game.apply_command({"type": "add_combatant", "combatant": {
 		"id": "boss", "name": "Incine-Dile", "enemy": "incinedile",
 		"team": "enemies", "position": [0, 0]}})
-	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
+	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0],
+		{"skills": IMANI_SKILLS})
 	# Traits per demo_loadouts.json (Dario charm 5, R18). Camera Call stacks are
 	# GRANTED via the spec's camera_call_stacks (both loadouts declare 1) — the
 	# old Charm-30 over-cap hack is gone (F1 fixed). Dario carries his AUTHORED
 	# bit (decision log #25) verbatim from the loadout; Imani has NONE (canonical
-	# — zero interest in the camera), so the sim rejects the_bit from her.
+	# — zero interest in the camera), so the sim rejects the_bit from her. Both
+	# carry their loadout SKILL grants (keys + levels) — the flyout reads them
+	# back through the view API.
 	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
-		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
 
 
 ## Attach the solo paused-clock driver AFTER the roster is staged and register it

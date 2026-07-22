@@ -20,6 +20,20 @@ const VERDICT_SCENE := preload("res://ui/screens/verdict_card.tscn")
 
 const SEED := 14
 
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json (per-loadout skills are combatant STATE now; this
+## driver declares plain attacks, so the grants are staging-only state here).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
+
 
 func _initialize() -> void:
 	var out := OS.get_environment("VERDICT_OUT")
@@ -36,12 +50,15 @@ func _initialize() -> void:
 	gc.start_combat(SEED)
 
 	_add_boss(gc)
-	_add_contestant(gc, "imani", "Imani \"The Door\"", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
+	_add_contestant(gc, "imani", "Imani \"The Door\"", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0],
+		{"skills": IMANI_SKILLS})
 	# Dario carries his AUTHORED bit (decision log #25) verbatim from
 	# demo_loadouts.json — the wounded bit below is HIS. Imani has NO bit
 	# (canonical — zero camera interest); the sim rejects the_bit from her.
+	# Both carry their loadout SKILL grants (keys + levels).
 	_add_contestant(gc, "dario", "Dario \"Encore\"", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [2, 1],
-		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
 	_add_grunt(gc)
 
 	# ---- REAL DEEDS (through the command funnel, so the EVIDENCE block quotes a

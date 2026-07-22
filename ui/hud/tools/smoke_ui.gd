@@ -15,6 +15,20 @@ const HUD_SCENE := preload("res://ui/hud/combat_hud.tscn")
 
 const SEED := 14
 
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json (per-loadout skills are combatant STATE now; the
+## SKILLS flyout probes below assert the list comes from the VIEW, not a fixture).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
+
 var gc
 var hud
 var root_node
@@ -40,16 +54,62 @@ func _initialize() -> void:
 	gc.apply_command({"type": "add_combatant", "combatant": {
 		"id": "boss", "name": "Incine-Dile", "enemy": "incinedile",
 		"team": "enemies", "position": [0, 0]}})
-	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
+	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0],
+		{"skills": IMANI_SKILLS})
 	# Dario carries his AUTHORED bit (decision-log #25, mirrors demo_loadouts) so
-	# the bit-gating probes exercise the real integrated behavior.
+	# the bit-gating probes exercise the real integrated behavior. Both carry
+	# their loadout SKILL grants (keys + levels), read back through the view.
 	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
-		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
 
 	hud = HUD_SCENE.instantiate()
 	root_node.add_child(hud)
 	hud.bind(gc)
 	await _settle()
+
+	# 0a) SKILLS flyout is VIEW-DRIVEN (fixture ACTOR_SKILLS deleted): the active
+	#     actor's (Dario's) entries mirror his granted `skills` rows straight off
+	#     view_combatants — 3 entries, FEINT labeled with its honest cost.
+	var view_ids: Array = []
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "dario":
+			for srd in (cd as Dictionary).get("skills", []):
+				view_ids.append("skill:" + String((srd as Dictionary).get("key", "")))
+	var fly: Dictionary = hud._flyout_data("skills")
+	var fly_ids: Array = []
+	var feint_label := ""
+	var feint_sub := ""
+	for ed in fly.get("entries", []):
+		fly_ids.append(String((ed as Dictionary).get("id", "")))
+		if String((ed as Dictionary).get("id", "")) == "skill:feint":
+			feint_label = String((ed as Dictionary).get("label", ""))
+			feint_sub = String((ed as Dictionary).get("sub", ""))
+	_check("skills flyout: Dario's 3 granted entries", fly_ids.size() == 3)
+	_check("skills flyout entries mirror the VIEW rows", fly_ids == view_ids)
+	_check("FEINT entry labeled with its honest cost",
+		feint_label.contains("FEINT") and feint_sub.contains("COST 1"))
+
+	# 0b) A combatant with NO granted skills gets ONE honest disabled entry —
+	#     never a fixture fallback (the boss's view row carries skills: []).
+	hud.set_active_actor("boss")
+	var none_entries: Array = (hud._flyout_data("skills") as Dictionary).get("entries", [])
+	_check("no-skills flyout: one honest disabled entry",
+		none_entries.size() == 1
+		and not bool((none_entries[0] as Dictionary).get("enabled", true))
+		and String((none_entries[0] as Dictionary).get("label", "")).contains("NO SKILLS"))
+	hud.set_active_actor("dario")
+
+	# 0c) ActionPreview previews the GRANTED level's numbers: Dario's dance is
+	#     granted Lv2, so the honest self-effect line reads +2 Charm (not Lv1's +1).
+	hud._open_self_preview("dance")
+	await _settle()
+	_check("self preview open (dance)", hud._shell.action_preview.visible)
+	_check("preview shows granted-level numbers (+2 Charm)",
+		_panel_has_text(hud._shell.action_preview, "+2 Charm effect"))
+	hud._shell.action_preview.back_requested.emit()
+	await _settle()
+	_check("dance preview closed after BACK", not hud._shell.action_preview.visible)
 
 	# 0) Dario (first ready contestant) spends his Moment on a real feint so the
 	#    on-the-clock rotates to Imani, whose strong_strike gives the confirm
@@ -182,6 +242,19 @@ func _initialize() -> void:
 	_check("schedule pending for the full-HUD shot", not (gc.view_schedule() as Array).is_empty())
 	_check("bars lane populated for the full-HUD shot", hud._shell.timeline._bars_lane.get_child_count() > 0)
 	await _render("../preview_hud.png")
+
+	# 13) Full-HUD evidence shot with the VIEW-DRIVEN skills flyout open for
+	#     Dario (his 3 granted entries with LV + cost lines on screen). Saved
+	#     OUTSIDE the repo, next to HUD_DIR's parent, as skills_hud.png.
+	hud.set_active_actor("dario")
+	if hud._open_cat != "":
+		hud._on_category(hud._open_cat)  # toggle whatever is open closed first
+	hud._on_category("skills")
+	await _settle()
+	_check("skills flyout open for the final shot", hud._shell.flyout.visible)
+	_check("final shot flyout lists FEINT from the view",
+		_panel_has_text(hud._shell.flyout, "FEINT"))
+	await _render("../skills_hud.png")
 
 	print("")
 	if failures.is_empty():
