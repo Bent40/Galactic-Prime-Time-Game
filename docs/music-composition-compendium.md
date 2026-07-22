@@ -200,6 +200,11 @@ Priority order from the data: **1)** onset precision (land the note centre from 
 A3–C4 (the registers nearly meet — cheapest win). Caveats: phone mic + AGC, a-cappella,
 small n; indicative baselines, not clinical.
 
+*Song provenance: clip 3 = Teto cover of "Tenebre Rosso Sangue" (ULTRAKILL / Keygen Church),
+sung ~an octave down a cappella. A dramatic, slide-heavy melody — so the scoop % is partly
+stylistic and the scatter partly song difficulty; tessitura reading is song-dependent.
+**Re-record the SAME song for future diffs** so the numbers compare like-with-like.*
+
 ---
 
 ## 4 · Tools (decided) & starter kit
