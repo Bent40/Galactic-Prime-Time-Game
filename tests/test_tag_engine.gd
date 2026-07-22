@@ -12,6 +12,12 @@ extends SimTestBase
 ## determinism teeth are the log-order + serialization tests.
 
 
+## Authored-bit spec fragment (decision log #25): the sim rejects the_bit from
+## an actor with no authored bit, so every test actor who PERFORMS one carries
+## this. Constant across compared sims, so nullity fingerprints stay aligned.
+const TEST_BIT: Dictionary = {"bit": {"key": "bow", "name": "The Bow", "line": "a bow, mid-combat"}}
+
+
 func add_boss(sim: CombatSim, id: String, overrides: Dictionary = {}) -> Array[Dictionary]:
 	var spec: Dictionary = {
 		"id": id, "name": id, "race": "human", "category": "Boss",
@@ -361,7 +367,7 @@ func combat_fingerprint(sim: CombatSim) -> String:
 
 func test_the_bit_is_mechanically_null() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a")
+	add_human(sim, "a", TEST_BIT)
 	add_human(sim, "b", {"position": [1, 0]})
 	add_boss(sim, "boss")
 	# Put real combat state on the board: b is bleeding, a mid-fight.
@@ -393,7 +399,7 @@ func test_the_bit_rejects_non_contestant_and_dead() -> void:
 
 func test_the_bit_spectacle_escalates_and_acquires() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a")
+	add_human(sim, "a", TEST_BIT)
 	var rider: Dictionary = sim.tags.by_key["the_bit"]["rider"]
 	var base: int = int(rider["base_spectacle"])
 	var bonus: int = int(rider["bonus_per_prior"])
@@ -415,7 +421,9 @@ func test_the_bit_end_to_end_null_in_rich_state() -> void:
 	var plain: CombatSim = make_sim(909)
 	var bitten: CombatSim = make_sim(909)
 	for sim: CombatSim in [plain, bitten]:
-		add_human(sim, "a")
+		# BOTH sims grant the bit (constant across the comparison), so the
+		# combat-state fingerprints diverge only if the bit COMMAND mutates state.
+		add_human(sim, "a", TEST_BIT)
 		add_human(sim, "b", {"position": [1, 0]})
 		declare(sim, "a", attack_action("bleeding", 3, "b", "torso"))
 		advance(sim, 2)
@@ -567,7 +575,7 @@ func test_formation_end_to_end_real_combo() -> void:
 
 func test_the_bit_end_to_end_scores_via_hype_hook() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "a")
+	add_human(sim, "a", TEST_BIT)
 	var before: int = sim.hype.meter
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a"})
 	assert_event(events, "bit_performed", "bit resolved")
@@ -580,8 +588,9 @@ func test_the_bit_end_to_end_scores_via_hype_hook() -> void:
 ## Drives a mixed camera-earning sequence: exposed strike (Reckless), a combined
 ## action (Formation), bits (The Bit), and idle Clocks.
 func _earn_some_tags(sim: CombatSim) -> void:
-	add_human(sim, "a", {"traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
-	add_human(sim, "b", {"position": [2, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}})
+	# a and b both perform bits below — both carry an authored bit (decision #25).
+	add_human(sim, "a", {"traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}, "bit": TEST_BIT["bit"]})
+	add_human(sim, "b", {"position": [2, 0], "traits": {"physique": 5, "reflexes": 3, "mind": 3, "charm": 3}, "bit": TEST_BIT["bit"]})
 	add_human(sim, "c", {"position": [1, 0]})
 	sim.apply_command({"type": "combined_action", "members": [
 		{"actor": "a", "action": attack_action("crushed", 3, "c", "torso")},

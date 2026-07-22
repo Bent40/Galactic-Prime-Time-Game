@@ -37,12 +37,18 @@ func _initialize() -> void:
 
 	_add_boss(gc)
 	_add_contestant(gc, "imani", "Imani \"The Door\"", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(gc, "dario", "Dario \"Encore\"", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [2, 1])
+	# Dario carries his AUTHORED bit (decision log #25) verbatim from
+	# demo_loadouts.json — the wounded bit below is HIS. Imani has NO bit
+	# (canonical — zero camera interest); the sim rejects the_bit from her.
+	_add_contestant(gc, "dario", "Dario \"Encore\"", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [2, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 	_add_grunt(gc)
 
 	# ---- REAL DEEDS (through the command funnel, so the EVIDENCE block quotes a
 	# genuine ledger — the record is never poked): a takedown, the breaching hit,
-	# a bit done while bleeding, a wounded camera call, and an un-answered goal.
+	# a bit done while bleeding (by DARIO — decision log #25: only he has an
+	# authored bit; this step used to be Imani's and moved), a wounded camera
+	# call, and an un-answered goal.
 	gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
 		"kind": "attack", "cost": 1, "damage": {"type": "crushed", "amount": 5},
 		"attack_range": 1, "targets": [{"id": "grunt", "part": "torso"}]}})
@@ -51,9 +57,11 @@ func _initialize() -> void:
 		"kind": "attack", "cost": 1, "damage": {"type": "bleeding", "amount": 10},
 		"attack_range": 1, "targets": [{"id": "boss", "part": "right_hand"}]}})
 	gc.apply_command({"type": "advance_tick"})  # -> breach_opened (real slice win)
+	gc.apply_command({"type": "apply_condition", "target": "dario", "part": "left_arm", "condition": "bleeding", "tier": 1})
+	gc.apply_command({"type": "bit", "actor": "dario"})  # -> bit_under_fire (Dario, wounded)
+	gc.apply_command({"type": "treat", "target": "dario", "part": "left_arm", "condition": "bleeding", "mode": "resolve"})
 	gc.apply_command({"type": "apply_condition", "target": "imani", "part": "left_arm", "condition": "bleeding", "tier": 1})
-	gc.apply_command({"type": "bit", "actor": "imani"})
-	gc.apply_command({"type": "camera_call", "actor": "imani", "target": "imani"})
+	gc.apply_command({"type": "camera_call", "actor": "imani", "target": "imani"})  # -> spotlight_gamble (Imani, wounded)
 	gc.apply_command({"type": "treat", "target": "imani", "part": "left_arm", "condition": "bleeding", "mode": "resolve"})
 	for i in range(2 * 10):  # two Clock laps: a goal is offered, then dies un-met
 		gc.apply_command({"type": "advance_tick"})
@@ -66,8 +74,12 @@ func _initialize() -> void:
 	# --------------------------------------------------------------------------
 
 	# Log the real evidence the card will quote (proof the block is ledger-fed).
+	# Dario's ledger is printed too: the wounded bit is HIS deed now (decision
+	# log #25 — Imani has no authored bit), so it lives on his record.
 	for e in gc.view_verdict("imani").get("evidence", []):
 		print("EVIDENCE  " + String((e as Dictionary).get("line", "")))
+	for e in gc.view_verdict("dario").get("evidence", []):
+		print("EVIDENCE[dario]  " + String((e as Dictionary).get("line", "")))
 
 	var card := VERDICT_SCENE.instantiate()
 	root.add_child(card)
@@ -111,8 +123,10 @@ func _add_grunt(gc) -> void:
 	}})
 
 
-func _add_contestant(gc, id: String, cname: String, traits: Dictionary, pos: Array) -> void:
-	gc.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant(gc, id: String, cname: String, traits: Dictionary, pos: Array, extra: Dictionary = {}) -> void:
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
 		"position": pos, "traits": traits, "camera_call_stacks": 1,
-	}})
+	}
+	combatant.merge(extra, true)
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})

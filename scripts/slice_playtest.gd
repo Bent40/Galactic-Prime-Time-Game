@@ -104,9 +104,13 @@ func _initialize() -> void:
 	_add_contestant(IMANI, "Imani \"The Door\" Brandt", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3},
 		Vector2i(1, 0), "Hestia (hearth/protection/mercy)", -1,
 		"heavy-rescue firefighter — the immovable veteran; when the Door opens, somebody gets carried out")
+	# Dario carries his AUTHORED bit (decision log #25) verbatim from
+	# demo_loadouts.json — every "bit" command in this arc is his. Imani has NO
+	# bit (canonical — zero camera interest); the sim would reject one from her.
 	_add_contestant(DARIO, "Dario \"Encore\" Vekic", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5},
 		Vector2i(0, 1), "Enyo (war/carnage)", 30,
-		"boardwalk sleight-of-hand hustler — the heel you pay to boo; steals finishers, bows after every kill")
+		"boardwalk sleight-of-hand hustler — the heel you pay to boo; steals finishers, bows after every kill",
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 	sink.clear()  # discard setup events; roster is rendered from the view API below
 
 	_print_roster()
@@ -140,12 +144,14 @@ func _add_boss() -> void:
 
 
 func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Vector2i,
-		patron: String, charm_override: int, persona: String) -> void:
+		patron: String, charm_override: int, persona: String, extra: Dictionary = {}) -> void:
 	# race id 1 in demo_loadouts.json maps to the "human" template key.
-	gc.apply_command({"type": "add_combatant", "combatant": {
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
 		"position": [pos.x, pos.y], "traits": traits, "camera_call_stacks": 1,
-	}})
+	}
+	combatant.merge(extra, true)
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})
 	_persona[id] = persona
 	_patron[id] = patron
 	_charm_flag[id] = charm_override
@@ -285,8 +291,10 @@ func _fmt(e: Dictionary, tick: int) -> String:
 			return "[FORCED ACTION %s] %s rolls %d -> %s" % [String(e.get("table", "")),
 				_who(e.get("actor")), int(e.get("roll", 0)), String(e.get("consequence", ""))]
 		"bit_performed":
-			return "[THE BIT] %s does the signature bit (mechanically NULL) — +%d spectacle" % [
-				_who(e.get("actor")), int(e.get("spectacle_points", 0))]
+			# decision log #25: the event names WHICH authored bit was performed.
+			return "[THE BIT] %s performs \"%s\" (mechanically NULL) — +%d spectacle" % [
+				_who(e.get("actor")), String(e.get("bit_name", "the bit")),
+				int(e.get("spectacle_points", 0))]
 		"hype_camera_call_started":
 			return "[CAMERA CALL] %s grabs the spotlight on %s (%d stacks left) — swings now DOUBLED" % [
 				_who(e.get("actor")), _who(e.get("target")), int(e.get("stacks_remaining", 0))]

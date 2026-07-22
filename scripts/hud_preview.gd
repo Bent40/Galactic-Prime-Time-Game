@@ -35,7 +35,10 @@ func _initialize() -> void:
 
 	_add_boss(gc)
 	_add_contestant(gc, "imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0])
-	_add_contestant(gc, "dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1])
+	# Dario carries his AUTHORED bit (decision log #25) verbatim from
+	# demo_loadouts.json; Imani has none (canonical — zero camera interest).
+	_add_contestant(gc, "dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."}})
 
 	# ---- PREVIEW STAGING (harness-only fixture; NOT how the HUD gets its data) ----
 	# Freeze the approved-mockup beat by poking sim state directly, like a test.
@@ -78,8 +81,10 @@ func _add_boss(gc) -> void:
 	}})
 
 
-func _add_contestant(gc, id: String, cname: String, traits: Dictionary, pos: Array) -> void:
-	gc.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant(gc, id: String, cname: String, traits: Dictionary, pos: Array, extra: Dictionary = {}) -> void:
+	var combatant: Dictionary = {
 		"id": id, "name": cname, "race": "human", "team": "party",
 		"position": pos, "traits": traits, "camera_call_stacks": 1,
-	}})
+	}
+	combatant.merge(extra, true)
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})
