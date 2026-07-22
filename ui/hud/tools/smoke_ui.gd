@@ -84,10 +84,16 @@ func _initialize() -> void:
 	_check("unarmed declare accepted (not rejected)",
 		String(last.get("type", "")) != "command_rejected")
 
-	# 5) FREE ACTIONS: with no `bit` field in the view (parallel story not landed),
-	#    THE BIT keeps the v1 always-enabled fallback.
+	# 5) FREE ACTIONS: the AUTHORED bit gating (decision-log #25, integrated).
+	#    Dario carries The Bow -> enabled + labeled; Imani has no bit -> disabled.
+	hud.set_active_actor("dario")
 	var bit_entry: Dictionary = hud._bit_entry()
-	_check("bit fallback enabled (no view field)", bool(bit_entry.get("enabled", false)))
+	_check("bit enabled + named for Dario (The Bow)",
+		bool(bit_entry.get("enabled", false)) and String(bit_entry.get("label", "")).to_upper().contains("BOW"))
+	hud.set_active_actor("imani")
+	var bitless_entry: Dictionary = hud._bit_entry()
+	_check("bit disabled for bitless Imani", not bool(bitless_entry.get("enabled", true)))
+	hud.set_active_actor("dario")
 	hud._on_category("free")
 	await _settle()
 	await _render("smoke_free_flyout.png")
