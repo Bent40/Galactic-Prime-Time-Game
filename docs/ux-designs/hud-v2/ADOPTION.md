@@ -22,9 +22,8 @@ visual lock; placeholder styling continues until the art pass.
   (multiplayer), Wagers/Divine Status/Social/Encyclopedia/Achievements/Quests
   popups, party-of-6/recruits (KAN-4), Focus resource, controller support pass.
 
-## OPEN VOCABULARY QUESTION (owner ruling needed — flagged, not guessed)
-The spec/mockup use **MOMENT 17** as the big counter with **Clock positions 0–10**
-and costs in "Clocks". The ENGINE + rules-addendum use the opposite: **Clock** =
-the 10-tick lap, **Moment** = the tick (costs are "Moment costs"; the HUD shows
-"CLOCK 3 · MOMENT 07"). v1 keeps the ENGINE vocabulary until the owner rules;
-swapping later is a rename pass, not a mechanic change.
+## Vocabulary — RULED (owner 2026-07-22)
+**Engine vocabulary stands:** **Clock** = the 10-tick lap, **Moment** = the tick
+(costs are "Moment costs"; the HUD shows "CLOCK 3 · MOMENT 07"). The spec/mockup's
+inverted usage ("MOMENT 17" / "cost: 2 Clocks") was incidental — read any such
+wording in ARCHITECTURE.md through the engine vocabulary when building.

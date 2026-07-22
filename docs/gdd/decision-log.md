@@ -291,5 +291,6 @@
     adoption: skills menus scale past 4; individual allies show part-based HP everywhere
     (cards flag urgent parts; inspector shows full anatomy). Phased per
     docs/ux-designs/hud-v2/ADOPTION.md — v1 builds only what real systems back (odds/chat/
-    popups/recruits wait for their systems). OPEN: the spec's Moment/Clock vocabulary is
-    inverted vs the engine — engine vocabulary stands until the owner rules (ADOPTION.md).
+    popups/recruits wait for their systems). Vocabulary RULED (owner 2026-07-22): ENGINE
+    terms stand — Clock = the 10-tick lap, Moment = the tick; the mockup's inverted usage
+    was incidental (ADOPTION.md).
