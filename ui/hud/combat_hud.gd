@@ -1130,6 +1130,10 @@ func _flyout_data(cat: String) -> Dictionary:
 ## is being added by a parallel story): enabled only when the active actor's
 ## view entry carries a non-empty `bit`; if NO actor has the field at all, keep
 ## the v1 always-enabled behavior so this flips automatically when it lands.
+## FREE-ACTION economy (anti-spam ruling): the bit is a free action and the sim
+## allows one free action per combatant per tick — when the active actor's view
+## row reads `free_action_used` true, the entry dims honestly (read defensively;
+## a view without the field keeps the entry live and lets the sim adjudicate).
 func _bit_entry() -> Dictionary:
 	var any_field := false
 	for cd in _last_combatants:
@@ -1146,6 +1150,10 @@ func _bit_entry() -> Dictionary:
 			"sub": "no authored Bit for this contestant (decision-log #25)",
 			"enabled": false, "accent": UI.col(UI.MUTED)}
 	var bname := String(mine.get("name", mine.get("key", ""))).to_upper()
+	if bool(_find_combatant(_active_actor).get("free_action_used", false)):
+		return {"id": "bit", "label": "🎭 THE BIT — %s" % bname,
+			"sub": "free action already used this Moment",
+			"enabled": false, "accent": UI.col(UI.MUTED)}
 	return {"id": "bit", "label": "🎭 THE BIT — %s" % bname,
 		"sub": "authored spectacle · crowd only",
 		"enabled": true, "accent": UI.col(UI.MYTHIC)}
