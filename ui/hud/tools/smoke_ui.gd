@@ -210,6 +210,19 @@ func _initialize() -> void:
 	hud.set_active_actor("imani")
 	var bitless_entry: Dictionary = hud._bit_entry()
 	_check("bit disabled for bitless Imani", not bool(bitless_entry.get("enabled", true)))
+
+	# 9b) FREE-ACTION ECONOMY (anti-spam ruling): performing the bit consumes
+	#     the R3 one-free-action-per-tick slot — the entry dims for the rest of
+	#     the Moment, off the view's free_action_used field.
+	hud.set_active_actor("dario")
+	hud._on_bit()
+	await _settle()
+	hud.set_active_actor("dario")  # _issue's refresh re-derives the on-the-clock actor; pin Dario back
+	var used_entry: Dictionary = hud._bit_entry()
+	_check("bit dims when free action used",
+		not bool(used_entry.get("enabled", true))
+		and String(used_entry.get("sub", "")).contains("free action already used"))
+
 	hud.set_active_actor("dario")
 	hud._on_category("free")
 	await _settle()

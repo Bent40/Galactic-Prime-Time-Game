@@ -403,13 +403,20 @@ func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
 
 
 ## The Bit (I-13, RULED item 8) — the signature action that is MECHANICALLY NULL
-## by construction. It is NOT a normal action: it touches NO combatant state, the
-## clock, the action RNG, scheduling, cost, or conditions. Its ONLY effect is one
-## self-describing bit_performed event carrying escalating spectacle_points (base
-## + bonus per prior bit this deployment, from the TagEngine rider) — scored by
-## HypeEngine's generic spectacle hook, detected by TagEngine for the_bit. The
-## character does the bit despite zero mechanical benefit; spectacle is the only
-## payout. Read-only actor gates (rejections mutate nothing); contestants only.
+## by construction, with ONE deliberate, ruled exception (owner, anti-spam
+## ruling): it is a FREE ACTION and pays R3's free-action economy — one free
+## (0-Moment) action per combatant per tick, the same slot 0-cost declares,
+## free moves, first inventory uses and 0-cost reactions consume. The slot IS
+## the cost: a second bit the same tick rejects "free_action_used", and doing
+## the bit forfeits the tick's free move / inventory / reaction (and vice
+## versa). Beyond that slot flag it still touches NO combatant state, the
+## clock, the action RNG, scheduling, Moment cost, or conditions. Its ONLY
+## other effect is one self-describing bit_performed event carrying escalating
+## spectacle_points (base + bonus per prior bit this deployment, from the
+## TagEngine rider) — scored by HypeEngine's generic spectacle hook, detected
+## by TagEngine for the_bit. The escalation survives across ticks (progress is
+## tag state), so the running joke still builds — one beat per Moment.
+## Rejections mutate nothing; contestants only.
 ##
 ## AUTHORED bit (decision log #25): a bit is per-character authored content —
 ## not everyone has one. An actor whose spec carried no bit is rejected
@@ -426,6 +433,12 @@ func _bit(cmd: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
 	if actor.bit.is_empty():
 		return [{"type": "command_rejected", "reason": "no_bit", "actor": actor.id}]
+	# R3 free-action economy (anti-spam ruling): one free action per tick — the
+	# bit consumes the slot, so it competes with the free move / inventory /
+	# 0-cost reactions and can never be spammed within a Moment.
+	if actor.free_action_used:
+		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+	actor.free_action_used = true
 	return [{
 		"type": "bit_performed",
 		"actor": actor.id,

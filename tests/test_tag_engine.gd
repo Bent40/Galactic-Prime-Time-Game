@@ -356,12 +356,20 @@ func test_3am_energy_movement_streak() -> void:
 
 ## Everything about the sim EXCEPT the broadcast-plane engines (hype, tags,
 ## evidence). If a command leaves this fingerprint unchanged it touched no
-## combat state.
-func combat_fingerprint(sim: CombatSim) -> String:
+## combat state. ignore_free_slot=true additionally normalizes every
+## combatant's free_action_used flag to false — the DELIBERATE, RULED exception
+## to the bit's nullity (anti-spam ruling: the bit is a free action and the R3
+## free-action slot IS its cost). Same-tick nullity checks pass it true and
+## assert the flag flip explicitly; across-a-tick checks keep the strict
+## default, because reset_tick_flags clears the slot every advance.
+func combat_fingerprint(sim: CombatSim, ignore_free_slot: bool = false) -> String:
 	var d: Dictionary = sim.to_dict()
 	d.erase("hype")
 	d.erase("tags")
 	d.erase("evidence")
+	if ignore_free_slot:
+		for id: Variant in (d.get("combatants", {}) as Dictionary):
+			((d["combatants"] as Dictionary)[id] as Dictionary)["free_action_used"] = false
 	return CombatSim.canonical_serialize(d)
 
 
@@ -373,14 +381,19 @@ func test_the_bit_is_mechanically_null() -> void:
 	# Put real combat state on the board: b is bleeding, a mid-fight.
 	sim.apply_command({"type": "apply_condition", "target": "b", "part": "torso", "condition": "bleeding", "tier": 2})
 	advance(sim, 1)
-	var before_state: String = combat_fingerprint(sim)
+	var before_state: String = combat_fingerprint(sim, true)
 	var before_meter: int = sim.hype.meter
+	assert_false(sim.combatants["a"].free_action_used, "precondition: a's free-action slot is open")
 	# Perform the bit.
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a", "key": "bow"})
 	var bit: Dictionary = assert_event(events, "bit_performed", "the bit resolves")
-	# 1) It is mechanically null: NOTHING outside hype/tags changed.
-	assert_eq(combat_fingerprint(sim), before_state,
-		"the bit changed NO combat state (combatants, clock, rng, ai, snapshot all identical)")
+	# 1) It is mechanically null EXCEPT the R3 free-action slot (the ruled
+	#    anti-spam cost): nothing else outside hype/tags changed, and the flag
+	#    flip is asserted explicitly rather than hidden by the normalization.
+	assert_eq(combat_fingerprint(sim, true), before_state,
+		"the bit changed NO combat state beyond the free-action slot (combatants, clock, rng, ai, snapshot all identical)")
+	assert_true(sim.combatants["a"].free_action_used,
+		"the bit consumed the free-action slot — the ONLY combat-state change, and the ruled cost")
 	# 2) The ONLY payout is spectacle.
 	assert_true(int(bit.get("spectacle_points", 0)) > 0, "the bit pays spectacle")
 	assert_true(sim.hype.meter > before_meter, "spectacle raised the hype meter")
@@ -398,6 +411,9 @@ func test_the_bit_rejects_non_contestant_and_dead() -> void:
 
 
 func test_the_bit_spectacle_escalates_and_acquires() -> void:
+	# The bits are one tick apart (R3 free-action economy — one bit per Moment,
+	# the anti-spam ruling): escalation is TAG state, so the running joke still
+	# builds across the whole fight, one beat per Moment.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a", TEST_BIT)
 	var rider: Dictionary = sim.tags.by_key["the_bit"]["rider"]
@@ -406,11 +422,13 @@ func test_the_bit_spectacle_escalates_and_acquires() -> void:
 	var payouts: Array[int] = []
 	var last: Array[Dictionary] = []
 	for i: int in range(3):
+		if i > 0:
+			advance(sim, 1)  # frees the R3 slot — a same-tick repeat would reject
 		last = sim.apply_command({"type": "bit", "actor": "a"})
 		payouts.append(int(first_event(last, "bit_performed").get("spectacle_points", -1)))
 	assert_eq(payouts[0], base, "first bit pays base")
-	assert_eq(payouts[1], base + bonus, "second bit escalates by one step")
-	assert_eq(payouts[2], base + 2 * bonus, "third bit escalates again")
+	assert_eq(payouts[1], base + bonus, "second bit (next Moment) escalates by one step")
+	assert_eq(payouts[2], base + 2 * bonus, "third bit (another Moment on) escalates again")
 	assert_event(last, "tag_acquired", "the third performance acquires The Bit")
 	assert_true(sim.tags.holds("a", "the_bit"), "a now holds The Bit")
 

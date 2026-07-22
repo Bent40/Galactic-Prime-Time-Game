@@ -6,7 +6,11 @@ extends SimTestBase
 ## authored bit; bit_performed names WHICH bit; view_combatants exposes the bit
 ## so the UI offers it only to characters who have one. Mechanically The Bit
 ## stays NULL (decision #15's byte-identical combat guarantee — see
-## test_tag_engine's nullity fingerprints, which still hold).
+## test_tag_engine's nullity fingerprints) with ONE deliberate, ruled
+## exception (owner anti-spam ruling): the bit is a FREE ACTION and consumes
+## R3's one-free-action-per-tick slot — the slot IS the cost. Section (e)
+## below proves the economy; the nullity fingerprints treat the slot flag as
+## that documented exception.
 
 ## Dario's canonical authored bit, verbatim from data/demo_loadouts.json.
 const DARIO_BIT: Dictionary = {
@@ -80,6 +84,80 @@ func test_bit_stays_mechanically_null_with_authored_bit() -> void:
 	assert_eq(strip.call(bitten), strip.call(plain),
 		"performing an authored bit leaves combat state bit-for-bit identical")
 	assert_true(bitten.hype.meter > plain.hype.meter, "only the broadcast plane diverged")
+
+
+# ---------------------------------------------------------------- (e) free-action economy (anti-spam ruling)
+
+func test_second_bit_same_tick_is_rejected_free_action_used() -> void:
+	# THE EXPLOIT, DELETED: the bit could be issued unlimited times per tick,
+	# pumping unbounded escalating hype. Ruled fix: R3's existing free-action
+	# economy — one free (0-Moment) action per combatant per tick.
+	var sim: CombatSim = make_sim()
+	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
+	assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
+		"the first bit of the Moment performs")
+	var before: String = sim.state_hash()
+	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "dario"})
+	assert_rejected(events, "free_action_used", "a second bit the SAME tick is rejected — not spammable")
+	assert_no_event(events, "bit_performed", "no bit_performed rides the rejection")
+	assert_eq(sim.state_hash(), before,
+		"the rejection mutates NOTHING (full state hash identical — no hype, no tags, no combat state)")
+
+
+func test_bit_works_again_after_advance_tick() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
+	var first: Dictionary = assert_event(sim.apply_command({"type": "bit", "actor": "dario"}),
+		"bit_performed", "first bit performs")
+	assert_rejected(sim.apply_command({"type": "bit", "actor": "dario"}), "free_action_used",
+		"the same-tick repeat is rejected")
+	advance(sim, 1)  # reset_tick_flags frees the R3 slot every Moment
+	var again: Dictionary = assert_event(sim.apply_command({"type": "bit", "actor": "dario"}),
+		"bit_performed", "the NEXT Moment the bit performs again")
+	assert_true(int(again.get("spectacle_points", 0)) > int(first.get("spectacle_points", 0)),
+		"escalation is tag state — it survives the tick, so the running joke still builds")
+
+
+func test_bit_consumes_the_free_slot_and_vice_versa() -> void:
+	# The slot IS the cost: doing the bit forfeits the tick's other free actions.
+	var sim: CombatSim = make_sim()
+	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
+	assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
+		"the bit consumes the free-action slot")
+	assert_rejected(sim.apply_command({"type": "move", "actor": "dario", "to": [1, 0]}), "free_action_used",
+		"the free 1-3 space move the same tick is rejected — the bit WAS the tick's free action")
+	# And vice versa: the free move first forecloses the bit.
+	var sim2: CombatSim = make_sim()
+	add_human(sim2, "dario", {"team": "party", "bit": DARIO_BIT})
+	assert_event(sim2.apply_command({"type": "move", "actor": "dario", "to": [1, 0]}), "moved",
+		"the free move consumes the slot first")
+	assert_rejected(sim2.apply_command({"type": "bit", "actor": "dario"}), "free_action_used",
+		"the bit after a free move the same tick is rejected — one free action per Moment")
+
+
+func test_view_combatants_exposes_free_action_used() -> void:
+	var game: Node = (load("res://controller/game_controller.gd") as GDScript).new()
+	game.start_combat(7, load_static_data())
+	game.apply_command({"type": "add_combatant", "combatant": {
+		"id": "dario", "name": "Dario", "race": "human", "team": "party",
+		"position": [0, 1], "traits": {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5},
+		"bit": DARIO_BIT}})
+	var row := func() -> Dictionary:
+		for cv: Dictionary in game.view_combatants():
+			if String(cv.get("id", "")) == "dario":
+				return cv
+		return {}
+	assert_true((row.call() as Dictionary).has("free_action_used"),
+		"the view row carries the free_action_used field")
+	assert_false(bool((row.call() as Dictionary).get("free_action_used", true)),
+		"slot open before any free action")
+	game.apply_command({"type": "bit", "actor": "dario"})
+	assert_true(bool((row.call() as Dictionary).get("free_action_used", false)),
+		"the bit flips free_action_used true in the view — UIs can gate 0-cost entries honestly")
+	game.apply_command({"type": "advance_tick"})
+	assert_false(bool((row.call() as Dictionary).get("free_action_used", true)),
+		"the next Moment the view reads the reset slot")
+	game.free()
 
 
 # ---------------------------------------------------------------- (c) serialization

@@ -265,6 +265,11 @@ func view_combatants() -> Array[Dictionary]:
 			"shock": c.shock,
 			"exposed": c.exposed_cache,
 			"breached": c.breached,
+			# R3 free-action economy (anti-spam ruling): true once this combatant
+			# has spent its one free (0-Moment) action this tick — The Bit, the
+			# free move, the first inventory use and 0-cost reactions all consume
+			# it. Straight off the state so UIs can gate 0-cost entries honestly.
+			"free_action_used": c.free_action_used,
 			"parts": parts,
 		})
 	return out
