@@ -1,0 +1,76 @@
+# CI for the Godot 4.7 headless sim (review item #6: automated truth).
+# Pinned engine: scripts/setup_godot.sh verifies the download against its
+# pinned SHA-256 before installing. Every step mirrors a command that runs
+# green locally (see STATUS.md for the current counts).
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sim:
+    name: seeds · import · tests · slice smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed-data validation
+        run: python3 scripts/validate_seeds.py
+
+      - name: Cache Godot 4.7.1
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/godot
+          key: godot-4.7.1-stable-linux-x86_64-v1
+
+      - name: Install Godot 4.7.1 (checksum-verified)
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: bash scripts/setup_godot.sh
+
+      - name: Install xvfb (driver runs)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      - name: Import check (all scenes/scripts compile)
+        run: |
+          export GODOT_BIN="$HOME/.local/bin/godot"
+          xvfb-run -a "$GODOT_BIN" --headless --path . --import 2>&1 | tee import.log
+          if grep -qiE "SCRIPT ERROR|Parse Error" import.log; then
+            echo "::error::script/parse errors during import"; exit 1
+          fi
+
+      - name: Sim test suite (zero failures required)
+        run: GODOT_BIN="$HOME/.local/bin/godot" bash scripts/run_sim_tests.sh
+
+      - name: Slice smoke (full playable arc must WIN)
+        run: |
+          export GODOT_BIN="$HOME/.local/bin/godot"
+          xvfb-run -a "$GODOT_BIN" --headless --path . -s scripts/slice_playtest.gd
+
+      - name: Balance harness (full-cadence fight must WIN, no one-shots)
+        run: |
+          export GODOT_BIN="$HOME/.local/bin/godot"
+          xvfb-run -a "$GODOT_BIN" --headless --path . -s scripts/balance_sim.gd | tee balance.log
+          grep -q "outcome=WIN" balance.log
+
+      # Renders need a GL context; llvmpipe usually suffices but is not a gate.
+      - name: Screens render (non-blocking)
+        continue-on-error: true
+        run: |
+          export GODOT_BIN="$HOME/.local/bin/godot"
+          HUD_OUT="$PWD/ci_hud.png" xvfb-run -s "-screen 0 1920x1200x24" -a bash scripts/render_hud.sh || true
+
+      - name: Upload render artifact (if produced)
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: hud-render
+          path: ci_hud.png
+          if-no-files-found: ignore
