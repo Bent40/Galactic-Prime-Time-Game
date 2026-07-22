@@ -218,6 +218,214 @@ func _has_status(c: CombatantState, status: String) -> bool:
 	return bool(c.statuses.get(status, false))
 
 
+# ------------------------------------------------------- read-only preview (HUD v2)
+
+## READ-ONLY action preview (spectator contract — ADDITIVE, HUD v2 Phase 2).
+## Predicts what declaring `action` would cost and what its strike would do,
+## WITHOUT mutating any state and WITHOUT touching either rng stream: the boss
+## dodge is reported as UNCERTAINTY (threshold + eligibility, read off the same
+## fields EnemyAI.try_dodge reads) — never rolled. Reuses the live authorities
+## (_effective_cost / _prime_unmet / the exact _strike_round Force formula +
+## Resistance helpers + the part condition_immunities / bleed_immune / D3 gates)
+## so the preview never lies. Returns a plain Dictionary:
+##   cost: int              — effective Moment cost (Exhausted/Strained included)
+##   windup: bool           — cost >= 2 commits through a windup (R2)
+##   prime_unmet: String    — "" ok, else the same reason declare would reject on
+##   per_target: [{id, part, force, robustness, net, landed,
+##                 blocked_reason ("" | "surface_immunity" | "robustness" | "fire_heals"),
+##                 conditions: [ids that would ride the hit],
+##                 dodge_possible: bool, dodge_threshold: int}]
+##   merged: {force, robustness, net} — only when the action carries a
+##           "combo_members" combined-preview request (see below).
+##
+## COMBINED preview: action["combo_members"] = [{"actor_id", "action"}...] asks
+## for the R15 merged-force projection — per_target then carries one row per
+## member (its own Force / dodge read) and `merged` sums the CONNECTED members'
+## Forces against the one merged Robustness gate, mirroring _merge_apply
+## (lowest flat reduction among the component types; dodge stays uncertainty —
+## an eligible dodge can still shrink the real merged hit).
+func preview_action(actor: CombatantState, action: Dictionary) -> Dictionary:
+	if action.has("combo_members"):
+		return _preview_combined(action)
+	if actor == null:
+		return {}
+	var kind := String(action.get("kind", "attack"))
+	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
+	var out: Dictionary = {
+		"cost": _effective_cost(actor, kind, action, uses_strained),
+		"windup": _effective_cost(actor, kind, action, uses_strained) >= 2,
+		"prime_unmet": _prime_unmet(actor, action),
+		"per_target": [],
+	}
+	for target_entry: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = target_entry
+		var row: Dictionary = _preview_target_row(actor, action, String(t.get("id", "")), String(t.get("part", "")))
+		if not row.is_empty():
+			(out["per_target"] as Array).append(row)
+	return out
+
+
+## One per_target preview row — the read-only twin of _strike_round's math.
+## {} when the target/part does not exist (declare would reject those anyway).
+func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: String, part_key: String) -> Dictionary:
+	var target: CombatantState = combatants.get(target_id)
+	if target == null or not target.parts.has(part_key):
+		return {}
+	var damage: Dictionary = _preview_damage(actor, action)
+	var condition_id := ConditionEngine.normalize_condition_id(String(damage.get("type", "")))
+	var amount: int = int(damage.get("amount", 0))
+	# R10 requirements gate: unmet halves the amount (deterministic; the Tool d6
+	# rider stays run-time uncertainty and is NOT modelled here).
+	var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+	var requirements: Dictionary = action.get("requirements", item.get("stat_requirements", {}))
+	if _requirements_unmet(actor, requirements, action.get("combo_provides", {})):
+		amount = floori(amount / 2.0)
+	var cond_def: Dictionary = cond.def_for(condition_id)
+	var is_physical: bool = String(cond_def.get("resistance_type", "")) == "Physical"
+	# The EXACT _strike_round formulas (R14):
+	var atk_physique: int = actor.trait_total("physique")
+	var force: int = amount + floori(atk_physique / 2.0)
+	var part_armor: int = int((target.parts[part_key] as Dictionary).get("armor", 0))
+	var flat_res: int = Resistance.flat_physical_reduction(target, condition_id)
+	var robustness: int = floori(target.trait_total("physique") / 2.0) + part_armor + flat_res
+	var landed: bool = force > robustness
+	var blocked_reason: String = ""
+	var net: int = 0
+	if condition_id == "burn" and Resistance.fire_heals(target) \
+			and not bool(target.parts.get(part_key, {}).get("fire_harms", false)):
+		blocked_reason = "fire_heals"  # the hit would HEAL the target (boss hook)
+		landed = false
+	elif Resistance.part_blocked_by_surface_immunity(target, part_key):
+		blocked_reason = "surface_immunity"
+		landed = false
+	else:
+		if is_physical:
+			net = maxi(0, force - robustness)
+		else:
+			net = Resistance.reduce_damage(amount, target, cond_def, condition_id)
+			landed = true  # non-Physical paths are not force-gated (R14)
+		# self_guard (brace): the buffered Crush/Burn guard is deterministic state.
+		if target.brace_guard > 0 and (condition_id == "crushed" or condition_id == "burn"):
+			net = maxi(0, net - target.brace_guard)
+		if is_physical and not landed:
+			blocked_reason = "robustness"
+	# Dodge UNCERTAINTY — the same threshold + eligibility try_dodge reads, no d6.
+	var threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
+	var dodge_possible: bool = threshold > 0 and target.alive and not target.removed_from_play \
+		and not target.is_helpless(clock.tick) and not target.exposed_cache
+	return {
+		"id": target_id,
+		"part": part_key,
+		"force": force,
+		"robustness": robustness,
+		"net": net,
+		"landed": landed,
+		"blocked_reason": blocked_reason,
+		"conditions": _preview_riding_conditions(target, part_key, condition_id, cond_def, landed, action),
+		"dodge_possible": dodge_possible,
+		"dodge_threshold": threshold,
+	}
+
+
+## The damage dict the strike would actually use, mirroring _strike_via_spec /
+## _resolve_strike: a known skill's SkillBook spec is the authority; otherwise
+## the action's own damage, then the item's listed damage.
+func _preview_damage(actor: CombatantState, action: Dictionary) -> Dictionary:
+	var kind := String(action.get("kind", "attack"))
+	if kind == "skill":
+		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		if spec.has("damage_type") and (SkillBook.is_known(String(action.get("key", ""))) or not action.has("damage")):
+			return {"type": String(spec["damage_type"]), "amount": int(spec.get("amount", 1))}
+	var damage: Dictionary = action.get("damage", {})
+	if damage.is_empty():
+		var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+		if item.has("damage_type"):
+			damage = {"type": String(item.get("damage_type", "")), "amount": int(item.get("damage_amount", 0))}
+	return damage
+
+
+## Condition ids that would RIDE the hit, mirroring the resolve-time gates:
+## D3 (a damaging condition needs a landed wound), the part's bleed_immune +
+## condition_immunities (with the neural-poison bypass), and surface hiding.
+func _preview_riding_conditions(target: CombatantState, part_key: String, condition_id: String, cond_def: Dictionary, landed: bool, action: Dictionary) -> Array:
+	if condition_id == "" or cond_def.is_empty():
+		return []
+	if _condition_needs_wound(condition_id, cond_def) and not landed:
+		return []  # R14 D3: blocked to no wound -> no bleed/burn/poison seeds
+	var part: Dictionary = target.parts.get(part_key, {})
+	if condition_id == "bleeding" and bool(part.get("bleed_immune", false)):
+		return []
+	var immunities: Array = part.get("condition_immunities", [])
+	if immunities.has(condition_id):
+		var neural_bypass: bool = condition_id == "poison" and String(action.get("poison_type", "")) == "neural"
+		if not neural_bypass:
+			return []
+	if bool(part.get("hidden", false)) and not target.breached:
+		return []
+	return [condition_id]
+
+
+## Combined-strike preview (R15 merged force, read-only): per-member rows +
+## the ONE merged gate _merge_apply would evaluate. A member CONNECTS for the
+## merged sum when its row is not blocked (surface/fire) and its damage path is
+## Physical — dodge remains per-member uncertainty, exactly as at resolve.
+func _preview_combined(action: Dictionary) -> Dictionary:
+	var rows: Array = []
+	var sum_force: int = 0
+	var merged_target: CombatantState = null
+	var merged_part: String = ""
+	var flat_min: int = -1
+	var cost: int = 0
+	var windup: bool = false
+	var prime_unmet: String = ""
+	for member: Variant in action.get("combo_members", []) as Array:
+		var md: Dictionary = member
+		var m_actor: CombatantState = combatants.get(String(md.get("actor_id", md.get("actor", ""))))
+		var m_action: Dictionary = md.get("action", {})
+		if m_actor == null:
+			continue
+		var m_kind := String(m_action.get("kind", "attack"))
+		var m_strained: bool = m_actor.strained_grip and (m_kind == "attack" or m_kind == "reload")
+		cost = maxi(cost, _effective_cost(m_actor, m_kind, m_action, m_strained))
+		windup = windup or _effective_cost(m_actor, m_kind, m_action, m_strained) >= 2
+		if prime_unmet == "":
+			prime_unmet = _prime_unmet(m_actor, m_action)
+		var targets: Array = m_action.get("targets", [])
+		if targets.is_empty():
+			continue
+		var t: Dictionary = targets[0]
+		var row: Dictionary = _preview_target_row(m_actor, m_action, String(t.get("id", "")), String(t.get("part", "")))
+		if row.is_empty():
+			continue
+		row["actor"] = m_actor.id
+		rows.append(row)
+		# Mirror _merge_group_for/_merge_connect: only an unblocked Physical
+		# member contributes Force to the merged gate.
+		var m_damage: Dictionary = _preview_damage(m_actor, m_action)
+		var m_cond := ConditionEngine.normalize_condition_id(String(m_damage.get("type", "")))
+		var m_physical: bool = String(cond.def_for(m_cond).get("resistance_type", "")) == "Physical"
+		if String(row.get("blocked_reason", "")) in ["surface_immunity", "fire_heals"] or not m_physical:
+			continue
+		sum_force += int(row.get("force", 0))
+		merged_target = combatants.get(String(t.get("id", "")))
+		merged_part = String(t.get("part", ""))
+		var fr: int = Resistance.flat_physical_reduction(merged_target, m_cond)
+		flat_min = fr if flat_min < 0 else mini(flat_min, fr)
+	var merged: Dictionary = {"force": sum_force, "robustness": 0, "net": 0}
+	if merged_target != null and merged_target.parts.has(merged_part):
+		var part_armor: int = int((merged_target.parts[merged_part] as Dictionary).get("armor", 0))
+		var robustness: int = floori(merged_target.trait_total("physique") / 2.0) + part_armor + maxi(0, flat_min)
+		merged["robustness"] = robustness
+		merged["net"] = maxi(0, sum_force - robustness)
+	return {
+		"cost": cost,
+		"windup": windup,
+		"prime_unmet": prime_unmet,
+		"per_target": rows,
+		"merged": merged,
+	}
+
+
 func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> Array[Dictionary]:
 	match kind:
 		"attack":
