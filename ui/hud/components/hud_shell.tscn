@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/hud/components/hud_shell.gd" id="1_hud_shell"]
+
+[node name="HudShell" type="Control"]
+script = ExtResource("1_hud_shell")

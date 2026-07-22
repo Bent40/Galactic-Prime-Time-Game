@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/hud/components/party_rail.gd" id="1_party_rail"]
+
+[node name="PartyRail" type="PanelContainer"]
+script = ExtResource("1_party_rail")
