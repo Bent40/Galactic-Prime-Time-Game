@@ -3,9 +3,13 @@ extends SimTestBase
 ## policy pins, summoning, determinism and serialization. The Incinedile boss
 ## (phase machine + dodge threshold) is covered in test_incinedile.gd.
 ##
-## Policy expectations pin the R11 #15/#16 rules: decisions are rng-free
-## priorities over sorted state, so every pin here is exact — a wrong target,
-## part, or priority order fails deterministically.
+## Policy expectations pin the R11 #15/#16 rules as amended by R23 (decision
+## #29): targeting is the antagonism-weighted draw (one salted ai_rng randf per
+## >= 2-candidate decision, zero for a single candidate), everything else stays
+## rng-free rules over sorted state. Multi-candidate target pins therefore
+## predict the draw with a twin RNG instead of hardcoding a name — still exact,
+## still deterministic. The engine's own anchors (50/50, grudge, rng cost,
+## decay, serialization) live in tests/test_antagonism.gd.
 
 
 func add_enemy(sim: CombatSim, id: String, enemy_key: String, overrides: Dictionary = {}) -> Array[Dictionary]:
@@ -93,28 +97,51 @@ func test_mob_attacks_adjacent_target() -> void:
 	assert_no_event(resolved, "condition_applied", "no wound → no bleeding on a blocked hit")
 
 
-func test_mob_target_priority_nearest_then_weakest_then_id() -> void:
-	# Nearest wins.
+## R23 (decision #29) REWRITE — the nearest → lowest-HP → id cascade this test
+## used to pin is SUPERSEDED by the antagonism-weighted draw. The kept INTENT:
+## a closer target is much likelier (inverse-square weight, pinned EXACTLY),
+## and the decision IS the weighted draw at the live ai_rng state (predicted
+## with a twin RNG, never hardcoded). The deep engine pins (50/50 anchor,
+## grudge, rng cost) live in tests/test_antagonism.gd.
+func test_mob_targeting_is_the_weighted_draw() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h_far", {"team": "party", "position": [4, 0]})
 	add_human(sim, "h_near", {"team": "party", "position": [1, 0]})
 	add_enemy(sim, "roach", "roach_dog")
+	var roach: CombatantState = sim.combatants["roach"]
+	var candidates: Array[CombatantState] = [sim.combatants["h_far"] as CombatantState, sim.combatants["h_near"] as CombatantState]
+	var rows: Array[Dictionary] = sim.ai.targeting_weights(roach, candidates, roach.position)
+	# No history, default personality (proximity_bias 2.0): distance 4 vs 1 is
+	# EXACTLY inverse-square — 1/16 vs 1 (the "closer = much higher" canon).
+	assert_eq(float((rows[0] as Dictionary)["weight"]), 1.0 / 16.0, "far weight = 1/4^2 exactly")
+	assert_eq(float((rows[1] as Dictionary)["weight"]), 1.0, "adjacent weight = 1 exactly")
+	var expected: String = _predicted_pick(sim, "roach")
 	var decision: Dictionary = first_event(ai_decide(sim, "roach"), "ai_decision")
-	assert_eq(String(decision.get("target", "")), "h_near", "nearest target preferred")
-	# Equidistant: lowest total HP wins even with a later id.
-	var sim2: CombatSim = make_sim()
-	add_human(sim2, "ha", {"team": "party", "position": [1, 0]})
-	add_human(sim2, "hz", {"team": "party", "position": [0, 1], "body_parts": weak_parts()})
-	add_enemy(sim2, "roach", "roach_dog")
-	var decision2: Dictionary = first_event(ai_decide(sim2, "roach"), "ai_decision")
-	assert_eq(String(decision2.get("target", "")), "hz", "tie on distance -> lowest total HP")
-	# Full tie: lexicographic id.
-	var sim3: CombatSim = make_sim()
-	add_human(sim3, "ha", {"team": "party", "position": [1, 0]})
-	add_human(sim3, "hb", {"team": "party", "position": [0, 1]})
-	add_enemy(sim3, "roach", "roach_dog")
-	var decision3: Dictionary = first_event(ai_decide(sim3, "roach"), "ai_decision")
-	assert_eq(String(decision3.get("target", "")), "ha", "full tie -> first id in sort order")
+	assert_eq(String(decision.get("target", "")), expected,
+		"the decision IS the weighted draw at the live ai_rng state (16:1 toward the near)")
+
+
+## Twin-RNG prediction of the R23 weighted pick the actor's next decide will
+## make (from the CURRENT ai_rng state), replaying pick_weighted_target's walk
+## over targeting_weights in sorted-id order. "" when it would not draw.
+func _predicted_pick(sim: CombatSim, actor_id: String) -> String:
+	var actor: CombatantState = sim.combatants[actor_id]
+	var opponents: Array[CombatantState] = sim.ai._opponents(actor)
+	if opponents.size() < 2:
+		return "" if opponents.is_empty() else opponents[0].id
+	var rows: Array[Dictionary] = sim.ai.targeting_weights(actor, opponents, actor.position)
+	var twin := RandomNumberGenerator.new()
+	twin.state = sim.ai.ai_rng.state
+	var total: float = 0.0
+	for row: Dictionary in rows:
+		total += float(row["weight"])
+	var draw: float = twin.randf() * total
+	var cumulative: float = 0.0
+	for i: int in range(rows.size()):
+		cumulative += float((rows[i] as Dictionary)["weight"])
+		if draw < cumulative:
+			return String((rows[i] as Dictionary)["id"])
+	return String((rows[rows.size() - 1] as Dictionary)["id"])
 
 
 func test_mob_closes_distance_then_attacks() -> void:
@@ -221,18 +248,39 @@ func test_elite_summons_brood_once() -> void:
 	assert_eq(String(second.get("ability", "")), "whip", "elite falls through to its strike")
 
 
-func test_elite_targets_weakest_in_range_not_nearest() -> void:
+## R23 (decision #29) REWRITE — the elite's old lowest-HP-first RULE is now its
+## authored low_hp_bias PERSONALITY (data/enemies.json): a wounded target
+## weighs heavier, it does not auto-win. Kept INTENT: the "picks off the weak"
+## persona is real and pinned exactly; the decision is the weighted draw.
+func test_elite_low_hp_bias_prefers_the_wounded() -> void:
 	var sim: CombatSim = make_sim()
+	# Equidistant so proximity cancels; hw wounded to half its total HP.
 	add_human(sim, "ha", {"team": "party", "position": [1, 0]})
-	add_human(sim, "hz", {"team": "party", "position": [6, 0], "body_parts": weak_parts()})
+	add_human(sim, "hw", {"team": "party", "position": [0, 1]})
 	add_enemy(sim, "elite", "little_brother_roach", {"abilities": [
 		{"key": "whip", "name": "Whip", "moment_cost": 1, "range": 7,
 			"damage": [{"type": "bleeding", "amount": 2}]},
 	]})
+	var elite: CombatantState = sim.combatants["elite"]
+	assert_eq(elite.personality_low_hp_bias(), 3.0, "seeded elite personality carries low_hp_bias 3.0")
+	assert_false(elite.personality_mock_sensitive(), "Mind 1 brood-tender is authored mock-insensitive")
+	# Wound hw to exactly half of its 17 total HP (2+5+2+2+3+3): 17 -> 8.5 is not
+	# integral, so halve the torso instead and compute the exact expected factor.
+	var hw: CombatantState = sim.combatants["hw"]
+	var torso: Dictionary = hw.parts["torso"]
+	torso["hp"] = 1  # torso 5 -> 1: total 17 -> 13
+	var candidates: Array[CombatantState] = [sim.combatants["ha"] as CombatantState, hw]
+	var rows: Array[Dictionary] = sim.ai.targeting_weights(elite, candidates, elite.position)
+	assert_eq(float((rows[0] as Dictionary)["weight"]), 1.0, "fresh equidistant target weighs 1")
+	var expected_hw: float = 1.0 + 3.0 * (1.0 - 13.0 / 17.0)
+	assert_eq(float((rows[1] as Dictionary)["weight"]), expected_hw,
+		"wounded target's weight = 1 + low_hp_bias * missing-HP fraction, exactly")
+	assert_true(expected_hw > 1.5, "the persona is a real preference, not a nudge")
+	var expected: String = _predicted_pick(sim, "elite")
 	var decision: Dictionary = first_event(ai_decide(sim, "elite"), "ai_decision")
 	assert_eq(String(decision.get("choice", "")), "attack", "whip reaches both")
-	assert_eq(String(decision.get("target", "")), "hz",
-		"elite picks off the WEAKEST target in reach, not the nearest (R11 #16)")
+	assert_eq(String(decision.get("target", "")), expected,
+		"the elite's pick IS the biased weighted draw at the live ai_rng state")
 
 
 func test_elite_punishes_exposure_with_head_shots() -> void:

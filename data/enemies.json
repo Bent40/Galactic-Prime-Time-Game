@@ -109,6 +109,14 @@
       "Affliction": 1,
       "Psychic": 0
     },
+    "personality": {
+      "proximity_bias": 2.0,
+      "grudge_weight": 1.0,
+      "mock_sensitive": false,
+      "low_hp_bias": 3.0,
+      "decay": 1.0,
+      "note": "R23 (decision #29): the brood-tender picks off the weak — its old lowest-HP-first rule is now this low_hp_bias (wounded prey weighs up to 4x). Mind 1: too dim for mockery. All numbers PLACEHOLDER (R14)."
+    },
     "abilities": [
       {
         "key": "whip",
@@ -219,6 +227,14 @@
       "Physical": 0,
       "Affliction": 2,
       "Psychic": 0
+    },
+    "personality": {
+      "proximity_bias": 2.0,
+      "grudge_weight": 1.0,
+      "mock_sensitive": false,
+      "low_hp_bias": 0.0,
+      "decay": 1.0,
+      "note": "R23 (decision #29): Mind 1 — too dim to parse mockery (Feint builds nothing), but it REMEMBERS PAIN: decay 1.0 means every wound you deal it keeps its full weight until the fight ends. Strongly proximity-driven (inverse-square). All numbers PLACEHOLDER (R14)."
     },
     "traits": {
       "fire_heals": true,

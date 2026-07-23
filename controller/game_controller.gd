@@ -277,6 +277,10 @@ func view_combatants() -> Array[Dictionary]:
 			# free move, the first inventory use and 0-cost reactions all consume
 			# it. Straight off the state so UIs can gate 0-cost entries honestly.
 			"free_action_used": c.free_action_used,
+			# R23 (ADDITIVE): an AI combatant's antagonism map (opponent id ->
+			# grudge score, plain copy) so the HUD/inspector can show who the
+			# boss hates. {} for contestants — they never hold grudges here.
+			"antagonism": c.antagonism.duplicate(true) if EnemyAI.AI_CATEGORIES.has(c.category) else {},
 			"parts": parts,
 		})
 	return out
