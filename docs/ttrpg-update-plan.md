@@ -170,7 +170,7 @@ items). What remains of them is polish, folded into B-4 below.
 - Single shared `traitTotal` + `effectiveMax` helpers imported everywhere (kills the
   5-copy drift class permanently).
 
-### B-4 Polish (existing-feature completions, do last)
+### B-4 Polish — ✅ DONE 2026-07-23 (whisper selector, admin tag picker, tag descriptions surfaced; skipped as deliberate: uses auto-decrement, tracker countdown display)
 
 - CommsTab: recipient/whisper selector (route already supports `recipientId`, style).
 - Admin PlayerPanel tag entry → same picker the player side already has.
