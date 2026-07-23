@@ -148,7 +148,7 @@ items). What remains of them is polish, folded into B-4 below.
 | B-1f | `capacity` default comes from three different fallbacks (enrich vs normalize vs UI) | `skillUtils.js:27,58` |
 | B-1g | Verify I-14 (skill-enrichment render) is fully closed — recent commits (`_id`/`templateId` lookup + passive projection) suggest yes; confirm and close it | recent commits |
 
-### B-2 Rules-alignment changes (from Workstream A; each cites its ruling)
+### B-2 Rules-alignment changes — ✅ CODE DONE 2026-07-23 (data migration pending: owner backs up, then runs `server/migrate-rules-vocab.js --apply` + `server/seedTagDescriptions.js --apply`; both dry-run by default. DMG_TYPES became the 7 resistance keys incl. Dissolution; only one live item was affected — Fedora Hat, Psy→Dissolution. Prime display [B-2c second half] still rides the skill passover)
 
 | # | Change | Ruling |
 |---|---|---|
