@@ -10,21 +10,45 @@ extends SceneTree
 ## real slice encounter — the Incine-Dile tutorial boss + the two demo contestants,
 ## entirely through the real GameController — and runs the boss at FULL CADENCE: every
 ## tick the boss is eligible it `ai_decide`s (via GameController.run_enemy_turn()),
-## exactly like a live fight. The party follows a FIXED, reasonable strategy: open the
-## hidden network via the designed breach (a combined burst hit >= 7), then focus the
-## exposed network until it dies — re-breaching after each pressure-valve reset. Since
-## the explosion beats went REAL (decision #27) the strategy also plays the intended
-## valve counterplay: on the steam telegraph both contestants RUN out of the blast
-## radius until the boom, then walk back in; and a burning torso gets treated before
-## the Clock reset can escalate it (the boss actually fights past Valve I now).
+## exactly like a live fight. The party follows a FIXED strategy that plays the kit the
+## recent merges shipped — every input is a command a player has through the HUD, and
+## every read is public view state (positions, view_schedule's declared-action bars,
+## telegraph events, its own buffs):
+##  * BREACH — open the hidden network via the designed combined burst (merged force
+##    6+6 -> one 12-net hit >= 7); when the partner is unavailable, Imani's solo path-A
+##    bleeding-8 strike (force 10 - robustness 3 = 7) re-opens it alone.
+##  * FEINT DENIAL (Dario, the skirmisher) — the boss's big actions are cost-2 WINDUPS,
+##    visible a full Moment before they resolve. Dario keeps a feint parked on the boss
+##    whenever the flag is clear: the boss's next scheduled resolution (cone sweep or
+##    dash) collapses into a Forced Action – Tool, wasting its 2 committed Moments. The
+##    flag is NOT consumed by the valve's telegraph/blast (those bypass the resolver),
+##    so a feint parked before fleeing still denies the first post-valve sweep.
+##  * MERGED POUR — on ticks Dario is not feinting, the pair pours the exposed network
+##    with a COMBINED strike: one merged robustness gate (15 - 3 = 12 net) instead of
+##    two separate gates (5 + 4) — the same R15 mechanic the breach uses.
+##  * BRACE (Imani, the anchor) — she cannot dodge the dash (Reflexes 2 vs threshold
+##    7), so she keeps her free-action brace guard up whenever she stands in reach:
+##    a landed dash nets 1 instead of 3.
+##  * SPREAD on the valve — on the steam telegraph Imani pounds one last Moment then
+##    runs; Dario runs immediately and OVERSHOOTS past the cone's 10-hex reach
+##    (CONE_MIN_TARGETS=2 in the enemy AI: with one contestant out of reach the sweep
+##    is denied entirely), rejoining only when the boss is committed to a windup /
+##    prone, or his parked feint still covers the next action.
+##  * A burning torso still gets treated before the Clock reset escalates it, and a
+##    lone survivor still has the bleeding-tier breach path.
 ##
 ## It answers with numbers, not vibes: at full boss cadence, do the magnitudes one-shot
-## a contestant / TPK the party, and after tuning do they produce a winnable, no-one-shot
-## fight with margin? It prints:
+## a contestant / TPK the party, and with GOOD play do they produce a winnable,
+## no-one-shot fight with margin? It prints:
 ##  * a PROBE line — the boss's WORST-CASE single hit (dash on a lone contestant, cone on
 ##    a crowd) against fresh torsos of each physique. This is the clean one-shot metric,
 ##    independent of party pace: a "died=" true here is a from-full-to-0 one-shot.
-##  * a BALANCE line — the machine-greppable outcome of the full-cadence fight.
+##  * a BALANCE line — the machine-greppable outcome of the full-cadence fight, extended
+##    (additively — every pre-existing key is unchanged and in place) with the denial
+##    telemetry: feints=cast windups_denied=collapsed cones_declared / cones_denied.
+##
+## Set BALANCE_TRACE=1 in the environment for a per-tick event trace (driver-side
+## debugging only — printing never alters the command stream or the rng).
 ##
 ## HARD LINE: DRIVER/CONSUMER ONLY — it never touches simulation/, controller/, data/
 ## or tests/. Determinism: fixed seeds, no wall-clock reads, no RNG in the driver. The
@@ -36,6 +60,10 @@ extends SceneTree
 ## actually fired.
 
 # --------------------------------------------------------------------- tunables
+## Fight seed. CI runs the default (14); BALANCE_SEED overrides it for local
+## robustness sweeps only — the strategy itself is roll-independent (feint
+## denial and the merged pour consume no rng), so a seed changes only the
+## boss's weighted-target draws and the Forced-Tool fallout.
 const SEED: int = 14
 const PROBE_SEED: int = 9
 const TICK_CAP: int = 120       # hard stop -> TIMEOUT (a balanced fight ends well before)
@@ -48,6 +76,25 @@ const TICK_CAP: int = 120       # hard stop -> TIMEOUT (a balanced fight ends we
 ## gate holds — before finishing the core (F2).
 const BREACH_HALF: int = 6
 const NET_HIT: int = 6
+
+## Spread stance: the cone sweep needs >= 2 targets within its 10-hex reach
+## (enemy_ai CONE_MIN_TARGETS) — Dario holds at 11+ during a valve retreat so a
+## post-blast sweep has at most one contestant to find and is never chosen.
+const SPREAD_DISTANCE: int = 11
+
+## Loadout skill grants — verbatim (normalized key+level) from
+## data/demo_loadouts.json, the same grants slice_playtest stages. The strategy
+## only ever declares GRANTED keys at GRANTED levels (player-honest inputs).
+const IMANI_SKILLS := [
+	{"key": "strong_strike", "level": 2},
+	{"key": "overhead_slam", "level": 1},
+	{"key": "brace", "level": 2},
+]
+const DARIO_SKILLS := [
+	{"key": "feint", "level": 3},
+	{"key": "pressure_strike", "level": 1},
+	{"key": "dance", "level": 2},
+]
 
 const GameControllerScript := preload("res://controller/game_controller.gd")
 
@@ -77,6 +124,17 @@ var dash_dodges: int = 0
 var dodge_fails: int = 0
 var sidesteps: int = 0
 var counters: int = 0
+# Feint-denial strategy state + telemetry. feint_pending mirrors what the caster
+# knows from public events: feint_applied set it, the attributed feint_fallout
+# (the ONLY consumption path — telegraph/blast bypass the resolver) clears it.
+var feint_pending: bool = false
+var spread_mode: bool = false    # Dario holding outside cone reach after a telegraph
+var feints_cast: int = 0
+var windups_denied: int = 0
+var cones_declared: int = 0
+var cones_denied: int = 0
+var dashes_denied: int = 0
+var trace_on: bool = false
 
 
 func _initialize() -> void:
@@ -133,16 +191,22 @@ func _one_hit(_ability: String, phys: int, crowd: bool) -> Dictionary:
 
 # =====================================================================  FIGHT
 func _full_cadence() -> void:
+	trace_on = OS.get_environment("BALANCE_TRACE") == "1"
+	var fight_seed: int = SEED
+	var seed_override: String = OS.get_environment("BALANCE_SEED")
+	if seed_override.is_valid_int():
+		fight_seed = int(seed_override)
 	gc = GameControllerScript.new()
 	gc.name = "BalanceHarness"
 	root.add_child(gc)
 	gc.sim_event.connect(_on_sim_event)
-	gc.start_combat(SEED)
+	gc.start_combat(fight_seed)
 	_add_boss_to(gc)
 	# Imani "The Door" (heavy physique) and Dario "Encore" (low physique — the one-shot
-	# canary: his phys-2 torso has the lowest Robustness on the table).
-	_add_contestant_to(gc, IMANI, {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, Vector2i(1, 0))
-	_add_contestant_to(gc, DARIO, {"physique": 2, "reflexes": 5, "mind": 2, "charm": 3}, Vector2i(0, 1))
+	# canary: his phys-2 torso has the lowest Robustness on the table). Both carry
+	# their demo-loadout skill grants; the strategy declares only granted keys.
+	_add_contestant_to(gc, IMANI, {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, Vector2i(1, 0), IMANI_SKILLS)
+	_add_contestant_to(gc, DARIO, {"physique": 2, "reflexes": 5, "mind": 2, "charm": 3}, Vector2i(0, 1), DARIO_SKILLS)
 	sink.clear()
 
 	var tick: int = 0
@@ -175,11 +239,14 @@ func _add_boss_to(g) -> void:
 	}})
 
 
-func _add_contestant_to(g, id: String, traits: Dictionary, pos: Vector2i) -> void:
-	g.apply_command({"type": "add_combatant", "combatant": {
+func _add_contestant_to(g, id: String, traits: Dictionary, pos: Vector2i, skills: Array = []) -> void:
+	var spec: Dictionary = {
 		"id": id, "name": id, "race": "human", "team": "party",
 		"position": [pos.x, pos.y], "traits": traits,
-	}})
+	}
+	if not skills.is_empty():
+		spec["skills"] = skills
+	g.apply_command({"type": "add_combatant", "combatant": spec})
 
 
 # =====================================================================  EVENTS
@@ -187,6 +254,8 @@ func _on_sim_event(e: Dictionary) -> void:
 	sink.append(e)
 	var ty: String = String(e.get("type", ""))
 	var tk: int = int(e.get("tick", int(gc.view_clock().get("tick", 0))))
+	if trace_on:
+		print("  t%d %s" % [tk, JSON.stringify(e)])
 	match ty:
 		"damage_applied":
 			var who: String = String(e.get("combatant", ""))
@@ -195,6 +264,21 @@ func _on_sim_event(e: Dictionary) -> void:
 		"ai_decision":
 			if String(e.get("ability", "")) == "dash":
 				dash_declared += 1
+			elif String(e.get("ability", "")) == "flamethrower":
+				cones_declared += 1
+		"feint_applied":
+			if String(e.get("target", "")) == BOSS:
+				feint_pending = true
+				feints_cast += 1
+		"feint_fallout":
+			if String(e.get("victim", "")) == BOSS:
+				feint_pending = false
+				windups_denied += 1
+				var denied_key: String = String(e.get("key", ""))
+				if denied_key == "flamethrower":
+					cones_denied += 1
+				elif denied_key == "dash":
+					dashes_denied += 1
 		"attack_dodged":
 			dash_dodges += 1
 		"dodge_failed":
@@ -205,6 +289,7 @@ func _on_sim_event(e: Dictionary) -> void:
 			counters += 1
 		"explosion_telegraph":
 			fleeing = true  # the steam is the cue
+			spread_mode = true  # Dario overshoots past cone reach until re-engage
 			blast_at = tk + int(e.get("moments_until_blast", 0))
 		"explosion_blast":
 			fleeing = false
@@ -228,61 +313,135 @@ func _on_sim_event(e: Dictionary) -> void:
 
 
 # =====================================================================  PARTY
+## One party tick of the fixed strategy. Inputs are all player-surface commands;
+## reads are all public view state (view_schedule / view_clock / the party's own
+## buffs / event-derived flags). Priority order:
+##   1. valve beat live -> the valve choreography (pound one last Moment, run,
+##      Dario overshoots into the spread stance),
+##   2. Imani keeps her free-action brace guard up while she stands in reach,
+##   3. Dario re-parks the feint whenever the boss's collapse flag is clear,
+##   4. both free + in reach -> the COMBINED merged-force strike (breach the
+##      plate pre-breach, pour the network after),
+##   5. otherwise each plays their role turn (anchor / skirmisher).
 func _party_turn() -> void:
-	# Valve counterplay (decision #27): the telegraph announces radius + countdown
-	# and the network stays exposed until the blast, so the risk-aware play keeps
-	# pounding through the window and leaves exactly two Moments (two free moves)
-	# to clear the radius. Knockout is the price of misjudging it.
+	var tick: int = int(gc.view_clock()["tick"])
 	if fleeing:
-		if int(gc.view_clock()["tick"]) < blast_at - 1:
-			for id: String in [IMANI, DARIO]:
-				if _ready(id) and _in_reach(id) and _boss_breached():
-					gc.apply_command(_attack(id, "network", "crushed", NET_HIT))
-			return
-		for id: String in [IMANI, DARIO]:
-			_run_from_boss(id)
+		_valve_turn(tick)
 		return
-	if not _boss_breached():
-		# Designed path in: close distance (free moves), then the COMBINED burst
-		# onto the highest-HP visible plate the moment both stand in reach — the
-		# two linked halves merge into one hit for the >= 7 single-hit breach.
-		# The burst outranks treating: re-opening the core shortens the fight.
-		var part: String = _best_visible_part()
-		for id: String in [IMANI, DARIO]:
-			if _ready(id) and not _in_reach(id):
-				_walk_to_boss(id)
-		if part != "" and _ready(IMANI) and _ready(DARIO) \
-				and _in_reach(IMANI) and _in_reach(DARIO):
+	_maybe_brace()
+	if not spread_mode and not feint_pending and _ready(DARIO) and _dist(DARIO) <= 1:
+		_cast_feint()
+		_anchor_turn()
+		return
+	if not spread_mode and _ready(IMANI) and _ready(DARIO) \
+			and _in_reach(IMANI) and _in_reach(DARIO):
+		var part: String = "network" if _boss_breached() else _best_visible_part()
+		var amount: int = NET_HIT if _boss_breached() else BREACH_HALF
+		if part != "":
 			gc.apply_command({"type": "combined_action", "members": [
-				{"actor": IMANI, "action": _attack(IMANI, part, "crushed", BREACH_HALF)["action"]},
-				{"actor": DARIO, "action": _attack(DARIO, part, "crushed", BREACH_HALF)["action"]},
+				{"actor": IMANI, "action": _attack(IMANI, part, "crushed", amount)["action"]},
+				{"actor": DARIO, "action": _attack(DARIO, part, "crushed", amount)["action"]},
 			]})
 			return
-		for id: String in [IMANI, DARIO]:
-			_contestant_turn(id, part)
-		return
-	for id: String in [IMANI, DARIO]:
-		_contestant_turn(id, "")
+	_anchor_turn()
+	_skirmisher_turn()
 
 
-## One contestant's tick, in priority order: patch a burning torso, close to
-## attack reach (free move, then swing the same tick), then hit per the fixed
-## strategy — the exposed network when breached, else the Bleeding-T2 path onto
-## a visible plate (path A; also the survivor's route when the partner is down).
-func _contestant_turn(id: String, part: String) -> void:
-	if not _ready(id):
+## Valve beat (decision #27): the telegraph announces radius + countdown and the
+## network stays exposed until the blast. Imani pounds while two clear Moments
+## remain, then runs. Dario parks one last feint if the flag is clear (the flag
+## survives the beat — telegraph/blast bypass the resolver) and runs IMMEDIATELY,
+## overshooting past the cone's reach so the first post-blast decide sees only
+## one contestant in sweep range (spread stance).
+func _valve_turn(tick: int) -> void:
+	if not feint_pending and _ready(DARIO) and _dist(DARIO) <= 1 and _boss_alive():
+		_cast_feint()  # scheduled cost-1; the free-move run below still fits this tick
+	if tick < blast_at - 1 and _ready(IMANI) and _in_reach(IMANI) and _boss_breached():
+		gc.apply_command(_attack(IMANI, "network", "crushed", NET_HIT))
+	else:
+		_run_from_boss(IMANI)
+	if _dist(DARIO) < SPREAD_DISTANCE:
+		_run_from_boss(DARIO)
+
+
+## ANCHOR (Imani, physique 5): patch a burning torso, close to attack reach
+## (free move, then swing the same tick), then hit — the exposed network when
+## breached, else the solo path-A re-breach: her bleeding-8 strike is a 7-net
+## single hit (force 8+2 − robustness 3), exactly the burst threshold.
+func _anchor_turn() -> void:
+	if not _ready(IMANI):
 		return
-	if _burning_torso(id):
-		gc.apply_command({"type": "treat", "target": id, "part": "torso", "condition": "burn", "mode": "resolve"})
+	if _burning_torso(IMANI):
+		gc.apply_command({"type": "treat", "target": IMANI, "part": "torso", "condition": "burn", "mode": "resolve"})
 		return
-	if not _in_reach(id):
-		_walk_to_boss(id)
-	if not _in_reach(id):
+	if not _in_reach(IMANI):
+		_walk_to_range(IMANI, 2)
+	if not _in_reach(IMANI):
 		return
 	if _boss_breached():
-		gc.apply_command(_attack(id, "network", "crushed", NET_HIT))
-	elif part != "":
-		gc.apply_command(_attack(id, part, "bleeding", BREACH_HALF + 2))
+		gc.apply_command(_attack(IMANI, "network", "crushed", NET_HIT))
+	else:
+		var part: String = _best_visible_part()
+		if part != "":
+			gc.apply_command(_attack(IMANI, part, "bleeding", BREACH_HALF + 2))
+
+
+## SKIRMISHER (Dario, reflexes 5): in spread stance he holds outside the cone's
+## reach until the boss is committed (windup pending / prone) or his parked
+## feint still covers its next action, then rejoins. Engaged, he keeps feint
+## coverage up from adjacency, pours the network otherwise, and as a lone
+## survivor seeds the Bleeding-T2 breach path (the only solo route his physique
+## can open).
+func _skirmisher_turn() -> void:
+	if not _ready(DARIO):
+		return
+	if spread_mode:
+		if feint_pending or _boss_windup_pending() or _boss_prone():
+			spread_mode = false
+		elif _dist(DARIO) < SPREAD_DISTANCE:
+			_run_from_boss(DARIO)
+			return
+		else:
+			return
+	if _burning_torso(DARIO):
+		gc.apply_command({"type": "treat", "target": DARIO, "part": "torso", "condition": "burn", "mode": "resolve"})
+		return
+	if _dist(DARIO) > 1:
+		_walk_to_range(DARIO, 1)
+	if not feint_pending and _dist(DARIO) <= 1 and _boss_alive():
+		_cast_feint()
+		return
+	if _boss_breached() and _dist(DARIO) <= 2:
+		gc.apply_command(_attack(DARIO, "network", "crushed", NET_HIT))
+		return
+	if not _boss_breached() and not _alive(IMANI) and _dist(DARIO) <= 2:
+		var part: String = _best_visible_part()
+		if part != "":
+			gc.apply_command(_attack(DARIO, part, "bleeding", BREACH_HALF + 2))
+
+
+## Imani's free-slot upkeep: brace (cost 0, guard = level 2) whenever she stands
+## in reach with no guard up and the slot unspent. She cannot dodge the dash
+## (Reflexes 2 + d4 max < 7 — impossible by design), so the guard is her whole
+## defensive layer: a landed dash nets 1 instead of 3, a cone nets 0.
+func _maybe_brace() -> void:
+	var c = gc.sim.combatants.get(IMANI)
+	if c == null or not c.alive or c.removed_from_play or c.is_helpless(gc.sim.clock.tick):
+		return
+	if c.free_action_used or int(c.brace_guard) > 0 or not _in_reach(IMANI):
+		return
+	gc.apply_command({"type": "declare_action", "actor": IMANI, "action": {
+		"kind": "skill", "key": "brace", "level": _skill_level(IMANI, "brace"),
+	}})
+
+
+## Dario's feint (granted level, adjacency self-enforced to the skill's range 1):
+## the boss's next scheduled resolution collapses into Forced Action – Tool.
+func _cast_feint() -> void:
+	gc.apply_command({"type": "declare_action", "actor": DARIO, "action": {
+		"kind": "skill", "key": "feint", "level": _skill_level(DARIO, "feint"),
+		"targets": [{"id": BOSS, "part": "torso"}],
+	}})
 
 
 func _attack(actor: String, part: String, dtype: String, amount: int) -> Dictionary:
@@ -337,9 +496,10 @@ func _run_from_boss(id: String) -> void:
 	_issue_walk(id, false, 0)
 
 
-## Free-move a contestant up to 3 hexes TOWARD the boss, stopping at attack reach.
-func _walk_to_boss(id: String) -> void:
-	_issue_walk(id, true, 2)
+## Free-move a contestant up to 3 hexes TOWARD the boss, stopping at `stop_range`
+## (2 = the party's attack reach; 1 = feint adjacency for the skirmisher).
+func _walk_to_range(id: String, stop_range: int) -> void:
+	_issue_walk(id, true, stop_range)
 
 
 func _issue_walk(id: String, toward: bool, stop_range: int) -> void:
@@ -422,6 +582,52 @@ func _boss_breached() -> bool:
 	return b != null and bool(b.breached)
 
 
+func _boss_alive() -> bool:
+	var b = gc.sim.combatants.get(BOSS)
+	return b != null and bool(b.alive) and not b.removed_from_play
+
+
+func _alive(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	return c != null and bool(c.alive) and not c.removed_from_play
+
+
+func _dist(id: String) -> int:
+	var c = gc.sim.combatants.get(id)
+	var b = gc.sim.combatants.get(BOSS)
+	if c == null or b == null:
+		return 9999
+	return CombatantState.hex_distance(c.position, b.position)
+
+
+## The boss's prone state — public knowledge (the knocked_prone / stood_up
+## events broadcast it; the HUD renders it).
+func _boss_prone() -> bool:
+	var b = gc.sim.combatants.get(BOSS)
+	return b != null and bool(b.statuses.get("prone", false))
+
+
+## Does the boss have a committed multi-Moment windup pending? Read off the
+## SAME view_schedule projection the HUD's declared-action bars render — the
+## player-visible telegraph the R22 dash rework shipped.
+func _boss_windup_pending() -> bool:
+	for row: Dictionary in gc.view_schedule():
+		if String(row.get("actor", "")) == BOSS and bool(row.get("windup", false)):
+			return true
+	return false
+
+
+## Granted level for a loadout skill (the strategy only declares granted keys).
+func _skill_level(id: String, key: String) -> int:
+	var c = gc.sim.combatants.get(id)
+	if c == null:
+		return 1
+	for s: Dictionary in c.skills:
+		if String(s.get("key", "")) == key:
+			return int(s.get("level", 1))
+	return 1
+
+
 func _torso_hp(id: String) -> int:
 	var c = gc.sim.combatants.get(id)
 	if c == null:
@@ -432,15 +638,16 @@ func _torso_hp(id: String) -> int:
 # =====================================================================  REPORT
 func _report() -> void:
 	var nb = func(x: int) -> String: return "-" if x < 0 else str(x)
-	print("BALANCE outcome=%s ticks_to_breach=%s ticks_to_network_kill=%s first_contestant_down_tick=%s max_single_hit_on_contestant=%d imani_torso_end=%d dario_torso_end=%d rebreaches=%d blasts=%d knockouts=%d network_hp_end=%d" % [
+	print("BALANCE outcome=%s ticks_to_breach=%s ticks_to_network_kill=%s first_contestant_down_tick=%s max_single_hit_on_contestant=%d imani_torso_end=%d dario_torso_end=%d rebreaches=%d blasts=%d knockouts=%d network_hp_end=%d feints=%d windups_denied=%d cones_declared=%d cones_denied=%d" % [
 		outcome, nb.call(breach_tick), nb.call(network_kill_tick), nb.call(first_down_tick),
 		max_hit_on_contestant, _torso_hp(IMANI), _torso_hp(DARIO), rebreaches, blasts, knockouts,
-		_network_hp()])
-	# R22 dash-ladder telemetry (honest instrument line — with the clustered
-	# 2-contestant party the cone outranks the dash, so the ladder rarely fires
-	# at full cadence; a 0-dodge line is a finding, not a failure).
-	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d" % [
-		dash_declared, dash_dodges, dodge_fails, sidesteps, counters])
+		_network_hp(), feints_cast, windups_denied, cones_declared, cones_denied])
+	# R22 dash-ladder telemetry (honest instrument line — under feint denial +
+	# the spread stance the boss rarely gets a dash to the strike round, so the
+	# ladder may not fire at all; a 0-dodge line is a finding, not a failure.
+	# dash_denied counts dashes the parked feint collapsed before they landed).
+	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d dash_denied=%d" % [
+		dash_declared, dash_dodges, dodge_fails, sidesteps, counters, dashes_denied])
 	# R23 antagonism telemetry: final grudge scores per AI actor, read off the
 	# view API's new additive "antagonism" key (who the boss hates, and how much
 	# — the cone/blast paths deal collateral without drawing, but the grudge
