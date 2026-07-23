@@ -22,6 +22,39 @@ const PURPLE := "#a855f7"
 const MYTHIC := "#ec4899"
 const FIRE := "#ff7a2f"
 
+# ---- status-effect palette (status-prominence pass) ------------------------
+# One colour per rulebook condition + a distinct SHOCK accent, shared by the
+# party cards, inspector ACTIVE STATUS section and arena token pips so a
+# condition reads as the SAME colour everywhere on the HUD. Damaging conditions
+# sit on the hot/danger side; shock is its own electric yellow (never confused
+# with a condition); dissolution rides the psychic purple.
+const SHOCK := "#ffd24a"
+const COND_COLORS := {
+	"bleeding": "#ff6b88",
+	"crushed": "#c9a06a",
+	"burn": "#ff9a5a",
+	"chilled": CYAN,
+	"poison": SUCCESS,
+	"infected": "#a8d44a",
+	"suffocation": "#8fa8d8",
+	"dissolution": PURPLE,
+	"exhausted": "#98a0b8",
+}
+## Compact condition abbreviations for the badge rows ("BLD 2" / "BRN 1").
+const COND_ABBR := {
+	"bleeding": "BLD", "crushed": "CRU", "burn": "BRN", "chilled": "CHL",
+	"poison": "PSN", "infected": "INF", "suffocation": "SUF",
+	"dissolution": "DSL", "exhausted": "EXH",
+}
+
+
+static func cond_col(cond_id: String) -> Color:
+	return col(String(COND_COLORS.get(cond_id, DANGER)))
+
+
+static func cond_abbr(cond_id: String) -> String:
+	return String(COND_ABBR.get(cond_id, cond_id.substr(0, 3).to_upper()))
+
 static var _f_body: Font
 static var _f_mono: Font
 static var _f_emoji: Font
@@ -184,6 +217,20 @@ static func chip(content: Control, bg: Color, border: Color, radius := 4) -> Con
 	var m := margin(8, 8, 3, 3)
 	c.add_child(m)
 	m.add_child(content)
+	return c
+
+
+## Compact status badge ("BLD 2" / "SHK 3" / "PRONE") — a tighter chip() for
+## the per-card / inspector status rows: tinted fill, coloured border, bold text.
+static func badge(text: String, color: Color) -> Control:
+	var c := PanelContainer.new()
+	c.add_theme_stylebox_override("panel",
+		sb(Color(color.r, color.g, color.b, 0.12), Color(color.r, color.g, color.b, 0.5), 3))
+	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	c.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var m := margin(5, 5, 1, 1)
+	c.add_child(m)
+	m.add_child(lab(text, body(), 8, color, 0.5, true))
 	return c
 
 

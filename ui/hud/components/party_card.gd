@@ -3,7 +3,9 @@ extends PanelContainer
 ##
 ## PART-BASED, never just a bar (ADOPTION.md correction): shows the overall
 ## state word derived from parts plus 1–2 URGENT PART flags ("R-ARM 1/2 ·
-## bleeding"). Ready/acting highlight, patron chip, click = select/inspect.
+## bleeding") plus the compact STATUS BADGE row (status-prominence pass:
+## condition abbreviation + tier, shock tier, state flags — "BLD 2 · SHK 3 ·
+## PRONE"). Ready/acting highlight, patron chip, click = select/inspect.
 ## Dumb component: renders exactly the display strings/colors it is handed.
 
 signal pressed(id: String)
@@ -21,7 +23,7 @@ var _ready_lab: Label
 var _patron_chip: PanelContainer
 var _patron_lab: Label
 var _flags_box: VBoxContainer
-var _shock_lab: Label
+var _badge_flow: HFlowContainer
 
 
 func _ready() -> void:
@@ -79,15 +81,18 @@ func _ensure_built() -> void:
 	# urgent part flags (1–2) — the part-based read at a glance
 	_flags_box = UI.vbox(2)
 	v.add_child(_flags_box)
-	_shock_lab = UI.lab("", UI.body(), 8, UI.col(UI.MUTED), 1.0)
-	v.add_child(_shock_lab)
+	# status badge row — condition tiers / shock / state flags, wrapping
+	_badge_flow = HFlowContainer.new()
+	_badge_flow.add_theme_constant_override("h_separation", 3)
+	_badge_flow.add_theme_constant_override("v_separation", 3)
+	v.add_child(_badge_flow)
 
 	UI.attach_click(self, func() -> void: pressed.emit(_id))
 
 
 ## data: {id, name, emoji, state_word, state_color: Color, ready_line,
 ##        acting: bool, selected: bool, alive: bool, patron, patron_color: Color,
-##        urgent: [{text, color: Color}], shock_line}
+##        urgent: [{text, color: Color}], badges: [{text, color: Color}]}
 func update(data: Dictionary) -> void:
 	_ensure_built()
 	_id = String(data.get("id", ""))
@@ -143,5 +148,11 @@ func update(data: Dictionary) -> void:
 		var fl := UI.lab("▸ " + String(f.get("text", "")), UI.mono(), 9, fcol, 0.0, true)
 		fl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		_flags_box.add_child(fl)
-	_shock_lab.text = String(data.get("shock_line", ""))
-	_shock_lab.visible = _shock_lab.text != ""
+	for ch in _badge_flow.get_children():
+		ch.queue_free()
+	var badges: Array = data.get("badges", [])
+	for bd in badges:
+		var b: Dictionary = bd
+		_badge_flow.add_child(UI.badge(String(b.get("text", "")),
+			b.get("color", UI.col(UI.DANGER))))
+	_badge_flow.visible = not badges.is_empty()

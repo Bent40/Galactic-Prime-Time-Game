@@ -3,7 +3,10 @@ extends PanelContainer
 ## (spec §3 Area 7). Ally focus: full part list with HP + per-part conditions +
 ## shock. Enemy focus: KNOWN anatomy only — hidden parts arrive pre-masked from
 ## the facade (label already anonymized, no HP) so this component cannot leak;
-## resistances line is a placeholder. While an action is armed, part rows become
+## resistances line is a placeholder. The set-off ACTIVE STATUS section
+## (status-prominence pass) fronts the condition tiers + state flags as a badge
+## row above the part list — the facade aggregates over VISIBLE parts only, so
+## the masking holds here too. While an action is armed, part rows become
 ## clickable and emit part_clicked(part_key) to pick the TARGET part.
 ## Dumb component: renders the display dict it is handed.
 
@@ -16,6 +19,8 @@ var _glyph: Label
 var _name_lab: Label
 var _kind_lab: Label
 var _status_lab: Label
+var _badge_panel: PanelContainer
+var _badge_flow: HFlowContainer
 var _armed_lab: Label
 var _rows: VBoxContainer
 var _foot_lab: Label
@@ -54,6 +59,21 @@ func _ensure_built() -> void:
 	_status_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_status_lab)
 
+	# ACTIVE STATUS — clearly set-off badge block (condition tiers + state flags)
+	_badge_panel = PanelContainer.new()
+	_badge_panel.add_theme_stylebox_override("panel",
+		UI.sb(UI.col(UI.PANEL2), UI.col(UI.BORDER), 4))
+	var bm := UI.margin(8, 8, 5, 5)
+	_badge_panel.add_child(bm)
+	var bv := UI.vbox(4)
+	bm.add_child(bv)
+	bv.add_child(UI.lab("ACTIVE STATUS", UI.body(), 8, UI.col(UI.MUTED), 3.0, true))
+	_badge_flow = HFlowContainer.new()
+	_badge_flow.add_theme_constant_override("h_separation", 4)
+	_badge_flow.add_theme_constant_override("v_separation", 4)
+	bv.add_child(_badge_flow)
+	v.add_child(_badge_panel)
+
 	_armed_lab = UI.lab("", UI.body(), 9, UI.col(UI.GOLD), 1.0, true)
 	_armed_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_armed_lab.visible = false
@@ -72,7 +92,8 @@ func _ensure_built() -> void:
 	v.add_child(_foot_lab)
 
 
-## data: {name, emoji, kind_line, status_line, armed_line ("" = not armed),
+## data: {name, emoji, kind_line, status_line,
+##        status_badges: [{text, color: Color}], armed_line ("" = not armed),
 ##        parts: [{key, label, hp_text ("" = masked), ratio (-1 = unknown),
 ##                 conds: [{text, color: Color}], muted: bool, targetable: bool}],
 ##        foot_line}
@@ -83,6 +104,17 @@ func update(data: Dictionary) -> void:
 	_kind_lab.text = String(data.get("kind_line", ""))
 	_status_lab.text = String(data.get("status_line", ""))
 	_status_lab.visible = _status_lab.text != ""
+	for ch in _badge_flow.get_children():
+		ch.queue_free()
+	var badges: Array = data.get("status_badges", [])
+	for bd in badges:
+		var b: Dictionary = bd
+		_badge_flow.add_child(UI.badge(String(b.get("text", "")),
+			b.get("color", UI.col(UI.DANGER))))
+	if badges.is_empty():
+		# honest empty state — the section stays discoverable, never fakes a badge
+		_badge_flow.add_child(UI.lab("— NONE —", UI.body(), 8, UI.col(UI.MUTED), 1.5))
+	_badge_panel.visible = not data.get("parts", []).is_empty() or not badges.is_empty()
 	var armed_line := String(data.get("armed_line", ""))
 	_armed_lab.text = armed_line
 	_armed_lab.visible = armed_line != ""

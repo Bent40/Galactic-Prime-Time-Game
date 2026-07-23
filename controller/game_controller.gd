@@ -264,6 +264,13 @@ func view_combatants() -> Array[Dictionary]:
 			"alive": c.alive,
 			"shock": c.shock,
 			"exposed": c.exposed_cache,
+			# Status-prominence widening (ADDITIVE, meaning-over-internals): the two
+			# at-a-glance states the view did not carry yet. `helpless` is the live
+			# is_helpless read at the current tick (bleed-out / helpless window /
+			# incapacitated — the HUD never re-derives the rule); `prone` is the
+			# knocked-down status flag (forced-action fallout).
+			"helpless": c.is_helpless(sim.clock.tick),
+			"prone": bool(c.statuses.get("prone", false)),
 			"breached": c.breached,
 			# R3 free-action economy (anti-spam ruling): true once this combatant
 			# has spent its one free (0-Moment) action this tick — The Bit, the
