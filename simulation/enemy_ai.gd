@@ -156,6 +156,16 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	var behavior: Dictionary = _phase_entry(actor, phase).get("behavior", {})
 	if behavior.has("explosion"):
 		return _decide_explosion_beat(actor, phase, behavior.get("explosion", {}))
+	# Skill-feel pass (builds on R22's prone rules): a knocked-down boss RIGHTS
+	# ITSELF before it fights — the "stand" choice declares the resolver's stand
+	# action (cost 1), so getting back up consumes the boss's whole Moment.
+	# Prone never clears for free: until this resolves the boss cannot dodge
+	# (check_dodge), crawls at allowance 1 (_step_toward) and cannot cone-sweep
+	# (_first_cone_ability). The explosion valve above deliberately outranks it —
+	# the canon telegraph -> blast beat (decision #27) is never delayed by prone.
+	# Boss-only on purpose: mobs/elites keep their pre-existing prone behavior.
+	if bool(actor.statuses.get("prone", false)):
+		return {"choice": "stand", "tier": "boss"}
 	var allowed: Array = behavior.get("abilities", [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
@@ -452,6 +462,11 @@ func _first_strike_ability(actor: CombatantState, allowed: Array) -> Dictionary:
 
 
 func _first_cone_ability(actor: CombatantState, allowed: Array) -> Dictionary:
+	# Skill-feel pass: a grounded croc can't sweep the room — the cone is
+	# unavailable while prone. (Belt-and-braces with _decide_boss's stand-first
+	# short-circuit, so the gate holds even if a future path skips standing.)
+	if bool(actor.statuses.get("prone", false)):
+		return {}
 	for ability: Dictionary in actor.abilities:
 		if not allowed.is_empty() and not allowed.has(String(ability.get("key", ""))):
 			continue

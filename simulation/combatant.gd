@@ -140,6 +140,11 @@ var brace_guard: int = 0
 ## setup_debuff (feint): set on the TARGET; its next resolved scheduled action
 ## collapses into a Forced Action – Tool, and the flag clears at that resolution.
 var feint_forced: bool = false
+## Who armed the pending feint (skill-feel pass): the feinter's id, kept so the
+## collapse can emit an ATTRIBUTED feint_fallout event ("DARIO's feint pays
+## off"). Set with feint_forced, cleared with it; a second feint before the
+## first collapses overwrites (last feinter takes the credit — deterministic).
+var feint_by: String = ""
 ## self_stance (dance): the actor is in the dance stance. Ends when hit, knocked
 ## Prone, or the actor commits to an attack / damaging skill.
 var dancing: bool = false
@@ -520,6 +525,7 @@ func to_dict() -> Dictionary:
 		"exposed_cache": exposed_cache,
 		"brace_guard": brace_guard,
 		"feint_forced": feint_forced,
+		"feint_by": feint_by,
 		"dancing": dancing,
 		"dance_charm": dance_charm,
 		"grappling": grappling,
@@ -588,6 +594,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.exposed_cache = bool(data.get("exposed_cache", false))
 	c.brace_guard = int(data.get("brace_guard", 0))
 	c.feint_forced = bool(data.get("feint_forced", false))
+	c.feint_by = String(data.get("feint_by", ""))
 	c.dancing = bool(data.get("dancing", false))
 	c.dance_charm = int(data.get("dance_charm", 0))
 	c.grappling = String(data.get("grappling", ""))

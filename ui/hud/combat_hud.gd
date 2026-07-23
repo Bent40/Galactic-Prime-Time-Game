@@ -70,6 +70,11 @@ var _emoji_map := {}          # id -> token emoji (keyed by the view's `token`)
 var _boss_id_cache := ""
 var _event_log: Array = []    # [{type, line}] — every sim_event this session
 var _latest_tag_line := ""    # most recent tag-ish event, for the crowd panel
+## Loudest broadcast announce from the CURRENT command's events (skill-feel
+## pass): feint payoffs / knockdowns / stand-ups must not be clobbered by the
+## generic flavor line — _issue and _on_end_turn re-assert this after their
+## refresh, then clear it.
+var _pending_announce := ""
 
 ## The board transform lives in ArenaView; these getters keep the v1-readable
 ## surface (scripts/hud_arena_check.gd reads hud._arena_eff / hud._arena_off).
@@ -179,6 +184,12 @@ func _on_sim_event(e: Dictionary = {}) -> void:
 			_event_log = _event_log.slice(_event_log.size() - 300)
 		if t.contains("tag"):
 			_latest_tag_line = "🏷 %s" % _event_line(e)
+		# Skill-feel pass: payoff moments go LOUD — straight onto the Momus line
+		# and remembered so _issue/_on_end_turn's generic flavor can't bury them.
+		var announce := _broadcast_announce(e)
+		if announce != "":
+			_pending_announce = announce
+			_momus(announce)
 	refresh()
 
 
@@ -238,7 +249,10 @@ func _declare_skill_attack(actor_id: String, skill_key: String, part := BOSS_DEF
 
 ## COMBINED STRIKE — v1 command shape unchanged: the sim merges the linked
 ## Forces before the robustness gate; each member pays its own cost-2 windup.
-func _on_combined_strike() -> void:
+## Part-pick fix (owner #3): the interactive flyout path now arms the part-pick
+## step and passes the PICKED part here; drivers calling this bare keep the v1
+## default-part semantics (the sim is unchanged either way).
+func _on_combined_strike(part := BOSS_DEFAULT_PART) -> void:
 	if _gc == null:
 		return
 	var boss := _boss_id()
@@ -255,10 +269,10 @@ func _on_combined_strike() -> void:
 			"key": String(m[1]),
 			"level": _skill_level_of(String(m[0]), String(m[1])),
 			"attack_range": SKILL_ATTACK_RANGE,
-			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
+			"targets": [{"id": boss, "part": part}],
 		}})
 	_issue({"type": "combined_action", "combo_id": COMBO_ID, "members": members},
-		"IMANI and DARIO strike as one — linked force on the flamethrower arm")
+		"IMANI and DARIO strike as one — linked force on the %s" % _part_label(part))
 
 
 ## Both combo members alive and ready this tick, from view_turn_order() (v1).
@@ -325,19 +339,28 @@ func _arena_click_local(local_pos: Vector2) -> void:
 
 ## END TURN — v1 semantics unchanged: the controller's advance_moment() runs the
 ## enemy turn and advances; the next refresh re-derives the on-the-clock actor.
+## Skill-feel pass: a loud announce raised by the resolving events (feint
+## payoff / knockdown / stand-up) keeps the ticker instead of the generic line.
 func _on_end_turn() -> void:
 	if _gc == null:
 		return
+	_pending_announce = ""
 	_gc.advance_moment()
 	refresh()
-	_momus("END TURN — the Moment resolves; the enemies make their move")
+	if _pending_announce != "":
+		_momus(_pending_announce)
+		_pending_announce = ""
+	else:
+		_momus("END TURN — the Moment resolves; the enemies make their move")
 
 
 ## The one command funnel: apply, surface any rejection in the Momus ticker
-## (never crash), otherwise show the flavor line. (v1, unchanged.)
+## (never crash), otherwise show the flavor line. (v1 semantics; skill-feel
+## pass: a loud announce raised by this command's events outranks the flavor.)
 func _issue(cmd: Dictionary, flavor := "") -> void:
 	if _gc == null:
 		return
+	_pending_announce = ""
 	var events: Array = _gc.apply_command(cmd)
 	var rejected := ""
 	for e in events:
@@ -347,8 +370,11 @@ func _issue(cmd: Dictionary, flavor := "") -> void:
 	refresh()
 	if rejected != "":
 		_momus("DENIED · %s" % rejected.to_upper().replace("_", " "))
+	elif _pending_announce != "":
+		_momus(_pending_announce)
 	elif flavor != "":
 		_momus(flavor)
+	_pending_announce = ""
 
 
 # --------------------------------------------------------- component interactions
@@ -376,12 +402,15 @@ func _on_flyout_entry(id: String) -> void:
 		_arm({"kind": "attack", "key": "unarmed_strike", "cost": 1,
 			"damage_type": "crushed", "amount": 1, "label": "UNARMED STRIKE"})
 	elif id == "combined":
-		# Interactive pick -> confirm step (Area 10); Confirm calls the direct
-		# _on_combined_strike (the v1 command shape, unchanged).
-		if confirm_enabled:
-			_open_combo_preview()
+		# Part-pick, not left_hand default (owner fix #3): the combined strike
+		# routes through the SAME part-pick step every targeted declare uses —
+		# arm it (boss auto-focused), one click on a part row carries the picked
+		# part into the combo preview + declare. Drivers calling the direct
+		# _on_combined_strike() keep the v1 default-part semantics.
+		if not _combo_ready():
+			_momus("DENIED · COMBINED STRIKE NEEDS BOTH CONTESTANTS READY")
 		else:
-			_on_combined_strike()
+			_arm({"kind": "combined", "label": "COMBINED STRIKE", "cost": 2})
 	elif id == "camera_call":
 		_on_camera_call()
 	elif id == "bit":
@@ -414,12 +443,17 @@ func _arm(action: Dictionary) -> void:
 
 ## A part row was clicked while an action is armed: declare on the focused
 ## entity at that part. The commands are real; the sim adjudicates honestly.
+## A combined pick always declares on the BOSS at the picked part (the combo's
+## members are fixed) — the part is the choice, the target is the design.
 func _on_inspector_part(part_key: String) -> void:
 	if _armed.is_empty():
 		return
 	var a := _armed
 	_armed = {}
 	var target_id := _focus_id
+	if String(a.get("kind", "")) == "combined":
+		_on_combined_strike(part_key)
+		return
 	if String(a.get("kind", "")) == "attack":
 		_issue({
 			"type": "declare_action",
@@ -463,6 +497,12 @@ func _on_inspector_part_clicked(part_key: String) -> void:
 		return
 	if not confirm_enabled or _gc == null:
 		_on_inspector_part(part_key)
+		return
+	if String(_armed.get("kind", "")) == "combined":
+		# Combined pick (owner fix #3): the picked part feeds the R15 merged
+		# preview; CONFIRM routes back through _on_inspector_part -> the direct
+		# _on_combined_strike(part). The armed state stays set so BACK returns.
+		_open_combo_preview(part_key)
 		return
 	var action := _armed_action_for(_armed, _focus_id, part_key)
 	var probe: Dictionary = _gc.preview_action(_active_actor, action)
@@ -526,8 +566,10 @@ func _open_self_preview(key: String) -> void:
 
 
 ## COMBINED STRIKE pick: previews the R15 merged gate before committing both
-## contestants. CONFIRM calls the direct _on_combined_strike (v1 command shape).
-func _open_combo_preview() -> void:
+## contestants, at the PICKED part (owner fix #3 — no silent left_hand default
+## on the interactive path; the direct-method default remains for drivers).
+## CONFIRM calls the direct _on_combined_strike (v1 command shape).
+func _open_combo_preview(part := BOSS_DEFAULT_PART) -> void:
 	if _gc == null:
 		return
 	var boss := _boss_id()
@@ -546,12 +588,12 @@ func _open_combo_preview() -> void:
 			"key": String(m[1]),
 			"level": _skill_level_of(String(m[0]), String(m[1])),
 			"attack_range": SKILL_ATTACK_RANGE,
-			"targets": [{"id": boss, "part": BOSS_DEFAULT_PART}],
+			"targets": [{"id": boss, "part": part}],
 		}})
 	var probe: Dictionary = _gc.preview_action(String(COMBO_MEMBERS[0][0]), {"combo_members": members})
-	_pending_confirm = {"kind": "combo"}
+	_pending_confirm = {"kind": "combo", "part": part}
 	var route := "%s → %s · %s" % [" + ".join(PackedStringArray(names)),
-		_display_name_for(boss), _part_label(BOSS_DEFAULT_PART)]
+		_display_name_for(boss), _part_label(part)]
 	_shell.show_action_preview(_preview_display("COMBINED STRIKE", route, probe, "committed_strike"))
 
 
@@ -619,7 +661,13 @@ func _on_preview_confirmed() -> void:
 		"self":
 			_on_skill(String(pending.get("key", "")))
 		"combo":
-			_on_combined_strike()
+			# Routes through _on_inspector_part so the armed combined pick is
+			# cleared and the PICKED part reaches _on_combined_strike (fix #3).
+			# Defensive: a combo confirm with nothing armed declares directly.
+			if _armed.is_empty():
+				_on_combined_strike(String(pending.get("part", BOSS_DEFAULT_PART)))
+			else:
+				_on_inspector_part(String(pending.get("part", BOSS_DEFAULT_PART)))
 
 
 func _on_preview_back() -> void:
@@ -1097,7 +1145,7 @@ func _flyout_data(cat: String) -> Dictionary:
 					"sub": "COST 1 · CRUSHED 1 · arms part-targeting — often blocked by robustness",
 					"enabled": true, "accent": UI.col(UI.TEXT)},
 				{"id": "combined", "label": "COMBINED STRIKE",
-					"sub": "IMANI + DARIO linked force · each pays COST 2 · the designed breach path",
+					"sub": "IMANI + DARIO linked force · each pays COST 2 · arms part-targeting",
 					"enabled": _combo_ready(), "accent": UI.col(UI.GOLD)},
 			]}
 		"skills":
@@ -1402,6 +1450,10 @@ func _status_badges(c: Dictionary) -> Array:
 			"color": UI.cond_col(String(k))})
 	if int(c.get("shock", 0)) > 0:
 		out.append({"text": "SHK %d" % int(c.get("shock", 0)), "color": UI.col(UI.SHOCK)})
+	# Skill-feel pass: the armed feint debuff reads as a badge on the victim's
+	# card / inspector / pips while it pends (view key ADDITIVE, absent -> false).
+	if bool(c.get("feint_forced", false)):
+		out.append({"text": "FEINTED", "color": UI.col(UI.MYTHIC)})
 	if bool(c.get("prone", false)):
 		out.append({"text": "PRONE", "color": UI.col(UI.GOLD)})
 	if bool(c.get("exposed", false)):
@@ -1446,10 +1498,38 @@ func _momus(text: String) -> void:
 		_shell.ticker.set_momus(text)
 
 
+## Broadcast-voice announce for the PAYOFF events the skill-feel pass surfaces
+## loudly (feint fallout / knockdown / standing back up). "" for every other
+## event type — the generic _event_line handles those.
+func _broadcast_announce(e: Dictionary) -> String:
+	match String(e.get("type", "")):
+		"feint_fallout":
+			var what := String(e.get("key", ""))
+			if what == "":
+				what = String(e.get("kind", "action"))
+			return "%s's feint pays off — %s's %s CRUMBLES into a Forced Action!" % [
+				_display_name_for(String(e.get("actor", ""))),
+				_display_name_for(String(e.get("victim", ""))),
+				what.replace("_", " ").to_upper()]
+		"knocked_prone":
+			return "%s's %s FLATTENS %s — grounded: no dodge, no sweep!" % [
+				_display_name_for(String(e.get("source", ""))),
+				String(e.get("skill", "")).replace("_", " ").to_upper(),
+				_display_name_for(String(e.get("combatant", "")))]
+		"stood_up":
+			return "%s spends the whole Moment hauling itself back upright" % \
+				_display_name_for(String(e.get("combatant", "")))
+	return ""
+
+
 ## One short line per sim event for the ticker/overlay: the interesting fields,
 ## in a stable order, joined tersely. Structure pass — copy comes with the
-## visuals/writing epic.
+## visuals/writing epic. The skill-feel payoff events reuse their loud
+## broadcast-voice announce so the log reads the same beat the ticker shouted.
 func _event_line(e: Dictionary) -> String:
+	var announce := _broadcast_announce(e)
+	if announce != "":
+		return announce
 	var bits: Array = []
 	for k in ["actor", "target", "id", "part", "amount", "damage_type", "condition",
 			"tier", "reason", "tag", "key", "tick", "moment", "band", "meter", "outcome"]:
