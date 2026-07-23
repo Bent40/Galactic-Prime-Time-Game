@@ -47,14 +47,25 @@ func _fa_rolls(events: Array[Dictionary]) -> Array[int]:
 # ---------------------------------------------------------------- P1 policy
 
 func test_boss_dashes_a_lone_target() -> void:
+	# R22: the target's Reflexes 2 + d4 max = 6 < the dash's threshold 7 — the
+	# dodge is IMPOSSIBLE (the intended Imani texture), so the dash connects
+	# deterministically and consumes NO rng (pin-exact damage stays possible).
 	var sim: CombatSim = make_sim()
-	add_human(sim, "h", {"team": "party", "position": [3, 0]})
+	add_human(sim, "h", {"team": "party", "position": [3, 0],
+		"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
 	add_boss(sim)
 	var events: Array[Dictionary] = ai_decide(sim, "boss")
 	var decision: Dictionary = assert_event(events, "ai_decision", "boss decided")
 	assert_eq(String(decision.get("tier", "")), "boss", "boss tier")
 	assert_eq(String(decision.get("choice", "")), "attack", "target in reach -> attack")
 	assert_eq(String(decision.get("ability", "")), "dash", "one target -> the line charge, not the cone")
+	# R22: dash moment_cost 1 -> 2 — the charge is a WINDUP telegraph now:
+	# declared this tick, resolving two ticks later through the schedule the
+	# HUD's declared-action bars read.
+	var declared: Dictionary = assert_event(events, "action_declared", "the dash is declared through the resolver")
+	assert_eq(int(declared.get("cost", 0)), 2, "R22: the dash costs 2 Moments (windup telegraph)")
+	assert_true(bool(declared.get("windup", false)), "the dash winds up — the party sees it coming")
+	assert_no_event(advance(sim, 2), "damage_applied", "nothing lands during the windup")
 	var resolved: Array[Dictionary] = advance(sim, 1)
 	var damage: Dictionary = assert_event(resolved, "damage_applied", "dash landed")
 	assert_eq(String(damage.get("part", "")), "torso", "dash honors its torso part_bias")
@@ -66,6 +77,8 @@ func test_boss_dashes_a_lone_target() -> void:
 	# >=2 hits to destroy. Because the hit LANDED (Force 5 > Robustness 1) it seeds
 	# crushed T1 (no longer preempted by a kill).
 	assert_eq(int(damage.get("amount", -1)), 4, "R14 tuning dash: Force 5 − Robustness 1 = 4")
+	assert_no_event(resolved, "attack_dodged", "Reflexes 2 cannot dodge the dash (R22 impossible)")
+	assert_no_event(resolved, "dodge_failed", "an impossible dodge consumes no rng and emits nothing")
 	assert_no_event(resolved, "combatant_died", "the tuned dash no longer one-shots a fresh 5-HP torso")
 	assert_eq(int((sim.combatants["h"] as CombatantState).parts["torso"]["hp"]), 1, "the 5-HP torso survives the dash at 1 HP")
 	assert_event(resolved, "condition_applied", "the landed dash seeds crushed T1 (a survivor, not a corpse)")
@@ -126,23 +139,29 @@ func test_phase_behavior_list_filters_the_ability_set() -> void:
 	assert_eq(String(decision.get("target", "")), "ha", "mob-priority target (distance tie -> id)")
 
 
-# ---------------------------------------------------------------- dodge (R11 #17)
+# ---------------------------------------------------------------- dodge (R22)
 
 func test_dodge_threshold_negates_the_round() -> void:
+	# R22: threshold 1 <= the boss's Reflexes 4 — an AUTO-dodge (roll 0, no rng).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
 	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 1}})
 	declare(sim, "h", attack_action("bleeding", 2, "boss", "right_hand"))
 	var resolved: Array[Dictionary] = advance(sim, 1)
-	var dodge: Dictionary = assert_event(resolved, "attack_dodged", "threshold 1 always dodges")
+	var dodge: Dictionary = assert_event(resolved, "attack_dodged", "Reflexes 4 >= threshold 1 always dodges")
 	assert_eq(String(dodge.get("part", "")), "right_hand", "the dodged part is reported")
-	assert_true(int(dodge.get("roll", 0)) >= 1 and int(dodge.get("roll", 0)) <= 6, "the d6 roll is emitted")
+	assert_true(bool(dodge.get("auto", false)), "Reflexes >= threshold -> auto flag set")
+	assert_eq(int(dodge.get("roll", -1)), 0, "an auto-dodge emits roll 0 (no die rolled)")
+	assert_eq(int(dodge.get("reflexes", 0)), 4, "the dodger's Reflexes is emitted")
+	assert_eq(int(dodge.get("die", 0)), 4, "the default d4 threshold die is emitted")
 	assert_no_event(resolved, "damage_applied", "a dodged round deals nothing")
 	assert_no_event(resolved, "condition_applied", "a dodged round applies nothing (explicit miss, R2)")
 	assert_eq(int(boss_state(sim).parts["right_hand"]["hp"]), 8, "HP untouched")
 
 
 func test_dodge_rolls_once_per_aimed_round_and_can_fail() -> void:
+	# R22 rolled fallback: Reflexes 4 < threshold 6, 4 + d4 covers it — every
+	# aimed round rolls the d4 once; 4 + roll >= 6 dodges (2+), a 1 fails.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
 	add_boss(sim, "boss", {"boss_traits": {"dodge_threshold": 6}})
@@ -155,8 +174,8 @@ func test_dodge_rolls_once_per_aimed_round_and_can_fail() -> void:
 	var dodged: int = events_of(events, "attack_dodged").size()
 	var failed: int = events_of(events, "dodge_failed").size()
 	assert_eq(dodged + failed, 12, "exactly one dodge roll per aimed round")
-	assert_true(dodged >= 1, "threshold 6 still dodges sometimes (got %d)" % dodged)
-	assert_true(failed >= 1, "threshold 6 usually fails (got %d)" % failed)
+	assert_true(dodged >= 1, "Reflexes 4 + d4 vs 6 dodges on a 2+ (got %d)" % dodged)
+	assert_true(failed >= 1, "a rolled 1 still fails the ask (got %d)" % failed)
 	assert_eq(events_of(events, "damage_applied").size(), failed,
 		"every non-dodged round resolved; every dodged round did not")
 

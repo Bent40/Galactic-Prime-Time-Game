@@ -11,8 +11,8 @@ extends SimTestBase
 ##      non-empty combo_id, first target) bucket by (combo_id, target, part);
 ##      buckets of 2+ become merged groups — membership only, no numbers yet.
 ##   2. Each member's _strike_round runs at its normal position in declaration
-##      (seq) order: its OWN dodge roll happens exactly where it does today (the
-##      AI d6 stream order is unchanged), and its ACTUAL Force (halving applied)
+##      (seq) order: its OWN dodge check happens exactly where it does today (the
+##      salted AI stream order is unchanged, R22), and its ACTUAL Force (halving applied)
 ##      is contributed only if it connects. Dodged / surface-blocked /
 ##      fire-healed / non-Physical members drop out of the sum.
 ##   3. The LAST accounted-for member closes the group: ONE merged application
@@ -112,22 +112,23 @@ func test_landed_merge_applies_both_members_conditions() -> void:
 	assert_eq(t.condition_tier("hide", "bleeding"), 1, "p2's bleeding T1 rides the same wound")
 
 
-## (d) A dodged member's Force drops OUT of the merged sum. Each member rolls
-## its own dodge inside its own _strike_round (the AI d6 stream is consumed in
-## the same order as un-merged play). Seed 1 vs dodge_threshold 4: p1 (Force
-## 4+2 = 6) is DODGED, p2 (Force 5+2 = 7) connects → merged hit is p2-only:
-## net = 7 − 3 = 4 (a both-connect run would net 6 + 7 − 3 = 10).
+## (d) A dodged member's Force drops OUT of the merged sum. Each member runs
+## its own R22 dodge check inside its own _strike_round (the AI stream is
+## consumed in the same order as un-merged play). Threshold 6 vs the target's
+## Reflexes 3: the 1d4 fallback dodges on a 3+ (~50%). Seed 4: p1 (Force
+## 4+2 = 6) is DODGED (roll 4), p2 (Force 5+2 = 7) connects (roll 2) → merged
+## hit is p2-only: net = 7 − 3 = 4 (a both-connect run would net 6 + 7 − 3 = 10).
 func test_dodged_members_force_drops_out() -> void:
-	var sim: CombatSim = CombatSim.new(1, load_static_data())
+	var sim: CombatSim = CombatSim.new(4, load_static_data())
 	add_human(sim, "p1", {"position": [0, 0], "traits": {"physique": 4, "reflexes": 3, "mind": 3, "charm": 3}})
 	add_human(sim, "p2", {"position": [2, 0], "traits": {"physique": 4, "reflexes": 3, "mind": 3, "charm": 3}})
-	sim.apply_command({"type": "add_combatant", "combatant": _target_spec("d", 6, {"boss_traits": {"dodge_threshold": 4}})})
+	sim.apply_command({"type": "add_combatant", "combatant": _target_spec("d", 6, {"boss_traits": {"dodge_threshold": 6}})})
 	sim.apply_command({"type": "combined_action", "members": [
 		{"actor": "p1", "action": attack_action("crushed", 4, "d", "hide")},
 		{"actor": "p2", "action": attack_action("crushed", 5, "d", "hide")},
 	]})
 	var events: Array[Dictionary] = advance(sim)
-	assert_eq(events_of(events, "attack_dodged").size(), 1, "exactly one member is dodged (seed 1)")
+	assert_eq(events_of(events, "attack_dodged").size(), 1, "exactly one member is dodged (seed 4)")
 	var cf: Dictionary = assert_event(events, "combined_force", "the reduced merge still applies")
 	assert_eq(cf.get("actors", []), ["p2"], "only the connecting member contributes")
 	assert_eq(int(cf.get("force", -1)), 7, "p1's dodged Force 6 dropped out — sum is p2's 7 alone")

@@ -11,8 +11,10 @@ extends RefCounted
 ##   The sim stays passive: it never self-advances and never self-decides.
 ## - decide() is rng-free: pure priority rules over SORTED state (no
 ##   unsorted-dict iteration feeds a decision). The ONLY ai_rng consumer is the
-##   dodge-threshold d6 (mirror of hype_engine's salted goal_rng pattern), so
-##   dodge rolls never perturb the action RNG's Forced-Action sequence.
+##   R22 dodge check's threshold die (mirror of hype_engine's salted goal_rng
+##   pattern) — and only on the ROLLED fallback: an auto-dodge or an impossible
+##   dodge consumes nothing — so dodge rolls never perturb the action RNG's
+##   Forced-Action sequence.
 ## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
 ##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
@@ -420,7 +422,7 @@ static func _first_damage(ability: Dictionary) -> Dictionary:
 
 func _attack_action(ability: Dictionary, targets: Array[Dictionary]) -> Dictionary:
 	var damage: Dictionary = _first_damage(ability)
-	return {
+	var action: Dictionary = {
 		"kind": "attack",
 		"key": String(ability.get("key", "")),
 		"cost": maxi(1, int(ability.get("moment_cost", 1))),
@@ -428,6 +430,11 @@ func _attack_action(ability: Dictionary, targets: Array[Dictionary]) -> Dictiona
 		"attack_range": _ability_range(ability),
 		"targets": targets,
 	}
+	# R22: an ability-authored dodge block (the Dash counters ladder) rides the
+	# action so the resolver can run the target-side dodge at the strike round.
+	if ability.has("dodge"):
+		action["dodge"] = (ability.get("dodge", {}) as Dictionary).duplicate(true)
+	return action
 
 
 func _wants_heal(actor: CombatantState) -> bool:
@@ -492,24 +499,62 @@ func _occupied_hexes(actor: CombatantState) -> Dictionary:
 	return occupied
 
 
-# ------------------------------------------------------------------ dodge (R11 #17)
+# ------------------------------------------------------------------ dodge (R22)
 
-## Dodge Threshold — the live table's homebrew as an authored enemy ability
-## (R2's explicit-miss pattern). Rolled per AIMED weapon round against a
-## combatant carrying boss_traits.dodge_threshold; roll >= threshold negates
-## the round. No dodge while Helpless or Exposed (windups, grapples and prone
-## are the discoverable punish windows). Consumes the salted ai_rng ONLY.
-## Returns {} when no attempt happens; else {"dodged", "roll", "threshold"}.
-func try_dodge(target: CombatantState, tick: int) -> Dictionary:
-	var threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
+## R22 unified dodge check — the threshold asks the DODGER's Reflexes (SUPERSEDES
+## the flat d6 of R11 #17). One check, both directions (boss dodging an aimed
+## round; a contestant dodging the Dash):
+##   Reflexes >= threshold           -> auto-dodge, NO rng consumed.
+##   Reflexes + threshold die >= t   -> roll the stat's die (default 1d4) from
+##                                      the salted ai_rng and add it.
+##   Reflexes + die max < threshold  -> the dodge is IMPOSSIBLE: no rng, no
+##                                      event ({} — preview reports the class).
+## No dodge while Helpless, Exposed or Prone (windups, grapples and the slam
+## punish window). Consumes the salted ai_rng ONLY. Returns {} when no attempt
+## happens; else {"dodged", "roll" (0 when auto), "die", "reflexes",
+## "threshold", "auto"}.
+func check_dodge(target: CombatantState, tick: int, threshold: int) -> Dictionary:
 	if threshold <= 0:
 		return {}
 	if not target.alive or target.removed_from_play:
 		return {}
-	if target.is_helpless(tick) or target.exposed_cache:
+	if target.is_helpless(tick) or target.exposed_cache or bool(target.statuses.get("prone", false)):
 		return {}
-	var roll: int = ai_rng.randi_range(1, 6)
-	return {"dodged": roll >= threshold, "roll": roll, "threshold": threshold}
+	var reflexes: int = target.trait_total("reflexes")
+	var die: int = target.threshold_die("reflexes")
+	if reflexes >= threshold:
+		return {"dodged": true, "roll": 0, "die": die, "reflexes": reflexes, "threshold": threshold, "auto": true}
+	if reflexes + die < threshold:
+		return {}  # impossible — intended texture (R22: Imani vs the Dash), no rng
+	var roll: int = ai_rng.randi_range(1, die)
+	return {"dodged": reflexes + roll >= threshold, "roll": roll, "die": die, "reflexes": reflexes, "threshold": threshold, "auto": false}
+
+
+## The boss's own aimed-round dodge (authored via boss_traits.dodge_threshold,
+## R2's explicit-miss pattern) — the R22 check against the boss's Reflexes.
+func try_dodge(target: CombatantState, tick: int) -> Dictionary:
+	return check_dodge(target, tick, int(target.boss_traits.get("dodge_threshold", 0)))
+
+
+## Torso-line part pick on `target` for the R22 dash counterattack (mirrors the
+## non-elite _pick_part path without an ability bias): torso when attackable,
+## else the first non-head lethal candidate, else the first non-head candidate
+## (the counter aims at the body line even when a windup exposes the head —
+## head-hunting stays the elite persona, not a free rider). "" when nothing is
+## attackable.
+func torso_line_part(target: CombatantState) -> String:
+	var candidates: Array[String] = _attackable_parts(target)
+	if candidates.is_empty():
+		return ""
+	if candidates.has("torso"):
+		return "torso"
+	for key: String in candidates:
+		if bool((target.parts[key] as Dictionary).get("lethal", false)) and not key.contains("head"):
+			return key
+	for key: String in candidates:
+		if not key.contains("head"):
+			return key
+	return candidates[0]
 
 
 # ------------------------------------------------------------------ phases (R11 #18)

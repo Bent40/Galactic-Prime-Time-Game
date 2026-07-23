@@ -27,9 +27,13 @@ extends SceneTree
 ##  * a BALANCE line — the machine-greppable outcome of the full-cadence fight.
 ##
 ## HARD LINE: DRIVER/CONSUMER ONLY — it never touches simulation/, controller/, data/
-## or tests/. Determinism: fixed seeds, no wall-clock reads, no RNG in the driver (the
-## boss is added with dodge_threshold stripped — the same spec choice the engine's own
-## breach/phase tests make — so the AI d6 never makes a measurement non-deterministic).
+## or tests/. Determinism: fixed seeds, no wall-clock reads, no RNG in the driver. The
+## boss is added with dodge_threshold stripped (the same spec choice the engine's own
+## breach/phase tests make) so the boss-side R22 dodge never blurs the party's damage
+## measurements. The party-side R22 Dash ladder (dash "dodge" block) stays LIVE — it is
+## part of what this instrument measures — and its rolls ride the salted ai_rng, so a
+## fixed seed still reproduces the identical fight; the DODGE line reports how often it
+## actually fired.
 
 # --------------------------------------------------------------------- tunables
 const SEED: int = 14
@@ -67,6 +71,12 @@ var fleeing: bool = false        # steam telegraph seen, blast not yet
 var blast_at: int = 0            # announced blast tick (telegraph tick + countdown)
 var blasts: int = 0
 var knockouts: int = 0           # contestants caught by a blast
+# R22 dash-ladder telemetry: how often the counterplay actually fired this run.
+var dash_declared: int = 0
+var dash_dodges: int = 0
+var dodge_fails: int = 0
+var sidesteps: int = 0
+var counters: int = 0
 
 
 func _initialize() -> void:
@@ -92,15 +102,18 @@ func _probe() -> void:
 
 ## Stand up boss + one (or, for the cone, two) fresh phys-`phys` contestants, let the
 ## boss decide+resolve once, and return {net, died} for the first contestant's torso.
+## Probe targets carry Reflexes 2: under R22 the dash's 7-threshold dodge is then
+## IMPOSSIBLE by construction (2 + d4 max = 6 < 7), so the probe measures the worst-case
+## HIT — never a seed-lucky dodge (the ladder has its own tests + the DODGE line).
 func _one_hit(_ability: String, phys: int, crowd: bool) -> Dictionary:
 	var g = GameControllerScript.new()
 	g.name = "Probe"
 	root.add_child(g)
 	g.start_combat(PROBE_SEED)
 	_add_boss_to(g)
-	_add_contestant_to(g, "p", {"physique": phys, "reflexes": 3, "mind": 3, "charm": 3}, Vector2i(1, 0))
+	_add_contestant_to(g, "p", {"physique": phys, "reflexes": 2, "mind": 3, "charm": 3}, Vector2i(1, 0))
 	if crowd:
-		_add_contestant_to(g, "q", {"physique": phys, "reflexes": 3, "mind": 3, "charm": 3}, Vector2i(0, 1))
+		_add_contestant_to(g, "q", {"physique": phys, "reflexes": 2, "mind": 3, "charm": 3}, Vector2i(0, 1))
 	var net: int = 0
 	var died: bool = false
 	var seen: Array = []
@@ -179,6 +192,17 @@ func _on_sim_event(e: Dictionary) -> void:
 			var who: String = String(e.get("combatant", ""))
 			if who == IMANI or who == DARIO:
 				max_hit_on_contestant = maxi(max_hit_on_contestant, int(e.get("amount", 0)))
+		"ai_decision":
+			if String(e.get("ability", "")) == "dash":
+				dash_declared += 1
+		"attack_dodged":
+			dash_dodges += 1
+		"dodge_failed":
+			dodge_fails += 1
+		"dash_sidestepped":
+			sidesteps += 1
+		"dash_countered":
+			counters += 1
 		"explosion_telegraph":
 			fleeing = true  # the steam is the cue
 			blast_at = tk + int(e.get("moments_until_blast", 0))
@@ -412,6 +436,11 @@ func _report() -> void:
 		outcome, nb.call(breach_tick), nb.call(network_kill_tick), nb.call(first_down_tick),
 		max_hit_on_contestant, _torso_hp(IMANI), _torso_hp(DARIO), rebreaches, blasts, knockouts,
 		_network_hp()])
+	# R22 dash-ladder telemetry (honest instrument line — with the clustered
+	# 2-contestant party the cone outranks the dash, so the ladder rarely fires
+	# at full cadence; a 0-dodge line is a finding, not a failure).
+	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d" % [
+		dash_declared, dash_dodges, dodge_fails, sidesteps, counters])
 
 
 func _network_hp() -> int:
