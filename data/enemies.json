@@ -242,13 +242,13 @@
         "breach_resets_after_phase": 2
       },
       "reflexes_counters": {
-        "note": "per-ability player counters (rules-addendum R2 refinement), applies to Dash",
+        "note": "IMPLEMENTED per R22 (owner 2026-07-23) as the dash ability's 'dodge' block (threshold 7, counter_at 9); this trait entry stays as the authored design record",
         "reflexes_7": "auto-dodge + move 1 space",
         "reflexes_9": "auto-dodge + counterattack",
-        "below": "roll 4+ on d6 to dodge"
+        "below": "roll the Reflexes threshold die (default 1d4): Reflexes + die >= 7 dodges; Reflexes 2 + d4 max = 6 < 7 cannot dodge (intended, R22)"
       },
-      "dodge_threshold": 4,
-      "dodge_threshold_note": "live-table homebrew as an authored boss ability (R2/R11 #17): d6 per aimed weapon round, roll >= threshold dodges; never while Exposed/Helpless. Value PLACEHOLDER (R14).",
+      "dodge_threshold": 7,
+      "dodge_threshold_note": "R22 (owner 2026-07-23): the threshold asks the dodger's Reflexes — Reflexes >= threshold auto-dodges (no roll, no rng); else add the stat's threshold die (default 1d4): Reflexes + die >= threshold dodges; Reflexes + die max < threshold is impossible (no roll). Never while Exposed/Helpless/Prone. Retuned 4 -> 7 (PROVISIONAL, R14): boss Reflexes 4 + 1d4 >= 7 keeps the old d6-vs-4 ~50% rate.",
       "crush_2_disables_part": true,
       "left_hand_disable_removes_flamethrower": true,
       "arena_hexes": [
@@ -273,7 +273,7 @@
       {
         "key": "dash",
         "name": "Dash",
-        "moment_cost": 1,
+        "moment_cost": 2,
         "area": "line",
         "range": 6,
         "damage": [
@@ -284,7 +284,11 @@
           }
         ],
         "effect": "knock aside",
-        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) \u2014 no longer the from-full-to-0 one-shot the 3-amount dash was. range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope \u2014 AI v1 treats it as reach"
+        "dodge": {
+          "threshold": 7,
+          "counter_at": 9
+        },
+        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) \u2014 no longer the from-full-to-0 one-shot the 3-amount dash was. R22 (owner 2026-07-23): moment_cost 1->2 \u2014 the dash is a WINDUP telegraph now (declared one tick, resolves two later; the HUD's declared-action bars / view_schedule show it coming), and the 'dodge' block is the REAL reflexes_counters ladder: Reflexes >= 7 auto-dodge + 1-hex sidestep (first free HEX_NEIGHBORS hex that increases distance; sidestep rides ANY successful dodge); Reflexes >= 9 also counterattacks (v1 counter shape: the dodger's first plain damage ability, else a basic unarmed strike crushed 1 \u2014 Force = 1 + floor(physique/2) \u2014 at the dasher's torso-line part, R14-gated, not itself dodgeable, rng-free); below 7 the 1d4 fallback (Reflexes 2 + d4 max 6 < 7 cannot dodge \u2014 intended). range PLACEHOLDER (R14); 'line' charge geometry + knock-aside are KAN-5 scope \u2014 AI v1 treats it as reach"
       },
       {
         "key": "death_spin",

@@ -205,10 +205,20 @@ def main() -> int:
                     fail("enemies.json", f"{k}/{ak}: heal.amount must be int >= 1")
                 if h.get("target") not in (None, "self"):
                     fail("enemies.json", f"{k}/{ak}: heal.target {h.get('target')!r} unsupported (AI v1: self only)")
-        # dodge threshold (boss ability pattern, R2/R11 #17): d6 gate, so 1..6.
+            # R22 ability dodge block (the Dash counters ladder): threshold asks the
+            # target's Reflexes; counter_at (optional) gates the counterattack rider.
+            if "dodge" in a:
+                dg = a["dodge"]
+                if not isinstance(dg, dict) or not isinstance(dg.get("threshold"), int) or dg["threshold"] < 1:
+                    fail("enemies.json", f"{k}/{ak}: dodge.threshold must be int >= 1 (R22)")
+                elif "counter_at" in dg and (not isinstance(dg["counter_at"], int) or dg["counter_at"] < dg["threshold"]):
+                    fail("enemies.json", f"{k}/{ak}: dodge.counter_at must be int >= dodge.threshold (R22)")
+        # dodge threshold (boss ability pattern, R2 + R22): the threshold asks the
+        # dodger's Reflexes (+ the stat's threshold die on the fallback), so any
+        # positive int is legal — an unreachable ask is an intended impossible dodge.
         dt = e.get("traits", {}).get("dodge_threshold")
-        if dt is not None and (not isinstance(dt, int) or not (1 <= dt <= 6)):
-            fail("enemies.json", f"{k}: traits.dodge_threshold must be int 1..6 (d6 roll >= threshold dodges)")
+        if dt is not None and (not isinstance(dt, int) or dt < 1):
+            fail("enemies.json", f"{k}: traits.dodge_threshold must be int >= 1 (R22 Reflexes ask)")
         phases = e.get("phases", [])
         nums = [p.get("phase_number") for p in phases]
         if nums != sorted(nums) or len(nums) != len(set(nums)):

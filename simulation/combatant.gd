@@ -60,6 +60,12 @@ var skills: Array[Dictionary] = []
 var resistances: Dictionary = {"Physical": 0, "Affliction": 0, "Psychic": 0}
 ## Player-allocated Reflexes-derived physical resistance: condition_id -> int (R6).
 var allocated_physical: Dictionary = {}
+## R22 per-stat threshold dice (grant pattern like `skills`/`bit`): stat name ->
+## die size, upgraded through progression (d4 -> d6 -> d8; KAN-7 prices it).
+## Empty = the default d4 for every stat. Only "reflexes" is consumed today
+## (dodge checks); the field is per-stat so future stat-threshold checks (Mind
+## vs fear, Physique vs forced movement) inherit the mechanism.
+var threshold_dice: Dictionary = {}
 
 var boss_traits: Dictionary = {}
 var breached: bool = false
@@ -192,6 +198,11 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 	var alloc: Dictionary = spec.get("allocated_physical_resistance", {})
 	for alloc_key: Variant in alloc:
 		c.allocated_physical[String(alloc_key)] = int(alloc[alloc_key])
+	# R22 threshold dice (grant pattern like skills/bit): normalized stat -> die
+	# size rows straight off the spec; absent = {} = d4 everywhere.
+	var dice_spec: Dictionary = spec.get("threshold_dice", {})
+	for die_key: Variant in dice_spec:
+		c.threshold_dice[String(die_key)] = int(dice_spec[die_key])
 
 	c.boss_traits = (spec.get("boss_traits", template.get("traits", {})) as Dictionary).duplicate(true)
 	for ability_spec: Variant in spec.get("abilities", template.get("abilities", [])) as Array:
@@ -272,6 +283,11 @@ func skill_level(key: String) -> int:
 func trait_total(trait_key: String) -> int:
 	var t: Dictionary = stats.get(trait_key, {})
 	return int(t.get("base", 0)) + int(t.get("bonus", 0)) + int(t.get("level_bonus", 0))
+
+
+## R22: the stat's threshold die size — default d4 when no upgrade was granted.
+func threshold_die(trait_key: String) -> int:
+	return maxi(1, int(threshold_dice.get(trait_key, 4)))
 
 
 ## Over-10 stat-cap formulas — adopted verbatim from the char-sheet app (R6).
@@ -418,6 +434,7 @@ func to_dict() -> Dictionary:
 		"skills": skills.duplicate(true),
 		"resistances": resistances.duplicate(true),
 		"allocated_physical": allocated_physical.duplicate(true),
+		"threshold_dice": threshold_dice.duplicate(true),
 		"boss_traits": boss_traits.duplicate(true),
 		"breached": breached,
 		"abilities": abilities.duplicate(true),
@@ -481,6 +498,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 		c.skills.append((skill as Dictionary).duplicate(true))
 	c.resistances = (data.get("resistances", {}) as Dictionary).duplicate(true)
 	c.allocated_physical = (data.get("allocated_physical", {}) as Dictionary).duplicate(true)
+	c.threshold_dice = (data.get("threshold_dice", {}) as Dictionary).duplicate(true)
 	c.boss_traits = (data.get("boss_traits", {}) as Dictionary).duplicate(true)
 	c.breached = bool(data.get("breached", false))
 	for ability: Variant in data.get("abilities", []) as Array:

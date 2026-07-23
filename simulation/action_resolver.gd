@@ -222,9 +222,10 @@ func _has_status(c: CombatantState, status: String) -> bool:
 
 ## READ-ONLY action preview (spectator contract — ADDITIVE, HUD v2 Phase 2).
 ## Predicts what declaring `action` would cost and what its strike would do,
-## WITHOUT mutating any state and WITHOUT touching either rng stream: the boss
-## dodge is reported as UNCERTAINTY (threshold + eligibility, read off the same
-## fields EnemyAI.try_dodge reads) — never rolled. Reuses the live authorities
+## WITHOUT mutating any state and WITHOUT touching either rng stream: a dodge
+## (either direction — boss aimed-round OR the Dash ladder, R22) is reported as
+## UNCERTAINTY (threshold, dodger Reflexes, die size, outcome class — read off
+## the same fields EnemyAI.check_dodge reads) — never rolled. Reuses the live authorities
 ## (_effective_cost / _prime_unmet / the exact _strike_round Force formula +
 ## Resistance helpers + the part condition_immunities / bleed_immune / D3 gates)
 ## so the preview never lies. Returns a plain Dictionary:
@@ -234,7 +235,10 @@ func _has_status(c: CombatantState, status: String) -> bool:
 ##   per_target: [{id, part, force, robustness, net, landed,
 ##                 blocked_reason ("" | "surface_immunity" | "robustness" | "fire_heals"),
 ##                 conditions: [ids that would ride the hit],
-##                 dodge_possible: bool, dodge_threshold: int}]
+##                 dodge_possible: bool, dodge_threshold: int,
+##                 dodge_reflexes: int, dodge_die: int,
+##                 dodge_outcome: "" | "ineligible" | "auto_dodge" | "roll_needed" | "impossible",
+##                 dodge_roll_needed: int (0 unless roll_needed)}]
 ##   merged: {force, robustness, net} — only when the action carries a
 ##           "combo_members" combined-preview request (see below).
 ##
@@ -309,10 +313,31 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 			net = maxi(0, net - target.brace_guard)
 		if is_physical and not landed:
 			blocked_reason = "robustness"
-	# Dodge UNCERTAINTY — the same threshold + eligibility try_dodge reads, no d6.
+	# Dodge UNCERTAINTY (R22) — the same threshold + eligibility check_dodge
+	# reads, NEVER rolled. Boss direction: the target's boss_traits threshold;
+	# dash direction: the ability's authored "dodge" block (non-boss dodgers).
+	# Additive keys only; dodge_possible stays accurate (false when the dodge is
+	# ineligible OR impossible — Reflexes + die max < threshold).
 	var threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
-	var dodge_possible: bool = threshold > 0 and target.alive and not target.removed_from_play \
-		and not target.is_helpless(clock.tick) and not target.exposed_cache
+	if threshold <= 0:
+		threshold = int((action.get("dodge", {}) as Dictionary).get("threshold", 0))
+	var dodge_eligible: bool = threshold > 0 and target.alive and not target.removed_from_play \
+		and not target.is_helpless(clock.tick) and not target.exposed_cache \
+		and not bool(target.statuses.get("prone", false))
+	var dodge_reflexes: int = target.trait_total("reflexes")
+	var dodge_die: int = target.threshold_die("reflexes")
+	var dodge_outcome: String = ""
+	var dodge_roll_needed: int = 0
+	if threshold > 0:
+		if not dodge_eligible:
+			dodge_outcome = "ineligible"
+		elif dodge_reflexes >= threshold:
+			dodge_outcome = "auto_dodge"
+		elif dodge_reflexes + dodge_die >= threshold:
+			dodge_outcome = "roll_needed"
+			dodge_roll_needed = threshold - dodge_reflexes
+		else:
+			dodge_outcome = "impossible"
 	return {
 		"id": target_id,
 		"part": part_key,
@@ -322,8 +347,12 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 		"landed": landed,
 		"blocked_reason": blocked_reason,
 		"conditions": _preview_riding_conditions(target, part_key, condition_id, cond_def, landed, action),
-		"dodge_possible": dodge_possible,
+		"dodge_possible": dodge_eligible and dodge_outcome != "impossible",
 		"dodge_threshold": threshold,
+		"dodge_reflexes": dodge_reflexes,
+		"dodge_die": dodge_die,
+		"dodge_outcome": dodge_outcome,
+		"dodge_roll_needed": dodge_roll_needed,
 	}
 
 
@@ -1376,26 +1405,48 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		if not group.is_empty():
 			events.append_array(_merge_drop(group, target))  # a healed member adds no Force
 		return events
-	# Boss hook: dodge threshold (I-16, R11 #17) — an aimed round against an
-	# agile boss rolls the AI d6 stream; roll >= threshold negates the round.
-	# Never fires while the boss is Exposed/Helpless (punish windows); the roll
-	# is always emitted (no unlogged randomness). R15: EACH merged member rolls
-	# its own dodge here, at the same point in the d6 stream as un-merged play;
-	# a dodged member's Force drops out of the merged sum.
-	var dodge: Dictionary = ai.try_dodge(target, clock.tick)
-	if not dodge.is_empty():
-		if bool(dodge.get("dodged", false)):
-			events.append({
-				"type": "attack_dodged", "combatant": target.id, "part": part_key,
-				"roll": int(dodge.get("roll", 0)), "threshold": int(dodge.get("threshold", 0)),
-			})
-			if not group.is_empty():
-				events.append_array(_merge_drop(group, target))
-			return events
-		events.append({
-			"type": "dodge_failed", "combatant": target.id,
-			"roll": int(dodge.get("roll", 0)), "threshold": int(dodge.get("threshold", 0)),
-		})
+	# R22 dodge — one check, both directions (SUPERSEDES the flat d6 of R11 #17):
+	# the threshold asks the DODGER's Reflexes; Reflexes >= threshold auto-dodges
+	# (no rng), else the stat's threshold die (default 1d4) rolls off the salted
+	# ai_rng; an impossible dodge (Reflexes + die max < threshold) consumes
+	# nothing and emits nothing. Boss direction: boss_traits.dodge_threshold.
+	# Dash direction: the ability's authored "dodge" block against a non-boss
+	# dodger — a successful dash dodge also rides the counters ladder (sidestep;
+	# counterattack at counter_at). Never fires while the dodger is Exposed/
+	# Helpless/Prone (punish windows); every ROLLED attempt is emitted (no
+	# unlogged randomness). A counter strike (action.counter) is itself the
+	# dodge's rider and cannot be dodged in v1 (deterministic, rng-free). R15:
+	# EACH merged member runs its own dodge here, at the same point in the AI
+	# stream as un-merged play; a dodged member's Force drops out of the merged
+	# sum.
+	if not bool(action.get("counter", false)):
+		var boss_threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
+		var ability_dodge: Dictionary = action.get("dodge", {})
+		var dodge: Dictionary = {}
+		var is_dash_dodge: bool = false
+		if boss_threshold > 0:
+			dodge = ai.try_dodge(target, clock.tick)
+		elif not ability_dodge.is_empty():
+			dodge = ai.check_dodge(target, clock.tick, int(ability_dodge.get("threshold", 0)))
+			is_dash_dodge = true
+		if not dodge.is_empty():
+			var dodge_detail: Dictionary = {
+				"roll": int(dodge.get("roll", 0)), "die": int(dodge.get("die", 0)),
+				"reflexes": int(dodge.get("reflexes", 0)),
+				"threshold": int(dodge.get("threshold", 0)), "auto": bool(dodge.get("auto", false)),
+			}
+			if bool(dodge.get("dodged", false)):
+				var dodged_event: Dictionary = {"type": "attack_dodged", "combatant": target.id, "part": part_key}
+				dodged_event.merge(dodge_detail)
+				events.append(dodged_event)
+				if is_dash_dodge:
+					events.append_array(_dash_dodge_riders(target, attacker, ability_dodge))
+				if not group.is_empty():
+					events.append_array(_merge_drop(group, target))
+				return events
+			var failed_event: Dictionary = {"type": "dodge_failed", "combatant": target.id}
+			failed_event.merge(dodge_detail)
+			events.append(failed_event)
 	if Resistance.part_blocked_by_surface_immunity(target, part_key):
 		events.append({"type": "attack_blocked", "combatant": target.id, "part": part_key, "reason": "surface_immunity"})
 		if not group.is_empty():
@@ -1471,6 +1522,82 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				"poison_type": String(action.get("poison_type", "")),
 			}))
 	return events
+
+
+## R22 dash counters ladder riders on a SUCCESSFUL dash dodge: the sidestep
+## rides ANY successful dodge (auto or rolled); the counterattack rides only a
+## Reflexes >= counter_at auto-dodge. Both deterministic, both rng-free.
+func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_dodge: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if dasher == null:
+		return events
+	events.append_array(_dash_sidestep(dodger, dasher))
+	var counter_at: int = int(ability_dodge.get("counter_at", 0))
+	if counter_at > 0 and dodger.trait_total("reflexes") >= counter_at:
+		events.append_array(_dash_counter(dodger, dasher))
+	return events
+
+
+## R22 1-hex sidestep: the first unoccupied hex in the fixed HEX_NEIGHBORS order
+## that strictly INCREASES distance from the dasher. No free improving hex ->
+## the dodge still negates, no displacement.
+func _dash_sidestep(dodger: CombatantState, dasher: CombatantState) -> Array[Dictionary]:
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == dodger.id or not other.alive or other.removed_from_play:
+			continue
+		occupied[other.position] = true
+	var from: Vector2i = dodger.position
+	var from_d: int = CombatantState.hex_distance(from, dasher.position)
+	for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
+		var candidate: Vector2i = from + neighbor
+		if occupied.has(candidate):
+			continue
+		if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
+			continue
+		dodger.position = candidate
+		return [{
+			"type": "dash_sidestepped", "combatant": dodger.id, "by": dasher.id,
+			"from": [from.x, from.y], "to": [candidate.x, candidate.y],
+		}]
+	return []
+
+
+## R22 counterattack (Reflexes >= counter_at): the dodger lands ONE free basic
+## strike back at the dasher's torso-line part — the dodger's first plain
+## damage-dealing ability, else the basic unarmed strike (crushed 1, so Force =
+## 1 + floor(physique/2)). Resolved through _strike_round (R14 force gate,
+## conditions, breach recording all apply) with the counter flag: the counter is
+## the dodge's own rider — it cannot be dodged in v1, keeping it rng-free.
+func _dash_counter(dodger: CombatantState, dasher: CombatantState) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var part_key: String = ai.torso_line_part(dasher)
+	if part_key == "":
+		return events  # nothing attackable on the dasher — no counter lands
+	var damage: Dictionary = {"type": "crushed", "amount": 1}  # basic unarmed strike
+	var ability: Dictionary = ai._first_strike_ability(dodger, [])
+	if not ability.is_empty():
+		var first: Dictionary = _first_ability_damage(ability)
+		damage = {"type": String(first.get("type", "crushed")), "amount": int(first.get("amount", 1))}
+	var condition_id := ConditionEngine.normalize_condition_id(String(damage.get("type", "")))
+	events.append({
+		"type": "dash_countered", "combatant": dodger.id, "target": dasher.id,
+		"part": part_key, "damage_type": condition_id, "amount": int(damage.get("amount", 0)),
+	})
+	events.append_array(_strike_round(dasher, part_key, condition_id, int(damage.get("amount", 0)),
+		{"kind": "attack", "key": "dash_counter", "counter": true}, dodger))
+	return events
+
+
+## First damage entry of an ability (the v1 multi-damage deferral, R11 #16).
+static func _first_ability_damage(ability: Dictionary) -> Dictionary:
+	var damage: Array = ability.get("damage", [])
+	if damage.is_empty():
+		return {}
+	return damage[0]
 
 
 ## R14 D3: damaging conditions that must seed on a real wound (Force > Robustness) —

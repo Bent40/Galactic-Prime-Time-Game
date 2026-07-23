@@ -23,9 +23,12 @@ extends SceneTree
 ## the current engine surface, none of them engine edits:
 ##  * The boss is added with dodge_threshold STRIPPED from its boss_traits — exactly
 ##    as the engine's own breach/phase tests do (tests/test_incinedile.gd
-##    traits_without_dodge()). The dodge d6 (unit-tested elsewhere) would otherwise
-##    negate ~half of aimed rounds while the boss is not Exposed, making a scripted
-##    breach non-deterministic. It is a driver-side spec choice, not a rules change.
+##    traits_without_dodge()). The R22 dodge check (unit-tested elsewhere; boss
+##    Reflexes 4 + 1d4 vs threshold 7) would otherwise negate ~half of aimed rounds
+##    while the boss is not Exposed, making the scripted breach arithmetic
+##    seed-shaped. It is a driver-side spec choice, not a rules change. (The dash's
+##    own R22 counters ladder stays live, but this arc's boss never dashes — the
+##    clustered party keeps the cone as its priority-1 pick.)
 ##  * Dario is given Charm 30 so the R6 over-cap formula (Charm-10)/20 yields exactly
 ##    1 Camera Call stack. The demo loadout DECLARES camera_call_stacks:1 as a
 ##    "system-testing override", but add_combatant/CombatantState.from_spec has NO
