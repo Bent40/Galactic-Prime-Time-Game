@@ -104,18 +104,18 @@ truth (the docx/PDF stop being editable canon).
 | A-26 | **Enemy construction chapter (new GM guidance):** categories (Mob = one meaningful blow / Elite / Boss / Super Boss), asymmetric part HP is by design, discoverable boss win conditions doctrine, dodge-threshold + surface-immunity as authored patterns, encounter baseline (party of 5 ↔ ~12/room), reorganization beats | B15, Q44 partial | compendium §2.14 + live practice |
 | A-27 | **Errata micro-fixes:** declare the stat-valued-range convention ("Range: Reflexes" = range equals current stat) (F2); items may deviate from class baselines (F4); terrain layer gets a named minimal list or is explicitly GM-fiat pending Q57 (F1); Controlled Sweep unlock reworded non-circularly (F7); "turn/round" vocabulary purged for Moments/Clocks (F9); Chill-damage skill errata (F9); action table floor "1–3" corrected to "0–3" (F10); Fang Cover gets a compliant poison statline (F3) | F1–F10 | review-1 |
 
-### B. Owner decision points for the book (Phase 0 sitting — nothing above proceeds past draft without these)
+### B. Owner decision points — RULED 2026-07-23 (owner, in chat)
 
-| # | Decision | Recommendation |
+| # | Decision | Ruling |
 |---|---|---|
-| D-1 | R14 force-vs-robustness at the table? | **No for v0.92** — keep listed damage; revisit post-digital-playtest |
-| D-2 | Boss-Token → Patron-Token exchange (cut in digital per R10/D7) | Cut in book too, or make it tier-aware; as-written it bypasses the audience metagame |
-| D-3 | Camera Call self-targeting (D8) + exact "doubled" scope (Q37) | Rule it explicitly; digital reading (spotlit combatant's swings, one spotlight at a time) works at table |
-| D-4 | Robot/AI race entry: keep as-is, or write real machine-condition rules (Q62 was closed only for the game) | Keep race; add a half-page "machines & conditions" sidebar |
-| D-5 | Threshold-die upgrades (R22) at the table — what raises d4→d6→d8? | Achievement/Lounge purchases; GM-priced until the economy pass |
-| D-6 | Tag list edition for the book | Book adopts `rulebook-tag-descriptions.md` verbatim (owner-authored); game's 84-tag pruned list stays game-only |
-| D-7 | Remaining open questionnaire lines that gate book text: Q4 (achievement +1 stat → which field), Q5 (intended endgame totals), Q8 (upgrade vs mutate choice), Q15 (multi-stat level binding), Q31 (poison type differences), Q42 (tag mechanical effects), Q49–Q55 (economy/slots/hands), Q57 (terrain), Q63–Q67 (parts recovery, Lounge) | Answer in one sitting; anything unanswered ships as explicit "GM adjudicates" boxes rather than silence |
-| D-8 | Where the book master lives | `docs/ttrpg/` in this repo (versioned, next to its sources) |
+| D-1 | R14 force-vs-robustness at the table? | **RULED: book keeps the listed-damage model.** R14 stays digital-only |
+| D-2 | Boss-Token → Patron-Token exchange | **RULED: keep, made tier-aware.** Rate table proposed in the book (PROVISIONAL numbers, owner tunes): Bronze 5:1 · Silver 4:1 · Gold 3:1 · Legendary 2:1 · Mythic 1:1 · Godly 1:2, one-way, same-tier tokens only |
+| D-3 | Camera Call self-targeting + "doubled" scope (Q37/D8) | **OPEN — owner asked for clarification.** Question restated: (a) may a contestant call the camera on THEMSELVES? (b) exactly what does "doubled" cover and until when? Book drafts the digital reading as PROVISIONAL: self-call legal, gains AND losses from the spotlit contestant doubled, one spotlight at a time, ends at the end of that contestant's current-or-next action |
+| D-4 | Robot/AI race entry | **RULED: as recommended** — race kept; "machines & conditions" sidebar added |
+| D-5 | Threshold-die upgrades (R22) at the table | **RULED: Lounge upgrade.** Details deferred to the Lounge pass; book notes the die exists (default d4) and is raised via a Lounge module |
+| D-6 | Tag list edition for the book | **RULED: keep as before** — the book keeps the original full tag list (owner's authoritative descriptions doc, 2026-07-18); game's pruned list stays game-only |
+| D-7 | Remaining open questionnaire lines | Questionnaire lives at `docs/rules-questionnaire.md` (this repo). Still-open book-gating lines shipped as explicit "GM adjudicates" boxes in the book's Appendix B, so the book is never silently incomplete |
+| D-8 | Where the book master lives | **RULED: the `Galactic-Prime-Time` repo** (character-sheet repo) at `rulebook/gpt-system-v0.92.md`; the app's wiki serves it to players |
 
 ### C. Content errata pass (live DB + book examples, Phase 2)
 
@@ -178,6 +178,14 @@ items). What remains of them is polish, folded into B-4 below.
   countdown to match the book's presentation.
 - Vestigial `statCapBonuses.dissolution/.cameraCall` keys: drop or document (values are
   recomputed live from Mind/Charm).
+
+### B-6 Rulebook wiki (owner-requested 2026-07-23)
+
+The character sheet gets a **Wiki button** that opens an HTML rendering of the rulebook
+so players can check rules mid-session. Implementation: the book master lives in the
+same repo (`rulebook/gpt-system-v0.92.md`, per D-8); a read-only `/wiki` page renders it
+client-side (fetched from the app's public assets), with a table of contents and search
+via the browser. The wiki always renders the committed book — no second copy to drift.
 
 ### B-5 Explicitly NOT applied to the app (no mix-ups)
 
