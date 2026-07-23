@@ -31,9 +31,12 @@ extends SceneTree
 ##    "system-testing override", but add_combatant/CombatantState.from_spec has NO
 ##    path to grant Camera Call stacks directly — stacks derive ONLY from Charm.
 ##    (ENGINE GAP #1 — see the run report.)
-##  * The boss acts on a CONTROLLED cadence (the driver decides when to ai_decide it)
-##    rather than every tick — with the placeholder numbers a full-cadence boss TPKs
-##    the party long before the network dies (TUNING GAP #4).
+##  * The boss acts on a CONTROLLED cadence OUTSIDE the pressure-valve beats (the
+##    driver decides when to ai_decide it) rather than every tick — with the
+##    placeholder numbers a full-cadence boss TPKs the party long before the network
+##    dies (TUNING GAP #4; scripts/balance_sim.gd measures exactly that). During a
+##    live valve beat the boss gets the stage EVERY Moment, so the real telegraph ->
+##    escape window -> blast choreography (decision #27) plays out on air.
 ##  * SEED 14 is chosen because its first crowd-goal draw is OVERKILL (a completable
 ##    goal for this arc). The draw is a pure function of the seed.
 ##
@@ -99,6 +102,11 @@ var goals_offered: Array = []
 var _persona := {}
 var _patron := {}
 var _charm_flag := {}
+
+# valve-beat telemetry (decision #27)
+var fleeing: bool = false     # steam telegraph seen, blast not yet — the party runs
+var blasts: int = 0
+var knockouts: int = 0
 
 
 func _initialize() -> void:
@@ -177,6 +185,16 @@ func _add_contestant(id: String, cname: String, traits: Dictionary, pos: Vector2
 # =====================================================================  RENDER
 func _on_sim_event(e: Dictionary) -> void:
 	sink.append(e)
+	match String(e.get("type", "")):
+		"explosion_telegraph":
+			fleeing = true
+		"explosion_blast":
+			fleeing = false
+			blasts += 1
+		"explosion_knockout":
+			var kid: String = String(e.get("combatant", ""))
+			if kid == IMANI or kid == DARIO:
+				knockouts += 1
 
 func _on_breach_typed(_e: Dictionary) -> void:
 	pass  # the sim_event stream already carries breach_opened; the typed conn proves wiring
@@ -200,6 +218,128 @@ func _boss_alive() -> bool:
 func _boss_breached() -> bool:
 	var b = gc.sim.combatants.get(BOSS)
 	return b != null and bool(b.breached)
+
+
+## True while the boss's current phase is an explosion valve (decision #27) —
+## the driver gives it the stage every Moment so the beat can play out.
+func _boss_in_explosion_phase() -> bool:
+	var b = gc.sim.combatants.get(BOSS)
+	if b == null or not bool(b.alive):
+		return false
+	var phase: int = gc.sim.ai.current_phase(BOSS)
+	for entry: Variant in b.boss_phases:
+		if int((entry as Dictionary).get("phase_number", 0)) == phase:
+			return ((entry as Dictionary).get("behavior", {}) as Dictionary).has("explosion")
+	return false
+
+
+## Highest-HP visible, attackable, NON-lethal, non-head boss plate — a stable
+## combined-breach target across pressure-valve resets (balance_sim pattern).
+func _best_visible_part() -> String:
+	var b = gc.sim.combatants.get(BOSS)
+	if b == null:
+		return ""
+	var best: String = ""
+	var best_hp: int = -1
+	var keys: Array = b.parts.keys()
+	keys.sort()
+	for k: Variant in keys:
+		var key := String(k)
+		var p: Dictionary = b.parts[key]
+		if bool(p.get("hidden", false)) or bool(p.get("destroyed", false)) or bool(p.get("lethal", false)):
+			continue
+		if key.contains("head"):
+			continue  # head targeting gates on Exposed/Helpless/Overwhelmed
+		if int(p.get("hp", 0)) <= 0:
+			continue
+		if int(p.get("hp", 0)) > best_hp:
+			best_hp = int(p.get("hp", 0))
+			best = key
+	return best
+
+
+func _pready(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	if c == null:
+		return false
+	return c.alive and not c.removed_from_play and not c.is_helpless(gc.sim.clock.tick) \
+		and gc.sim.clock.tick >= c.next_action_tick and not c.windup_pending
+
+
+func _in_reach(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	var b = gc.sim.combatants.get(BOSS)
+	if c == null or b == null:
+		return false
+	return CombatantState.hex_distance(c.position, b.position) <= 2  # the party's attack_range
+
+
+## One free move for a contestant: up to 3 hexes toward the boss (stopping at
+## attack reach) or away from it. Mirrors ActionResolver.move's gates so the
+## scripted arc never spends a command on a guaranteed rejection; issued
+## through _cmd so a real rejection would still surface loudly (exit 2).
+func _move_step(id: String, toward: bool) -> Array:
+	var c = gc.sim.combatants.get(id)
+	var b = gc.sim.combatants.get(BOSS)
+	if c == null or b == null:
+		return []
+	if not (c.alive and not c.removed_from_play and not c.is_helpless(gc.sim.clock.tick) \
+			and not c.moved_this_tick and not c.free_action_used and not c.windup_pending \
+			and c.grappled_by == "" and c.grappling == ""):
+		return []
+	var to: Variant = _walk_target(c, b.position, toward, 2 if toward else 0)
+	if to == null:
+		return []
+	return _cmd({"type": "move", "actor": id, "to": [(to as Vector2i).x, (to as Vector2i).y]})
+
+
+## Greedy 3-step hex walk toward/away from `anchor` in fixed neighbor order,
+## skipping occupied hexes (EnemyAI's deterministic movement plan). When no
+## strictly-improving step exists, one equal-distance sidestep routes around a
+## body blocking the lane (never revisiting a hex). Returns null when the plan
+## makes no net progress.
+func _walk_target(c, anchor: Vector2i, toward: bool, stop_range: int) -> Variant:
+	var neighbors: Array = [
+		Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+		Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+	]
+	var occupied: Dictionary = {}
+	var ids: Array = gc.sim.combatants.keys()
+	ids.sort()
+	for oid: Variant in ids:
+		var other = gc.sim.combatants[oid]
+		if String(oid) != c.id and other.alive and not other.removed_from_play:
+			occupied[other.position] = true
+	var pos: Vector2i = c.position
+	var visited: Dictionary = {c.position: true}
+	for step: int in range(3):
+		var current_d: int = CombatantState.hex_distance(pos, anchor)
+		if toward and current_d <= stop_range:
+			break
+		var best: Variant = null
+		var best_d: int = current_d
+		var side: Variant = null
+		for n: Variant in neighbors:
+			var candidate: Vector2i = pos + (n as Vector2i)
+			if occupied.has(candidate) or visited.has(candidate):
+				continue
+			var d: int = CombatantState.hex_distance(candidate, anchor)
+			if (toward and d < best_d) or (not toward and d > best_d):
+				best = candidate
+				best_d = d
+			elif d == current_d and side == null:
+				side = candidate
+		if best == null:
+			best = side
+		if best == null:
+			break
+		visited[best] = true
+		pos = best
+	var start_d: int = CombatantState.hex_distance(c.position, anchor)
+	var end_d: int = CombatantState.hex_distance(pos, anchor)
+	if pos == c.position or (toward and end_d >= start_d) or (not toward and end_d <= start_d):
+		return null
+	return pos
 
 
 ## Renders one beat: a headline, indented callouts for the meaningful events, then
@@ -245,10 +385,13 @@ func _fmt(e: Dictionary, tick: int) -> String:
 					_who(e.get("actor")), String(e.get("kind", "")), int(e.get("cost", 0)), int(e.get("resolve_tick", 0))]
 			return ""  # instant declarations are terse — the resolution line carries them
 		"ai_decision":
-			if String(e.get("choice", "")) == "wait":
+			var choice: String = String(e.get("choice", ""))
+			if choice == "wait":
 				return "[BOSS AI] holds — \"%s\"" % String(e.get("reason", ""))
+			if choice == "telegraph" or choice == "blast":
+				return ""  # the explosion_* events carry the broadcast line
 			return "[BOSS AI %s] %s -> %s  (target %s)" % [String(e.get("tier", "")),
-				String(e.get("choice", "")), String(e.get("ability", "")), _who(e.get("target"))]
+				choice, String(e.get("ability", "")), _who(e.get("target"))]
 		"damage_applied":
 			if int(e.get("amount", 0)) <= 0:
 				return ""
@@ -294,6 +437,14 @@ func _fmt(e: Dictionary, tick: int) -> String:
 			return "*** BREACH DISCOVERED *** the mycelium NETWORK is exposed and attackable  (^)"
 		"breach_reset":
 			return "[PRESSURE VALVE] the network retreats deeper on %s — breach RESETS (wounds persist)" % String(e.get("part", ""))
+		"explosion_telegraph":
+			return "[!!] STEAM SCREAMS from the vents — blast in %d Moments, radius %d. RUN." % [
+				int(e.get("moments_until_blast", 0)), int(e.get("radius", 0))]
+		"explosion_blast":
+			return "*** THE VALVE BLOWS *** radius %d around %s" % [
+				int(e.get("radius", 0)), str(e.get("position", []))]
+		"explosion_knockout":
+			return "[KO] %s is caught in the blast — KNOCKED OUT (Helpless 2 Clocks, no damage)" % _who(e.get("combatant"))
 		"boss_phase_changed":
 			return ">>> BOSS PHASE %d -> %d : \"%s\"" % [int(e.get("from_phase", 0)),
 				int(e.get("to_phase", 0)), String(e.get("name", ""))]
@@ -446,34 +597,83 @@ func _clock_boundary() -> void:
 func _clock2() -> void:
 	print("")
 	print("=".repeat(80))
-	print("  CLOCK 2  —  \"the finish\": crack the core, ride the valve, end it on camera")
+	print("  CLOCK 2  —  \"the valve\": crack the core, read the steam, RUN — then finish it")
 	print("=".repeat(80))
 
 	# M10 (t10): first blows into the exposed core -> completes OVERKILL, trips the valve.
 	_beat(10, "Core's open! DARIO buries a stage knife for the crowd; IMANI follows.",
 		_cmd(_attack(DARIO, "network", "crushed", NET_HIT)) + _cmd(_attack(IMANI, "network", "crushed", NET_HIT)))
-	_adv(10, "-- resolve M10: network crosses the 35 threshold --")
+	_adv(10, "-- resolve M10: network crosses the 35 threshold — PRESSURE VALVE I opens --")
 
-	# M9 (t11): the boss tries to erupt (now phase 2 = v1 stub); the party re-discovers the breach.
-	_beat(11, "The boss should ERUPT here (Pressure Valve I). The AI reaches the explosion phase and idles.",
-		_cmd({"type": "ai_decide", "actor": BOSS}))
-	if not _boss_breached() and _boss_alive():
-		_beat(11, "Core re-hid — IMANI + DARIO COMBINE again to re-open it (Formation locks in).",
-			_cmd(_combo("right_hand")))
-		_adv(11, "-- resolve M9: re-breach --")
-
-	# M8 onward: grind the exposed core until the puppet drops. The breached-check makes
-	# this robust to the exact valve timing; a safety cap guards against a runaway.
+	# The valve set-pieces + the finish, event-driven (decision #27): whenever a
+	# valve beat is live the boss gets the stage every Moment — telegraph, escape
+	# window, blast — and the party plays the intended counterplay: RUN on the
+	# steam, walk back in after the boom. Outside the beats the boss stays on the
+	# controlled cadence (header choices) while the party re-breaches and grinds
+	# the core. A safety cap guards against a runaway.
 	var safety: int = 0
-	while _boss_alive() and safety < 8:
+	while _boss_alive() and safety < 40:
 		safety += 1
 		var tick: int = int(gc.view_clock()["tick"])
-		if not _boss_breached():
-			_beat(tick, "Core slipped away again — re-open it.", _cmd(_combo("right_hand")))
+		if tick % 10 == 0:
+			print("")
+			print("=".repeat(80))
+			print("  CLOCK %d  —  the broadcast rolls on" % (int(tick / 10.0) + 1))
+			print("=".repeat(80))
+		if _boss_in_explosion_phase():
+			var boss_events: Array = _cmd({"type": "ai_decide", "actor": BOSS})
+			var party_events: Array = _party_valve_response()
+			_beat(tick, _valve_headline(boss_events), boss_events + party_events)
+		elif not _boss_breached():
+			_beat(tick, "Core re-hid — close back in and line up the COMBINED re-breach.",
+				_party_rebreach_turn())
 		else:
-			_beat(tick, "Both contestants pour into the mycelium core.",
-				_cmd(_attack(DARIO, "network", "crushed", NET_HIT)) + _cmd(_attack(IMANI, "network", "crushed", NET_HIT)))
+			_beat(tick, "Both contestants pour into the mycelium core.", _party_pour_turn())
 		_adv(tick, "-- resolve --")
+
+
+## Headline for a valve-beat Moment, matched to what the boss actually did.
+func _valve_headline(boss_events: Array) -> String:
+	for e: Variant in boss_events:
+		match String((e as Dictionary).get("type", "")):
+			"explosion_telegraph":
+				return "STEAM VENTS SCREAM — the arena counts down. Both contestants RUN."
+			"explosion_blast":
+				return "THE VALVE BLOWS. The smoke clears — who is still standing?"
+	return "The boss holds, pressure building. The party keeps running."
+
+
+## Party response while a valve beat is live: run from the steam until the
+## blast, walk back in once it has fired (the blast event flips `fleeing`).
+func _party_valve_response() -> Array:
+	var out: Array = []
+	for id: String in [IMANI, DARIO]:
+		out.append_array(_move_step(id, not fleeing))
+	return out
+
+
+## Party tick while the core is hidden: close to attack reach, then link the
+## COMBINED strike (merged force >= 7) the moment both stand ready in reach.
+func _party_rebreach_turn() -> Array:
+	var out: Array = []
+	for id: String in [IMANI, DARIO]:
+		if not _in_reach(id):
+			out.append_array(_move_step(id, true))
+	var part: String = _best_visible_part()
+	if part != "" and _pready(IMANI) and _pready(DARIO) and _in_reach(IMANI) and _in_reach(DARIO):
+		out.append_array(_cmd(_combo(part)))
+	return out
+
+
+## Party tick with the core exposed: walk in if needed, pour NET_HIT otherwise.
+func _party_pour_turn() -> Array:
+	var out: Array = []
+	for id: String in [IMANI, DARIO]:
+		if not _in_reach(id):
+			out.append_array(_move_step(id, true))
+		elif _pready(id):
+			out.append_array(_cmd(_attack(id, "network", "crushed", NET_HIT)))
+	return out
 
 
 # =====================================================================  FRAMES
@@ -582,6 +782,7 @@ func _verdict() -> void:
 	print("      Moments to KILL         : %s" % _ms(kill_tick))
 	print("      Kill mechanism          : %s" % (kill_cause if kill_cause != "" else "n/a"))
 	print("      Breach re-discoveries   : %d (one per pressure valve)" % rebreaches)
+	print("      Valve blasts survived   : %d  (contestants knocked out: %d)" % [blasts, knockouts])
 	print("      Peak hype / band        : %d  [%s (%s)]" % [peak_meter,
 		String(BAND_DISPLAY.get(peak_band, peak_band)), peak_band])
 	print("      Crowd goals offered     : %d  %s" % [goals_offered.size(), str(goals_offered)])
@@ -598,8 +799,9 @@ func _verdict() -> void:
 	print("      * Condition stacking BYPASSES surface immunity: any visible part driven to")
 	print("        crushed/bleeding T4 = death (or T3 lethal_if_vital on a lethal part). The")
 	print("        'discoverable win condition' is defeatable without ever breaching. (BALANCE)")
-	print("      * The boss ran on a controlled cadence; a full-cadence phase-1 boss would TPK")
-	print("        the party before the network dies with these numbers. (TUNING)")
+	print("      * The boss ran on a controlled cadence outside the valve beats; the beats")
+	print("        themselves ran at full cadence (decision #27). scripts/balance_sim.gd shows")
+	print("        a fully full-cadence boss TPKs the party post-valve with these numbers. (TUNING)")
 	print("      * view_combatants() exposes no hype meter/band/goal/tags and no part hidden")
 	print("        state — the HUD needs a broadcast/boss view projection. (GAPS #2/#3)")
 

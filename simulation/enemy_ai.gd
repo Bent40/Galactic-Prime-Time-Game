@@ -13,8 +13,8 @@ extends RefCounted
 ##   unsorted-dict iteration feeds a decision). The ONLY ai_rng consumer is the
 ##   dodge-threshold d6 (mirror of hype_engine's salted goal_rng pattern), so
 ##   dodge rolls never perturb the action RNG's Forced-Action sequence.
-## - All state (ai_rng.state, boss phases, summon counts) is serialized in
-##   CombatSim.to_dict() under "ai" and covered by state_hash.
+## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
+##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
 ##   Forced Action d6 remains the failure path. The dodge threshold is an
 ##   authored ENEMY ability (R2's explicit-miss pattern), not a universal rule.
@@ -44,6 +44,11 @@ var clock: Clock
 var ai_rng := RandomNumberGenerator.new()
 var boss_phase: Dictionary = {}  # combatant id -> current phase_number (default 1)
 var summons: Dictionary = {}     # combatant id -> total combatants summoned
+## Live explosion beats (decision #27): combatant id -> {"phase": int,
+## "telegraph_tick": int}. An entry exists only from the telegraph's execution
+## until the blast resolves (the pre-telegraph "entered the phase" state is the
+## phase number itself), so a mid-beat save restores the countdown exactly.
+var explosion_beats: Dictionary = {}
 
 
 ## Fresh-sim wiring: refs + deterministic salted RNG seed. from_dict restores
@@ -131,15 +136,16 @@ func _decide_elite(actor: CombatantState) -> Dictionary:
 	return _strike_or_close(actor, "elite", strike, opponents, true)
 
 
-## BOSS (Incinedile P1): cone sweep when the crowd is in reach, else the line
+## BOSS (Incinedile): cone sweep when the crowd is in reach, else the line
 ## charge at the priority target (torso bias), else close distance. The ability
-## set is filtered to the current phase's behavior list; phases past the first
-## explosion beat are a v1 boundary — the boss idles there (R11 #18).
+## set is filtered to the current phase's behavior list. In an explosion phase
+## the beat machine takes over (decision #27): telegraph -> escape window ->
+## blast, then the machine advances and the boss fights the next Threshold.
 func _decide_boss(actor: CombatantState) -> Dictionary:
 	var phase: int = current_phase(actor.id)
 	var behavior: Dictionary = _phase_entry(actor, phase).get("behavior", {})
-	if not actor.boss_phases.is_empty() and behavior.has("explosion"):
-		return _wait("boss", "phase_not_implemented")
+	if behavior.has("explosion"):
+		return _decide_explosion_beat(actor, phase, behavior.get("explosion", {}))
 	var allowed: Array = behavior.get("abilities", [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
@@ -159,6 +165,26 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	if strike.is_empty():
 		return _wait("boss", "no_usable_ability")
 	return _strike_or_close(actor, "boss", strike, opponents, false)
+
+
+## Explosion-phase choreography (decision #27): the boss's first decide in the
+## phase telegraphs (visible steam, 1 Moment), it holds through the escape
+## window (`escape_moments`, canon 2 — the counterplay is moving out of radius),
+## then the decide after the window resolves the blast. Pure over stored beat
+## state + the clock — no rng; the beat advances only when CombatSim executes
+## the returned choice (begin_explosion_telegraph / resolve_explosion_blast).
+func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictionary) -> Dictionary:
+	var radius: int = int(explosion.get("radius", 0))
+	var escape: int = maxi(0, int(explosion.get("escape_moments", 0)))
+	var beat: Dictionary = explosion_beats.get(actor.id, {})
+	if beat.is_empty():
+		return {
+			"choice": "telegraph", "tier": "boss", "phase": phase,
+			"radius": radius, "moments_until_blast": escape + 1,
+		}
+	if clock.tick <= int(beat.get("telegraph_tick", 0)) + escape:
+		return _wait("boss", "explosion_building")
+	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius}
 
 
 ## Shared strike/close flow: pick a target in reach (optionally after the free
@@ -501,11 +527,12 @@ func _phase_entry(actor: CombatantState, phase_number: int) -> Dictionary:
 
 ## Phase-machine check, run by CombatSim._post after every command: while in a
 ## fight phase, the health part dropping to an explosion phase's hp_at_or_below
-## fires boss_phase_changed. Entering the breach_resets_after_phase phase
-## applies the canonical retreat NOW (v1 collapses the explosion beat into the
-## transition — choreography deferred): breach closes, the health part
-## re-hides, the burst counter clears; wounds (conditions + part damage) PERSIST.
-func phase_events(c: CombatantState, cond: ConditionEngine) -> Array[Dictionary]:
+## fires boss_phase_changed — the boss enters the valve, and the explosion beat
+## (decision #27: telegraph -> escape window -> blast) plays out over its next
+## ai_decides. While an explosion phase is live the hp gate stays quiet: only
+## the blast leaves the phase (resolve_explosion_blast applies the canonical
+## retreat and advances into the next Threshold). Wounds PERSIST throughout.
+func phase_events(c: CombatantState, _cond: ConditionEngine) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if c.boss_phases.is_empty() or not c.alive:
 		return events
@@ -516,7 +543,7 @@ func phase_events(c: CombatantState, cond: ConditionEngine) -> Array[Dictionary]
 	var phase: int = current_phase(c.id)
 	var current_behavior: Dictionary = _phase_entry(c, phase).get("behavior", {})
 	if current_behavior.has("explosion"):
-		return events  # explosion beats do not auto-advance in v1 (R11 #18)
+		return events  # the beat machine owns leaving an explosion phase (#27)
 	var hp: int = int((c.parts[health_part] as Dictionary).get("hp", 0))
 	for entry: Dictionary in c.boss_phases:
 		var num: int = int(entry.get("phase_number", 0))
@@ -530,8 +557,74 @@ func phase_events(c: CombatantState, cond: ConditionEngine) -> Array[Dictionary]
 			"combatant": c.id, "from_phase": phase, "to_phase": num,
 			"name": String(entry.get("name", "")),
 		})
-		if int(immunity.get("breach_resets_after_phase", 0)) == num:
-			events.append_array(_retreat(c, health_part, cond))
+		break
+	return events
+
+
+## Executes the "telegraph" choice: records the beat start and vents the steam.
+## The event is the counterplay cue — radius + moments_until_blast tell the
+## party exactly what to outrun (telegraph Moment + escape window).
+func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> Array[Dictionary]:
+	explosion_beats[actor.id] = {
+		"phase": int(decision.get("phase", current_phase(actor.id))),
+		"telegraph_tick": clock.tick,
+	}
+	var events: Array[Dictionary] = [{
+		"type": "explosion_telegraph",
+		"combatant": actor.id,
+		"phase": int(decision.get("phase", 0)),
+		"radius": int(decision.get("radius", 0)),
+		"moments_until_blast": int(decision.get("moments_until_blast", 0)),
+	}]
+	return events
+
+
+## Executes the "blast" choice: every OTHER living, in-play combatant within
+## the hex radius is knocked out — Helpless for 2 Clocks (owner ruling,
+## decision #27), no damage, no death. Friendly fire is ON (other enemies in
+## radius are caught; the boss itself is not) and the blast is never dodged
+## (collateral/environment, R22); an already-Helpless victim just has the
+## window extended (maxi). Then the canonical retreat applies when this valve
+## resets the breach, and the machine advances into the next phase — the boss
+## resumes normal fight behavior next Moment.
+func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: ConditionEngine) -> Array[Dictionary]:
+	var phase: int = int(decision.get("phase", current_phase(actor.id)))
+	var radius: int = int(decision.get("radius", 0))
+	var events: Array[Dictionary] = [{
+		"type": "explosion_blast",
+		"combatant": actor.id, "phase": phase, "radius": radius,
+		"position": [actor.position.x, actor.position.y],
+	}]
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or not other.alive or other.removed_from_play:
+			continue
+		if CombatantState.hex_distance(actor.position, other.position) > radius:
+			continue
+		other.helpless_until_tick = maxi(other.helpless_until_tick, clock.tick + 2 * Clock.TICKS_PER_CLOCK)
+		events.append({
+			"type": "explosion_knockout",
+			"combatant": other.id, "by": actor.id,
+			"helpless_until_tick": other.helpless_until_tick,
+		})
+	explosion_beats.erase(actor.id)
+	var immunity: Dictionary = actor.boss_traits.get("surface_immunity", {})
+	var health_part := String(immunity.get("health_part", ""))
+	if health_part != "" and actor.parts.has(health_part) \
+			and int(immunity.get("breach_resets_after_phase", 0)) == phase:
+		events.append_array(_retreat(actor, health_part, cond))
+	for entry: Dictionary in actor.boss_phases:
+		var num: int = int(entry.get("phase_number", 0))
+		if num <= phase:
+			continue
+		boss_phase[actor.id] = num
+		events.append({
+			"type": "boss_phase_changed",
+			"combatant": actor.id, "from_phase": phase, "to_phase": num,
+			"name": String(entry.get("name", "")),
+		})
 		break
 	return events
 
@@ -544,11 +637,15 @@ func _retreat(c: CombatantState, health_part: String, _cond: ConditionEngine) ->
 	var part: Dictionary = c.parts[health_part]
 	part["hidden"] = true
 	c.damage_taken_this_tick = 0
+	c.largest_single_hit_this_tick = 0
+	c.combo_hits_this_tick.clear()
 	# Wounds PERSIST across the retreat (owner-ruled 2026-07-18): active
 	# conditions and part damage carry over the pressure valve — only the breach
 	# threshold resets (network re-hides + burst counter clears), never the
-	# accumulated harm. Clearing the burst counter still blocks a same-tick
-	# re-breach; the Bleeding-T2 path re-fires only on a fresh advancement.
+	# accumulated harm. Clearing the burst counters still blocks a same-tick
+	# re-breach (the retreat now rides the blast mid-tick, #27, so the tick-flag
+	# reset no longer covers it); the Bleeding-T2 path re-fires only on a fresh
+	# advancement.
 	events.append({"type": "breach_reset", "combatant": c.id, "part": health_part})
 	return events
 
@@ -560,6 +657,7 @@ func to_dict() -> Dictionary:
 		"ai_rng_state": ai_rng.state,
 		"boss_phase": boss_phase.duplicate(true),
 		"summons": summons.duplicate(true),
+		"explosion_beats": explosion_beats.duplicate(true),
 	}
 
 
@@ -568,4 +666,5 @@ static func from_dict(data: Dictionary) -> EnemyAI:
 	ai.ai_rng.state = int(data.get("ai_rng_state", 0))
 	ai.boss_phase = (data.get("boss_phase", {}) as Dictionary).duplicate(true)
 	ai.summons = (data.get("summons", {}) as Dictionary).duplicate(true)
+	ai.explosion_beats = (data.get("explosion_beats", {}) as Dictionary).duplicate(true)
 	return ai

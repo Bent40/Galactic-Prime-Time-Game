@@ -239,7 +239,23 @@ func test_burst_breach_then_phase_two_resets_it() -> void:
 	assert_eq(int(changed.get("from_phase", 0)), 1, "left phase 1")
 	assert_eq(int(changed.get("to_phase", 0)), 2, "entered the first pressure valve")
 	assert_eq(String(changed.get("name", "")), "Explosion 1 (Pressure Valve I)", "seeded phase name")
-	assert_event(phase_events, "breach_reset", "the network retreats deeper — breach resets (canon)")
+	# Decision #27: entering the valve no longer retreats — the explosion beat
+	# (telegraph -> escape window -> blast) plays first; the retreat rides the blast.
+	assert_no_event(phase_events, "breach_reset", "no retreat at phase entry (#27)")
+	assert_true(boss_state(sim).breached, "the breach stays open through the beat")
+	assert_false(bool(boss_state(sim).parts["network"]["hidden"]), "the network stays exposed until the blast")
+	# Play the beat out; the contestant takes the intended counterplay and runs.
+	assert_event(ai_decide(sim, "boss"), "explosion_telegraph", "the boss vents steam")
+	sim.apply_command({"type": "move", "actor": "h", "to": [4, 0]})
+	advance(sim, 1)
+	ai_decide(sim, "boss")
+	sim.apply_command({"type": "move", "actor": "h", "to": [7, 0]})
+	advance(sim, 1)
+	ai_decide(sim, "boss")
+	advance(sim, 1)
+	var blast_events: Array[Dictionary] = ai_decide(sim, "boss")
+	assert_event(blast_events, "explosion_blast", "the valve erupts after the escape window")
+	assert_event(blast_events, "breach_reset", "the network retreats deeper — breach resets (canon)")
 	assert_false(boss_state(sim).breached, "breach closed again")
 	assert_true(bool(boss_state(sim).parts["network"]["hidden"]), "the network re-hid")
 	# Wounds PERSIST across the valve (owner-ruled 2026-07-18): the bleeding the
@@ -248,10 +264,6 @@ func test_burst_breach_then_phase_two_resets_it() -> void:
 	# The party must re-discover the way in.
 	assert_rejected(declare(sim, "h", attack_action("bleeding", 2, "boss", "network")),
 		"part_hidden", "the network is unreachable again")
-	# v1 boundary: the boss idles in the unimplemented explosion phase.
-	var idle: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
-	assert_eq(String(idle.get("choice", "")), "wait", "phase >= 2 is a v1 boundary")
-	assert_eq(String(idle.get("reason", "")), "phase_not_implemented", "and says so honestly")
 	advance(sim, 1)
 	assert_false(boss_state(sim).breached, "the old wound never re-breaches on later ticks")
 
@@ -287,8 +299,8 @@ func test_phase_state_serializes_and_resumes() -> void:
 	var restored: CombatSim = CombatSim.from_dict(snapshot)
 	assert_eq(restored.state_hash(), sim.state_hash(), "roundtrip hash identical mid-boss-fight")
 	assert_eq(restored.ai.current_phase("boss"), 2, "phase survives the roundtrip")
-	var idle: Dictionary = first_event(ai_decide(restored, "boss"), "ai_decision")
-	assert_eq(String(idle.get("reason", "")), "phase_not_implemented", "restored boss honors its phase")
+	assert_event(ai_decide(restored, "boss"), "explosion_telegraph",
+		"restored boss honors its phase — the valve telegraphs (#27)")
 
 
 func test_ai_rng_state_is_load_bearing_in_saves() -> void:

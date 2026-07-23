@@ -134,6 +134,7 @@ func _post(events: Array[Dictionary]) -> void:
 		if String(event.get("type", "")) == "combatant_died":
 			var dead_id := String(event.get("combatant", ""))
 			clock.cancel_for(dead_id)
+			ai.explosion_beats.erase(dead_id)  # a dead boss never runs beats (#27)
 			var dead: CombatantState = combatants.get(dead_id)
 			if dead != null:
 				dead.windup_pending = false
@@ -549,6 +550,16 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
 		"summon":
 			events.append_array(_ai_summon(actor, decision.get("summon", {})))
+		"telegraph", "blast":
+			# Explosion beat steps (decision #27): each is the boss's act for the
+			# Moment — cost-1 instant pacing, like the summon above — so the beat
+			# advances one step per tick and the fight resumes next Moment post-blast.
+			actor.next_action_tick = clock.tick + 1
+			actor.took_scheduled_action_this_clock = true
+			if String(decision.get("choice", "")) == "telegraph":
+				events.append_array(ai.begin_explosion_telegraph(actor, decision))
+			else:
+				events.append_array(ai.resolve_explosion_blast(actor, decision, cond))
 	return events
 
 
