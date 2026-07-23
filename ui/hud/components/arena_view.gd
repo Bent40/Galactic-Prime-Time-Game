@@ -5,11 +5,20 @@ extends Control
 ## broadcast overlay lines (objective / hazard read / boss conditions).
 ##
 ## PRESENTATION ONLY, dumb by contract: receives plain view data via update()
-## (the facade does every meaning join — boss id, emoji, masking strings) and
-## reports input back out through signals. Never reads the controller or sim.
-## The board transform (eff/off) is computed here exactly as the v1 HUD did, so
-## FieldRenderer.axial_to_pixel(q, r, eff) + off maps hex -> local pixel for
-## tokens, floor and click-targeting alike.
+## (the facade does every meaning join — boss id, emoji, masking strings, status
+## pip colours) and reports input back out through signals. Never reads the
+## controller or sim. The board transform (eff/off) is computed here exactly as
+## the v1 HUD did, so FieldRenderer.axial_to_pixel(q, r, eff) + off maps hex ->
+## local pixel for tokens, floor and click-targeting alike.
+##
+## SMOOTH MOTION (status/motion pass): token nodes are PERSISTENT, keyed by
+## combatant id — created on first sight (snap, no tween), removed when the id
+## leaves the view, and TWEENED (~0.3s, eased) whenever their on-screen target
+## moves. Purely presentational: the sim position is already final when it is
+## read; the glide never delays or reorders anything, and a mid-tween removal
+## kills the tween before freeing the node. Token CONTENT (disc, plates, pips)
+## is rebuilt in place each update, so state changes stay live while the
+## wrapper's position animates independently.
 
 signal click_input(event: InputEvent)   ## raw gui_input from the MOVE click catcher
 signal token_clicked(id: String)        ## a unit token was clicked (focus/inspect)
@@ -41,7 +50,12 @@ var _combatants: Array = []      # cached view rows for re-layout on resize
 var _boss_id := ""
 var _active_id := ""
 var _emoji := {}                 # id -> token emoji (facade-computed)
+var _pips := {}                  # id -> Array[Color] status pips (facade-computed)
 var _move_mode := false
+
+## Position-glide spec: one eased tween per moving token (see SMOOTH MOTION above).
+const MOVE_TWEEN_SEC := 0.3
+const MAX_PIPS := 6
 
 var _built := false
 var _arena_floor  # ArenaFloor (untyped: its configure() is script-defined)
@@ -135,13 +149,14 @@ func _ensure_built() -> void:
 
 ## data: {combatants: Array[Dictionary] (view rows), boss_id, active_id,
 ##        emoji: {id->glyph}, objective: {text, hidden: bool},
-##        boss_cond_line: String}
+##        boss_cond_line: String, status_pips: {id -> Array[Color]}}
 func update(data: Dictionary) -> void:
 	_ensure_built()
 	_combatants = data.get("combatants", [])
 	_boss_id = String(data.get("boss_id", ""))
 	_active_id = String(data.get("active_id", ""))
 	_emoji = data.get("emoji", {})
+	_pips = data.get("status_pips", {})
 	var obj: Dictionary = data.get("objective", {})
 	_obj_text.text = String(obj.get("text", ""))
 	if bool(obj.get("hidden", true)):
@@ -153,7 +168,7 @@ func update(data: Dictionary) -> void:
 	var cond_line := String(data.get("boss_cond_line", ""))
 	_boss_cond.text = cond_line
 	_boss_cond.visible = cond_line != ""
-	_rebuild_tokens()
+	_sync_tokens()
 	_layout()
 
 
@@ -175,17 +190,55 @@ func pixel_to_hex(local_pos: Vector2) -> Vector2i:
 
 # --------------------------------------------------------------------- tokens
 var _tokens_eff := -1.0   # eff the current tokens were built at (discs scale with it)
+var _tokens := {}         # id -> persistent wrapper Control (position tweened)
+var _token_tweens := {}   # id -> in-flight position Tween
 
 
-func _rebuild_tokens() -> void:
+## Reconciles the persistent token set against the current view rows: drop
+## wrappers whose combatant left the view (mid-tween removal kills the tween
+## first), create a wrapper on first sight (marked fresh -> first placement
+## snaps), and rebuild every wrapper's CONTENT in place at the current eff.
+func _sync_tokens() -> void:
 	if _token_layer == null:
 		return
 	_tokens_eff = eff
-	for ch in _token_layer.get_children():
-		ch.queue_free()
+	var live := {}
+	for cd in _combatants:
+		live[String((cd as Dictionary).get("id", ""))] = true
+	for id in _tokens.keys():
+		if not live.has(id):
+			_drop_token(String(id))
 	for cd in _combatants:
 		var c: Dictionary = cd
-		_token_layer.add_child(_build_token(c, String(c.get("id", "")) == _boss_id))
+		var id := String(c.get("id", ""))
+		var wrapper: Control = _tokens.get(id)
+		if wrapper == null:
+			wrapper = Control.new()
+			wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			wrapper.set_meta("fresh", true)
+			_token_layer.add_child(wrapper)
+			_tokens[id] = wrapper
+		for ch in wrapper.get_children():
+			ch.queue_free()
+		_build_token_content(wrapper, c, id == _boss_id)
+		wrapper.set_meta("axial", _axial_of(c))
+
+
+## Removes one persistent token (its combatant left the view). The tween dies
+## before the node so a mid-glide removal never animates a freed wrapper.
+func _drop_token(id: String) -> void:
+	_kill_tween(id)
+	var wrapper: Control = _tokens.get(id)
+	if wrapper != null:
+		wrapper.queue_free()
+	_tokens.erase(id)
+
+
+func _kill_tween(id: String) -> void:
+	var tw: Tween = _token_tweens.get(id)
+	if tw != null and tw.is_valid():
+		tw.kill()
+	_token_tweens.erase(id)
 
 
 ## Positions every token onto its live hex and reconfigures the floor's draw
@@ -207,14 +260,40 @@ func _layout() -> void:
 	# discs/plates are sized at build time from eff — rebuild when the board
 	# scale changed materially (first real layout after a resize)
 	if absf(eff - _tokens_eff) > 0.5:
-		_rebuild_tokens()
-	for t in _token_layer.get_children():
-		var a: Vector2i = t.get_meta("axial", Vector2i.ZERO)
-		(t as Control).position = _fr().axial_to_pixel(a.x, a.y, eff) + off
+		_sync_tokens()
+	for id in _tokens:
+		_place_token(String(id), _tokens[id])
 	var cone := _cone_spec(coords)
 	var reach: Array = _reachable_hexes() if _move_mode else []
 	_arena_floor.configure(eff, off, _qr, _rr, coords, reach,
 		bool(cone["on"]), cone["origin"], cone["dir"])
+
+
+## Drives one wrapper toward its live hex's screen point. FIRST placement snaps
+## (no tween — spawn/rebind never glides in from nowhere); every later target
+## change TWEENS from wherever the token currently is, killing any in-flight
+## glide first. Same-target refreshes (every sim event re-renders) leave a
+## running tween alone so the glide completes instead of restarting.
+func _place_token(id: String, wrapper: Control) -> void:
+	var a: Vector2i = wrapper.get_meta("axial", Vector2i.ZERO)
+	var target: Vector2 = _fr().axial_to_pixel(a.x, a.y, eff) + off
+	if bool(wrapper.get_meta("fresh", false)):
+		wrapper.set_meta("fresh", false)
+		wrapper.set_meta("target_px", target)
+		wrapper.position = target
+		return
+	var prev: Variant = wrapper.get_meta("target_px", null)
+	if prev != null and (prev as Vector2).distance_to(target) < 0.5:
+		return
+	wrapper.set_meta("target_px", target)
+	_kill_tween(id)
+	if wrapper.position.distance_to(target) < 0.5:
+		wrapper.position = target
+		return
+	var tw := wrapper.create_tween()
+	tw.tween_property(wrapper, "position", target, MOVE_TWEEN_SEC) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_token_tweens[id] = tw
 
 
 ## Board transform: hex size + offset fitting the occupied hexes (plus a margin
@@ -308,15 +387,14 @@ func _cone_spec(coords: Array) -> Dictionary:
 	return {"on": true, "origin": boss_px, "dir": dir}
 
 
-## A unit token whose ORIGIN is the disc CENTRE (drop onto a hex's screen point).
-## Boss network stays masked (tag + HP) until breached. Clicking the disc focuses
-## the entity in the inspector (token_clicked).
-func _build_token(c: Dictionary, is_boss: bool) -> Control:
+## Fills a persistent wrapper with one unit token's visuals; the wrapper ORIGIN
+## is the disc CENTRE (drop onto a hex's screen point). Boss network stays
+## masked (tag + HP) until breached. Clicking the disc focuses the entity in
+## the inspector (token_clicked).
+func _build_token_content(root: Control, c: Dictionary, is_boss: bool) -> void:
 	var id := String(c.get("id", ""))
 	var alive := bool(c.get("alive", true))
 	var breached := bool(c.get("breached", false))
-	var root := Control.new()
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var border := UI.col(UI.CYAN, 0.7)
 	var name_col := UI.col(UI.CYAN)
@@ -391,8 +469,28 @@ func _build_token(c: Dictionary, is_boss: bool) -> Control:
 		root.add_child(hp)
 		_pin_row(hp, disc * 0.5 + 26.0, false)
 
-	root.set_meta("axial", _axial_of(c))
-	return root
+	# status pips (status-prominence pass): one coloured dot per active
+	# condition / shock / state flag, colours facade-computed in badge order —
+	# the board itself shows who is hurt or locked, readable at token scale
+	# (dots, never text; capped with a +n overflow count).
+	var pips: Array = _pips.get(id, [])
+	if alive and not pips.is_empty():
+		var prow := UI.hbox(3)
+		prow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pip_px := clampf(eff * 0.16, 6.0, 9.0)
+		for i in mini(pips.size(), MAX_PIPS):
+			var pcol: Color = pips[i]
+			var dot := Panel.new()
+			dot.custom_minimum_size = Vector2(pip_px, pip_px)
+			dot.add_theme_stylebox_override("panel",
+				UI.sb(pcol, pcol.darkened(0.3), int(pip_px * 0.5)))
+			prow.add_child(dot)
+		if pips.size() > MAX_PIPS:
+			var more := UI.lab("+%d" % (pips.size() - MAX_PIPS), UI.mono(), 8, UI.col(UI.TEXT), 0.0, true)
+			more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			prow.add_child(more)
+		root.add_child(prow)
+		_pin_row(prow, disc * 0.5 + 34.0, false)
 
 
 ## Keeps an absolutely-positioned token row centred on the token origin.

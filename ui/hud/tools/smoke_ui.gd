@@ -3,7 +3,10 @@ extends SceneTree
 ## frozen v1 drivers don't touch: launcher categories -> flyouts, the Phase-2
 ## CONFIRM STEP (armed -> part pick -> ActionPreview -> CONFIRM/BACK), the
 ## END TURN confirmation (Area 12), the declared-action timeline bars, THE BIT
-## gating fallback, focus switching, and the event-log overlay.
+## gating fallback, focus switching, the event-log overlay, plus the
+## status-prominence pass (party-card / inspector badge rows, arena status
+## pips, hidden-part masking) and the smooth-motion pass (persistent tokens,
+## eased position tween on a real move).
 ## Renders evidence PNGs. DRIVER/CONSUMER ONLY — never touches simulation/,
 ## controller/, data/ or tests/. Lives under ui/hud/tools/ (HUD-rework-owned).
 ##
@@ -268,6 +271,103 @@ func _initialize() -> void:
 	_check("final shot flyout lists FEINT from the view",
 		_panel_has_text(hud._shell.flyout, "FEINT"))
 	await _render("../skills_hud.png")
+	hud._on_category("skills")  # toggle closed for the status/motion probes below
+	await _settle()
+
+	# ---- STATUS PROMINENCE + SMOOTH MOTION (owner directive 2026-07-23) --------
+
+	# 14) View widening: every view_combatants row carries the ADDITIVE
+	#     helpless/prone status keys (booleans, read by the badge rows).
+	var status_keys_ok := true
+	for cd in gc.view_combatants():
+		if not (cd as Dictionary).has("helpless") or not (cd as Dictionary).has("prone"):
+			status_keys_ok = false
+	_check("view rows carry helpless + prone keys", status_keys_ok)
+
+	# 15) Party-card badge row: stage a wounded beat (harness-only pokes, exactly
+	#     like hud_preview.gd) — bleeding T2 + burn T1, shock T3, knocked prone —
+	#     then refresh and read the RENDERED rail.
+	var imani_state = gc.sim.combatants["imani"]
+	imani_state.conditions["torso"] = {"bleeding": {"tier": 2, "delayed": false}}
+	imani_state.conditions["left_arm"] = {"burn": {"tier": 1, "delayed": false}}
+	imani_state.shock = 3
+	imani_state.statuses["prone"] = true
+	hud.refresh()
+	await _settle()
+	_check("party card badge BLD 2", _panel_has_text(hud._shell.party_rail, "BLD 2"))
+	_check("party card badge BRN 1", _panel_has_text(hud._shell.party_rail, "BRN 1"))
+	_check("party card badge SHK 3", _panel_has_text(hud._shell.party_rail, "SHK 3"))
+	_check("party card badge PRONE", _panel_has_text(hud._shell.party_rail, "PRONE"))
+
+	# 16) Inspector ACTIVE STATUS section: focusing Imani fronts the same
+	#     condition tiers + state flags in the set-off badge block.
+	hud._on_card_clicked("imani")
+	await _settle()
+	_check("inspector ACTIVE STATUS section present",
+		_panel_has_text(hud._shell.inspector, "ACTIVE STATUS"))
+	_check("inspector badge BLD 2", _panel_has_text(hud._shell.inspector, "BLD 2"))
+	_check("inspector badge SHK 3", _panel_has_text(hud._shell.inspector, "SHK 3"))
+	_check("inspector badge PRONE", _panel_has_text(hud._shell.inspector, "PRONE"))
+	await _render("smoke_status_badges.png")
+
+	# 17) Known-anatomy masking holds for badges: a condition living ONLY on the
+	#     boss's HIDDEN network part must not surface anywhere while unbreached
+	#     (chilled is used because nothing else in this run applies it).
+	gc.sim.combatants["boss"].conditions["network"] = {"chilled": {"tier": 2, "delayed": false}}
+	hud._on_token_clicked("boss")
+	await _settle()
+	_check("hidden-part condition stays masked", not _panel_has_text(hud._shell.inspector, "CHL"))
+	_check("arena boss-cond line masked too", not _panel_has_text(hud._shell.arena, "CHILLED"))
+
+	# 18) Arena pips: Imani's token carries one coloured dot PER BADGE (her
+	#     bleeding + burn + shock + prone, plus any live state flag such as the
+	#     windup EXPOSED) — the board itself shows who is hurt or locked.
+	var imani_row: Dictionary = {}
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "imani":
+			imani_row = cd
+	var expected_pips: int = mini((hud._status_badges(imani_row) as Array).size(), 6)
+	var imani_token: Control = hud._shell.arena._tokens.get("imani")
+	var pip_dots := 0
+	if imani_token != null:
+		for ch in imani_token.get_children():
+			if ch is HBoxContainer:
+				for dot in ch.get_children():
+					if dot is Panel:
+						pip_dots += 1
+	_check("imani token pips mirror her badges", pip_dots == expected_pips and pip_dots >= 4)
+
+	# 19) Persistent tokens: the same wrapper NODE survives a refresh (content
+	#     rebuilt in place, identity stable — the substrate the tween rides on).
+	hud.refresh()
+	await _settle()
+	_check("token node persists across refresh",
+		hud._shell.arena._tokens.get("imani") == imani_token)
+
+	# 20) SMOOTH MOVE: a real move command GLIDES the token to its new screen
+	#     point (eased tween) instead of snapping. END TURN first so the fresh
+	#     Moment resets the per-tick action economy for the free move.
+	hud._on_end_turn()
+	await _settle()
+	var mover: Control = hud._shell.arena._tokens.get("dario")
+	var start_pos: Vector2 = mover.position
+	gc.apply_command({"type": "move", "actor": "dario", "to": [0, 2]})
+	# Ground truth first: the sim actually accepted the move.
+	var dario_pos: Array = []
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "dario":
+			dario_pos = (cd as Dictionary).get("position", [])
+	_check("move accepted by the sim", dario_pos == [0, 2])
+	var glide_target: Vector2 = mover.get_meta("target_px", start_pos)
+	_check("token retargeted by the move", glide_target.distance_to(start_pos) > 8.0)
+	# No process frame has run since the retarget: a SNAP would already sit on
+	# the target; the tween has not stepped yet, so the token must not have.
+	_check("no snap on refresh (tween pending)", mover.position.distance_to(start_pos) < 0.5)
+	var t0 := Time.get_ticks_msec()
+	while mover.position.distance_to(glide_target) > 0.5 and Time.get_ticks_msec() - t0 < 2000:
+		await process_frame
+	_check("token settled on the new hex point", mover.position.distance_to(glide_target) <= 0.5)
+	await _render("smoke_status_motion.png")
 
 	print("")
 	if failures.is_empty():

@@ -892,7 +892,10 @@ func _bind_party(order: Array, bc: Dictionary) -> void:
 			"patron": String(c.get("patron", "")),
 			"patron_color": _patron_col(String(c.get("patron", ""))),
 			"urgent": urgent,
-			"shock_line": ("⚡ SHOCK %d" % int(c.get("shock", 0))) if int(c.get("shock", 0)) > 0 else "",
+			# Status-prominence pass: the compact badge row ("BLD 2" · "SHK 3" ·
+			# "PRONE") replaces the old shock-only line — every active condition
+			# tier + state flag reads at a glance, one colour language HUD-wide.
+			"badges": _status_badges(c),
 		})
 	_shell.party_rail.update(cards)
 
@@ -1008,11 +1011,9 @@ func _bind_inspector() -> void:
 		parts.append({"key": String(p.get("key", "")), "label": label,
 			"hp_text": "%d/%d" % [hp, mx], "ratio": float(hp) / float(mx),
 			"conds": conds, "muted": destroyed, "targetable": not destroyed})
+	# Boss phase / network and DOWN keep the terse top line; conditions, shock
+	# and the state flags moved into the set-off ACTIVE STATUS badge section.
 	var status_bits: Array = []
-	if ally:
-		status_bits.append("SHOCK %d" % int(c.get("shock", 0)))
-	if bool(c.get("exposed", false)):
-		status_bits.append("⚠ EXPOSED")
 	if is_boss:
 		status_bits.append("PHASE %d" % (2 if bool(c.get("breached", false)) else 1))
 		status_bits.append("⚡ BREACHED" if bool(c.get("breached", false)) else "🔒 NETWORK HIDDEN")
@@ -1030,6 +1031,10 @@ func _bind_inspector() -> void:
 		"emoji": _emoji_for_id(_focus_id),
 		"kind_line": kind_line,
 		"status_line": " · ".join(PackedStringArray(status_bits)),
+		# ACTIVE STATUS section (status-prominence pass): condition tiers + state
+		# flags as one badge row, aggregated over VISIBLE parts only — the
+		# known-anatomy masking above also masks a hidden part's conditions.
+		"status_badges": _status_badges(c),
 		"armed_line": armed_line,
 		"parts": parts,
 		"foot_line": "" if ally else "RESISTANCES · not in the view API yet — placeholder line",
@@ -1049,6 +1054,10 @@ func _bind_arena() -> void:
 			"hidden": _boss_network_hidden(boss) if not boss.is_empty() else true,
 		},
 		"boss_cond_line": _boss_cond_line(boss),
+		# Status pips (status-prominence pass): id -> ordered colour list, one pip
+		# per active condition / shock / state flag — same order and colours as the
+		# badge rows, so the board itself shows who is hurt or locked.
+		"status_pips": _status_pips(),
 	})
 
 
@@ -1330,13 +1339,17 @@ func _boss_network_hidden(c: Dictionary) -> bool:
 	return not bool(c.get("breached", false))
 
 
-## Boss-condition overlay line (highest tier per condition) — v1 readout.
+## Boss-condition overlay line (highest tier per condition) — v1 readout, now
+## masking-aware: a HIDDEN part's conditions never leak here (same rule as the
+## badge rows — the pre-breach network stays fully off-screen).
 func _boss_cond_line(boss: Dictionary) -> String:
 	if boss.is_empty():
 		return ""
 	var best := {}
 	for pd in boss.get("parts", []):
 		var p: Dictionary = pd
+		if bool(p.get("hidden", false)):
+			continue
 		var conds: Dictionary = p.get("conditions", {})
 		for cid in conds:
 			best[String(cid)] = maxi(int(best.get(String(cid), 0)), int(conds[cid]))
@@ -1351,17 +1364,67 @@ func _boss_cond_line(boss: Dictionary) -> String:
 		"  ·  ".join(PackedStringArray(bits))]
 
 
+## Chip emoji per condition (display art only; colours come from the theme's
+## COND_COLORS so a condition reads as the same colour everywhere on the HUD).
+const COND_EMOJI := {
+	"bleeding": "🩸", "crushed": "💥", "burn": "🔥", "chilled": "❄",
+	"poison": "🧪", "infected": "🦠", "suffocation": "🫁",
+	"dissolution": "🌀", "exhausted": "💤",
+}
+
+
 func _cond_chip_data(cond_id: String, tier: int) -> Dictionary:
-	var emoji := "🩸"
-	var color := UI.col("#ff6b88")
-	match cond_id:
-		"burn":
-			emoji = "🔥"; color = UI.col("#ff9a5a")
-		"poison":
-			emoji = "🧪"; color = UI.col(UI.SUCCESS)
-		"chilled":
-			emoji = "❄"; color = UI.col(UI.CYAN)
-	return {"text": "%s %s T%d" % [emoji, cond_id.to_upper(), tier], "color": color}
+	return {"text": "%s %s T%d" % [String(COND_EMOJI.get(cond_id, "🩸")),
+		cond_id.to_upper(), tier], "color": UI.cond_col(cond_id)}
+
+
+## At-a-glance status badges for one combatant view row: every active condition
+## at its HIGHEST tier across VISIBLE parts ("BLD 2"), the shock tier ("SHK 3"),
+## then the state flags (PRONE / EXPOSED / HELPLESS / BREACHED). One list, one
+## colour language (hud_theme COND_COLORS / SHOCK), consumed by the party cards,
+## the inspector ACTIVE STATUS section and the arena token pips alike. Hidden
+## parts (known-anatomy masking) never leak their conditions; the widened
+## helpless/prone view keys are read defensively (absent -> false).
+func _status_badges(c: Dictionary) -> Array:
+	var best := {}
+	for pd in c.get("parts", []):
+		var p: Dictionary = pd
+		if bool(p.get("hidden", false)):
+			continue
+		var conds: Dictionary = p.get("conditions", {})
+		for cid in conds:
+			best[String(cid)] = maxi(int(best.get(String(cid), 0)), int(conds[cid]))
+	var keys: Array = best.keys()
+	keys.sort()
+	var out: Array = []
+	for k in keys:
+		out.append({"text": "%s %d" % [UI.cond_abbr(String(k)), int(best[k])],
+			"color": UI.cond_col(String(k))})
+	if int(c.get("shock", 0)) > 0:
+		out.append({"text": "SHK %d" % int(c.get("shock", 0)), "color": UI.col(UI.SHOCK)})
+	if bool(c.get("prone", false)):
+		out.append({"text": "PRONE", "color": UI.col(UI.GOLD)})
+	if bool(c.get("exposed", false)):
+		out.append({"text": "EXPOSED", "color": UI.col(UI.GOLD)})
+	if bool(c.get("helpless", false)):
+		out.append({"text": "HELPLESS", "color": UI.col(UI.DANGER)})
+	if bool(c.get("breached", false)):
+		out.append({"text": "BREACHED", "color": UI.col(UI.PURPLE)})
+	return out
+
+
+## Arena pip map: id -> ordered Colors, one per badge (same order as the badge
+## row, so a card's "BLD 2" and the token's first pip are the same red).
+func _status_pips() -> Dictionary:
+	var out := {}
+	for cd in _last_combatants:
+		var c: Dictionary = cd
+		var colors: Array = []
+		for bd in _status_badges(c):
+			colors.append((bd as Dictionary).get("color", UI.col(UI.DANGER)))
+		if not colors.is_empty():
+			out[String(c.get("id", ""))] = colors
+	return out
 
 
 ## Presentation copy keyed off goal.kind (the view API carries no blurb) — v1.
