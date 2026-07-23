@@ -136,7 +136,7 @@ implemented** (item uses/charges; player chat send in CommsTab — broadcast-onl
 tag picker from the DB master list; player-editable subtask checkboxes; RPM field on
 items). What remains of them is polish, folded into B-4 below.
 
-### B-1 Logic bugs (fix first; no rules decisions needed)
+### B-1 Logic bugs — ✅ DONE 2026-07-23 (sheet-repo commit `5eb934c`; a–g all fixed, plus shared `traitTotal`/`capBonus`/`effectiveMaxHp` helpers in `constants.js`, `cooldownRemaining` fully removed [B-2c schema half], condition tiers to T4 [B-2d half], admin affliction-resistance editor + `PATCH /resistances` route)
 
 | # | Bug | Where |
 |---|---|---|

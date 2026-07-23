@@ -479,8 +479,10 @@ reconciliation context).
 - **TTRPG-side D-2 (book §19.2):** Boss→Patron exchange KEPT at the table, tier-aware
   (Bronze 5:1 → Godly 1:2, same-tier, one-way) — note the digital game's R10 cut stands
   unless the owner says otherwise.
-- **Still open:** Q5 (endgame trait totals), Q42 (tag effects — dedicated sitting),
-  Q49/Q50 (currency/loot-box pass), Q65–Q67 (Lounge sitting).
+- **Q5 RULED (2026-07-23):** traits have **NO cap — infinite growth**; the 10/12/15/20
+  "stat caps" are just repeating extra-effect-point milestones, not ceilings.
+- **Still open:** Q42 (tag effects — dedicated sitting), Q49/Q50 (currency/loot-box
+  pass), Q65–Q67 (Lounge sitting).
 
 *When answered: I fold every answer into `docs/rules-addendum.md` (promoting/demoting
 rulings), update the engine + tests to match, and log durable facts into
