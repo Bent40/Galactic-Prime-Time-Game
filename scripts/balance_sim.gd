@@ -12,7 +12,11 @@ extends SceneTree
 ## tick the boss is eligible it `ai_decide`s (via GameController.run_enemy_turn()),
 ## exactly like a live fight. The party follows a FIXED, reasonable strategy: open the
 ## hidden network via the designed breach (a combined burst hit >= 7), then focus the
-## exposed network until it dies — re-breaching after each pressure-valve reset.
+## exposed network until it dies — re-breaching after each pressure-valve reset. Since
+## the explosion beats went REAL (decision #27) the strategy also plays the intended
+## valve counterplay: on the steam telegraph both contestants RUN out of the blast
+## radius until the boom, then walk back in; and a burning torso gets treated before
+## the Clock reset can escalate it (the boss actually fights past Valve I now).
 ##
 ## It answers with numbers, not vibes: at full boss cadence, do the magnitudes one-shot
 ## a contestant / TPK the party, and after tuning do they produce a winnable, no-one-shot
@@ -58,6 +62,11 @@ var first_down_tick: int = -1
 var max_hit_on_contestant: int = 0
 var rebreaches: int = 0
 var outcome: String = "TIMEOUT"
+# valve-beat state + metrics (decision #27)
+var fleeing: bool = false        # steam telegraph seen, blast not yet
+var blast_at: int = 0            # announced blast tick (telegraph tick + countdown)
+var blasts: int = 0
+var knockouts: int = 0           # contestants caught by a blast
 
 
 func _initialize() -> void:
@@ -170,6 +179,16 @@ func _on_sim_event(e: Dictionary) -> void:
 			var who: String = String(e.get("combatant", ""))
 			if who == IMANI or who == DARIO:
 				max_hit_on_contestant = maxi(max_hit_on_contestant, int(e.get("amount", 0)))
+		"explosion_telegraph":
+			fleeing = true  # the steam is the cue
+			blast_at = tk + int(e.get("moments_until_blast", 0))
+		"explosion_blast":
+			fleeing = false
+			blasts += 1
+		"explosion_knockout":
+			var kid: String = String(e.get("combatant", ""))
+			if kid == IMANI or kid == DARIO:
+				knockouts += 1
 		"breach_opened":
 			if breach_tick < 0:
 				breach_tick = tk
@@ -186,24 +205,60 @@ func _on_sim_event(e: Dictionary) -> void:
 
 # =====================================================================  PARTY
 func _party_turn() -> void:
-	if _boss_breached():
+	# Valve counterplay (decision #27): the telegraph announces radius + countdown
+	# and the network stays exposed until the blast, so the risk-aware play keeps
+	# pounding through the window and leaves exactly two Moments (two free moves)
+	# to clear the radius. Knockout is the price of misjudging it.
+	if fleeing:
+		if int(gc.view_clock()["tick"]) < blast_at - 1:
+			for id: String in [IMANI, DARIO]:
+				if _ready(id) and _in_reach(id) and _boss_breached():
+					gc.apply_command(_attack(id, "network", "crushed", NET_HIT))
+			return
 		for id: String in [IMANI, DARIO]:
-			if _ready(id):
-				gc.apply_command(_attack(id, "network", "crushed", NET_HIT))
-	else:
-		# Designed path in: a COMBINED burst strike onto the highest-HP visible plate —
-		# the two linked halves merge into one hit for the >= 7 single-hit breach.
+			_run_from_boss(id)
+		return
+	if not _boss_breached():
+		# Designed path in: close distance (free moves), then the COMBINED burst
+		# onto the highest-HP visible plate the moment both stand in reach — the
+		# two linked halves merge into one hit for the >= 7 single-hit breach.
+		# The burst outranks treating: re-opening the core shortens the fight.
 		var part: String = _best_visible_part()
-		if part != "" and _ready(IMANI) and _ready(DARIO):
+		for id: String in [IMANI, DARIO]:
+			if _ready(id) and not _in_reach(id):
+				_walk_to_boss(id)
+		if part != "" and _ready(IMANI) and _ready(DARIO) \
+				and _in_reach(IMANI) and _in_reach(DARIO):
 			gc.apply_command({"type": "combined_action", "members": [
 				{"actor": IMANI, "action": _attack(IMANI, part, "crushed", BREACH_HALF)["action"]},
 				{"actor": DARIO, "action": _attack(DARIO, part, "crushed", BREACH_HALF)["action"]},
 			]})
-		elif part != "":
-			# One contestant down: the survivor drives a Bleeding-T2 breach (path A).
-			for id: String in [IMANI, DARIO]:
-				if _ready(id):
-					gc.apply_command(_attack(id, part, "bleeding", BREACH_HALF + 2))
+			return
+		for id: String in [IMANI, DARIO]:
+			_contestant_turn(id, part)
+		return
+	for id: String in [IMANI, DARIO]:
+		_contestant_turn(id, "")
+
+
+## One contestant's tick, in priority order: patch a burning torso, close to
+## attack reach (free move, then swing the same tick), then hit per the fixed
+## strategy — the exposed network when breached, else the Bleeding-T2 path onto
+## a visible plate (path A; also the survivor's route when the partner is down).
+func _contestant_turn(id: String, part: String) -> void:
+	if not _ready(id):
+		return
+	if _burning_torso(id):
+		gc.apply_command({"type": "treat", "target": id, "part": "torso", "condition": "burn", "mode": "resolve"})
+		return
+	if not _in_reach(id):
+		_walk_to_boss(id)
+	if not _in_reach(id):
+		return
+	if _boss_breached():
+		gc.apply_command(_attack(id, "network", "crushed", NET_HIT))
+	elif part != "":
+		gc.apply_command(_attack(id, part, "bleeding", BREACH_HALF + 2))
 
 
 func _attack(actor: String, part: String, dtype: String, amount: int) -> Dictionary:
@@ -215,7 +270,8 @@ func _attack(actor: String, part: String, dtype: String, amount: int) -> Diction
 
 
 ## Highest-HP visible, attackable, NON-lethal boss plate (never the hidden network,
-## never a destroyed part) — a stable breach target across pressure-valve resets.
+## never a destroyed part, never the head-gated head) — a stable breach target
+## across pressure-valve resets.
 func _best_visible_part() -> String:
 	var b = gc.sim.combatants.get(BOSS)
 	if b == null:
@@ -229,12 +285,104 @@ func _best_visible_part() -> String:
 		var p: Dictionary = b.parts[key]
 		if bool(p.get("hidden", false)) or bool(p.get("destroyed", false)) or bool(p.get("lethal", false)):
 			continue
+		if key.contains("head"):
+			continue  # head targeting gates on Exposed/Helpless/Overwhelmed
 		if int(p.get("hp", 0)) <= 0:
 			continue
 		if int(p.get("hp", 0)) > best_hp:
 			best_hp = int(p.get("hp", 0))
 			best = key
 	return best
+
+
+func _burning_torso(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	return c != null and (c.conditions.get("torso", {}) as Dictionary).has("burn")
+
+
+func _in_reach(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	var b = gc.sim.combatants.get(BOSS)
+	if c == null or b == null:
+		return false
+	return CombatantState.hex_distance(c.position, b.position) <= 2  # the party's attack_range
+
+
+## Free-move a contestant up to 3 hexes AWAY from the boss (escape window).
+func _run_from_boss(id: String) -> void:
+	_issue_walk(id, false, 0)
+
+
+## Free-move a contestant up to 3 hexes TOWARD the boss, stopping at attack reach.
+func _walk_to_boss(id: String) -> void:
+	_issue_walk(id, true, 2)
+
+
+func _issue_walk(id: String, toward: bool, stop_range: int) -> void:
+	var c = gc.sim.combatants.get(id)
+	var b = gc.sim.combatants.get(BOSS)
+	if c == null or b == null or not _can_move(c):
+		return
+	var to: Variant = _walk_target(c, b.position, toward, stop_range)
+	if to != null:
+		gc.apply_command({"type": "move", "actor": id, "to": [(to as Vector2i).x, (to as Vector2i).y]})
+
+
+## Mirrors ActionResolver.move's free-move gates so the driver never spends a
+## command on a guaranteed rejection.
+func _can_move(c) -> bool:
+	return c.alive and not c.removed_from_play and not c.is_helpless(gc.sim.clock.tick) \
+		and not c.moved_this_tick and not c.free_action_used and not c.windup_pending \
+		and c.grappled_by == "" and c.grappling == ""
+
+
+## Greedy 3-step hex walk toward/away from `anchor` in fixed neighbor order,
+## skipping occupied hexes (mirrors EnemyAI's deterministic movement plan).
+## When no strictly-improving step exists, one equal-distance sidestep routes
+## around a body blocking the lane (never revisiting a hex). Returns null when
+## the plan makes no net progress.
+func _walk_target(c, anchor: Vector2i, toward: bool, stop_range: int) -> Variant:
+	var neighbors: Array = [
+		Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+		Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+	]
+	var occupied: Dictionary = {}
+	var ids: Array = gc.sim.combatants.keys()
+	ids.sort()
+	for oid: Variant in ids:
+		var other = gc.sim.combatants[oid]
+		if String(oid) != c.id and other.alive and not other.removed_from_play:
+			occupied[other.position] = true
+	var pos: Vector2i = c.position
+	var visited: Dictionary = {c.position: true}
+	for step: int in range(3):
+		var current_d: int = CombatantState.hex_distance(pos, anchor)
+		if toward and current_d <= stop_range:
+			break
+		var best: Variant = null
+		var best_d: int = current_d
+		var side: Variant = null
+		for n: Variant in neighbors:
+			var candidate: Vector2i = pos + (n as Vector2i)
+			if occupied.has(candidate) or visited.has(candidate):
+				continue
+			var d: int = CombatantState.hex_distance(candidate, anchor)
+			if (toward and d < best_d) or (not toward and d > best_d):
+				best = candidate
+				best_d = d
+			elif d == current_d and side == null:
+				side = candidate
+		if best == null:
+			best = side
+		if best == null:
+			break
+		visited[best] = true
+		pos = best
+	var start_d: int = CombatantState.hex_distance(c.position, anchor)
+	var end_d: int = CombatantState.hex_distance(pos, anchor)
+	if pos == c.position or (toward and end_d >= start_d) or (not toward and end_d <= start_d):
+		return null
+	return pos
 
 
 func _ready(id: String) -> bool:
@@ -260,6 +408,14 @@ func _torso_hp(id: String) -> int:
 # =====================================================================  REPORT
 func _report() -> void:
 	var nb = func(x: int) -> String: return "-" if x < 0 else str(x)
-	print("BALANCE outcome=%s ticks_to_breach=%s ticks_to_network_kill=%s first_contestant_down_tick=%s max_single_hit_on_contestant=%d imani_torso_end=%d dario_torso_end=%d rebreaches=%d" % [
+	print("BALANCE outcome=%s ticks_to_breach=%s ticks_to_network_kill=%s first_contestant_down_tick=%s max_single_hit_on_contestant=%d imani_torso_end=%d dario_torso_end=%d rebreaches=%d blasts=%d knockouts=%d network_hp_end=%d" % [
 		outcome, nb.call(breach_tick), nb.call(network_kill_tick), nb.call(first_down_tick),
-		max_hit_on_contestant, _torso_hp(IMANI), _torso_hp(DARIO), rebreaches])
+		max_hit_on_contestant, _torso_hp(IMANI), _torso_hp(DARIO), rebreaches, blasts, knockouts,
+		_network_hp()])
+
+
+func _network_hp() -> int:
+	var b = gc.sim.combatants.get(BOSS)
+	if b == null:
+		return -1
+	return int((b.parts.get("network", {}) as Dictionary).get("hp", -1))
