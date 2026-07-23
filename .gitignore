@@ -21,3 +21,13 @@ verdict_render.png.import
 /hud_step*.png
 /smoke_*.png
 /ci_hud.png
+
+# Driver evidence artifacts regenerated at repo root by smoke/frozen drivers
+/arena*.png
+/arena*.png.import
+/hud_step*.png
+/hud_step*.png.import
+/hud_render.png
+/hud_render.png.import
+/hud_launch.png
+/hud_launch.png.import
