@@ -73,6 +73,19 @@ var breached: bool = false
 var abilities: Array[Dictionary] = []
 ## Boss phase table (data/enemies.json "phases") — consumed by EnemyAI (I-16).
 var boss_phases: Array[Dictionary] = []
+## R23 antagonism (decision #29): opponent id -> grudge score (float >= 0).
+## Lives on the AI actor doing the remembering, keyed by who earned it — net
+## damage builds it 1:1 (PLACEHOLDER R14), a Feint builds it on a mock-sensitive
+## personality, and it multiplies by the personality's decay each Clock reset.
+## {} default (no history); EnemyAI's weighted targeting reads it.
+var antagonism: Dictionary = {}
+## R23 personality block (data/enemies.json "personality", spec-overridable —
+## same source pattern as boss_traits): the targeting tuning surface. Raw
+## authored dict; every read goes through a personality_*() accessor so absent
+## keys fall back to the R23 defaults (mock_sensitive derives from Mind >= 3).
+## The `spare_respect` field is a RESERVED hook (R23: sparing needs a detectable
+## mercy event, none ships yet) — carried, validated, never read.
+var personality: Dictionary = {}
 
 ## item_key -> item dict (normalized; ranged items carry "magazine_loaded").
 var items: Dictionary = {}
@@ -205,6 +218,9 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 		c.threshold_dice[String(die_key)] = int(dice_spec[die_key])
 
 	c.boss_traits = (spec.get("boss_traits", template.get("traits", {})) as Dictionary).duplicate(true)
+	# R23 personality (decision #29): spec override wins, else the enemy
+	# template's authored block, else {} (accessor defaults apply).
+	c.personality = (spec.get("personality", template.get("personality", {})) as Dictionary).duplicate(true)
 	for ability_spec: Variant in spec.get("abilities", template.get("abilities", [])) as Array:
 		c.abilities.append((ability_spec as Dictionary).duplicate(true))
 	for phase_spec: Variant in spec.get("phases", template.get("phases", [])) as Array:
@@ -288,6 +304,43 @@ func trait_total(trait_key: String) -> int:
 ## R22: the stat's threshold die size — default d4 when no upgrade was granted.
 func threshold_die(trait_key: String) -> int:
 	return maxi(1, int(threshold_dice.get(trait_key, 4)))
+
+
+# ------------------------------------------------- personality reads (R23)
+# The Antagonism engine's tuning surface (decision #29). All numbers
+# PLACEHOLDER (R14). Absent keys fall back to the R23 defaults here, so an
+# enemy template without a "personality" block behaves as the baseline mob.
+
+## How steeply proximity dominates the targeting weight — 2.0 = inverse-square.
+func personality_proximity_bias() -> float:
+	return float(personality.get("proximity_bias", 2.0))
+
+
+## Grudge multiplier in the targeting weight: 1.0 + grudge_weight * score.
+func personality_grudge_weight() -> float:
+	return float(personality.get("grudge_weight", 1.0))
+
+
+## Can this creature even parse an insult? Default derives from Mind >= 3
+## (the intelligence gate the owner ruled — incinedile's Mind 1 authors false).
+func personality_mock_sensitive() -> bool:
+	return bool(personality.get("mock_sensitive", trait_total("mind") >= 3))
+
+
+## Grudge a single mockery (Feint) is worth to a mock-sensitive personality.
+func personality_mock_grudge() -> float:
+	return float(personality.get("mock_grudge", 2.0))
+
+
+## Preference for wounded targets: 1.0 + low_hp_bias * (1 - hp/max_hp). The
+## elite "picks off the weak" persona is now this bias, not a rule (R23).
+func personality_low_hp_bias() -> float:
+	return float(personality.get("low_hp_bias", 0.0))
+
+
+## Per-Clock grudge multiplier at the reset (1.0 = never forgets — incinedile).
+func personality_decay() -> float:
+	return float(personality.get("decay", 1.0))
 
 
 ## Over-10 stat-cap formulas — adopted verbatim from the char-sheet app (R6).
@@ -439,6 +492,8 @@ func to_dict() -> Dictionary:
 		"breached": breached,
 		"abilities": abilities.duplicate(true),
 		"boss_phases": boss_phases.duplicate(true),
+		"antagonism": antagonism.duplicate(true),
+		"personality": personality.duplicate(true),
 		"items": items.duplicate(true),
 		"alive": alive,
 		"removed_from_play": removed_from_play,
@@ -505,6 +560,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 		c.abilities.append((ability as Dictionary).duplicate(true))
 	for phase: Variant in data.get("boss_phases", []) as Array:
 		c.boss_phases.append((phase as Dictionary).duplicate(true))
+	c.antagonism = (data.get("antagonism", {}) as Dictionary).duplicate(true)
+	c.personality = (data.get("personality", {}) as Dictionary).duplicate(true)
 	c.items = (data.get("items", {}) as Dictionary).duplicate(true)
 	c.alive = bool(data.get("alive", true))
 	c.removed_from_play = bool(data.get("removed_from_play", false))

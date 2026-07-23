@@ -133,10 +133,23 @@ func test_phase_behavior_list_filters_the_ability_set() -> void:
 		{"phase_number": 2, "name": "X1", "trigger_condition": "test", "hp_at_or_below": 35,
 			"behavior": {"explosion": {"radius": 5}}},
 	]})
+	# R23 REWRITE: the equidistant fresh pair is the canon 50/50 draw now, not a
+	# distance-tie -> id rule — predict the pick with a twin RNG (the exact
+	# replay of pick_weighted_target at the live ai_rng state).
+	var boss: CombatantState = sim.combatants["boss"]
+	var opponents: Array[CombatantState] = [sim.combatants["ha"] as CombatantState, sim.combatants["hb"] as CombatantState]
+	var rows: Array[Dictionary] = sim.ai.targeting_weights(boss, opponents, boss.position)
+	assert_eq(float((rows[0] as Dictionary)["weight"]), float((rows[1] as Dictionary)["weight"]),
+		"equidistant fresh targets weigh exactly the same (the 50/50 anchor)")
+	var twin := RandomNumberGenerator.new()
+	twin.state = sim.ai.ai_rng.state
+	var total: float = float((rows[0] as Dictionary)["weight"]) + float((rows[1] as Dictionary)["weight"])
+	var expected: String = "ha" if twin.randf() * total < float((rows[0] as Dictionary)["weight"]) else "hb"
 	var decision: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
 	assert_eq(String(decision.get("ability", "")), "dash",
 		"cone not in the phase's behavior list -> filtered out despite two targets")
-	assert_eq(String(decision.get("target", "")), "ha", "mob-priority target (distance tie -> id)")
+	assert_eq(String(decision.get("target", "")), expected,
+		"the target is the weighted draw at the live ai_rng state (R23)")
 
 
 # ---------------------------------------------------------------- dodge (R22)

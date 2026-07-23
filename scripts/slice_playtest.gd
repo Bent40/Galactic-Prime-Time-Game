@@ -778,6 +778,23 @@ func _verdict() -> void:
 		for line: Variant in lines:
 			print("          - %s" % String(line))
 
+	# R23 antagonism readout: the final grudge ledger per AI actor, straight off
+	# the view API's new additive "antagonism" key — who the boss learned to
+	# hate this broadcast, and by how much (net damage 1:1 + mockery, R23).
+	print("  Antagonism ledger (R23 — who the boss hates):")
+	for cv: Variant in gc.view_combatants():
+		var c: Dictionary = cv
+		if String(c.get("team", "")) != "enemies":
+			continue
+		var scores: Dictionary = c.get("antagonism", {})
+		var keys: Array = scores.keys()
+		keys.sort()
+		var bits: Array = []
+		for k: Variant in keys:
+			bits.append("%s %.1f" % [_who(k), float(scores[k])])
+		print("      %-11s %s" % [_who(c.get("id", "")),
+			("(no grudges)" if bits.is_empty() else " · ".join(bits))])
+
 	var last_tick: int = kill_tick if kill_tick >= 0 else int(gc.view_clock()["tick"])
 	print("")
 	print("  ---- FEEL READOUT (the pacing numbers to judge) ----")

@@ -931,6 +931,14 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 		events.append_array(_end_dance(target, "hit"))
 	# ONE recorded hit for the single-hit breach threshold (R15/NQ2).
 	target.record_hit(String(group["combo_id"]), reduced)
+	# R23: each connected member earns grudge for its OWN contribution — the one
+	# merged net hit is attributed per member proportionally to the Force it
+	# contributed (the same per-member Forces the merged gate was built from).
+	if reduced > 0 and sum_force > 0:
+		for m: Variant in connected:
+			var member: Dictionary = m
+			var share: float = float(reduced) * float(int(member["force"])) / float(sum_force)
+			events.append_array(EnemyAI.add_antagonism(target, String(member["actor"]), share, "damage"))
 	for m: Variant in connected:
 		var md: Dictionary = m
 		var cid := String(md["condition"])
@@ -1109,6 +1117,13 @@ func _resolve_setup_debuff(actor: CombatantState, action: Dictionary, spec: Dict
 	if target != null and target.alive:
 		target.feint_forced = true
 		events.append({"type": "feint_applied", "actor": actor.id, "target": target.id})
+		# R23: the Feint is the one taunt-shaped act — an AI target whose
+		# personality is mock-SENSITIVE (authored, default Mind >= 3) takes the
+		# insult personally and earns mock_grudge toward the mocker. A creature
+		# too dim to parse the insult (incinedile, Mind 1) gains nothing.
+		if target.personality_mock_sensitive():
+			events.append_array(EnemyAI.add_antagonism(
+				target, actor.id, target.personality_mock_grudge(), "mockery"))
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
 		"key": String(action.get("key", "feint")), "result": "ok", "rounds": 0})
 	return events
@@ -1502,6 +1517,11 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
 	# linked strikes (shared combo_id) merge into one hit for the threshold.
 	target.record_hit(String(action.get("combo_id", "")), reduced)
+	# R23: net damage dealt to an AI-controlled combatant builds grudge on it,
+	# keyed by the attacker (1:1 net-damage scale, PLACEHOLDER R14) — a hit
+	# blocked to 0 builds nothing. EnemyAI's weighted targeting reads the score.
+	if attacker != null and reduced > 0:
+		events.append_array(EnemyAI.add_antagonism(target, attacker.id, float(reduced), "damage"))
 	# R14 D3 (decision-log #22): a DAMAGING condition (bleeding/burn/poison + any
 	# Physical-typed condition) seeds a wound only when the hit LANDED
 	# (Force > Robustness). A hit blocked to 0 by robustness opens no wound, so

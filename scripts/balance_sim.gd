@@ -441,6 +441,23 @@ func _report() -> void:
 	# at full cadence; a 0-dodge line is a finding, not a failure).
 	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d" % [
 		dash_declared, dash_dodges, dodge_fails, sidesteps, counters])
+	# R23 antagonism telemetry: final grudge scores per AI actor, read off the
+	# view API's new additive "antagonism" key (who the boss hates, and how much
+	# — the cone/blast paths deal collateral without drawing, but the grudge
+	# ledger still records every net hit the party landed on it).
+	var grudge_bits: Array = []
+	for cv: Variant in gc.view_combatants():
+		var c: Dictionary = cv
+		var scores: Dictionary = c.get("antagonism", {})
+		if String(c.get("team", "")) != "enemies":
+			continue
+		var keys: Array = scores.keys()
+		keys.sort()
+		var pairs: Array = []
+		for k: Variant in keys:
+			pairs.append("%s:%.1f" % [String(k), float(scores[k])])
+		grudge_bits.append("%s={%s}" % [String(c.get("id", "")), ",".join(pairs)])
+	print("ANTAGONISM %s" % " ".join(grudge_bits))
 
 
 func _network_hp() -> int:

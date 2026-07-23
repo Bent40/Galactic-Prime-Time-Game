@@ -286,6 +286,7 @@ func _advance_tick() -> Array[Dictionary]:
 		ids.sort()
 		for id: Variant in ids:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
+		events.append_array(_antagonism_decay())
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
 	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
@@ -304,6 +305,35 @@ func _advance_tick() -> Array[Dictionary]:
 		c.windup_pending = clock.has_windup_for(c.id)
 	events.append({"type": "clock_moment_changed", "tick": clock.tick, "moment": clock.moment()})
 	_rebuild_snapshot()
+	return events
+
+
+## R23 grudge decay at the Clock boundary: every AI combatant's antagonism
+## scores multiply by its personality decay (default 1.0 = no decay —
+## incinedile keeps 1.0, it remembers pain). Event policy (documented choice):
+## ONE summary antagonism_changed per actor whose map actually changed —
+## {"actor", "source": "decay", "factor", "scores": the full new map} — no
+## per-target delta rows; decay 1.0 or an empty map emits nothing. Sorted-id
+## iteration + sorted score keys keep it deterministic.
+func _antagonism_decay() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not EnemyAI.is_ai_controlled(c) or c.antagonism.is_empty():
+			continue
+		var decay: float = c.personality_decay()
+		if is_equal_approx(decay, 1.0):
+			continue
+		var keys: Array = c.antagonism.keys()
+		keys.sort()
+		for key: Variant in keys:
+			c.antagonism[key] = float(c.antagonism[key]) * decay
+		events.append({
+			"type": "antagonism_changed", "actor": c.id, "source": "decay",
+			"factor": decay, "scores": c.antagonism.duplicate(true),
+		})
 	return events
 
 

@@ -177,6 +177,27 @@ def main() -> int:
         res = e.get("resistances", {})
         if not set(res).issubset(RESISTANCE_CLASSES - {"None"}):
             fail("enemies.json", f"{k}: resistance keys {sorted(set(res) - RESISTANCE_CLASSES)} invalid")
+        # R23 personality block (the Antagonism engine's tuning surface,
+        # decision #29): optional; when present the biases are numbers >= 0,
+        # mock_sensitive is a bool, note is free-form. spare_respect is the
+        # RESERVED sparing hook — carried and validated, read by nothing yet.
+        pers = e.get("personality")
+        if pers is not None:
+            if not isinstance(pers, dict):
+                fail("enemies.json", f"{k}: personality must be an object (R23)")
+            else:
+                allowed = {"proximity_bias", "grudge_weight", "mock_sensitive",
+                           "mock_grudge", "low_hp_bias", "decay", "spare_respect", "note"}
+                extra = set(pers) - allowed
+                if extra:
+                    fail("enemies.json", f"{k}: personality keys {sorted(extra)} invalid (R23)")
+                for fk in ("proximity_bias", "grudge_weight", "mock_grudge",
+                           "low_hp_bias", "decay", "spare_respect"):
+                    v = pers.get(fk)
+                    if v is not None and (isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0):
+                        fail("enemies.json", f"{k}: personality.{fk} must be a number >= 0 (R23)")
+                if "mock_sensitive" in pers and not isinstance(pers["mock_sensitive"], bool):
+                    fail("enemies.json", f"{k}: personality.mock_sensitive must be a bool (R23)")
         # abilities — the shapes EnemyAI v1 consumes (simulation/enemy_ai.gd):
         # damage list (strike), range/area reach, summon, heal.
         for a in e.get("abilities", []):

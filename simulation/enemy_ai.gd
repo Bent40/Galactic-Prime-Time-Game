@@ -9,12 +9,15 @@ extends RefCounted
 ##   advance_tick), so every AI decision enters the command log and a replay
 ##   recomputes the identical decision from (sorted sim state, salted ai_rng).
 ##   The sim stays passive: it never self-advances and never self-decides.
-## - decide() is rng-free: pure priority rules over SORTED state (no
-##   unsorted-dict iteration feeds a decision). The ONLY ai_rng consumer is the
-##   R22 dodge check's threshold die (mirror of hype_engine's salted goal_rng
-##   pattern) — and only on the ROLLED fallback: an auto-dodge or an impossible
-##   dodge consumes nothing — so dodge rolls never perturb the action RNG's
-##   Forced-Action sequence.
+## - decide() consumes rng ONLY for the antagonism draw (R23 amends the old
+##   "decide() is rng-free" line): targeting is a weighted-random pick over
+##   SORTED candidates — a decision with >= 2 candidates consumes EXACTLY ONE
+##   ai_rng.randf() draw, a single-candidate (or no-target/summon/heal/beat)
+##   decision consumes ZERO. Everything else stays pure rules over sorted
+##   state. The only other ai_rng consumer is the R22 dodge check's threshold
+##   die (mirror of hype_engine's salted goal_rng pattern) — and only on the
+##   ROLLED fallback: an auto-dodge or an impossible dodge consumes nothing —
+##   so neither draws ever perturb the action RNG's Forced-Action sequence.
 ## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
 ##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
@@ -73,7 +76,9 @@ static func is_ai_controlled(c: CombatantState) -> bool:
 # ------------------------------------------------------------------ decisions
 
 ## Computes the actor's decision for this tick. Pure function of sorted sim
-## state (+ stored phase/summon memory) — consumes NO rng. Returned shape:
+## state (+ stored phase/summon memory) — consumes rng ONLY for the R23
+## antagonism draw (one randf per >= 2-candidate targeting decision, zero
+## otherwise). Returned shape:
 ##   {"choice": "attack"|"heal"|"summon"|"move"|"wait", "tier": String,
 ##    "ability": String?, "target": String?, "move_to": Vector2i?,
 ##    "action": Dictionary? (resolver.declare payload),
@@ -89,8 +94,9 @@ func decide(actor: CombatantState) -> Dictionary:
 			return _decide_mob(actor)
 
 
-## MOB: bite the priority target (nearest → lowest HP → id, torso-line);
-## close distance with the free move when out of reach; wait otherwise.
+## MOB: bite the antagonism-weighted target (R23 — closer much likelier,
+## grudge multiplies; torso-line part); close distance toward it when out of
+## reach; wait otherwise.
 func _decide_mob(actor: CombatantState) -> Dictionary:
 	var strike: Dictionary = _first_strike_ability(actor, [])
 	var opponents: Array[CombatantState] = _opponents(actor)
@@ -102,7 +108,9 @@ func _decide_mob(actor: CombatantState) -> Dictionary:
 
 
 ## ELITE: summon the brood once, self-heal when a lethal part is below half,
-## then whip the weakest target in reach (heads when exposed); close otherwise.
+## then whip the antagonism-weighted target (its authored low_hp_bias is the
+## old "picks off the weak" persona, now a bias not a rule — R23; heads when
+## exposed); close toward the pick otherwise.
 func _decide_elite(actor: CombatantState) -> Dictionary:
 	var summon_ability: Dictionary = _first_ability_with(actor, "summon")
 	if not summon_ability.is_empty() and int(summons.get(actor.id, 0)) == 0:
@@ -189,24 +197,24 @@ func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictio
 	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius}
 
 
-## Shared strike/close flow: pick a target in reach (optionally after the free
-## move) and return the attack decision; move-only or wait when out of reach.
+## Shared strike/close flow (R23): ONE antagonism-weighted pick over ALL
+## opponents decides who this actor wants — then it strikes that target if in
+## reach, else free-moves toward it (striking when the step closes the gap).
+## The old "nearest fallback" is gone on purpose: the mob moves toward whoever
+## it is antagonized by. Exactly one ai_rng draw when >= 2 candidates, zero
+## for a single candidate (grapple lock included) — see pick_weighted_target.
 func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, opponents: Array[CombatantState], elite_pick: bool) -> Dictionary:
 	var reach: int = _ability_range(strike)
-	var from: Vector2i = actor.position
-	var target: CombatantState = _pick_target(actor, opponents, from, reach, elite_pick)
-	var move_to: Variant = null
+	var target: CombatantState = pick_weighted_target(actor, opponents)
 	if target == null:
-		var nearest: CombatantState = _pick_target(actor, opponents, from, -1, false)
-		if nearest != null:
-			move_to = _step_toward(actor, nearest.position, reach)
-		if move_to != null:
-			from = move_to
-			target = _pick_target(actor, opponents, from, reach, elite_pick)
-	if target == null:
-		if move_to != null:
-			return {"choice": "move", "tier": tier, "move_to": move_to}
 		return _wait(tier, "no_reachable_action")
+	var move_to: Variant = null
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		move_to = _step_toward(actor, target.position, reach)
+		if move_to == null:
+			return _wait(tier, "no_reachable_action")
+		if CombatantState.hex_distance(move_to, target.position) > reach:
+			return {"choice": "move", "tier": tier, "move_to": move_to}
 	var part_key: String = _pick_part(target, strike, elite_pick)
 	if part_key == "":
 		return _wait(tier, "no_reachable_action")
@@ -275,30 +283,59 @@ func _opponents(actor: CombatantState) -> Array[CombatantState]:
 	return out
 
 
-## Priority pick among opponents within reach of `from` (reach < 0 = anywhere).
-## Mob rule: nearest → lowest total HP → id. Elite rule ("picks off the weak"):
-## lowest total HP → nearest → id. Returns null when nobody is in reach.
-func _pick_target(actor: CombatantState, opponents: Array[CombatantState], from: Vector2i, reach: int, elite_pick: bool) -> CombatantState:
-	var best: CombatantState = null
-	var best_distance: int = 0
-	var best_hp: int = 0
-	for opponent: CombatantState in opponents:
-		var d: int = CombatantState.hex_distance(from, opponent.position)
-		if reach >= 0 and d > reach:
-			continue
-		var hp: int = _total_hp(opponent)
-		var better: bool = false
-		if best == null:
-			better = true
-		elif elite_pick:
-			better = hp < best_hp or (hp == best_hp and d < best_distance)
-		else:
-			better = d < best_distance or (d == best_distance and hp < best_hp)
-		if better:
-			best = opponent
-			best_distance = d
-			best_hp = hp
-	return best
+## R23 targeting weights (the Antagonism engine, decision #29 — SUPERSEDES the
+## nearest → lowest-HP → id cascade of R11 #16, for ALL AI tiers). One row per
+## candidate, in the candidates' given order (sorted-id from _opponents), each
+## {"id", "distance", "weight"} where
+##   weight = proximity_factor * grudge_factor * hp_factor
+##   proximity_factor = 1 / maxi(1, distance)^proximity_bias   (2.0 = inverse-square)
+##   grudge_factor    = 1 + grudge_weight * antagonism[id]     (no history -> 1)
+##   hp_factor        = 1 + low_hp_bias * (1 - hp/max_hp)      (bias 0 -> 1)
+## Equal distances with no history and no bias give EXACTLY equal weights (the
+## canon 50/50 anchor). Pure and rng-free — the draw lives in
+## pick_weighted_target; exposed so tests can assert exactness directly.
+func targeting_weights(actor: CombatantState, candidates: Array[CombatantState], from: Vector2i) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	var proximity_bias: float = actor.personality_proximity_bias()
+	var grudge_weight: float = actor.personality_grudge_weight()
+	var low_hp_bias: float = actor.personality_low_hp_bias()
+	for candidate: CombatantState in candidates:
+		var distance: int = CombatantState.hex_distance(from, candidate.position)
+		var proximity_factor: float = 1.0 / pow(float(maxi(1, distance)), proximity_bias)
+		var grudge_factor: float = 1.0 + grudge_weight * float(actor.antagonism.get(candidate.id, 0.0))
+		var hp_ratio: float = float(_total_hp(candidate)) / float(maxi(1, _total_max_hp(candidate)))
+		var hp_factor: float = 1.0 + low_hp_bias * (1.0 - hp_ratio)
+		rows.append({
+			"id": candidate.id,
+			"distance": distance,
+			"weight": maxf(0.0, proximity_factor * grudge_factor * hp_factor),
+		})
+	return rows
+
+
+## R23 selection: ONE ai_rng.randf() draw walked over the candidates' weights
+## in their sorted-id order. RNG-cost rule (documented + tested): a targeting
+## decision with >= 2 candidates consumes EXACTLY one draw; a single-candidate
+## decision (e.g. the grapple lock) consumes ZERO; no candidates consume none.
+## Deterministic given the rng state; two equal weights split exactly 50/50.
+func pick_weighted_target(actor: CombatantState, candidates: Array[CombatantState]) -> CombatantState:
+	if candidates.is_empty():
+		return null
+	if candidates.size() == 1:
+		return candidates[0]
+	var rows: Array[Dictionary] = targeting_weights(actor, candidates, actor.position)
+	var total: float = 0.0
+	for row: Dictionary in rows:
+		total += float(row["weight"])
+	var draw: float = ai_rng.randf() * total  # the ONE draw, consumed unconditionally
+	if total <= 0.0:
+		return candidates[0]  # degenerate authored weights — deterministic fallback
+	var cumulative: float = 0.0
+	for i: int in range(candidates.size()):
+		cumulative += float((rows[i] as Dictionary)["weight"])
+		if draw < cumulative:
+			return candidates[i]
+	return candidates[candidates.size() - 1]  # randf() can return exactly 1.0
 
 
 static func _total_hp(c: CombatantState) -> int:
@@ -308,6 +345,32 @@ static func _total_hp(c: CombatantState) -> int:
 	for part_key: Variant in keys:
 		total += int((c.parts[part_key] as Dictionary).get("hp", 0))
 	return total
+
+
+static func _total_max_hp(c: CombatantState) -> int:
+	var total: int = 0
+	var keys: Array = c.parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		total += c.max_hp(String(part_key))
+	return total
+
+
+## R23 grudge write: `holder` (the AI actor remembering) earns `delta` toward
+## `earner_id`. No-op — [] — for a non-AI holder, a non-positive delta, or a
+## self-hit, so callers can wire it unconditionally at the damage/feint seams.
+## Emits the antagonism_changed event ("actor" = the rememberer, "target" =
+## who earned the attention, "source" = "damage" | "mockery").
+static func add_antagonism(holder: CombatantState, earner_id: String, delta: float, source: String) -> Array[Dictionary]:
+	if delta <= 0.0 or earner_id == "" or earner_id == holder.id or not is_ai_controlled(holder):
+		return []
+	var score: float = float(holder.antagonism.get(earner_id, 0.0)) + delta
+	holder.antagonism[earner_id] = score
+	return [{
+		"type": "antagonism_changed",
+		"actor": holder.id, "target": earner_id,
+		"delta": delta, "score": score, "source": source,
+	}]
 
 
 ## Parts an attack can meaningfully hit: hp > 0, not destroyed, not hidden
