@@ -5,8 +5,10 @@ extends SceneTree
 ## END TURN confirmation (Area 12), the declared-action timeline bars, THE BIT
 ## gating fallback, focus switching, the event-log overlay, plus the
 ## status-prominence pass (party-card / inspector badge rows, arena status
-## pips, hidden-part masking) and the smooth-motion pass (persistent tokens,
-## eased position tween on a real move).
+## pips, hidden-part masking), the smooth-motion pass (persistent tokens,
+## eased position tween on a real move), and the skill-feel quick wins
+## (FEINTED badge + loud feint_fallout, boss PRONE badge + stand-up beat,
+## and the combined-strike part-pick that replaced the left_hand default).
 ## Renders evidence PNGs. DRIVER/CONSUMER ONLY — never touches simulation/,
 ## controller/, data/ or tests/. Lives under ui/hud/tools/ (HUD-rework-owned).
 ##
@@ -368,6 +370,124 @@ func _initialize() -> void:
 		await process_frame
 	_check("token settled on the new hex point", mover.position.distance_to(glide_target) <= 0.5)
 	await _render("smoke_status_motion.png")
+
+	# ---- SKILL-FEEL QUICK WINS (owner fix menu, story/skill-feel) --------------
+
+	# 21) FEINTED badge: Dario feints the boss for real; once the feint resolves
+	#     the boss's view row carries the ADDITIVE feint_forced flag and the
+	#     inspector badge row shows FEINTED (anatomy masking does not hide it —
+	#     the flag is top-level state, not a part condition).
+	gc.apply_command({"type": "declare_action", "actor": "dario", "action": {
+		"kind": "skill", "key": "feint", "level": 3, "attack_range": 2,
+		"targets": [{"id": "boss", "part": "head"}]}})
+	hud._on_end_turn()  # the instant feint resolves on this Moment's advance
+	await _settle()
+	var boss_row: Dictionary = {}
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "boss":
+			boss_row = cd
+	_check("view row carries feint_forced (additive)", bool(boss_row.get("feint_forced", false)))
+	hud._on_token_clicked("boss")
+	await _settle()
+	_check("inspector shows the FEINTED badge", _panel_has_text(hud._shell.inspector, "FEINTED"))
+	await _render("smoke_feint_badge.png")
+
+	# 21b) FEINT FALLOUT is loud: the boss's pending cone windup collapses under
+	#      the armed feint — the attributed feint_fallout event lands in the log
+	#      with the broadcast payoff line, and the Momus ticker keeps it (the
+	#      generic END TURN line must NOT clobber the payoff).
+	var fallout_seen := false
+	for i in 3:
+		hud._on_end_turn()
+		await _settle()
+		for ed in hud._event_log:
+			if String((ed as Dictionary).get("type", "")) == "feint_fallout":
+				fallout_seen = true
+		if fallout_seen:
+			break
+	_check("feint_fallout event reached the log", fallout_seen)
+	var fallout_line := ""
+	for ed in hud._event_log:
+		if String((ed as Dictionary).get("type", "")) == "feint_fallout":
+			fallout_line = String((ed as Dictionary).get("line", ""))
+	_check("fallout line is attributed broadcast copy",
+		fallout_line.contains("DARIO") and fallout_line.contains("feint pays off"))
+	_check("ticker keeps the payoff over the END TURN line",
+		String(hud._shell.ticker._line.text).contains("feint pays off"))
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "boss":
+			boss_row = cd
+	_check("feint flag cleared after the fallout", not bool(boss_row.get("feint_forced", true)))
+	hud._open_log()
+	await _settle()
+	await _render("smoke_feint_payoff.png")
+	hud._close_log()
+
+	# 22) Boss PRONE badge + stand-up costs the Moment: knock the boss prone via
+	#     the real set_status command; the inspector badge row shows PRONE for
+	#     the boss too; the boss's whole next decision is "stand", and once the
+	#     stand resolves the flag clears with an attributed stood_up event.
+	gc.apply_command({"type": "set_status", "target": "boss", "status": "prone", "value": true})
+	hud._on_token_clicked("boss")
+	await _settle()
+	_check("inspector shows PRONE on the boss", _panel_has_text(hud._shell.inspector, "PRONE"))
+	await _render("smoke_boss_prone.png")
+	var stand_events: Array = gc.apply_command({"type": "ai_decide", "actor": "boss"})
+	var stand_choice := ""
+	for e in stand_events:
+		if String((e as Dictionary).get("type", "")) == "ai_decision":
+			stand_choice = String((e as Dictionary).get("choice", ""))
+	_check("prone boss decision is stand (cone locked)", stand_choice == "stand")
+	hud._on_end_turn()
+	await _settle()
+	var stood_seen := false
+	for ed in hud._event_log:
+		if String((ed as Dictionary).get("type", "")) == "stood_up":
+			stood_seen = true
+	_check("stood_up event reached the log", stood_seen)
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "boss":
+			boss_row = cd
+	_check("boss no longer prone after standing", not bool(boss_row.get("prone", true)))
+
+	# 23) PART-PICK, not left_hand default (owner fix #3): the interactive
+	#     COMBINED STRIKE routes through the part-pick step — picking it ARMS
+	#     part-targeting (no instant preview), the part click opens the merged
+	#     preview AT the picked part, and CONFIRM declares a combined_action
+	#     whose members carry the PICKED part, not the old silent default.
+	for i in 4:
+		if hud._combo_ready():
+			break
+		hud._on_end_turn()
+		await _settle()
+	_check("both combo members ready", hud._combo_ready())
+	hud._on_category("attack")
+	await _settle()
+	hud._on_flyout_entry("combined")
+	await _settle()
+	_check("combined pick arms part-targeting",
+		String(hud._armed.get("kind", "")) == "combined")
+	_check("no preview before a part is picked", not hud._shell.action_preview.visible)
+	_check("boss auto-focused for the pick", hud._focus_id == "boss")
+	hud._on_inspector_part_clicked("right_leg")
+	await _settle()
+	_check("part pick opens the combo preview", hud._shell.action_preview.visible)
+	_check("preview routes to the PICKED part", _panel_has_text(hud._shell.action_preview, "R-LEG"))
+	await _render("smoke_combo_partpick.png")
+	hud._shell.action_preview.confirmed.emit()
+	await _settle()
+	_check("disarmed after combo CONFIRM", hud._armed.is_empty())
+	var combo_cmd: Dictionary = {}
+	for cmd in gc.command_log:
+		if String((cmd as Dictionary).get("type", "")) == "combined_action":
+			combo_cmd = cmd
+	var parts_picked: Array = []
+	for md in combo_cmd.get("members", []):
+		for td in ((md as Dictionary).get("action", {}) as Dictionary).get("targets", []):
+			parts_picked.append(String((td as Dictionary).get("part", "")))
+	_check("declared combo carries the picked part", parts_picked == ["right_leg", "right_leg"])
+	var combo_last: Dictionary = hud._event_log.back()
+	_check("combo declare accepted", String(combo_last.get("type", "")) != "command_rejected")
 
 	print("")
 	if failures.is_empty():

@@ -271,6 +271,10 @@ func view_combatants() -> Array[Dictionary]:
 			# knocked-down status flag (forced-action fallout).
 			"helpless": c.is_helpless(sim.clock.tick),
 			"prone": bool(c.statuses.get("prone", false)),
+			# Skill-feel widening (ADDITIVE): the feint debuff is ARMED on this
+			# combatant — its next resolved action will collapse. The HUD's
+			# FEINTED badge reads this; attribution rides the feint_fallout event.
+			"feint_forced": c.feint_forced,
 			"breached": c.breached,
 			# R3 free-action economy (anti-spam ruling): true once this combatant
 			# has spent its one free (0-Moment) action this tick — The Bit, the

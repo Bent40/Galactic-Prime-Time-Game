@@ -992,7 +992,7 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 	# into a Forced Action – Tool — the same collapse an invalidated windup takes.
 	# Check-and-clear at the START of the target's next resolution (any kind).
 	if actor.feint_forced:
-		return _collapse_feinted_action(actor, kind, forced_queue)
+		return _collapse_feinted_action(actor, kind, String(action.get("key", String(action.get("item", "")))), forced_queue)
 	var events: Array[Dictionary] = []
 	match kind:
 		"attack":
@@ -1016,6 +1016,11 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			events = _resolve_grapple_suffocate(actor, action)
 		"stand":
 			actor.statuses.erase("prone")
+			# Skill-feel pass: an attributed stood_up event alongside the generic
+			# action_resolved, so the HUD can announce that getting back up cost
+			# the combatant its action for the Moment (the cost is the declare's).
+			events.append({"type": "stood_up", "combatant": actor.id,
+				"cost": int(action.get("eff_cost", 1))})
 			events.append({"type": "action_resolved", "actor": actor.id, "kind": "stand", "result": "ok"})
 		_:
 			events.append({"type": "action_resolved", "actor": actor.id, "kind": kind, "result": "ok"})
@@ -1116,6 +1121,7 @@ func _resolve_setup_debuff(actor: CombatantState, action: Dictionary, spec: Dict
 	events.append_array(_free_reposition(actor, action, int(spec.get("reposition", 1)), "feint_reposition"))
 	if target != null and target.alive:
 		target.feint_forced = true
+		target.feint_by = actor.id  # attribution for the feint_fallout payoff event
 		events.append({"type": "feint_applied", "actor": actor.id, "target": target.id})
 		# R23: the Feint is the one taunt-shaped act — an AI target whose
 		# personality is mock-SENSITIVE (authored, default Mind >= 3) takes the
@@ -1172,11 +1178,21 @@ func _resolve_self_stance(actor: CombatantState, action: Dictionary, spec: Dicti
 ## The feinted actor's next scheduled action collapses: it is invalidated and
 ## replaced by a Forced Action – Tool (rolled, emitted, queued), exactly like an
 ## invalidated windup. Clears the flag so only the NEXT action is affected.
-func _collapse_feinted_action(actor: CombatantState, kind: String, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+## Skill-feel pass: the payoff moment also emits an ATTRIBUTED feint_fallout
+## event ("actor" = the feinter who set it up, "victim" = whose action just
+## crumbled, "kind"/"key" = what failed) so the HUD can announce the payoff
+## loudly instead of burying it in the collapse plumbing.
+func _collapse_feinted_action(actor: CombatantState, kind: String, key: String, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	var feinter: String = actor.feint_by
 	actor.feint_forced = false
+	actor.feint_by = ""
 	var events: Array[Dictionary] = [{
 		"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "feinted",
 	}]
+	events.append({
+		"type": "feint_fallout",
+		"actor": feinter, "victim": actor.id, "kind": kind, "key": key,
+	})
 	var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
 	events.append(ForcedAction.make_event(actor.id, collapse, "feinted"))
 	forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {"part": actor.acting_part(clock.tick)}})

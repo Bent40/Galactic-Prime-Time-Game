@@ -578,6 +578,11 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 	match String(decision.get("choice", "wait")):
 		"attack", "heal":
 			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
+		"stand":
+			# Skill-feel pass: a prone boss spends its Moment standing back up —
+			# the SAME cost-1 stand action players use (declared through the
+			# resolver, resolved at the tick, emits stood_up + clears prone).
+			events.append_array(resolver.declare(actor.id, {"kind": "stand", "cost": 1}))
 		"summon":
 			events.append_array(_ai_summon(actor, decision.get("summon", {})))
 		"telegraph", "blast":
