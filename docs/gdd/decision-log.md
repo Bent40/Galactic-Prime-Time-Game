@@ -294,3 +294,39 @@
     popups/recruits wait for their systems). Vocabulary RULED (owner 2026-07-22): ENGINE
     terms stand — Clock = the 10-tick lap, Moment = the tick; the mockup's inverted usage
     was incidental (ADOPTION.md).
+27. **Explosion beats are REAL; knockout = Helpless for 2 Clocks (owner 2026-07-23).**
+    The pressure-valve explosions run as an actual sequence, not a collapsed transition:
+    entering an explosion phase the boss telegraphs (visible steam, 1 Moment) → the escape
+    window opens (`escape_moments`, canon 2 — contestants can run) → the blast fires at the
+    authored radius (5 / 7) and everyone still inside is **knocked out: Helpless for 2
+    Clocks** (owner ruling; not removed, not dead) → the network retreats (breach reset,
+    wounds persist per #18/R11) → the phase machine **advances into the next Threshold
+    phase and the boss keeps fighting**. This retires the v1 dormancy (boss idling
+    `phase_not_implemented` forever after Valve I — the bug behind "the fight stalls").
+    Phase 6 (death explosion, radius 19, instant kill) stays data-only: the fight ends at
+    network 0 before it would choreograph; it becomes real with the arena/exploration
+    layer (KAN-5).
+28. **Dodge thresholds ask REFLEXES; a failed ask adds 1d4 (owner 2026-07-23).** Unified
+    dodge model replacing the flat d6: a dodge threshold is checked against the dodger's
+    Reflexes — **Reflexes ≥ threshold = auto-dodge**; otherwise roll the stat's
+    **threshold die (d4 by default)** and add it: Reflexes + die ≥ threshold dodges.
+    **Threshold dice are upgradeable through the game, per stat** (owner-proposed,
+    adopted as the progression hook — d4 → d6 → d8; KAN-7 economy decides costs). Applied
+    both directions: contestants dodging the Dash use the authored counters ladder
+    (Reflexes ≥ 7 auto-dodge + 1-hex sidestep; ≥ 9 also counterattacks; below 7 the 1d4
+    fallback), and the boss's own aimed-round dodge re-expresses as the same check —
+    Incinedile threshold retuned 4 → 7 (PROVISIONAL) so Reflexes 4 + 1d4 keeps the old
+    ~50% rate. Consequence surfaced to owner: Reflexes 2 + d4 maxes at 6 — Imani cannot
+    dodge the Dash until a die/stat upgrade (tank identity: positioning is her counterplay).
+29. **The Antagonism engine (owner 2026-07-23) — targeting is weighted, personal, and
+    earned.** Mobs/bosses no longer beeline "nearest": each AI actor keeps an
+    **antagonism score per opponent** — proximity supplies the base weight (closer =
+    much likelier), and what you DID to it moves the score: damaging it builds grudge;
+    mocking it builds grudge **if the mob is intelligent enough to get the insult**
+    (personality-gated); sparing it reduces attention (personality-gated; needs a
+    detectable mercy event — reserved hook until one exists). Two equally close targets
+    with no history = exact 50/50. Selection is a weighted-random draw from the salted
+    `ai_rng` stream (deterministic, serialized, replay-identical). **Personality types
+    per enemy template** (data-driven: proximity bias, grudge weight, mock sensitivity,
+    low-HP preference for elites, decay) are the tuning surface — Incinedile (Mind 1)
+    is too dim to care about mockery; it remembers pain. See rules-addendum R23.

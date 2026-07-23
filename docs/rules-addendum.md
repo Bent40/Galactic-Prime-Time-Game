@@ -339,8 +339,10 @@ overturning one is a code change, not a rewrite.
     `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
     deferred); "cone N"/"line" resolve as plain reach (true area geometry is
     KAN-5 scope). Targets with no attackable part are skipped.
-17. **Dodge Threshold (the R2 boss-ability pattern; live-table homebrew
-    adopted):** a combatant with `boss_traits.dodge_threshold` (1..6) rolls the
+17. **Dodge Threshold — SUPERSEDED by R22 (owner 2026-07-23): thresholds now ask
+    Reflexes with a 1d4 fallback; the flat d6 below is the retired v1 model.**
+    (Original text kept for the record.) A combatant with
+    `boss_traits.dodge_threshold` (1..6) rolls the
     d6 from the salted AI stream once per AIMED weapon round against it; roll ≥
     threshold negates that round entirely — "miss" stays an explicit authored
     effect, never a universal rule (R2). No dodge while Helpless or Exposed:
@@ -363,19 +365,23 @@ overturning one is a code change, not a rewrite.
     fresh advancement, not from a lingering already-T2 wound. Phase-1 behavior: cone sweep when ≥2 targets stand in
     reach, else the line charge at the mob-priority target (torso bias), else
     close distance; the ability set is filtered to the phase's `behavior.
-    abilities` list. Explosion choreography (telegraph, escape window, KO) and
+    abilities` list. ~~Explosion choreography (telegraph, escape window, KO) and
     phases 3–6 are deferred — past phase 1 the boss idles (`ai_decision` wait,
-    `phase_not_implemented`); the phase-2 beat is the slice's win moment
+    `phase_not_implemented`)~~ **SUPERSEDED (owner 2026-07-23, decision #27):
+    explosion beats are REAL — telegraph → escape window → blast (caught =
+    Helpless 2 Clocks) → retreat → the machine advances into the next Threshold
+    and the boss keeps fighting. Phase-6 death explosion stays data-only (the
+    fight ends at network 0).** The phase-2 beat is the slice's win moment
     (review-4 §5, DIRECTION Stage 1).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
-phase-2 transition beat; still open there: explosion choreography + phases 3–6,
-death_spin/drag_back (forced movement), true cone/line geometry (KAN-5), the Dash
-Reflexes-counters (player-side), pack synergy (R15 enemy combos), and AI stances for
-`aura_reading` (skills-audit dependency).
+phase-2 transition beat; still open there: death_spin/drag_back (forced movement),
+true cone/line geometry (KAN-5), pack synergy (R15 enemy combos), and AI stances for
+`aura_reading` (skills-audit dependency). Explosion choreography and the Dash
+Reflexes-counters moved to REAL per R22/R23 + decision #27 (2026-07-23).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -637,6 +643,65 @@ isn't lost.
   items or Lounge upgrades, and always at a cost.**
 - **Declare window (Q71, RULED):** co-op default **5 seconds**, accelerate-on-all-
   committed; revisit on first co-op playtest feel.
+
+## R22 — Dodge thresholds ask Reflexes; the 1d4 fallback; upgradeable threshold dice (owner, 2026-07-23)
+
+Unified dodge model — SUPERSEDES the flat-d6 dodge of R11 #17 and the d6 line of the
+Dash `reflexes_counters` data. One check, both directions (contestant dodging a boss
+ability; boss dodging an aimed round):
+
+- **The threshold asks the dodger's Reflexes.** Reflexes ≥ threshold → **auto-dodge**
+  (no roll, no rng consumed).
+- **If Reflexes can't fulfil it, it adds the stat's threshold die** — default **1d4**:
+  Reflexes + die ≥ threshold dodges. The roll comes from the salted AI stream and is
+  always emitted (`attack_dodged` / `dodge_failed` carry roll, die size, threshold) —
+  no unlogged randomness. Reflexes + die max < threshold → the dodge is impossible
+  (emit the attempt as impossible or skip; either way the schedule/preview must say so).
+- **Threshold dice are upgradeable through the game, PER STAT** (owner-proposed;
+  adopted): each stat carries a threshold die size (default 4), serialized on the
+  combatant, raised by progression (d4 → d6 → d8; costs live in the R6/KAN-7 economy —
+  UNPRICED for now). Reflexes' die is the only one consumed today; the field is
+  per-stat so future stat-threshold checks (Mind vs fear, Physique vs forced movement)
+  inherit the mechanism.
+- **Eligibility unchanged from R11 #17:** no dodge while Helpless or Exposed; prone
+  now also blocks dodging (the slam punish window, fix-4). Collateral, condition,
+  forced-action and environment damage are never dodged.
+- **Dash counters ladder (the authored `reflexes_counters`, now REAL):** threshold 7.
+  Reflexes ≥ 7 auto-dodge **+ 1-hex sidestep** (deterministic: first free hex off the
+  charge line); Reflexes ≥ 9 auto-dodge **+ counterattack** (one free basic strike at
+  the dasher); below 7 → the 1d4 fallback (sidestep rides any successful dodge).
+- **Incinedile's own `dodge_threshold` retunes 4 → 7 (PROVISIONAL):** Reflexes 4 + 1d4
+  ≥ 7 succeeds on 3–4 = the same ~50% the old d6-vs-4 gave. Flagged for owner sign-off
+  with the rest of the R14 numbers.
+- Surfaced consequence: Reflexes 2 + d4 maxes at 6 < 7 — Imani **cannot** dodge the
+  Dash until a die or stat upgrade; positioning and Brace are her counterplay. This is
+  intended texture, recorded so it never reads as a bug.
+
+## R23 — The Antagonism engine (owner, 2026-07-23)
+
+Mob/boss targeting is a **weighted-random draw, not a rule cascade** — SUPERSEDES the
+nearest → lowest-HP → id priority of R11 #16 (elites keep their weak-target taste as a
+personality bias, below).
+
+- **Score:** each AI actor keeps `antagonism[target_id]` — a serialized, hash-covered
+  float per living opponent. Base weight comes from **proximity** (closer = much
+  likelier); the score multiplies it.
+- **Earning attention:** damage you deal it builds grudge (scaled by net damage);
+  **mockery builds grudge only if the mob is intelligent enough to get it**
+  (personality-gated — Feint and other taunt-shaped acts count); **sparing it lowers
+  attention** (personality-gated; requires a detectable mercy event — hook RESERVED,
+  no mechanic ships until one exists).
+- **The 50/50 anchor (canon):** two equally close targets with no history draw at
+  exactly even odds. The selection consumes ONE draw from the salted `ai_rng` per
+  targeting decision — deterministic, serialized, replay-identical (this widens
+  `ai_rng` beyond dodge; the R11 #15 "decide() is rng-free" line is amended to
+  "decide() consumes rng ONLY for the antagonism draw").
+- **Personality types per enemy template** (data-driven, the tuning surface):
+  proximity bias, grudge weight, mock sensitivity (Mind-derived default), low-HP
+  preference (the elite "picks off the weak" persona, now a bias not a rule), decay.
+  Incinedile: Mind 1 — immune to mockery, remembers pain, strongly proximity-driven.
+- All numbers PLACEHOLDER (R14) until the tuning pass; the invariants above (auto-dodge
+  ladder, 50/50 anchor, determinism) are the contract.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
