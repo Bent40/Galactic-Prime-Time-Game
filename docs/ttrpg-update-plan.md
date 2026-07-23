@@ -109,8 +109,8 @@ truth (the docx/PDF stop being editable canon).
 | # | Decision | Ruling |
 |---|---|---|
 | D-1 | R14 force-vs-robustness at the table? | **RULED: book keeps the listed-damage model.** R14 stays digital-only |
-| D-2 | Boss-Token → Patron-Token exchange | **RULED: keep, made tier-aware.** Rate table proposed in the book (PROVISIONAL numbers, owner tunes): Bronze 5:1 · Silver 4:1 · Gold 3:1 · Legendary 2:1 · Mythic 1:1 · Godly 1:2, one-way, same-tier tokens only |
-| D-3 | Camera Call self-targeting + "doubled" scope (Q37/D8) | **OPEN — owner asked for clarification.** Question restated: (a) may a contestant call the camera on THEMSELVES? (b) exactly what does "doubled" cover and until when? Book drafts the digital reading as PROVISIONAL: self-call legal, gains AND losses from the spotlit contestant doubled, one spotlight at a time, ends at the end of that contestant's current-or-next action |
+| D-2 | Boss-Token → Patron-Token exchange | **RULED: keep, tier-aware. Rates APPROVED 2026-07-23:** Bronze 5:1 · Silver 4:1 · Gold 3:1 · Legendary 2:1 · Mythic 1:1 · Godly 1:2, one-way, same-tier tokens only |
+| D-3 | Camera Call self-targeting + "doubled" scope (Q37/D8) | **RULED 2026-07-23: YES** — self-call legal; gains AND losses from the spotlit contestant doubled; one spotlight at a time; ends at the end of that contestant's current-or-next action. Book §17.3 final |
 | D-4 | Robot/AI race entry | **RULED: as recommended** — race kept; "machines & conditions" sidebar added |
 | D-5 | Threshold-die upgrades (R22) at the table | **RULED: Lounge upgrade.** Details deferred to the Lounge pass; book notes the die exists (default d4) and is raised via a Lounge module |
 | D-6 | Tag list edition for the book | **RULED: keep as before** — the book keeps the original full tag list (owner's authoritative descriptions doc, 2026-07-18); game's pruned list stays game-only |

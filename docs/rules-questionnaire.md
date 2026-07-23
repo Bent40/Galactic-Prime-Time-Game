@@ -430,6 +430,58 @@ game too, or want a proposal?
 
 ---
 
+---
+
+## Rulings batch 2026-07-23 (owner, in chat — via the TTRPG v0.92 book effort)
+
+Recorded here so the digital side inherits them; folded into the book
+(`Galactic-Prime-Time/rulebook/gpt-system-v0.92.md`). **Addendum promotion + engine
+propagation ride the next game-repo session** (this batch was ruled in the TTRPG
+reconciliation context).
+
+- **Q4 RULED:** achievement "+1 stat" awards are **permanent** trait points (count toward
+  caps), identical to a level-point spend.
+- **Q8 RULED:** at a threshold the **GM offers** upgrade or mutation; executing happens
+  **only in the Lounge (Skill Gemstone)** and **only through compatible skills**. NEW
+  DESIGN TODO: a standard skill-compatibility marking (families/keywords).
+- **Q9 RULED:** the Skill Gemstone is simply the Lounge station where compatible skills
+  merge/upgrade.
+- **Q11 RULED:** passives need no upkeep unless explicitly specified.
+- **Q15 RULED:** no lowest-trait bind on multi-stat skills — pay the points from each
+  stat and it levels freely.
+- **Q31 RULED — poison-type signature effects:** Neuro = parts unusable until Helpless ·
+  Hemo = from T2 no healing + Bleeding at twice speed/damage · Myo = Body traits lowered
+  dramatically by tier · Pneumo = starts the Suffocation timer once at the torso, scales
+  by tier · Cyto = damage over time.
+- **Q32 RULED:** Infection cures = time (per infection), potions, cleansing skills
+  (+ Burn T2).
+- **Q34–Q36 RULED — audience economy model:** galaxies watch; Viewers in the billions;
+  Followers PAY (phone-vote scale — derivable as % of watchers who'd pay); Patrons =
+  one-time large donors ($5,000-donation tier), **roster permanent**; decay hits
+  Viewers/Followers (they stop paying), never the Patron list.
+- **Q37 RULED (= book D-3):** Camera Call self-call legal; doubling = audience gains AND
+  losses of the spotlit contestant; one spotlight at a time; ends with their
+  current-or-next action.
+- **Q48 RULED — Super Boss identity:** large, multi-stage, **multi-area**; requires
+  preparing multiple combat approaches (example: five-zone energy-draining flower —
+  immunities + per-zone disabling before the real fight, which needs several damage
+  types + specific conditions).
+- **Q51 RULED — equipment slots:** one item per slot; anatomical slots (1 head, 1 torso,
+  2 hands, 2 legs on a human) + accessories (necklace, cape, belt…); ring-class items on
+  fingers AND toes = up to 20; non-standard bodies derive slots from their parts.
+- **Q57 RULED — terrain framework:** stat terrain by three questions: hard to walk in &
+  why? · a hazard & how? · what non-danger effects?
+- **Q59 RULED (sketch):** falls over 3 hexes deal damage; ~1d4–5d4 across 3–8 m,
+  2d6–6d6 across 9–14 m, pattern continues.
+- **Q63 RULED:** severed/destroyed part recovery = Surgeon's Table, prosthetics,
+  regeneration skills, high-end healing skills, exceptional potions.
+- **Q64 RULED:** part max HP raised by race, class, achievements, skills, stats.
+- **TTRPG-side D-2 (book §19.2):** Boss→Patron exchange KEPT at the table, tier-aware
+  (Bronze 5:1 → Godly 1:2, same-tier, one-way) — note the digital game's R10 cut stands
+  unless the owner says otherwise.
+- **Still open:** Q5 (endgame trait totals), Q42 (tag effects — dedicated sitting),
+  Q49/Q50 (currency/loot-box pass), Q65–Q67 (Lounge sitting).
+
 *When answered: I fold every answer into `docs/rules-addendum.md` (promoting/demoting
 rulings), update the engine + tests to match, and log durable facts into
 `_workflow/learnings.jsonl`. Partial answers are fine — answer what's quick, mark the rest
