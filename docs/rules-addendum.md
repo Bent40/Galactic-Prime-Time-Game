@@ -703,6 +703,29 @@ personality bias, below).
 - All numbers PLACEHOLDER (R14) until the tuning pass; the invariants above (auto-dodge
   ladder, 50/50 anchor, determinism) are the contract.
 
+## R24 — Feint-read: the Mind counter to feints (owner, 2026-07-25)
+
+The counter-texture to feint dominance (the balance finding of 2026-07-23): **smart
+mobs read feints by Mind**, through the R22 threshold machinery unchanged:
+
+- A feint carries a **read threshold** (skill data; PLACEHOLDER R14 default
+  4 + feint level). The threshold asks the DEFENDER's Mind: Mind ≥ threshold →
+  **auto-read** (no rng). Else Mind + its threshold die (d4 default, per-stat,
+  upgradeable — R22) ≥ threshold reads. Mind + die max < threshold → the read is
+  impossible, no rng consumed.
+- **A read feint is WASTED**: nothing arms on the reader, the feinter's Moment is
+  spent, and a `feint_read` event (R22-shaped payload: reader, feinter, roll/auto,
+  die, threshold) is emitted for the broadcast layer.
+- **The reader adds mock-grudge** (R23): passing the Mind gate IS getting the
+  insult — mock_sensitive gates grudge from LANDED feints, the read replaces it for
+  smart defenders.
+- Rolls come from the salted AI stream, always emitted. The read never blocks
+  non-feint setup skills; only feint-shaped taunts are readable.
+- Consequences preserved on purpose: Incinedile (Mind 1) can NEVER read an L3 feint
+  (max 5 < 7) — the slice fight and the full-cadence balance WIN are byte-identical;
+  intelligence, not stats-frozen tuning, is the counter (rulebook v0.92 G4 stat
+  freeze is respected).
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

@@ -330,3 +330,15 @@
     per enemy template** (data-driven: proximity bias, grudge weight, mock sensitivity,
     low-HP preference for elites, decay) are the tuning surface — Incinedile (Mind 1)
     is too dim to care about mockery; it remembers pain. See rules-addendum R23.
+30. **Feint gets a counter: smart mobs READ it by Mind (owner 2026-07-25).** Response to
+    the balance finding that cleanly-played feint zero-damages a dim boss: a feint now
+    carries a **read threshold that asks the defender's MIND** through the same R22
+    threshold machinery — Mind ≥ threshold auto-reads; otherwise Mind + its threshold
+    die (d4 default, upgradeable) must reach it; below the die's reach the read is
+    impossible and consumes no rng. A READ feint is wasted (nothing arms, the feinter's
+    Moment is spent) and the reader adds mock-grudge (R23 — by definition it got the
+    insult). Threshold scales with feint level (PLACEHOLDER R14: 4 + level): Incinedile
+    (Mind 1, max 5) can never read Dario's L3 feint — the slice fight and the balance
+    WIN are unchanged; a Mind-4 elite reads L3 on a 3+; Mind ≥ 7 auto-reads. Dumb
+    bosses stay feintable by design — intelligence is the counter, which is the
+    Antagonism personality system paying off.
