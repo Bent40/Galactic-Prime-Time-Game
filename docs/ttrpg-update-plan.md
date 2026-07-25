@@ -148,7 +148,7 @@ items). What remains of them is polish, folded into B-4 below.
 | B-1f | `capacity` default comes from three different fallbacks (enrich vs normalize vs UI) | `skillUtils.js:27,58` |
 | B-1g | Verify I-14 (skill-enrichment render) is fully closed — recent commits (`_id`/`templateId` lookup + passive projection) suggest yes; confirm and close it | recent commits |
 
-### B-2 Rules-alignment changes — ✅ CODE DONE 2026-07-23 (data migration pending: owner backs up, then runs `server/migrate-rules-vocab.js --apply` + `server/seedTagDescriptions.js --apply`; both dry-run by default. DMG_TYPES became the 7 resistance keys incl. Dissolution; only one live item was affected — Fedora Hat, Psy→Dissolution. Prime display [B-2c second half] still rides the skill passover)
+### B-2 Rules-alignment changes — ✅ DONE, DATA MIGRATED on the campaign DB 2026-07-25 (Fedora Hat Psy→Dissolution ×2 + two race rows; 100 tag descriptions seeded; the 2026-07-23 skill passover applied the same day: 27 template repairs, 44 Gemstone keyword sets, 5 new skills incl. the Iron Stance mutation. DMG_TYPES = the 7 resistance keys incl. Dissolution. NOTE: the campaign DB lives with the owner's `ClaudeCodeTest` checkout; an earlier sparse dev DB also received harmless copies of these migrations)
 
 | # | Change | Ruling |
 |---|---|---|
