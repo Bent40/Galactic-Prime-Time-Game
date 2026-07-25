@@ -14,10 +14,11 @@ extends RefCounted
 ##   SORTED candidates — a decision with >= 2 candidates consumes EXACTLY ONE
 ##   ai_rng.randf() draw, a single-candidate (or no-target/summon/heal/beat)
 ##   decision consumes ZERO. Everything else stays pure rules over sorted
-##   state. The only other ai_rng consumer is the R22 dodge check's threshold
-##   die (mirror of hype_engine's salted goal_rng pattern) — and only on the
-##   ROLLED fallback: an auto-dodge or an impossible dodge consumes nothing —
-##   so neither draws ever perturb the action RNG's Forced-Action sequence.
+##   state. The only other ai_rng consumers are the R22 dodge check's threshold
+##   die and the R24 feint-read's Mind die (mirrors of hype_engine's salted
+##   goal_rng pattern) — and only on the ROLLED fallback: an auto or an
+##   impossible check consumes nothing — so none of the draws ever perturb the
+##   action RNG's Forced-Action sequence.
 ## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
 ##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
@@ -612,6 +613,35 @@ func check_dodge(target: CombatantState, tick: int, threshold: int) -> Dictionar
 ## R2's explicit-miss pattern) — the R22 check against the boss's Reflexes.
 func try_dodge(target: CombatantState, tick: int) -> Dictionary:
 	return check_dodge(target, tick, int(target.boss_traits.get("dodge_threshold", 0)))
+
+
+# ------------------------------------------------------------------ feint read (R24)
+
+## R24 feint-read — the Mind counter to feints, through the R22 threshold
+## machinery unchanged. The feint's read threshold asks the DEFENDER's Mind:
+##   Mind >= threshold           -> auto-read, NO rng consumed.
+##   Mind + threshold die >= t   -> roll the stat's die (default 1d4) from
+##                                  the salted ai_rng and add it.
+##   Mind + die max < threshold  -> the read is IMPOSSIBLE: no rng, no event
+##                                  ({} — the dim boss stays feintable by design:
+##                                  Incinedile Mind 1 vs an L3 feint's 7).
+## Gates on stats, never on category — any target with a Mind can read (in
+## practice only AI gets feinted today). Consumes the salted ai_rng ONLY.
+## Returns {} when no attempt happens; else {"read", "roll" (0 when auto),
+## "die", "mind", "threshold", "auto"}.
+func check_feint_read(target: CombatantState, threshold: int) -> Dictionary:
+	if threshold <= 0:
+		return {}
+	if not target.alive or target.removed_from_play:
+		return {}
+	var mind: int = target.trait_total("mind")
+	var die: int = target.threshold_die("mind")
+	if mind >= threshold:
+		return {"read": true, "roll": 0, "die": die, "mind": mind, "threshold": threshold, "auto": true}
+	if mind + die < threshold:
+		return {}  # impossible — intended texture (R24), no rng
+	var roll: int = ai_rng.randi_range(1, die)
+	return {"read": mind + roll >= threshold, "roll": roll, "die": die, "mind": mind, "threshold": threshold, "auto": false}
 
 
 ## Torso-line part pick on `target` for the R22 dash counterattack (mirrors the

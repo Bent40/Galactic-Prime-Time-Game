@@ -45,7 +45,10 @@ func traits_without_dodge() -> Dictionary:
 func test_feint_fallout_attributes_feinter_victim_and_key() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "trick", {"position": [0, 0]})
-	add_human(sim, "mark", {"position": [1, 0]})
+	# Mind 0 mark: the R24 read is impossible, so the fallout under test stays
+	# deterministic (tests/test_feint_read.gd owns the read paths).
+	add_human(sim, "mark", {"position": [1, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 0, "charm": 3}})
 	declare(sim, "trick", {
 		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
 		"targets": [{"id": "mark", "part": "torso"}],
@@ -75,7 +78,9 @@ func test_feint_fallout_attributes_feinter_victim_and_key() -> void:
 func test_feint_attribution_serializes() -> void:
 	var sim: CombatSim = make_sim(4242)
 	add_human(sim, "trick", {"position": [0, 0]})
-	add_human(sim, "mark", {"position": [1, 0]})
+	# Mind 0 mark — the feint must LAND (R24 read impossible) to stage feint_by.
+	add_human(sim, "mark", {"position": [1, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 0, "charm": 3}})
 	declare(sim, "trick", {
 		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
 		"targets": [{"id": "mark", "part": "torso"}],

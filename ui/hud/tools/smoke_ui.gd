@@ -6,9 +6,11 @@ extends SceneTree
 ## gating fallback, focus switching, the event-log overlay, plus the
 ## status-prominence pass (party-card / inspector badge rows, arena status
 ## pips, hidden-part masking), the smooth-motion pass (persistent tokens,
-## eased position tween on a real move), and the skill-feel quick wins
+## eased position tween on a real move), the skill-feel quick wins
 ## (FEINTED badge + loud feint_fallout, boss PRONE badge + stand-up beat,
-## and the combined-strike part-pick that replaced the left_hand default).
+## and the combined-strike part-pick that replaced the left_hand default),
+## plus the R24 feint-read announce (a staged high-Mind reader auto-reads —
+## loud broadcast line, nothing armed, no badge).
 ## Renders evidence PNGs. DRIVER/CONSUMER ONLY — never touches simulation/,
 ## controller/, data/ or tests/. Lives under ui/hud/tools/ (HUD-rework-owned).
 ##
@@ -489,6 +491,60 @@ func _initialize() -> void:
 	var combo_last: Dictionary = hud._event_log.back()
 	_check("combo declare accepted", String(combo_last.get("type", "")) != "command_rejected")
 
+	# 24) R24 FEINT-READ goes loud: stage a high-Mind reader via raw commands —
+	#     Mind 7 >= threshold 7 (an L3 feint) forces an AUTO-read, no rng — on a
+	#     free hex next to Dario, feint it, and the read must land in the log +
+	#     Momus ticker with the broadcast copy while NOTHING arms on the reader
+	#     (no feint_forced flag -> no FEINTED badge; a read is a beat, not a badge).
+	var dario_hex: Array = []
+	var taken: Array = []
+	for cd in gc.view_combatants():
+		var row: Dictionary = cd
+		if bool(row.get("alive", true)):
+			taken.append(row.get("position", []))
+		if String(row.get("id", "")) == "dario":
+			dario_hex = row.get("position", [])
+	var sage_hex: Array = []
+	for nd in [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]:
+		var cand: Array = [int(dario_hex[0]) + int((nd as Array)[0]), int(dario_hex[1]) + int((nd as Array)[1])]
+		if not taken.has(cand):
+			sage_hex = cand
+			break
+	_check("free hex found beside Dario for the reader", not sage_hex.is_empty())
+	_add_contestant("sage", "Sage", {"physique": 3, "reflexes": 3, "mind": 7, "charm": 3}, sage_hex)
+	for i in 5:
+		if _actor_ready("dario"):
+			break
+		hud._on_end_turn()
+		await _settle()
+	_check("dario ready to feint the reader", _actor_ready("dario"))
+	gc.apply_command({"type": "declare_action", "actor": "dario", "action": {
+		"kind": "skill", "key": "feint", "level": 3, "attack_range": 2,
+		"targets": [{"id": "sage", "part": "torso"}]}})
+	var read_declare: Dictionary = hud._event_log.back()
+	_check("read-path feint declare accepted", String(read_declare.get("type", "")) != "command_rejected")
+	hud._on_end_turn()  # the instant feint resolves on this Moment's advance
+	await _settle()
+	var read_line := ""
+	for ed in hud._event_log:
+		if String((ed as Dictionary).get("type", "")) == "feint_read":
+			read_line = String((ed as Dictionary).get("line", ""))
+	_check("feint_read event reached the log", read_line != "")
+	_check("read line is attributed broadcast copy",
+		read_line.contains("SAGE READS the feint") and read_line.contains("DARIO"))
+	_check("ticker keeps the read over the END TURN line",
+		String(hud._shell.ticker._line.text).contains("READS the feint"))
+	var sage_row: Dictionary = {}
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == "sage":
+			sage_row = cd
+	_check("nothing armed on the reader (no feint_forced)",
+		not bool(sage_row.get("feint_forced", true)))
+	hud._on_token_clicked("sage")
+	await _settle()
+	_check("no FEINTED badge on the reader", not _panel_has_text(hud._shell.inspector, "FEINTED"))
+	await _render("smoke_feint_read.png")
+
 	print("")
 	if failures.is_empty():
 		print("UI SMOKE: all probes held")
@@ -502,6 +558,16 @@ func _check(tag: String, ok: bool) -> void:
 	print("  %-46s %s" % [tag, "OK" if ok else "FAIL"])
 	if not ok:
 		failures.append(tag)
+
+
+## Ground truth for "can declare this Moment" — mirrors the balance driver's
+## readiness gate (alive, not helpless, not winding up, cost paid off).
+func _actor_ready(id: String) -> bool:
+	var c = gc.sim.combatants.get(id)
+	if c == null:
+		return false
+	return c.alive and not c.removed_from_play and not c.is_helpless(gc.sim.clock.tick) \
+		and gc.sim.clock.tick >= c.next_action_tick and not c.windup_pending
 
 
 ## True when the pending schedule holds a row for (actor, key) — windup-flagged
