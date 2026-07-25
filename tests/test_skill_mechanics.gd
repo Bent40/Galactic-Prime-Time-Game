@@ -12,12 +12,14 @@ extends SimTestBase
 
 
 ## A large-HP, non-dodging Elite target so exact typed-damage numbers can be
-## asserted without death or a dodge stream interfering.
+## asserted without death or a dodge stream interfering. Mind 0: the R24
+## feint-read is IMPOSSIBLE by construction (0 + d4 < any threshold), so the
+## feinted-dummy mechanics below stay deterministic and rng-free.
 func add_dummy(sim: CombatSim, id: String, pos: Array) -> Array[Dictionary]:
 	return sim.apply_command({"type": "add_combatant", "combatant": {
 		"id": id, "name": id, "category": "Elite", "size": "Medium",
 		"position": pos,
-		"traits": {"physique": 3, "reflexes": 3, "mind": 3, "charm": 3},
+		"traits": {"physique": 3, "reflexes": 3, "mind": 0, "charm": 3},
 		"body_parts": [
 			{"key": "head", "hp": 50, "lethal": true},
 			{"key": "torso", "hp": 50, "lethal": true},
@@ -88,7 +90,10 @@ func test_brace_not_consumed_by_bleed() -> void:
 func test_feint_collapses_targets_next_action() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "trick", {"position": [0, 0]})
-	add_human(sim, "mark", {"position": [1, 0]})
+	# Mind 0 mark: the R24 read is impossible, so the collapse machinery under
+	# test stays deterministic (tests/test_feint_read.gd owns the read paths).
+	add_human(sim, "mark", {"position": [1, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 0, "charm": 3}})
 	# tick 0: feint (cost 1 instant) — no damage; flags the mark.
 	var declared: Array[Dictionary] = declare(sim, "trick", {
 		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
@@ -237,7 +242,10 @@ func test_strong_strike_deals_typed_damage() -> void:
 
 func test_serialization_roundtrip_preserves_skill_state() -> void:
 	var sim: CombatSim = make_sim(9090)
-	add_human(sim, "dancer", {"position": [0, 0]})
+	# Mind 0 dancer: the feint below must LAND (R24 read impossible) so the
+	# serialized feint_forced state is staged deterministically.
+	add_human(sim, "dancer", {"position": [0, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 0, "charm": 3}})
 	add_human(sim, "guard", {"position": [1, 0]})
 	add_human(sim, "trick", {"position": [0, 1]})
 	# tick 0: dancer dances (Lv3), guard braces (Lv2) — both free self actions.

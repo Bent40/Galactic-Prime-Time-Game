@@ -105,12 +105,17 @@ static func mechanics(key: String, level: int) -> Dictionary:
 		"feint":
 			# Reflexes/Charm, cost 1 (instant), adjacent single. No damage; the
 			# target's next resolved action collapses into a Forced Action – Tool.
-			# The actor repositions up to 1 space free.
+			# The actor repositions up to 1 space free. R24: the feint carries a
+			# read threshold that asks the DEFENDER's Mind (4 + level, PLACEHOLDER
+			# R14) through the R22 threshold machinery — an authored value here
+			# overrides the formula. Only feint-shaped taunts carry one: a
+			# setup_debuff without read_threshold is never readable.
 			spec = {
 				"archetype": "setup_debuff",
 				"cost": 1,
 				"attack_range": 1,
 				"reposition": 1,
+				"read_threshold": 4 + lv,
 			}
 		"pressure_strike":
 			# Reflexes/Physique, cost 2, adjacent single limb. 2 Bleed at Lv1,

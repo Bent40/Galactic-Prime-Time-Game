@@ -130,6 +130,7 @@ var counters: int = 0
 var feint_pending: bool = false
 var spread_mode: bool = false    # Dario holding outside cone reach after a telegraph
 var feints_cast: int = 0
+var feint_reads: int = 0         # R24: boss reads of Dario's feint (0 expected — Mind 1 vs 7)
 var windups_denied: int = 0
 var cones_declared: int = 0
 var cones_denied: int = 0
@@ -270,6 +271,8 @@ func _on_sim_event(e: Dictionary) -> void:
 			if String(e.get("target", "")) == BOSS:
 				feint_pending = true
 				feints_cast += 1
+		"feint_read":
+			feint_reads += 1
 		"feint_fallout":
 			if String(e.get("victim", "")) == BOSS:
 				feint_pending = false
@@ -646,8 +649,11 @@ func _report() -> void:
 	# the spread stance the boss rarely gets a dash to the strike round, so the
 	# ladder may not fire at all; a 0-dodge line is a finding, not a failure.
 	# dash_denied counts dashes the parked feint collapsed before they landed).
-	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d dash_denied=%d" % [
-		dash_declared, dash_dodges, dodge_fails, sidesteps, counters, dashes_denied])
+	# feint_reads is the R24 regression bar made visible: the boss (Mind 1, d4)
+	# can NEVER read Dario's L3 feint (max 5 < threshold 7) — 0 proves the read
+	# check consumed no rng and the WIN is untouched by the counter.
+	print("DODGE dash_declared=%d dodged=%d failed=%d sidesteps=%d counters=%d dash_denied=%d feint_reads=%d" % [
+		dash_declared, dash_dodges, dodge_fails, sidesteps, counters, dashes_denied, feint_reads])
 	# R23 antagonism telemetry: final grudge scores per AI actor, read off the
 	# view API's new additive "antagonism" key (who the boss hates, and how much
 	# — the cone/blast paths deal collateral without drawing, but the grudge
