@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GPT — KAN-4 Character Creation (mockup)</title>
+<style>
+  :root{
+    --bg:#04050d; --panel:#090c1a; --panel2:#0d1020;
+    --cyan:#00d4ff; --gold:#c8a84b; --danger:#ff2255; --success:#00ff88;
+    --text:#b8c8e0; --muted:#3a4560; --border:#1a2540;
+    --purple:#a855f7; --mythic:#ec4899;
+    --mono:'Courier New',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1600px;height:1000px;overflow:hidden;background:var(--bg);
+       color:var(--text);font-family:system-ui,-apple-system,sans-serif;position:relative}
+  .label{text-transform:uppercase;letter-spacing:3px;font-size:9px;color:var(--muted);font-weight:700}
+  .mono{font-family:var(--mono)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px}
+  .panel-h{padding:8px 12px 6px;border-bottom:1px solid var(--border);
+           display:flex;justify-content:space-between;align-items:baseline}
+  .step-no{font-family:var(--mono);font-size:10px;color:var(--cyan);font-weight:700}
+
+  /* ── broadcast bar ── */
+  .bar{height:44px;display:flex;align-items:center;justify-content:space-between;
+       padding:0 18px;background:var(--panel);border-bottom:1px solid var(--border)}
+  .bar-side{display:flex;align-items:center;gap:12px;width:430px}
+  .bar-side.right{justify-content:flex-end}
+  .rec-pill{display:flex;align-items:center;gap:7px;border:1px solid var(--danger);
+            border-radius:4px;padding:3px 10px;font-size:10px;letter-spacing:3px;
+            color:var(--danger);font-weight:900}
+  .rec-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:blink 1.1s infinite}
+  @keyframes blink{0%,60%{opacity:1}61%,100%{opacity:.15}}
+  .brand-name{font-size:15px;font-weight:900;letter-spacing:7px;color:var(--cyan);
+              text-shadow:0 0 20px rgba(0,212,255,.7);text-align:center}
+  .brand-sub{font-size:8px;letter-spacing:3px;color:var(--gold);margin-top:2px;font-weight:700;text-align:center}
+  .applicant{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:1px}
+  .momus-chip{border:1px solid var(--mythic);color:var(--mythic);border-radius:12px;
+              padding:3px 12px;font-size:10px;letter-spacing:3px;font-weight:900}
+
+  /* ── title ── */
+  .kicker{text-align:center;padding:10px 0 8px}
+  .kicker h1{font-size:26px;font-weight:900;letter-spacing:10px;color:var(--gold);
+             text-shadow:0 0 22px rgba(200,168,75,.55)}
+  .kicker .sub{font-size:9px;letter-spacing:4px;color:var(--muted);margin-top:4px;text-transform:uppercase}
+
+  /* ── layout ── */
+  .stage{display:flex;gap:12px;padding:4px 18px 0;height:770px}
+  .steprail{width:118px;display:flex;flex-direction:column;align-items:center;padding-top:8px}
+  .step{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .step .n{width:30px;height:30px;border-radius:50%;border:1px solid var(--cyan);
+           color:var(--cyan);font-family:var(--mono);font-size:13px;font-weight:700;
+           display:flex;align-items:center;justify-content:center;background:rgba(0,212,255,.06)}
+  .step .t{font-size:7px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-weight:800;text-align:center}
+  .step-link{width:1px;height:82px;background:var(--border);margin:6px 0}
+  .content{flex:1;display:flex;flex-direction:column;gap:12px}
+  .row1{display:flex;gap:12px;height:428px}
+  .row2{display:flex;gap:12px;flex:1}
+
+  /* ── step 1: filters + body plans ── */
+  .colA{width:432px;display:flex;flex-direction:column}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 6px}
+  .fchip{font-size:8px;letter-spacing:2px;font-weight:800;text-transform:uppercase;
+         border:1px solid var(--muted);color:var(--text);border-radius:12px;padding:4px 11px;opacity:.85}
+  .match{font-family:var(--mono);font-size:9px;color:var(--cyan);padding:2px 12px 8px;letter-spacing:1px}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 8px;flex:1}
+  .plan{border:1px solid var(--border);border-radius:6px;background:var(--panel2);
+        padding:9px 10px;display:flex;flex-direction:column}
+  .plan.selected{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,212,255,.28)}
+  .plan.locked{opacity:.5}
+  .plan-name{font-size:12px;font-weight:900;letter-spacing:2px;color:var(--text);text-transform:uppercase}
+  .plan-sub{font-size:8px;color:var(--muted);margin-top:3px;line-height:1.5;letter-spacing:.4px}
+  .plan-state{margin-top:auto;font-size:7px;letter-spacing:2px;font-weight:900;text-transform:uppercase;padding-top:6px}
+  .st-avail{color:var(--cyan)} .st-prod{color:var(--gold)}
+  .plan-glyph{font-size:20px;float:right}
+  .colA-foot{font-size:7px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;
+             padding:0 12px 10px;line-height:1.7}
+  .colA-foot b{color:var(--text)}
+
+  /* ── step 2: part map ── */
+  .colB{width:400px;display:flex;flex-direction:column}
+  .bodymap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:12px 14px 4px}
+  .bm-row{display:flex;gap:7px;width:100%;justify-content:center}
+  .pcell{background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+         padding:6px 9px 7px;width:118px}
+  .pcell.wide{width:150px}
+  .studs{display:flex;gap:4px;margin-bottom:4px}
+  .studs i{width:6px;height:6px;border-radius:50%;background:#161f38;border:1px solid #22304f}
+  .pcell-row{display:flex;justify-content:space-between;align-items:baseline}
+  .pcell-name{font-size:8px;letter-spacing:1.5px;font-weight:800;color:var(--text);text-transform:uppercase}
+  .pcell-hp{font-family:var(--mono);font-size:12px;color:var(--success);font-weight:700}
+  .lethal{font-size:6px;letter-spacing:1px;color:var(--danger);border:1px solid var(--danger);
+          border-radius:3px;padding:1px 4px;font-weight:900}
+  .bm-total{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:1px;padding-top:4px}
+  .colB-foot{font-size:7px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;
+             padding:6px 14px 10px;line-height:1.7;text-align:center}
+  .colB-foot b{color:var(--text)}
+
+  /* ── step 3: traits ── */
+  .colC{flex:1;display:flex;flex-direction:column}
+  .pools{display:flex;gap:8px;padding:9px 12px 2px}
+  .pool{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+        padding:6px 9px;display:flex;justify-content:space-between;align-items:baseline}
+  .pool .pn{font-size:8px;letter-spacing:2px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+  .pool .pv{font-family:var(--mono);font-size:12px;color:var(--cyan);font-weight:700}
+  .trait{display:flex;align-items:center;gap:8px;padding:6px 12px 0}
+  .tname{width:74px;font-size:9px;letter-spacing:2px;font-weight:800;text-transform:uppercase;color:var(--text)}
+  .stepper{display:flex;align-items:center;gap:6px}
+  .stepper .b{width:18px;height:18px;border:1px solid var(--border);border-radius:3px;color:var(--muted);
+              display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px}
+  .stepper .v{font-family:var(--mono);font-size:15px;color:var(--cyan);font-weight:700;width:16px;text-align:center}
+  .pips{display:flex;gap:3px;margin-left:2px}
+  .pips i{width:9px;height:9px;border-radius:50%;background:#131a30;border:1px solid var(--border)}
+  .pips i.on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 6px rgba(0,212,255,.6)}
+  .tpool{margin-left:auto;font-size:7px;letter-spacing:2px;color:var(--muted);font-weight:800}
+  .derived{margin:9px 12px 10px;background:var(--panel2);border:1px solid var(--border);
+           border-radius:5px;padding:8px 11px;flex:1}
+  .derived-h{font-size:8px;letter-spacing:3px;color:var(--gold);font-weight:900;text-transform:uppercase;margin-bottom:6px}
+  .dline{font-family:var(--mono);font-size:9.5px;line-height:1.75;color:var(--text)}
+  .dline b{color:var(--cyan);font-weight:700}
+  .dline .dim{color:var(--muted)}
+  .pend{font-size:6px;letter-spacing:1px;color:var(--gold);border:1px solid var(--gold);
+        border-radius:3px;padding:1px 4px;font-weight:900;vertical-align:1px}
+
+  /* ── step 4: skills ── */
+  .colD{flex:1.35;display:flex;flex-direction:column}
+  .skgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;padding:11px 12px 6px}
+  .sk{background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:10px 11px}
+  .sk.picked{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,212,255,.18)}
+  .sk-row{display:flex;align-items:baseline;gap:6px}
+  .sk-name{font-size:9.5px;font-weight:900;letter-spacing:1px;color:var(--text);text-transform:uppercase}
+  .sk-cost{margin-left:auto;font-family:var(--mono);font-size:8px;color:var(--purple)}
+  .sk-fx{font-size:8px;color:var(--muted);margin-top:2px;letter-spacing:.3px;line-height:1.45}
+  .sk-pick{font-size:6px;letter-spacing:1px;color:var(--cyan);font-weight:900}
+  .slots{display:flex;gap:9px;padding:8px 12px 8px}
+  .slot{flex:1;border:1px solid var(--border);border-radius:5px;background:var(--panel2);
+        padding:8px 10px;font-size:8px;letter-spacing:1px}
+  .slot .sl{color:var(--muted);font-size:6px;letter-spacing:2px;font-weight:900;text-transform:uppercase}
+  .slot .sv{color:var(--text);font-weight:800;text-transform:uppercase;margin-top:2px;font-size:8.5px}
+  .slot.trade{border-color:var(--gold)}
+  .slot.trade .sv{color:var(--gold)}
+  .catalog{margin:0 12px 12px;border:1px dashed var(--border);border-radius:5px;
+           padding:9px 12px;font-size:8px;color:var(--muted);letter-spacing:.5px;opacity:.8}
+  .catalog b{color:var(--text)}
+  .future{font-size:6px;letter-spacing:1px;color:var(--purple);border:1px solid var(--purple);
+          border-radius:3px;padding:1px 4px;font-weight:900;margin-left:5px}
+
+  /* ── step 5: identity ── */
+  .colE{flex:1;display:flex;flex-direction:column}
+  .field{margin:8px 12px 0}
+  .field .fl{font-size:7px;letter-spacing:2px;color:var(--muted);font-weight:900;text-transform:uppercase;margin-bottom:3px}
+  .input{background:#070a16;border:1px solid var(--border);border-radius:4px;
+         padding:6px 9px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .bit-editor{margin:9px 12px 0;border:1px solid var(--mythic);border-radius:5px;
+              background:rgba(236,72,153,.05);padding:7px 10px}
+  .bit-h{display:flex;align-items:center;gap:8px}
+  .bit-tag{font-size:8px;letter-spacing:2px;color:var(--mythic);font-weight:900;text-transform:uppercase}
+  .toggle{margin-left:auto;width:26px;height:13px;border-radius:7px;border:1px solid var(--mythic);position:relative}
+  .toggle i{position:absolute;left:2px;top:2px;width:7px;height:7px;border-radius:50%;background:var(--mythic)}
+  .bit-body{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:5px;
+            border:1px dashed var(--border);border-radius:4px;padding:5px 8px}
+  .bit-skip{font-size:7px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:5px;line-height:1.6}
+  .bit-skip b{color:var(--mythic)}
+  .court{margin:9px 12px 10px;border:1px solid var(--border);border-radius:5px;background:var(--panel2);padding:7px 10px;flex:1}
+  .court-h{font-size:8px;letter-spacing:2px;color:var(--purple);font-weight:900;text-transform:uppercase}
+  .court-sub{font-size:8px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .picks{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
+  .pick{border:1px dashed var(--border);border-radius:4px;padding:4px 7px;
+        font-size:7px;letter-spacing:1.5px;color:var(--muted);font-weight:800;text-transform:uppercase}
+  .sigils{display:flex;gap:6px;margin-top:8px}
+  .sigil{font-size:7px;letter-spacing:1px;font-weight:800;color:var(--muted);
+         border:1px solid var(--border);border-radius:10px;padding:3px 8px;opacity:.7}
+  .court-foot{font-size:6.5px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:6px}
+
+  /* ── footer ── */
+  .foot{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 0}
+  .foot-note{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  .submit{background:rgba(200,168,75,.12);border:1px solid var(--gold);border-radius:6px;
+          box-shadow:0 0 20px rgba(200,168,75,.3);padding:10px 26px;
+          font-size:13px;font-weight:900;letter-spacing:4px;color:var(--gold)}
+  .chyron{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;
+          gap:14px;padding:0 18px;background:linear-gradient(90deg,rgba(236,72,153,.12),rgba(236,72,153,.02));
+          border-top:1px solid rgba(236,72,153,.4)}
+  .chyron .badge{background:var(--mythic);color:#12030b;font-size:10px;font-weight:900;
+                 letter-spacing:3px;border-radius:3px;padding:4px 10px}
+  .chyron .quote{font-style:italic;font-size:12px;color:var(--text)}
+  .watermark{position:absolute;right:14px;bottom:52px;font-size:9px;letter-spacing:3px;
+             color:var(--muted);opacity:.55;transform:rotate(-4deg);font-weight:800;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+  <!-- broadcast bar -->
+  <div class="bar">
+    <div class="bar-side">
+      <div class="rec-pill"><span class="rec-dot"></span>REC</div>
+      <span class="label">Casting Tape &middot; Pre-Season Talent Intake</span>
+    </div>
+    <div>
+      <div class="brand-name">GALACTIC PRIME TIME</div>
+      <div class="brand-sub">&#9670; COSMIC CASINO &middot; THE SHOW SIGNS CONTESTANTS</div>
+    </div>
+    <div class="bar-side right">
+      <span class="applicant">APPLICANT #4,102</span>
+      <span class="momus-chip">&#129686; MOMUS</span>
+    </div>
+  </div>
+
+  <!-- title -->
+  <div class="kicker">
+    <h1>THE AUDITION</h1>
+    <div class="sub">Build the contestant you&rsquo;re sending in &middot; pick by what the body does &mdash; never a flat list</div>
+  </div>
+
+  <div class="stage">
+
+    <!-- step rail -->
+    <div class="steprail">
+      <div class="step"><div class="n">1</div><div class="t">Properties</div></div>
+      <div class="step-link"></div>
+      <div class="step"><div class="n">2</div><div class="t">Body Plan</div></div>
+      <div class="step-link"></div>
+      <div class="step"><div class="n">3</div><div class="t">Traits</div></div>
+      <div class="step-link"></div>
+      <div class="step"><div class="n">4</div><div class="t">Skills</div></div>
+      <div class="step-link"></div>
+      <div class="step"><div class="n">5</div><div class="t">Identity</div></div>
+    </div>
+
+    <div class="content">
+      <div class="row1">
+
+        <!-- STEP 1 — property filters + plan grid -->
+        <div class="panel colA">
+          <div class="panel-h">
+            <span class="label" style="color:var(--cyan)"><span class="step-no">1&nbsp;</span> Filter by Property</span>
+            <span class="label">then pick a plan</span>
+          </div>
+          <div class="chips">
+            <span class="fchip">Aquatic</span><span class="fchip">Flying</span>
+            <span class="fchip">Grab Limb</span><span class="fchip">Small</span>
+            <span class="fchip">Armored</span><span class="fchip">Stinger</span>
+            <span class="fchip">Long-Bodied</span>
+          </div>
+          <div class="match">PLANS MATCHING: 4 &middot; 1 AVAILABLE &middot; 3 IN PRODUCTION</div>
+          <div class="plans">
+            <div class="plan selected">
+              <div><span class="plan-glyph">&#129485;</span>
+                <div class="plan-name">Human</div>
+                <div class="plan-sub">head &middot; torso &middot; 2 arms &middot; 2 legs<br>17 HP across 6 parts &middot; grab limb &times;2</div>
+              </div>
+              <div class="plan-state st-avail">&#9679; Default &mdash; Available</div>
+            </div>
+            <div class="plan locked">
+              <div><span class="plan-glyph">&#128008;</span>
+                <div class="plan-name">Cat &mdash; Quadruped</div>
+                <div class="plan-sub">small &middot; low silhouette<br>authored plan pending</div>
+              </div>
+              <div class="plan-state st-prod">&#9683; In Production</div>
+            </div>
+            <div class="plan locked">
+              <div><span class="plan-glyph">&#129408;</span>
+                <div class="plan-name">Crab</div>
+                <div class="plan-sub">carapace torso &middot; 8 legs &middot; 2 pincers<br>armored &middot; grab limb &times;2</div>
+              </div>
+              <div class="plan-state st-prod">&#9683; In Production</div>
+            </div>
+            <div class="plan locked">
+              <div><span class="plan-glyph">&#128013;</span>
+                <div class="plan-name">Snake</div>
+                <div class="plan-sub">head &middot; long segmented torso &middot; no limbs<br>long-bodied</div>
+              </div>
+              <div class="plan-state st-prod">&#9683; In Production</div>
+            </div>
+          </div>
+          <div class="colA-foot"><b>Earth-life only (R16)</b> &mdash; humans &amp; animals. Animal plans are real,
+            deferred content (Q61): shown honestly as coming, not clickable.</div>
+        </div>
+
+        <!-- STEP 2 — part map -->
+        <div class="panel colB">
+          <div class="panel-h">
+            <span class="label" style="color:var(--cyan)"><span class="step-no">2&nbsp;</span> Part Map &mdash; Human</span>
+            <span class="label">typed part slots</span>
+          </div>
+          <div class="bodymap">
+            <div class="bm-row">
+              <div class="pcell wide">
+                <div class="studs"><i></i><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">Head</span><span class="lethal">LETHAL</span><span class="pcell-hp">2 HP</span></div>
+              </div>
+            </div>
+            <div class="bm-row">
+              <div class="pcell">
+                <div class="studs"><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">L-Arm</span><span class="pcell-hp">2 HP</span></div>
+              </div>
+              <div class="pcell wide">
+                <div class="studs"><i></i><i></i><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">Torso</span><span class="lethal">LETHAL</span><span class="pcell-hp">5 HP</span></div>
+              </div>
+              <div class="pcell">
+                <div class="studs"><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">R-Arm</span><span class="pcell-hp">2 HP</span></div>
+              </div>
+            </div>
+            <div class="bm-row">
+              <div class="pcell">
+                <div class="studs"><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">L-Leg</span><span class="pcell-hp">3 HP</span></div>
+              </div>
+              <div class="pcell">
+                <div class="studs"><i></i><i></i></div>
+                <div class="pcell-row"><span class="pcell-name">R-Leg</span><span class="pcell-hp">3 HP</span></div>
+              </div>
+            </div>
+            <div class="bm-total">TOTAL 17 HP &middot; 6 PARTS &middot; 2 LETHAL</div>
+          </div>
+          <div class="colB-foot"><b>R21:</b> a body is typed parts from one library, like Lego &mdash;
+            a plan is <b>which parts, how many, what size</b>.<br>Lethal parts at 0 invoke the death rules.</div>
+        </div>
+
+        <!-- STEP 3 — traits -->
+        <div class="panel colC">
+          <div class="panel-h">
+            <span class="label" style="color:var(--cyan)"><span class="step-no">3&nbsp;</span> Traits</span>
+            <span class="label">max 5 per trait</span>
+          </div>
+          <div class="pools">
+            <div class="pool"><span class="pn">Body Pool</span><span class="pv">7 / 7 spent</span></div>
+            <div class="pool"><span class="pn">Core Pool</span><span class="pv">7 / 7 spent</span></div>
+          </div>
+          <div class="trait">
+            <span class="tname">Physique</span>
+            <div class="stepper"><span class="b">&minus;</span><span class="v">3</span><span class="b">+</span></div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <span class="tpool">BODY</span>
+          </div>
+          <div class="trait">
+            <span class="tname">Reflexes</span>
+            <div class="stepper"><span class="b">&minus;</span><span class="v">4</span><span class="b">+</span></div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            <span class="tpool">BODY</span>
+          </div>
+          <div class="trait">
+            <span class="tname">Mind</span>
+            <div class="stepper"><span class="b">&minus;</span><span class="v">4</span><span class="b">+</span></div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            <span class="tpool">CORE</span>
+          </div>
+          <div class="trait">
+            <span class="tname">Charm</span>
+            <div class="stepper"><span class="b">&minus;</span><span class="v">3</span><span class="b">+</span></div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <span class="tpool">CORE</span>
+          </div>
+          <div class="derived">
+            <div class="derived-h">What these numbers buy &mdash; live</div>
+            <div class="dline"><b>DODGE</b> &middot; REF 4 + d4 vs Dash thr 7 &rarr; dodge on 3&ndash;4 <span class="dim">(50%)</span><br>
+              <span class="dim">&nbsp;&nbsp;auto-dodge at REF 7 &mdash; beyond creation, growth buys it</span></div>
+            <div class="dline"><b>FEINT-READ</b> &middot; MIND 4 + d4 &rarr; reads Lv1 feints always <span class="dim">(thr 5)</span><br>
+              <span class="dim">&nbsp;&nbsp;Lv3 feints (thr 7): read on 3&ndash;4</span></div>
+            <div class="dline"><b>FORCE</b> &middot; feeds merged-hit breaches (7+ single hit) <span class="pend">PENDING R14</span></div>
+            <div class="dline"><b>CAMERA CALL</b> &middot; CHA 3 &rarr; 0 stacks <span class="dim">(1 per 20 Charm)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row2">
+
+        <!-- STEP 4 — skills -->
+        <div class="panel colD">
+          <div class="panel-h">
+            <span class="label" style="color:var(--cyan)"><span class="step-no">4&nbsp;</span> Skills &mdash; the background grants 4 (R16)</span>
+            <span class="label">start Lv 1 &middot; caps 5</span>
+          </div>
+          <div class="skgrid">
+            <div class="sk picked">
+              <div class="sk-row"><span class="sk-name">Strong Strike</span><span class="sk-pick">&#10003; PICKED</span><span class="sk-cost">2 MOMENTS</span></div>
+              <div class="sk-fx">Committed windup &middot; 6 Crush &middot; Exposed while performing</div>
+            </div>
+            <div class="sk picked">
+              <div class="sk-row"><span class="sk-name">Brace</span><span class="sk-pick">&#10003; PICKED</span><span class="sk-cost">0 MOMENTS</span></div>
+              <div class="sk-fx">Reaction guard &middot; reduce next Crush/Burn by Lv</div>
+            </div>
+            <div class="sk picked">
+              <div class="sk-row"><span class="sk-name">Feint</span><span class="sk-pick">&#10003; PICKED</span><span class="sk-cost">1 MOMENT</span></div>
+              <div class="sk-fx">Arms the opening &middot; readable by Mind (thr 4+Lv)</div>
+            </div>
+            <div class="sk">
+              <div class="sk-row"><span class="sk-name">Overhead Slam</span><span class="sk-cost">2 MOMENTS</span></div>
+              <div class="sk-fx">2+Lv Crush &middot; knockdown &middot; wants a heavy weapon</div>
+            </div>
+            <div class="sk">
+              <div class="sk-row"><span class="sk-name">Pressure Strike</span><span class="sk-cost">2 MOMENTS</span></div>
+              <div class="sk-fx">Chain after Feint &middot; 1+Lv Bleed &middot; +1 Shock tier</div>
+            </div>
+            <div class="sk">
+              <div class="sk-row"><span class="sk-name">Dance</span><span class="sk-cost">0 MOMENTS</span></div>
+              <div class="sk-fx">Stance &middot; +Lv Charm while held</div>
+            </div>
+          </div>
+          <div class="slots">
+            <div class="slot"><div class="sl">Slot 1</div><div class="sv">Strong Strike</div></div>
+            <div class="slot"><div class="sl">Slot 2</div><div class="sv">Brace</div></div>
+            <div class="slot"><div class="sl">Slot 3</div><div class="sv">Feint</div></div>
+            <div class="slot trade"><div class="sl">Slot 4 &middot; Traded</div><div class="sv">&rarr; +1 cap on Feint (5&rarr;6)</div></div>
+          </div>
+          <div class="catalog"><b>+37 more in the catalog</b> &mdash; pending their content pass; they resolve
+            via the generic-strike fallback until authored<span class="future">FUTURE</span></div>
+        </div>
+
+        <!-- STEP 5 — identity -->
+        <div class="panel colE">
+          <div class="panel-h">
+            <span class="label" style="color:var(--cyan)"><span class="step-no">5&nbsp;</span> Identity</span>
+            <span class="label">the show brands you anyway</span>
+          </div>
+          <div style="display:flex;gap:0">
+            <div class="field" style="flex:1"><div class="fl">Name</div><div class="input">_ _ _ _ _ _ _ _</div></div>
+            <div class="field" style="flex:1.4"><div class="fl">Persona Line</div><div class="input">one sentence the chyron can use&hellip;</div></div>
+          </div>
+          <div class="bit-editor">
+            <div class="bit-h"><span class="bit-tag">&#127917; Author a Signature Bit &mdash; optional</span><span class="toggle"><i></i></span></div>
+            <div class="bit-body">e.g. &ldquo;bows mid-combat &mdash; the applause is the point&rdquo;</div>
+            <div class="bit-skip"><b>Not everyone has a bit.</b> Skipping is a real choice, not a missing feature &mdash; no bit, no button.</div>
+          </div>
+          <div class="court">
+            <div class="court-h">Patron Courtship &mdash; the tape feeds the bidding</div>
+            <div class="court-sub">Your structured picks are the keywords the gods bid on. At least two will bid.</div>
+            <div class="picks">
+              <div class="pick">Origin &middot; &hellip;</div>
+              <div class="pick">Virtue &middot; &hellip;</div>
+              <div class="pick">Vice &middot; &hellip;</div>
+              <div class="pick">Wants Back Home &middot; &hellip;</div>
+            </div>
+            <div class="sigils">
+              <span class="sigil">&#11041; ARES</span><span class="sigil">&#11041; ENYO</span>
+              <span class="sigil">&#11041; HESTIA</span><span class="sigil">&#11041; HEPHAESTUS</span>
+              <span class="sigil">&#11041; TYCHE</span>
+            </div>
+            <div class="court-foot">Watching intake &middot; bidding opens after submission</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div class="foot">
+        <span class="foot-note">Earth-life only (R16) &middot; 7 body / 7 core &middot; every number placeholder (R14)</span>
+        <div class="submit">SUBMIT AUDITION &mdash; ENTER THE BIDDING &#9654;</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="watermark">Placeholder numbers &middot; R14</div>
+
+  <!-- chyron -->
+  <div class="chyron">
+    <span class="badge">&#129686; MOMUS</span>
+    <span class="quote">&ldquo;Four limbs, a dream, and no idea what the gods pay for. Roll tape.&rdquo;</span>
+  </div>
+
+</body>
+</html>
