@@ -252,14 +252,15 @@ func _capture_06_08_valve_beat() -> void:
 	await _settle()
 
 	# 08 — the boss inspector. The R23 antagonism (grudge) map rides
-	# view_combatants; the inspector does not render it yet (view-API-only) —
-	# print it as ground truth and shoot the inspector as it stands today.
+	# view_combatants and the inspector now renders it as the ATTENTION section
+	# (KAN-4 quick win) — print the map as ground truth and shoot the ledger.
 	var antag: Dictionary = _row("boss").get("antagonism", {})
-	print("  08 boss antagonism map (view_combatants, not yet in UI): %s" % str(antag))
+	print("  08 boss antagonism map (view_combatants): %s" % str(antag))
 	_check("08: boss holds grudges in the view", not antag.is_empty())
 	hud._on_token_clicked("boss")
 	await _settle()
 	_check("08: inspector focused on the boss", hud._focus_id == "boss")
+	_check("08: ATTENTION grudge ledger rendered", hud._shell.inspector._attn_panel.visible)
 	await _render("08_grudge_ledger.png")
 
 	await _teardown()

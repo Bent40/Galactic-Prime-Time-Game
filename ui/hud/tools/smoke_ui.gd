@@ -10,7 +10,13 @@ extends SceneTree
 ## (FEINTED badge + loud feint_fallout, boss PRONE badge + stand-up beat,
 ## and the combined-strike part-pick that replaced the left_hand default),
 ## plus the R24 feint-read announce (a staged high-Mind reader auto-reads —
-## loud broadcast line, nothing armed, no badge).
+## loud broadcast line, nothing armed, no badge), and the KAN-4 quick wins:
+## the inspector ATTENTION grudge ledger (R23 antagonism -> UI), the R24
+## READ-RISK lines in the ActionPreview confirm panel (all three outcome
+## classes, preview-only), and the pressure-valve broadcast announces
+## (telegraph / blast / per-victim knockout / breach reset) staged on a fresh
+## dodge-stripped controller driven through the REAL PausedClockDriver so the
+## beat events land DURING END TURN — the priority-over-generic path.
 ## Renders evidence PNGs. DRIVER/CONSUMER ONLY — never touches simulation/,
 ## controller/, data/ or tests/. Lives under ui/hud/tools/ (HUD-rework-owned).
 ##
@@ -545,6 +551,170 @@ func _initialize() -> void:
 	_check("no FEINTED badge on the reader", not _panel_has_text(hud._shell.inspector, "FEINTED"))
 	await _render("smoke_feint_read.png")
 
+	# ---- KAN-4 QUICK WINS (grudge ledger / read-risk / valve announces) --------
+
+	# 25) ATTENTION grudge ledger (R23 -> UI): damage writes the boss's
+	#     antagonism ledger; this session's landed hits usually earned grudges
+	#     already — if the seed's dodges swallowed every hit, stage one honest
+	#     poke through the funnel (bounded retry; the boss CAN dodge it).
+	for i in 6:
+		if not (_row("boss").get("antagonism", {}) as Dictionary).is_empty():
+			break
+		if _actor_ready("imani"):
+			gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
+				"kind": "attack", "cost": 1, "damage": {"type": "crushed", "amount": 6},
+				"attack_range": 2, "targets": [{"id": "boss", "part": "left_hand"}]}})
+		hud._on_end_turn()
+		await _settle()
+	var boss_antag: Dictionary = _row("boss").get("antagonism", {})
+	_check("boss holds grudges in the view", not boss_antag.is_empty())
+	hud._on_token_clicked("boss")
+	await _settle()
+	_check("inspector shows the ATTENTION section", hud._shell.inspector._attn_panel.visible)
+	var top_id := ""
+	var top_score := -1.0
+	var antag_ids: Array = boss_antag.keys()
+	antag_ids.sort()
+	for oid in antag_ids:
+		if float(boss_antag[oid]) > top_score:
+			top_score = float(boss_antag[oid])
+			top_id = String(oid)
+	_check("ledger names the loudest grudge",
+		_panel_has_text(hud._shell.inspector, hud._display_name_for(top_id)))
+	var attn_rows: Array = hud._attention_rows(_row("boss"))
+	_check("one ATTENTION row per ledger entry", attn_rows.size() == boss_antag.size())
+	var attn_sorted := true
+	for i in range(1, attn_rows.size()):
+		if float((attn_rows[i - 1] as Dictionary).get("share", 0.0)) \
+				< float((attn_rows[i] as Dictionary).get("share", 0.0)):
+			attn_sorted = false
+	_check("ATTENTION rows sorted descending", attn_sorted)
+	_check("top ATTENTION share normalized to 1.0",
+		not attn_rows.is_empty()
+		and absf(float((attn_rows[0] as Dictionary).get("share", 0.0)) - 1.0) < 0.0001)
+	await _render("smoke_grudge_ledger.png")
+	hud._on_card_clicked("imani")
+	await _settle()
+	_check("empty ledger omits the ATTENTION section", not hud._shell.inspector._attn_panel.visible)
+
+	# 26) R24 READ-RISK in the confirm panel — fresh controller so the on-the-
+	#     clock derivation is deterministic (fresh tick 0, id sort -> Dario, feint
+	#     granted Lv3 -> threshold 7). The armed feint's part pick must show the
+	#     Mind counter honestly for all three classes, preview-only: the dim boss
+	#     (Mind 1, max 5 < 7 — impossible), Sage (Mind 7 — auto-read), Imani
+	#     (Mind 4 — reads on 3+ on d4). The read asks the DEFENDER, so ally and
+	#     contestant targets preview too.
+	await _teardown_hud()
+	_stand_up_fresh("SmokeControllerReadRisk", false, false)
+	_add_contestant("sage", "Sage", {"physique": 3, "reflexes": 3, "mind": 7, "charm": 3}, [1, -1])
+	await _settle()
+	_check("read-risk: dario on the clock (fresh tick)", hud._active_actor == "dario")
+	hud._on_category("skills")
+	await _settle()
+	hud._on_flyout_entry("skill:feint")
+	await _settle()
+	_check("read-risk: feint armed + boss auto-focused",
+		String(hud._armed.get("key", "")) == "feint" and hud._focus_id == "boss")
+	hud._on_inspector_part_clicked("left_hand")
+	await _settle()
+	_check("read-risk: boss too dim to read (impossible)",
+		_panel_has_text(hud._shell.action_preview, "too dim to read it"))
+	hud._shell.action_preview.back_requested.emit()
+	await _settle()
+	hud._on_token_clicked("sage")
+	await _settle()
+	hud._on_inspector_part_clicked("torso")
+	await _settle()
+	_check("read-risk: Sage WILL read it (auto)",
+		_panel_has_text(hud._shell.action_preview, "WILL read this — Mind 7"))
+	await _render("smoke_feint_read_risk.png")
+	hud._shell.action_preview.back_requested.emit()
+	await _settle()
+	hud._on_token_clicked("imani")
+	await _settle()
+	hud._on_inspector_part_clicked("torso")
+	await _settle()
+	_check("read-risk: Imani reads on 3+ on d4 (roll_needed)",
+		_panel_has_text(hud._shell.action_preview, "reads on 3+ on d4"))
+	_check("read-risk previews declared nothing", not _schedule_has("dario", "feint"))
+	var esc := InputEventKey.new()
+	esc.pressed = true
+	esc.keycode = KEY_ESCAPE
+	hud._unhandled_input(esc)  # closes the preview (BACK, one step)
+	await _settle()
+	hud._unhandled_input(esc)  # cancels the armed feint
+	await _settle()
+	_check("read-risk: esc cleared the armed feint", hud._armed.is_empty())
+
+	# 27) PRESSURE-VALVE ANNOUNCES (decision #27 -> broadcast): fresh controller
+	#     with the dodge STRIPPED (capture_states' documented driver-side spec
+	#     choice — deterministic scripted hits) and the REAL PausedClockDriver
+	#     attached, so END TURN runs the boss's decide inside advance_moment and
+	#     the beat events land DURING _on_end_turn — proving the loud lines
+	#     outrank the generic END TURN flavor exactly like the feint payoff.
+	await _teardown_hud()
+	_stand_up_fresh("SmokeControllerValve", true, true)
+	await _settle()
+	gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
+		"kind": "attack", "cost": 1, "damage": {"type": "bleeding", "amount": 10},
+		"attack_range": 1, "targets": [{"id": "boss", "part": "right_hand"}]}})
+	hud._on_end_turn()
+	await _settle()
+	_check("valve: boss breached", bool(_row("boss").get("breached", false)))
+	gc.apply_command({"type": "declare_action", "actor": "imani", "action": {
+		"kind": "attack", "cost": 1, "damage": {"type": "crushed", "amount": 9},
+		"attack_range": 1, "targets": [{"id": "boss", "part": "network"}]}})
+	gc.apply_command({"type": "declare_action", "actor": "dario", "action": {
+		"kind": "attack", "cost": 1, "damage": {"type": "crushed", "amount": 9},
+		"attack_range": 1, "targets": [{"id": "boss", "part": "network"}]}})
+	hud._on_end_turn()
+	await _settle()
+	var vnet := -1
+	for pd in _row("boss").get("parts", []):
+		if String((pd as Dictionary).get("key", "")) == "network":
+			vnet = int((pd as Dictionary).get("hp", -1))
+	_check("valve: network at the valve threshold (<= 35)", vnet >= 0 and vnet <= 35)
+	var telegraph_seen := false
+	for i in 5:
+		hud._on_end_turn()
+		await _settle()
+		if _log_has("explosion_telegraph"):
+			telegraph_seen = true
+			break
+	_check("valve: explosion_telegraph reached the log", telegraph_seen)
+	var tele_line := _log_line("explosion_telegraph")
+	_check("valve: telegraph line is the broadcast copy",
+		tele_line.contains("STEAM SCREAMS") and tele_line.contains("RUN."))
+	_check("valve: ticker keeps the telegraph over the END TURN line",
+		String(hud._shell.ticker._line.text).contains("STEAM SCREAMS"))
+	await _render("smoke_valve_telegraph.png")
+	var blast_seen := false
+	for i in 5:
+		hud._on_end_turn()
+		await _settle()
+		if _log_has("explosion_blast"):
+			blast_seen = true
+			break
+	_check("valve: explosion_blast reached the log", blast_seen)
+	_check("valve: blast line is the broadcast copy",
+		_log_line("explosion_blast").contains("THE VALVE BLOWS"))
+	var ko_lines: Array = []
+	for ed in hud._event_log:
+		if String((ed as Dictionary).get("type", "")) == "explosion_knockout":
+			ko_lines.append(String((ed as Dictionary).get("line", "")))
+	var ko_ok := not ko_lines.is_empty()
+	for kl in ko_lines:
+		if not (String(kl).contains("OUT COLD") and String(kl).contains("2 Clocks")):
+			ko_ok = false
+	_check("valve: per-victim knockout copy (OUT COLD / 2 Clocks)", ko_ok)
+	var ko_all := " | ".join(PackedStringArray(ko_lines))
+	_check("valve: both victims named", ko_all.contains("IMANI") and ko_all.contains("DARIO"))
+	_check("valve: breach reset announce (RETREATS deeper)",
+		_log_line("breach_reset").contains("RETREATS deeper"))
+	_check("valve: ticker holds a valve line over the generic flavor",
+		String(hud._shell.ticker._line.text).contains("RETREATS deeper"))
+	await _render("smoke_valve_blast.png")
+
 	print("")
 	if failures.is_empty():
 		print("UI SMOKE: all probes held")
@@ -579,6 +749,75 @@ func _schedule_has(actor: String, key: String, require_windup := false) -> bool:
 			if not require_windup or bool(r.get("windup", false)):
 				return true
 	return false
+
+
+## One combatant's view row off the CURRENT controller (ground truth, read-only).
+func _row(id: String) -> Dictionary:
+	for cd in gc.view_combatants():
+		if String((cd as Dictionary).get("id", "")) == id:
+			return cd
+	return {}
+
+
+func _log_has(event_type: String) -> bool:
+	return _log_line(event_type) != ""
+
+
+## The LATEST logged line for an event type ("" when none reached the log).
+func _log_line(event_type: String) -> String:
+	var line := ""
+	for ed in hud._event_log:
+		if String((ed as Dictionary).get("type", "")) == event_type:
+			line = String((ed as Dictionary).get("line", ""))
+	return line
+
+
+## Fresh controller + HUD for the quick-win sections (capture_states' per-stage
+## idiom). strip_dodge is the documented driver-side spec choice (deterministic
+## scripted hits — never an engine edit); attach_driver wires the REAL
+## PausedClockDriver exactly like scenes/main.gd, so END TURN runs the boss's
+## decide inside advance_moment.
+func _stand_up_fresh(cname: String, strip_dodge: bool, attach_driver: bool) -> void:
+	gc = GameControllerScript.new()
+	gc.name = cname
+	root_node.add_child(gc)
+	gc.start_combat(SEED)
+	var combatant: Dictionary = {
+		"id": "boss", "name": "Incine-Dile", "enemy": "incinedile",
+		"team": "enemies", "position": [0, 0]}
+	if strip_dodge:
+		var boss_traits: Dictionary = {}
+		var enemies: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/enemies.json"))
+		for entry in enemies as Array:
+			if String((entry as Dictionary).get("key", "")) == "incinedile":
+				boss_traits = ((entry as Dictionary).get("traits", {}) as Dictionary).duplicate(true)
+		boss_traits.erase("dodge_threshold")
+		boss_traits.erase("dodge_threshold_note")
+		combatant["boss_traits"] = boss_traits
+	gc.apply_command({"type": "add_combatant", "combatant": combatant})
+	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [1, 0],
+		{"skills": IMANI_SKILLS})
+	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [0, 1],
+		{"skills": DARIO_SKILLS})
+	if attach_driver:
+		var driver := PausedClockDriver.new()
+		driver.attach(gc)
+		driver.set_party(["imani", "dario"] as Array[String])
+		gc.set_clock_driver(driver)
+	hud = HUD_SCENE.instantiate()
+	root_node.add_child(hud)
+	hud.bind(gc)
+
+
+func _teardown_hud() -> void:
+	root_node.remove_child(hud)
+	hud.queue_free()
+	hud = null
+	root_node.remove_child(gc)
+	gc.queue_free()
+	gc = null
+	await process_frame
+	await process_frame
 
 
 ## True when any Label under `node` contains `needle` (panel-content probe).
