@@ -40,9 +40,13 @@ func ai_decide(sim: CombatSim, id: String) -> Array[Dictionary]:
 	return sim.apply_command({"type": "ai_decide", "actor": id})
 
 
-func feint(sim: CombatSim, actor: String, target: String) -> Array[Dictionary]:
+## Level picks the R24 read threshold (4 + level): the mockery tests below
+## choose a level whose read is IMPOSSIBLE for the target's Mind, so the LANDED
+## feint path under test stays deterministic and rng-free (the read paths
+## themselves live in tests/test_feint_read.gd).
+func feint(sim: CombatSim, actor: String, target: String, level: int = 1) -> Array[Dictionary]:
 	declare(sim, actor, {
-		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
+		"kind": "skill", "key": "feint", "level": level, "attack_range": 1,
 		"targets": [{"id": target, "part": "torso"}],
 	})
 	return advance(sim, 1)
@@ -273,25 +277,28 @@ func test_feint_mockery_is_personality_gated() -> void:
 	feint(sim2, "trick", "mob")
 	assert_eq(score(sim2, "mob", "trick"), 5.0, "authored mock_grudge honored")
 	# mock_sensitive DEFAULTS from Mind >= 3 when unauthored (the intelligence gate).
+	# L4 feint (R24 threshold 8): Mind 3 + d4 max 7 < 8 — the read is impossible,
+	# so the LANDED-feint grudge path under test fires deterministically.
 	var sim3: CombatSim = make_sim()
 	add_human(sim3, "trick", {"team": "party", "position": [1, 0]})
 	add_tanky_mob(sim3, "clever", {"traits": {"physique": 1, "reflexes": 2, "mind": 3, "charm": 0}})
 	assert_true((sim3.combatants["clever"] as CombatantState).personality_mock_sensitive(),
 		"Mind 3 with no authored personality derives mock-sensitive")
-	feint(sim3, "trick", "clever")
+	feint(sim3, "trick", "clever", 4)
 	assert_eq(score(sim3, "clever", "trick"), 2.0, "the clever mob gets the insult")
 
 
 func test_incinedile_is_too_dim_for_mockery() -> void:
 	# Mind 1, authored mock_sensitive false — the boss gains NOTHING from a
-	# Feint (it remembers pain, not words).
+	# Feint (it remembers pain, not words). L3 = the canonical R24 case: Mind 1
+	# + d4 max 5 < threshold 7 — the read is impossible, the feint always lands.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "trick", {"team": "party", "position": [1, 0]})
 	add_enemy(sim, "boss", "incinedile")
 	var boss: CombatantState = sim.combatants["boss"]
 	assert_false(boss.personality_mock_sensitive(), "authored mock_sensitive false (Mind 1)")
 	assert_eq(boss.personality_decay(), 1.0, "and decay 1.0 — it remembers pain")
-	var mocked: Array[Dictionary] = feint(sim, "trick", "boss")
+	var mocked: Array[Dictionary] = feint(sim, "trick", "boss", 3)
 	assert_event(mocked, "feint_applied", "the feint itself still lands (feint_forced)")
 	assert_no_event(mocked, "antagonism_changed", "no grudge from words")
 	assert_true(boss.antagonism.is_empty(), "the boss's ledger stays empty")

@@ -1499,10 +1499,16 @@ func _momus(text: String) -> void:
 
 
 ## Broadcast-voice announce for the PAYOFF events the skill-feel pass surfaces
-## loudly (feint fallout / knockdown / standing back up). "" for every other
-## event type — the generic _event_line handles those.
+## loudly (feint fallout / feint read / knockdown / standing back up). "" for
+## every other event type — the generic _event_line handles those.
 func _broadcast_announce(e: Dictionary) -> String:
 	match String(e.get("type", "")):
+		"feint_read":
+			# R24: the Mind counter lands — the read is a beat, not a badge
+			# (nothing armed on the reader; the feinter's Moment is just gone).
+			return "%s READS the feint — %s's trick wastes the Moment!" % [
+				_display_name_for(String(e.get("reader", ""))).to_upper(),
+				_display_name_for(String(e.get("feinter", ""))).to_upper()]
 		"feint_fallout":
 			var what := String(e.get("key", ""))
 			if what == "":

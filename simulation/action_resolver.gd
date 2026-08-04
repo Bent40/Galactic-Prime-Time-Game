@@ -1115,21 +1115,38 @@ func _resolve_self_guard(actor: CombatantState, action: Dictionary, spec: Dictio
 
 ## setup_debuff (feint): no damage. Flags the target so its next resolved action
 ## collapses into a Forced Action – Tool; the actor repositions up to 1 free.
+## R24: the spec's read_threshold first asks the DEFENDER's Mind through the R22
+## threshold machinery (EnemyAI.check_feint_read). A READ feint is WASTED —
+## nothing arms on the reader, the feinter's Moment is spent normally (the
+## action resolves as a read, not a rejection) — and the reader adds mock-grudge
+## (R23: passing the Mind gate IS getting the insult), replacing the
+## mock_sensitive gate that still governs LANDED feints unchanged. A spec
+## without read_threshold (non-feint setup skills) is never readable.
 func _resolve_setup_debuff(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var target: CombatantState = _first_target(action)
 	events.append_array(_free_reposition(actor, action, int(spec.get("reposition", 1)), "feint_reposition"))
 	if target != null and target.alive:
-		target.feint_forced = true
-		target.feint_by = actor.id  # attribution for the feint_fallout payoff event
-		events.append({"type": "feint_applied", "actor": actor.id, "target": target.id})
-		# R23: the Feint is the one taunt-shaped act — an AI target whose
-		# personality is mock-SENSITIVE (authored, default Mind >= 3) takes the
-		# insult personally and earns mock_grudge toward the mocker. A creature
-		# too dim to parse the insult (incinedile, Mind 1) gains nothing.
-		if target.personality_mock_sensitive():
+		var read: Dictionary = ai.check_feint_read(target, int(spec.get("read_threshold", 0)))
+		if bool(read.get("read", false)):
+			events.append({
+				"type": "feint_read", "reader": target.id, "feinter": actor.id,
+				"threshold": int(read["threshold"]), "mind": int(read["mind"]),
+				"die": int(read["die"]), "roll": int(read["roll"]), "auto": bool(read["auto"]),
+			})
 			events.append_array(EnemyAI.add_antagonism(
 				target, actor.id, target.personality_mock_grudge(), "mockery"))
+		else:
+			target.feint_forced = true
+			target.feint_by = actor.id  # attribution for the feint_fallout payoff event
+			events.append({"type": "feint_applied", "actor": actor.id, "target": target.id})
+			# R23: the Feint is the one taunt-shaped act — an AI target whose
+			# personality is mock-SENSITIVE (authored, default Mind >= 3) takes the
+			# insult personally and earns mock_grudge toward the mocker. A creature
+			# too dim to parse the insult (incinedile, Mind 1) gains nothing.
+			if target.personality_mock_sensitive():
+				events.append_array(EnemyAI.add_antagonism(
+					target, actor.id, target.personality_mock_grudge(), "mockery"))
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
 		"key": String(action.get("key", "feint")), "result": "ok", "rounds": 0})
 	return events
