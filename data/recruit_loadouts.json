@@ -1,0 +1,61 @@
+{
+  "_meta": {
+    "note": "PROVISIONAL — RECRUIT PREMADES AWAITING OWNER REVIEW (KAN-4). Owner-approved concept Q68: player OC + Sasha & Nikita recruitment encounters, party of 3. These are the two recruitable premades as full combatant loadouts. NOT yet canon: every number (trait spreads, skill levels, Camera Call stacks) is PLACEHOLDER (R14) and the personas/bits are draft copy — the owner may rewrite freely. Schema mirrors data/demo_loadouts.json EXACTLY (no new keys); skills draw ONLY from the six implemented demo-slice skills (simulation/skill_book.gd KNOWN_KEYS) — nothing aspirational. Neither recruit takes the R16 cap trade: the 4th background skill slot is left OPEN for the owner (do not over-invest in canon, §RULED item 9).",
+    "schema": "loadout: { id, key, display_name, broadcast_persona, bit? { key, name, line } (decision log #25 — AUTHORED signature bit; OPTIONAL: not everyone has one, the sim rejects the_bit from an actor without it), race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], rewireable, notes }"
+  },
+  "loadouts": [
+    {
+      "id": 3,
+      "key": "sasha_the_tell",
+      "display_name": "Sasha \"The Tell\" Marchenko",
+      "broadcast_persona": "The oddsmaker's nightmare — a casino floor manager who counted cards on her own abductors; she calls an opponent's move before they make it, and the table never sees her bet coming.",
+      "race": 1,
+      "traits": {
+        "physique": 3,
+        "reflexes": 4,
+        "mind": 5,
+        "charm": 2,
+        "_placeholder": "All trait values PLACEHOLDER (R14). Creation-legal 7 Body / 7 Core, max 5 per trait. Mind 5 is the point of the build (R24 mirror): she AUTO-reads an L1 feint (threshold 5, no roll, no rng) and gets a real d4 read against L2-L3 feints — the party's counter-intelligence, and the natural home for aura/support play later. Charm 2 is deliberate: she works the odds, not the crowd (contrast Dario's Charm 5)."
+      },
+      "skills": [
+        { "id": 26, "key": "feint", "level": 2 },
+        { "id": 8, "key": "brace", "level": 2 },
+        { "id": 4, "key": "strong_strike", "level": 1 }
+      ],
+      "camera_call_stacks": 1,
+      "chosen_patron": 5,
+      "tags": [],
+      "rewireable": true,
+      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: Mind-leaning reader/setup — fills the party gap neither demo covers (Imani tanks on Physique 5, Dario tricks on Reflexes/Charm 5/5; nobody fields Mind 5). She reads enemy feints per R24 (Mind 5 auto-reads the L1 threshold of 5), throws her own L2 feints (read threshold 6 — harder to counter than L1) to arm partners' follow-ups, and holds a line with Brace when the plan goes sideways. NO authored bit (decision #25 — not everyone has one): Sasha's whole act is that she never performs; she reads the room instead of playing it — mirrors the Imani/Dario has-bit/no-bit variety. chosen_patron 5 = tyche (fortune/debt/trickery — the house always knows the odds). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
+    },
+    {
+      "id": 4,
+      "key": "nikita_headliner",
+      "display_name": "Nikita \"Headliner\" Volkov",
+      "broadcast_persona": "The show-off who backs it up — a circus strongman who flexes for the drones between hits and guards his partners like the act depends on it, because it does.",
+      "bit": {
+        "key": "the_pose",
+        "name": "The Pose",
+        "line": "Nikita hits a competition pose the moment blood is drawn — the drones always find him."
+      },
+      "race": 1,
+      "traits": {
+        "physique": 4,
+        "reflexes": 3,
+        "mind": 3,
+        "charm": 4,
+        "_placeholder": "All trait values PLACEHOLDER (R14). Creation-legal 7 Body / 7 Core, max 5 per trait. Deliberately BALANCED 4/3/3/4 — the flexible second body the roster lacks: Physique 4 gives a real Force push (+2) without duplicating Imani's 5, Reflexes 3 keeps a rolled dodge alive against the seeded dash ladder, Mind 3 means he is not free to feint (R24: an L1 feint gets a d4 read off him), Charm 4 keeps the showman credible without matching Dario."
+      },
+      "skills": [
+        { "id": 4, "key": "strong_strike", "level": 2 },
+        { "id": 27, "key": "pressure_strike", "level": 1 },
+        { "id": 8, "key": "brace", "level": 2 }
+      ],
+      "camera_call_stacks": 1,
+      "chosen_patron": 1,
+      "tags": [],
+      "rewireable": true,
+      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: balanced bruiser-support/showman — real merged-force contribution (Strong Strike Force 6+2=8 links with Imani for R15 breach math), a follow-up Pressure Strike that cashes in a PARTNER's feint (the resolve-time feint_forced gate is cross-character today — Sasha feints, Nikita collects the Shock rider; FLAG for the owner: if the ladder pass later encodes Pressure Strike's documented actor-local CHAIN prime, his kit needs his own feint first), and Brace L2 as the support piece. AUTHORED bit (decision #25): The Pose — he is showfolk to the bone; one bit between the two recruits mirrors the Imani/Dario variety. chosen_patron 1 = ares (melee/war — the crowd chants his name). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
+    }
+  ]
+}
