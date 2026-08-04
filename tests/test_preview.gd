@@ -17,6 +17,11 @@ extends SimTestBase
 ##      disappear once the entry resolves; combo members carry their combo_id.
 ##   5. A merged combo preview sums connected Forces and matches the real
 ##      combined_force event in a twin sim.
+##   6. The R24 feint READ-RISK keys (read_outcome / read_threshold / read_mind /
+##      read_die / read_roll_needed / read_possible) mirror check_feint_read's
+##      exact ladder from the SAME fields — computed for any target with stats
+##      (the read asks the DEFENDER), rng-untouched, and absent-shaped ("" / 0)
+##      on actions whose spec carries no read_threshold.
 
 const SEED := 21
 
@@ -251,3 +256,90 @@ func test_merged_combo_preview_matches_combined_force() -> void:
 	a.apply_command({"type": "combined_action", "members": members})
 	advance(a)
 	assert_eq(a.state_hash(), b.state_hash(), "preview left no trace — twin hashes agree")
+
+
+# ------------------------------------------------------ 6. feint read-risk keys
+
+func _feint_action(target_id: String, part: String, level: int = 3) -> Dictionary:
+	return {"kind": "skill", "key": "feint", "level": level,
+		"attack_range": 1, "targets": [{"id": target_id, "part": part}]}
+
+
+func test_feint_preview_reports_all_three_read_classes() -> void:
+	# The R24 ladder off the DEFENDER's Mind, previewed for the L3 feint
+	# (threshold 4 + 3 = 7): Mind 7 auto-reads, Mind 4 rolls (needs 3+ on the
+	# default d4), Mind 1 is impossible (1 + 4 < 7). Targets are plain HUMANS —
+	# the read asks stats, never category, and so must the preview.
+	var sim: CombatSim = make_sim(SEED)
+	add_human(sim, "trick", {"team": "party", "position": [1, 1]})
+	add_human(sim, "sage", {"team": "enemies", "position": [1, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 7, "charm": 3}})
+	add_human(sim, "elite", {"team": "enemies", "position": [0, 1],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 4, "charm": 3}})
+	add_human(sim, "dim", {"team": "enemies", "position": [2, 0],
+		"traits": {"physique": 3, "reflexes": 3, "mind": 1, "charm": 3}})
+	assert_eq(int(SkillBook.mechanics("feint", 3).get("read_threshold", 0)), 7,
+		"the spec authority: L3 read threshold is 7")
+	var actor: CombatantState = sim.combatants["trick"]
+	var sage: Dictionary = (sim.resolver.preview_action(actor, _feint_action("sage", "torso"))
+		.get("per_target", []) as Array)[0]
+	assert_eq(String(sage.get("read_outcome", "")), "auto_read", "Mind 7 >= 7 previews auto_read")
+	assert_true(bool(sage.get("read_possible", false)), "auto_read is read_possible")
+	assert_eq(int(sage.get("read_threshold", 0)), 7, "threshold from the spec at the actor's level")
+	assert_eq(int(sage.get("read_mind", 0)), 7, "the DEFENDER's Mind")
+	assert_eq(int(sage.get("read_die", 0)), 4, "the DEFENDER's mind threshold die (default d4)")
+	assert_eq(int(sage.get("read_roll_needed", -1)), 0, "auto_read needs no roll")
+	var elite: Dictionary = (sim.resolver.preview_action(actor, _feint_action("elite", "torso"))
+		.get("per_target", []) as Array)[0]
+	assert_eq(String(elite.get("read_outcome", "")), "roll_needed", "Mind 4 + d4 covers 7 — rolls")
+	assert_true(bool(elite.get("read_possible", false)), "roll_needed is read_possible")
+	assert_eq(int(elite.get("read_roll_needed", 0)), 3, "reads on 3+ (threshold 7 - Mind 4)")
+	var dim: Dictionary = (sim.resolver.preview_action(actor, _feint_action("dim", "torso"))
+		.get("per_target", []) as Array)[0]
+	assert_eq(String(dim.get("read_outcome", "")), "impossible", "Mind 1 + d4 max 5 < 7 — impossible")
+	assert_false(bool(dim.get("read_possible", true)), "an impossible read is not read_possible")
+	# The threshold follows the ACTOR'S LEVEL: at L1 (threshold 5) the dim
+	# target's ladder shifts to roll_needed (1 + 4 >= 5, needs the full 4).
+	var dim_l1: Dictionary = (sim.resolver.preview_action(actor, _feint_action("dim", "torso", 1))
+		.get("per_target", []) as Array)[0]
+	assert_eq(int(dim_l1.get("read_threshold", 0)), 5, "L1 threshold 4 + 1 = 5")
+	assert_eq(String(dim_l1.get("read_outcome", "")), "roll_needed", "the same Mind now rolls")
+	assert_eq(int(dim_l1.get("read_roll_needed", 0)), 4, "and needs the full 4")
+	# A non-feint action carries the absent shape — no invented read risk.
+	var strike: Dictionary = (sim.resolver.preview_action(actor, _strong_strike("elite", "torso"))
+		.get("per_target", []) as Array)[0]
+	assert_eq(String(strike.get("read_outcome", "x")), "", "no read_threshold on the spec -> outcome empty")
+	assert_eq(int(strike.get("read_threshold", -1)), 0, "threshold 0 on a non-feint action")
+	assert_false(bool(strike.get("read_possible", true)), "and never read_possible")
+
+
+func test_feint_preview_is_pure_and_consumes_no_rng() -> void:
+	# PURITY, twin-RNG proven: the preview must read the same fields
+	# check_feint_read reads WITHOUT rolling. Direct pin first (ai_rng.state +
+	# state_hash unchanged, identical dicts), then the lockstep twin: sim A
+	# previews around every feint while both resolve ROLLED reads (Mind 4 vs
+	# threshold 7 always consumes the read d4 at resolve) — one draw stolen by
+	# a preview would split the read outcomes and the hashes.
+	var a: CombatSim = make_sim(SEED)
+	var b: CombatSim = make_sim(SEED)
+	for sim: CombatSim in [a, b]:
+		add_human(sim, "trick", {"team": "party", "position": [1, 0]})
+		add_human(sim, "elite", {"team": "enemies", "position": [0, 1],
+			"traits": {"physique": 3, "reflexes": 3, "mind": 4, "charm": 3}})
+	var probe: Dictionary = _feint_action("elite", "torso")
+	var rng_before: int = a.ai.ai_rng.state
+	var hash_before: String = a.state_hash()
+	var p1: Dictionary = a.resolver.preview_action(a.combatants["trick"], probe)
+	var p2: Dictionary = a.resolver.preview_action(a.combatants["trick"], probe)
+	assert_eq(CombatSim.canonical_serialize(p1), CombatSim.canonical_serialize(p2),
+		"two identical previews return identical dicts")
+	assert_eq(a.ai.ai_rng.state, rng_before, "the read preview consumes NO ai rng")
+	assert_eq(a.state_hash(), hash_before, "the read preview mutates NOTHING")
+	for i: int in range(6):
+		a.resolver.preview_action(a.combatants["trick"], probe)
+		declare(a, "trick", _feint_action("elite", "torso"))
+		declare(b, "trick", _feint_action("elite", "torso"))
+		a.resolver.preview_action(a.combatants["trick"], probe)
+		advance(a)
+		advance(b)
+		assert_eq(a.state_hash(), b.state_hash(), "lockstep hash after feint round %d" % i)

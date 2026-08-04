@@ -6,8 +6,12 @@ extends PanelContainer
 ## resistances line is a placeholder. The set-off ACTIVE STATUS section
 ## (status-prominence pass) fronts the condition tiers + state flags as a badge
 ## row above the part list — the facade aggregates over VISIBLE parts only, so
-## the masking holds here too. While an action is armed, part rows become
-## clickable and emit part_clicked(part_key) to pick the TARGET part.
+## the masking holds here too. The ATTENTION section (R23 grudge ledger,
+## broadcast voice) renders an AI combatant's pre-sorted grudge rows — who it
+## has learned to hate is WATCHABLE behavior, not hidden info; it reveals
+## nothing about anatomy, and an empty ledger omits the section entirely.
+## While an action is armed, part rows become clickable and emit
+## part_clicked(part_key) to pick the TARGET part.
 ## Dumb component: renders the display dict it is handed.
 
 signal part_clicked(part_key: String)
@@ -21,6 +25,8 @@ var _kind_lab: Label
 var _status_lab: Label
 var _badge_panel: PanelContainer
 var _badge_flow: HFlowContainer
+var _attn_panel: PanelContainer
+var _attn_rows: VBoxContainer
 var _armed_lab: Label
 var _rows: VBoxContainer
 var _foot_lab: Label
@@ -74,6 +80,21 @@ func _ensure_built() -> void:
 	bv.add_child(_badge_flow)
 	v.add_child(_badge_panel)
 
+	# ATTENTION — R23 grudge ledger (broadcast voice): who this creature has
+	# learned to hate, loudest first. Hidden entirely on an empty ledger.
+	_attn_panel = PanelContainer.new()
+	_attn_panel.add_theme_stylebox_override("panel",
+		UI.sb(UI.col(UI.PANEL2), UI.col(UI.BORDER), 4))
+	var am := UI.margin(8, 8, 5, 5)
+	_attn_panel.add_child(am)
+	var av := UI.vbox(4)
+	am.add_child(av)
+	av.add_child(UI.lab("ATTENTION — WHO IT HATES", UI.body(), 8, UI.col(UI.MUTED), 3.0, true))
+	_attn_rows = UI.vbox(3)
+	av.add_child(_attn_rows)
+	_attn_panel.visible = false
+	v.add_child(_attn_panel)
+
 	_armed_lab = UI.lab("", UI.body(), 9, UI.col(UI.GOLD), 1.0, true)
 	_armed_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_armed_lab.visible = false
@@ -94,6 +115,8 @@ func _ensure_built() -> void:
 
 ## data: {name, emoji, kind_line, status_line,
 ##        status_badges: [{text, color: Color}], armed_line ("" = not armed),
+##        attention_rows: [{name, share (0..1, pre-normalized), score_text}]
+##                        — pre-sorted grudge ledger rows; [] omits the section,
 ##        parts: [{key, label, hp_text ("" = masked), ratio (-1 = unknown),
 ##                 conds: [{text, color: Color}], muted: bool, targetable: bool}],
 ##        foot_line}
@@ -115,6 +138,12 @@ func update(data: Dictionary) -> void:
 		# honest empty state — the section stays discoverable, never fakes a badge
 		_badge_flow.add_child(UI.lab("— NONE —", UI.body(), 8, UI.col(UI.MUTED), 1.5))
 	_badge_panel.visible = not data.get("parts", []).is_empty() or not badges.is_empty()
+	for ch in _attn_rows.get_children():
+		ch.queue_free()
+	var attention: Array = data.get("attention_rows", [])
+	for ad in attention:
+		_attn_rows.add_child(_attention_row(ad))
+	_attn_panel.visible = not attention.is_empty()
 	var armed_line := String(data.get("armed_line", ""))
 	_armed_lab.text = armed_line
 	_armed_lab.visible = armed_line != ""
@@ -125,6 +154,31 @@ func update(data: Dictionary) -> void:
 		_rows.add_child(_part_row(pd, armed))
 	_foot_lab.text = String(data.get("foot_line", ""))
 	_foot_lab.visible = _foot_lab.text != ""
+
+
+## One ATTENTION row: opponent name + the relative grudge share as a small bar
+## (share pre-normalized to the ledger's max), exact score as secondary mono
+## text. Same bar substrate as the part-row HP bars, grudge-red fill.
+func _attention_row(a: Dictionary) -> Control:
+	var v := UI.vbox(1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var top := UI.hbox(6)
+	var nl := UI.lab(String(a.get("name", "")), UI.body(), 9, UI.col(UI.TEXT), 0.5, true)
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	top.add_child(nl)
+	top.add_child(UI.lab(String(a.get("score_text", "")), UI.mono(), 9, UI.col(UI.MUTED), 0.0))
+	v.add_child(top)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size.y = 4
+	bar.max_value = 1.0
+	bar.value = clampf(float(a.get("share", 0.0)), 0.0, 1.0)
+	bar.add_theme_stylebox_override("background", UI.sb(UI.col("#060912"), UI.col("#060912"), 2, 0))
+	var rc := UI.col(UI.DANGER)
+	bar.add_theme_stylebox_override("fill", UI.sb(rc, rc, 2, 0))
+	v.add_child(bar)
+	return v
 
 
 func _part_row(p: Dictionary, armed: bool) -> Control:

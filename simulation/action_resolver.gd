@@ -238,7 +238,18 @@ func _has_status(c: CombatantState, status: String) -> bool:
 ##                 dodge_possible: bool, dodge_threshold: int,
 ##                 dodge_reflexes: int, dodge_die: int,
 ##                 dodge_outcome: "" | "ineligible" | "auto_dodge" | "roll_needed" | "impossible",
-##                 dodge_roll_needed: int (0 unless roll_needed)}]
+##                 dodge_roll_needed: int (0 unless roll_needed),
+##                 read_possible: bool, read_threshold: int,
+##                 read_mind: int, read_die: int,
+##                 read_outcome: "" | "ineligible" | "auto_read" | "roll_needed" | "impossible",
+##                 read_roll_needed: int (0 unless roll_needed)}]
+##                The read_* keys are the R24 feint-read UNCERTAINTY (the Mind
+##                counter): computed from the SAME fields check_feint_read reads
+##                — the spec's read_threshold at the actor's level, the
+##                DEFENDER's Mind and mind threshold die — never rolled. A
+##                non-feint action (no read_threshold on its spec) carries
+##                outcome "" / threshold 0. Stats, never category: any target
+##                with a Mind previews honestly.
 ##   merged: {force, robustness, net} — only when the action carries a
 ##           "combo_members" combined-preview request (see below).
 ##
@@ -338,6 +349,30 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 			dodge_roll_needed = threshold - dodge_reflexes
 		else:
 			dodge_outcome = "impossible"
+	# Feint read UNCERTAINTY (R24) — the exact fields + ladder check_feint_read
+	# evaluates at resolve (threshold from the SkillBook spec at the actor's
+	# level; the DEFENDER's Mind + mind threshold die), NEVER rolled, no rng.
+	# Additive keys only; the eligibility gate mirrors check_feint_read's own
+	# (threshold > 0, target alive and in play — stats, never category).
+	var read_threshold: int = 0
+	if String(action.get("kind", "attack")) == "skill":
+		read_threshold = int(SkillBook.mechanics(String(action.get("key", "")),
+			int(action.get("level", 1))).get("read_threshold", 0))
+	var read_eligible: bool = read_threshold > 0 and target.alive and not target.removed_from_play
+	var read_mind: int = target.trait_total("mind")
+	var read_die: int = target.threshold_die("mind")
+	var read_outcome: String = ""
+	var read_roll_needed: int = 0
+	if read_threshold > 0:
+		if not read_eligible:
+			read_outcome = "ineligible"
+		elif read_mind >= read_threshold:
+			read_outcome = "auto_read"
+		elif read_mind + read_die >= read_threshold:
+			read_outcome = "roll_needed"
+			read_roll_needed = read_threshold - read_mind
+		else:
+			read_outcome = "impossible"
 	return {
 		"id": target_id,
 		"part": part_key,
@@ -353,6 +388,12 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 		"dodge_die": dodge_die,
 		"dodge_outcome": dodge_outcome,
 		"dodge_roll_needed": dodge_roll_needed,
+		"read_possible": read_eligible and read_outcome != "impossible",
+		"read_threshold": read_threshold,
+		"read_mind": read_mind,
+		"read_die": read_die,
+		"read_outcome": read_outcome,
+		"read_roll_needed": read_roll_needed,
 	}
 
 
