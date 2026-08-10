@@ -250,6 +250,24 @@ def main() -> int:
         check_body_parts("races.json", r.get("key", "?"), r.get("body_parts"), need_lethal=True)
         if r.get("size") not in SIZES:
             fail("races.json", f"{r.get('key')}: size {r.get('size')!r} not in {sorted(SIZES)}")
+        # R21 reconciliation item 2 (rules-addendum R21; simulation/creation.gd
+        # builds contestants off these plans): every layout needs a
+        # torso-equivalent + head-equivalent so torso/head-routed conditions
+        # (suffocation/exhausted/infected -> "torso", dissolution -> "head";
+        # data/conditions.json target_body_parts) have a landing part. Checked
+        # the way the ENGINE actually detects them: ConditionEngine's
+        # _equivalent_part fallback asks for the EXACT key "torso"; head
+        # detection is the "head" substring (ActionResolver._has_head /
+        # lethal_if_head). A future plan keyed differently must teach the
+        # engine and this check together.
+        part_keys = [p.get("key", "") for p in (r.get("body_parts") or [])
+                     if isinstance(p, dict)]
+        if "torso" not in part_keys:
+            fail("races.json", f"{r.get('key')}: no 'torso' part — torso-routed "
+                               "conditions have no landing part (R21)")
+        if not any("head" in k for k in part_keys):
+            fail("races.json", f"{r.get('key')}: no head-equivalent part — "
+                               "dissolution/head routing has no landing part (R21)")
 
     # enemies
     check_unique("enemies.json", enemies, "key")
