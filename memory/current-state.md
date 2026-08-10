@@ -1,60 +1,62 @@
 # Current State
 
 <!-- wf memory: required sections below; keep the headings. -->
-<!-- Last refreshed 2026-07-20 (post loop + KAN-2 sittings + repo audit). -->
+<!-- Last refreshed 2026-07-25 (post 4-fix batch + KAN-4 engine + wave 2). -->
 
 ## Done
 
-- **The slice is a real, uninterrupted runtime loop (2026-07-20):**
-  **Title → Bid → Combat → Verdict → New Run**. Boots to a title screen; the
-  Incine-Dile **fights back** (enemy AI wired into the turn loop via the
-  PausedClockDriver + `advance_moment`); combat-over detection (`combat_status` /
-  `combat_ended`, WIN=no live enemies / LOSS=no live party) transitions to the
-  verdict; the verdict restarts a run. Window is responsive (canvas_items stretch).
-- **Per-skill mechanics un-stubbed (KAN-2):** model-side `simulation/skill_book.gd`
-  maps skill key+level → a structured spec; `ActionResolver` dispatches 5 archetypes
-  (committed_strike / self_guard / setup_debuff / conditional_followup / self_stance).
-  The **6 demo skills** (strong_strike, overhead_slam, brace, feint, pressure_strike,
-  dance) are faithfully implemented with their authored numbers. The other 37 fall
-  back to a generic strike (content pass later).
-- **The 3 KAN-2 design sittings DECIDED + formalized (2026-07-20):** S2.1 priming
-  vocabulary (5 canonical prime types; reactions stance-gated), S2.2 R13 shock
-  (event-model finalized), S2.3 R14 numbers (`damage = max(0, Force − Robustness)`).
-  Recorded in `rules-addendum.md` R3/R13/R14 + `decision-log.md` #20–22.
-  **Engine IMPLEMENTATION of all three is PENDING** (the current dev task).
-- **Repo audit done (2026-07-20):** 18 dead stub files deleted; Godot 4.5→4.7 and
-  all test/entity/seed counts reconciled; generated **`STATUS.md`** + `scripts/status.sh`
-  (single-source-of-truth, no more hand-maintained counts); LICENSE (proprietary);
-  3 design PDFs archived to `docs/archive/`; `docs/asset-provenance.md`; patron
-  dataset ruling (decision-log #23).
-- **Test suite: green — see `STATUS.md` for the live count** (177 at last refresh),
-  real Godot 4.7.1. Determinism + save/resume intact throughout.
-- Earlier foundations (all landed): KAN-1 data; KAN-2 core engine + S2.5 combined
-  actions; KAN-3 scaffolding (autoload/signals, DAL, SaveManager, hex renderer,
-  clock driver); enemy AI + Incinedile phase machine; hype/tag/spectacle engines;
-  F2 boss discoverable-win hardening; mythology Waves 0–5 (224 entities); KAN-6
-  HUD + bid + verdict screens.
+- **Suite: 433 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+  gate (seeds · import · suite · slice smoke · balance WIN) at tip `e13d8e2`; branch
+  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep.
+- **The 2026-07-23/25 rulings batch, all implemented** (decision-log #27–31, addendum
+  R22–R25, R11 #19–#20): explosion valves REAL (telegraph → escape → blast → KO =
+  Helpless 2 Clocks → boss keeps fighting — dormancy bug dead); R22 dodge (Reflexes
+  asks, 1d4 fallback, per-stat upgradeable threshold dice; dash = cost-2 windup with
+  the counters ladder); R23 Antagonism engine (proximity × grudge × personality
+  weighted targeting, exact 50/50 anchor, one salted draw); R24 feint-read (Mind
+  counters feints; grudge on the read); skill-feel wins (loud feint fallout, prone
+  boss = no dodge/no cone + real stand-up cost, part-pick everywhere).
+- **Balance truth reset:** the old full-cadence WIN was a dormancy artifact. The
+  harness now plays the real kit (feint denial, valve spread, merged pours) —
+  **WIN t15, zero damage taken** (seed-robust). Feint dominance was found → owner
+  ruled the counter (R24). `feint_reads=0` telemetry pins the regression bar.
+- **KAN-4 engine complete:** run engine (`run_state.gd` — command-stream runs,
+  encounter sequencing, roster carry with cited persists/resets policy, recruit
+  offer/accept/decline), creation engine (`creation.gd` — spec → validated
+  add_combatant, 7/7 trait split, R16 picks + cap-trade), Sasha & Nikita premade
+  data (PROVISIONAL sheets), party-of-3 proven (3-way merged force, no sim changes
+  needed), run persistence (`save_run`/`load_run`, byte-identical round trips),
+  takedown attribution v2 (R11 #14 IMPLEMENTED — kills attribute to the killing
+  blow's author through wound sources).
+- **Wave 2 engine (KAN-2/5 boundary):** real hex geometry (`hex_geometry.gd` —
+  120° cone arcs, dash charge lanes, arc-honest windup escapes), death_spin 3-beat
+  grab sequence + dash knock-aside (R11 #19), Tactical Roll declared-hex dodge +
+  AoE-center rule (R25/G1 canon), Incine-Dile phase upgrades real (R11 #20:
+  drag-grabs, bendable dash lane, permanent P4 network exposure, P5 cone tracking
+  + 2-Moment spin; wall bounces/trash cans pinned inert until KAN-5).
+- **HUD (pre-rework state):** v2 shell + 13 components, status badges/pips, tween
+  movement, part-pick flow, grudge ledger, valve announces, feint read-risk preview;
+  smoke driver 91+ probes; frozen v1 drivers pass unedited. KAN-4 mockups
+  (recruitment beat + creation) rendered at `docs/ux-designs/kan4/`.
 
 ## In progress
 
-- **Implement the 3 decided sittings** — priming engine (5 prime predicates, delete
-  dormant cooldown code, convert the cooldown-texted skills), R13 shock finalization
-  (wire the tier effects + escalation), R14 numbers (force-vs-robustness function +
-  reseed magnitudes as placeholders). This is the active dev work.
+- Nothing in flight. All worktrees cleaned; no orphaned subagents.
 
 ## Next
 
-- **Make the Incine-Dile fight tuned & fun** (review #2): full phase progression,
-  telegraphed breach, 10–20 min pacing.
-- **Evidence-based verdict** (quote the player's actual choices, not hype-band flavor).
-- **Reduce/declutter the HUD** + real art — the "Rework Visuals Properly" epic (#19).
-- Remaining 37 skills' mechanics; CI (pin Godot, run tests/seeds/import); KAN-4 party
-  (real OC creation to replace the hardcoded Imani/Dario fixtures + the Charm-30 hack).
+- **Owner front rework (decision #31):** owner drafts all mockups; we build them
+  against the ready engines. UI decisions from the KAN-4 mockup gate are deferred
+  to that pass.
+- **Owner sign-off batch (PROVISIONAL, implemented-as-written):** phase-5 spin
+  model + cone-tracking ties (R11 #20); Tactical Roll hard-counters valve KOs
+  (R25); recruits join as-is / decline final (#31); Sasha & Nikita sheets + open
+  4th skill slots; boss dodge threshold 4→7; camera stacks 0..1.
+- Engine backlog (unblocked): pack synergy (R15 enemy combos), AI stances
+  (aura_reading), second authored enemy/encounter, keyword tree (G3) + Gemstone
+  mutations in sim data, then KAN-5 arenas (walls/environment un-inert the last
+  two upgrade strings).
 
 ## Blockers
 
-- **None critical.** The three sittings are DECIDED (no longer owner-gated).
-- **Content freeze in effect** (owner 2026-07-20): no new mythology / bosses / patrons
-  (>6) / floors / recruitment / shared-world until the slice proves fun to a stranger.
-- Owner decision items still open (non-blocking): animal-parts sitting (Sasha body
-  plan), telepathy lane confirm, living-religion cultural review before any public build.
+- None. Both open items are owner-paced (mockups; sign-off batch).
