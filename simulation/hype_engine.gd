@@ -31,9 +31,13 @@ extends RefCounted
 ## Scoring lives on the BROADCAST information plane: contestants never "see"
 ## hype directly; presentation surfaces it only through announcer/crowd channels.
 ## All numbers PLACEHOLDER (R14) unless marked canon, pending tuning — including
-## every payout/threshold/deadline in data/crowd_goals.json. Attribution v1
-## credits the combatant the event is about (or its actor) — cross-referencing
-## attackers is a v2 concern (PROVISIONAL, R11 #14).
+## every payout/threshold/deadline in data/crowd_goals.json. Per-event BASE
+## points still ride attribution v1 (credited to the combatant the event is
+## about, or its actor); the TAKEDOWN goal + every goal PAYOUT run attribution
+## v2 (R11 #14, RULED 2026-07-18): a friendly death completes the takedown goal
+## ONLY IF a contestant dealt the killing blow (friendly fire counts — "it's
+## cinema"), enemy deaths still complete it, and the payout is credited to the
+## goal COMPLETER (the killer for takedown), not the maimed victim.
 
 ## PLACEHOLDER flat spectacle points per event type (R14).
 const EVENT_WEIGHTS: Dictionary = {
@@ -87,6 +91,11 @@ var goal_rng := RandomNumberGenerator.new()
 ## tags amplify the spectacle points of matching events attributed to (or
 ## batch-credited to) the holder; null (no tags wired) leaves scoring untouched.
 var tags = null
+## Live combatants ref (R11 #14 v2 team-awareness, NOT serialized — wired by
+## CombatSim like TagEngine/EvidenceEngine's refs). The takedown goal gate
+## reads the victim's team and the killer's category through it; an unwired
+## (empty) dictionary degrades to the strict gate (no contestant, no credit).
+var combatants: Dictionary = {}
 
 
 ## Fresh-sim wiring: goal table + deterministic goal-RNG seed. from_dict
@@ -99,6 +108,11 @@ func setup(goals: Array, sim_seed: int) -> void:
 ## Re-wire path for CombatSim.from_dict (table is static data, never saved).
 func set_goal_table(goals: Array) -> void:
 	goal_table = goals.duplicate(true)
+
+
+## Live-ref wiring (R11 #14 v2) — same pattern as EvidenceEngine.wire.
+func wire(combatants_ref: Dictionary) -> void:
+	combatants = combatants_ref
 
 
 ## Scores one command's event batch; returns hype events to append to the same
@@ -124,16 +138,24 @@ func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 			points = _resonate(events, i, event, points, false)
 			gain += points
 			_credit(event, points)
-		if _goal_completed_by(event):
+		if _goal_completed_by(event, i, events):
 			var payout: int = _spotlit(event, int(active_goal.get("payout", 0)))
 			payout = _resonate(events, i, event, payout, true)
 			gain += payout
-			_credit(event, payout)
+			# R11 #14 v2 ("the payout is credited to that killer") + the I-13
+			# ledger alignment: the payout row goes to the goal COMPLETER, not
+			# the completing event's subject — for takedown/overkill/part_break
+			# that subject is the maimed victim. The _spotlit doubling above
+			# stays keyed on the event's own subject (the spotlit drama), per
+			# R11 #13 v1 — cross-crediting the spotlight is #13's own v2.
+			var completer: String = _goal_completer(event, i, events)
+			if completer != "":
+				ledger[completer] = int(ledger.get(completer, 0)) + payout
 			out.append({
 				"type": "hype_goal_completed",
 				"goal": String(active_goal.get("id", "")),
 				"combatant": _attribution(event),
-				"completed_by": _goal_completer(event, i, events),
+				"completed_by": completer,
 				"spectacle_points": payout,
 			})
 			active_goal = {}
@@ -298,15 +320,28 @@ func _on_clock_reset() -> Array[Dictionary]:
 
 
 ## Goal predicates — every kind must be machine-evaluable from the event
-## stream alone (review-2 §2: "template goals ... already parameterizable").
-func _goal_completed_by(event: Dictionary) -> bool:
+## stream alone (review-2 §2: "template goals ... already parameterizable"),
+## plus the wired combatants ref for the takedown gate's team-awareness.
+func _goal_completed_by(event: Dictionary, index: int, events: Array[Dictionary]) -> bool:
 	if active_goal.is_empty():
 		return false
 	var etype := String(event.get("type", ""))
 	var params: Dictionary = active_goal.get("params", {})
 	match String(active_goal.get("kind", "")):
 		"takedown":       # compendium "Finish Fast" — a kill before the deadline
-			return etype == "combatant_died"
+			# R11 #14 v2 (RULED 2026-07-18 — "takedown = a kill YOU caused"):
+			# enemy deaths still complete it; a FRIENDLY (non-enemy-team) death
+			# completes ONLY IF a contestant dealt the killing blow — friendly
+			# fire counts ("it's cinema"). killing_blow_author resolves the
+			# killer (event.killer wound-source bookkeeping, batch-scan legacy
+			# fallback); a boss kill or an authorless environment death
+			# completes nothing (the tracked v1 over-fire, now closed).
+			if etype != "combatant_died":
+				return false
+			var victim: CombatantState = combatants.get(String(event.get("combatant", "")))
+			if victim != null and victim.team == "enemies":
+				return true
+			return _is_contestant(killing_blow_author(events, index, event))
 		"overkill":       # a single hit at/over the threshold
 			return etype == "damage_applied" and int(event.get("amount", 0)) >= int(params.get("threshold", 0))
 		"part_break":     # compendium Spectacle — break a body part
@@ -339,23 +374,47 @@ func _goal_completed_by(event: Dictionary) -> bool:
 	return false
 
 
-## The contestant who COMPLETED the active goal — distinct from the completing
+## The combatant who COMPLETED the active goal — distinct from the completing
 ## event's own subject for the three victim-subject kinds (takedown / overkill /
 ## part_break), whose completing event is ABOUT the maimed victim, not the
-## striker who earned it. Those resolve to the batch's credited_actor (the
-## striker or reactor). Every other kind is already actor-subject, so its own
-## attribution is the completer — critically body_block, whose attack_blocked
-## completer is the BLOCKER (event.combatant), not credited_actor's attacker.
-## Falls back to _attribution when no closer is found. (Consumed by I-13's Scene
-## Stealer so the tag lands on the performer; the hype LEDGER's own victim-credit
-## for these kinds is the pre-existing provisional attribution, deferred to
-## attribution-v2 / task #13 — this does not touch it.)
+## striker who earned it. Takedown resolves to the killing blow's author
+## (event.killer, R11 #14 v2 — covers cross-batch condition deaths); overkill/
+## part_break, and any takedown without a recorded killer (legacy pre-source
+## saves), resolve to the batch's credited_actor (the striker or reactor).
+## Every other kind is already actor-subject, so its own attribution is the
+## completer — critically body_block, whose attack_blocked completer is the
+## BLOCKER (event.combatant), not credited_actor's attacker. Falls back to
+## _attribution when no closer is found. (Consumed by I-13's Scene Stealer so
+## the tag lands on the performer, and by the payout ledger row — attribution
+## v2 / task #13's alignment.)
 func _goal_completer(event: Dictionary, index: int, events: Array[Dictionary]) -> String:
 	match String(active_goal.get("kind", "")):
 		"takedown", "overkill", "part_break":
-			var a: String = credited_actor(events, index)
+			var a: String = killing_blow_author(events, index, event)
 			return a if a != "" else _attribution(event)
 	return _attribution(event)
+
+
+## The killing blow's author for a (possible) death event — the ONE killer
+## resolution every consumer shares (this gate/completer, EvidenceEngine's
+## takedown): event.killer first (R11 #14 v2 serialized wound-source
+## bookkeeping — authoritative, covers cross-batch condition deaths), the I-13
+## credited_actor batch scan as the legacy fallback for pre-v2 events that
+## carry no killer. "" = nobody authored it (environment). For non-death
+## events this degrades to the plain batch scan (killer is death-only).
+static func killing_blow_author(events: Array[Dictionary], index: int, event: Dictionary) -> String:
+	var killer := String(event.get("killer", ""))
+	if killer != "":
+		return killer
+	return credited_actor(events, index)
+
+
+## Contestant = not AI-controlled (the EvidenceEngine/TagEngine convention).
+func _is_contestant(id: String) -> bool:
+	var c: CombatantState = combatants.get(id)
+	if c == null:
+		return false
+	return not EnemyAI.AI_CATEGORIES.has(c.category)
 
 
 func _credit(event: Dictionary, points: int) -> void:

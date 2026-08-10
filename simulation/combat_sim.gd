@@ -61,6 +61,7 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	resolver.setup(clock, combatants, cond, rng, ai)
 	hype = HypeEngine.new()
 	hype.setup(_goal_table(), sim_seed)
+	hype.wire(combatants)  # R11 #14 v2 team-awareness (live ref, like tags/evidence)
 	# Slice tags (I-13) — the second broadcast-plane consumer, wired after hype
 	# so its detectors also see hype outputs (Scene Stealer). HypeEngine reads
 	# held tags back through hype.tags for resonance.
@@ -730,6 +731,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng, sim.ai)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
 	sim.hype.set_goal_table(sim._goal_table())
+	sim.hype.wire(sim.combatants)  # R11 #14 v2 team-awareness ref
 	# Re-wire the tag engine (effect table is static data, never saved; the
 	# combatants ref is a live object) and reconnect hype's resonance lookup.
 	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))

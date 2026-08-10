@@ -42,8 +42,14 @@ extends RefCounted
 ##   stabilized       bleed_out_stabilized — someone was pulled back from
 ##                    bleeding out. The treat command names no treater, so this
 ##                    is party-level; detail.saved names who was saved.
-##   takedown         combatant_died where the victim is team "enemies" and a
-##                    credited contestant exists (I-13 credited_actor).
+##   takedown         combatant_died whose killing blow a contestant authored
+##                    (R11 #14 v2 — "takedown = a kill YOU caused"):
+##                    event.killer (serialized wound-source bookkeeping, so
+##                    condition/timer deaths attribute cross-batch) with the
+##                    I-13 credited_actor batch scan as the legacy fallback.
+##                    FRIENDLY-fire kills count (Q69 — "it's cinema") and carry
+##                    detail.friendly_fire; detail.cause names the death route.
+##                    A death no contestant authored records NOTHING.
 
 ## Live refs (NOT serialized — re-wired by CombatSim.from_dict, like TagEngine).
 var combatants: Dictionary = {}
@@ -134,8 +140,9 @@ func _breach_risk(events: Array[Dictionary], i: int, event: Dictionary, windup_a
 
 ## Credited to the goal COMPLETER (completed_by, HypeEngine._goal_completer —
 ## the same attribution Scene Stealer rides), falling back to the legacy
-## `combatant` field. A goal completed by a non-contestant (the boss killing a
-## contestant completes a takedown goal too) is NOT contestant evidence — drop.
+## `combatant` field. A goal completed by a non-contestant (an enemy bleeding
+## out unauthored still completes the takedown goal, completer = the victim)
+## is NOT contestant evidence — drop.
 func _goal_answered(event: Dictionary, out: Array[Dictionary], seen: Dictionary) -> void:
 	var completer := String(event.get("completed_by", ""))
 	if completer == "":
@@ -185,18 +192,28 @@ func _spotlight_gamble(event: Dictionary, out: Array[Dictionary], seen: Dictiona
 	}, event, out, seen)
 
 
-## An enemy-team death with a credited contestant (I-13 credited_actor: forward
-## to the strike's closer, back to an opening reaction). A clock-driven death
-## (bleed-out drain) has no closer in its batch — uncredited, so no entry.
+## R11 #14 v2 (RULED 2026-07-18) — "takedown = a kill YOU caused": credit
+## follows the actual killing blow's author. event.killer carries the sim's
+## serialized wound-source bookkeeping (strike author threaded through
+## damage_part; condition seeder / bleed-out source / terminal-timer source for
+## clock-driven deaths), so a cross-batch condition death attributes honestly;
+## the I-13 credited_actor batch scan stays as the fallback for legacy events
+## without a killer. FRIENDLY-fire kills count (friendly fire is ON, Q69 —
+## "it's cinema") and are surfaced distinctly via detail.friendly_fire; a
+## death with no contestant author (a boss kill, an authorless environment
+## wound festering out) records NOTHING — never guessed.
 func _takedown(events: Array[Dictionary], i: int, event: Dictionary, out: Array[Dictionary], seen: Dictionary) -> void:
 	var victim := String(event.get("combatant", ""))
 	var vc: CombatantState = combatants.get(victim)
-	if vc == null or vc.team != "enemies":
+	if vc == null:
 		return
-	var credited: String = HypeEngine.credited_actor(events, i)
-	if credited == "" or not _is_contestant(credited):
+	var killer: String = HypeEngine.killing_blow_author(events, i, event)
+	if killer == "" or not _is_contestant(killer):
 		return
-	_record("takedown", credited, {"victim": victim}, event, out, seen)
+	var detail: Dictionary = {"victim": victim, "cause": String(event.get("cause", ""))}
+	if vc.team != "enemies":
+		detail["friendly_fire"] = true
+	_record("takedown", killer, detail, event, out, seen)
 
 
 # ------------------------------------------------------------------ helpers

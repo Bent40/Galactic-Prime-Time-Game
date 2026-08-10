@@ -805,7 +805,16 @@ func _evidence_line(entry: Dictionary) -> String:
 		"stabilized":
 			return prefix + "pulled %s back from bleeding out" % _combatant_name(String(d.get("saved", "")))
 		"takedown":
-			return prefix + "put %s down" % _combatant_name(String(d.get("victim", "")))
+			# R11 #14 v2 additive detail: friendly-fire and self-kills read
+			# distinctly (the ruling counts them — "it's cinema"); the facts
+			# (victim, friendly_fire, cause) come from the ledger entry.
+			var victim_id := String(d.get("victim", ""))
+			if victim_id == String(entry.get("actor", "")):
+				return prefix + "took themselves out — their own killing blow"
+			var line := "put %s down" % _combatant_name(victim_id)
+			if bool(d.get("friendly_fire", false)):
+				line += " — friendly fire, and the cameras loved it"
+			return prefix + line
 	return prefix + String(entry.get("type", ""))
 
 
