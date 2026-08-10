@@ -458,6 +458,143 @@ because an unannounced competitive finale is the one failure mode that damages a
 
 ---
 
+## Part 7 — Round 4: the divinity scale, and what it unifies
+
+**Rulings:** Q-11 … Q-17, 2026-08-10.
+
+### 7.1 Floor 10 is already ruled — in *v1's* book
+
+Q-11 sets Floor 10's reveal as **"only one lives,"** hinted throughout the campaign. That
+structure **already exists and is already canon on the v1 side**:
+
+> **RULED (owner, 2026-08-04, ID-0.29):** *"10 floors — three sets of three story floors,
+> then **Floor 10: a free-for-all between everyone left**."*
+> — `item-drafting-materials.md:10-11`, `item-drafting-passover.md:135-136`, and in the
+> rulebook itself at `gpt-system-v1.0.md:759`
+
+**Three consequences:**
+
+1. **The finale's *shape* is shared between v1 and v2.** Only its *meaning* forks — v1's FFA
+   decides who walks out; v2's decides who authors the next 250 years. **Add the finale to
+   the shared spine** (fork spec §4).
+2. **"Stages 4–9" now resolves exactly.** The campaign is `[1–3] [4–6] [7–9] [10]`. Floors
+   4–9 are **sets two and three — the entire body of the campaign between the designed
+   opening and the exam.** D-V1 was pointing at the whole remaining build.
+3. **Floor 10 is "the exam, not a shop"** (`item-drafting-materials.md:42`) — no new
+   materials, contested. The v2 reveal lands on a floor already designed to strip everything
+   back to what you are.
+
+### 7.2 The divinity scale (Q-14) — divinity is a pyramid, not a number
+
+> **1 divinity = 1 being who reveres you.** Reverence need not be human. **Anyone bound
+> under you contributes their divinity to yours** — and if they secede, you lose their
+> followers with them, unless those followers revered *you* independently.
+> *(Odin and the Valkyries.)*
+
+This is a **vassalage graph**, and it gives Q-05 the scale it was missing:
+
+| Patron | Their divinity | Can you ever out-hold them? |
+|---|---|---|
+| A major god (Odin-tier) | Their whole pyramid — millions | **Effectively never** |
+| A mid god | Their own cult | Late campaign, at cost |
+| A minor spirit / bankrupt god | Dozens | **Yes, plausibly** |
+
+> **The bidding decision this creates is excellent, and it emerges rather than being
+> designed:** *a big patron gives you the strongest buffs and you will never escape them; a
+> small patron gives less and can be bought out.* Q-04's negotiated cut is the second axis.
+> Every patron offer is now a genuine dilemma instead of a shopping list.
+
+### 7.3 ⚠️ INFERENCE — Q-14 may close the biggest open question in §17
+
+**This is my reading, not your ruling. It needs a yes/no (Q-18).**
+
+Q-14 defines divinity as **reverence**. §17.1 already defines a tier as **paying watchers
+who follow you** (`gpt-system-v1.0.md:874-878`). Those are the same thing at two scales.
+
+| §17.1 tier | v1 meaning | **v2 under Q-14** |
+|---|---|---|
+| **Viewers** | Active watchers, billions, decay when boring | **Attention** — the transient spectacle meter |
+| **Followers** | *Paying* watchers; **they decay** | **Reverence — your divinity itself** |
+| **Patrons** | One-time large donors; **roster is permanent** | **Gods with a stake in you** |
+
+If that holds, four problems close at once:
+
+1. **D-07 answers itself.** The Follower tier doesn't just survive — it becomes **the
+   divinity generator**. The "phone-vote money" that [`research/B`](research/B-audience-tags.md)
+   called *"the most orphaned mechanic in §17"* was the divinity engine all along.
+2. **The patron's cut becomes diegetic, not arithmetic.** The cut is the Valkyrie rule
+   applied to mortals: **your Followers flow up to your patron unless they revere *you*
+   independently.** The negotiated percentage (Q-04) is literally *whose name the crowd says*.
+3. **The mortal→god pipeline needs no new machinery.** You ascend with the pyramid you
+   built. Your Followers *are* your godhood.
+4. **Follower decay is already in the book** — so reverence being losable is v1-native, and
+   Buddhist canon's "spendable **and losable**" holds without a special case.
+
+**→ Q-18: is Followers = reverence = divinity, one system at two scales?** If yes, §17's
+redesign gets dramatically smaller and I'd fold it into the v2 edition directly.
+
+### 7.4 Q-13 — the third intervention channel, and it answers D-08
+
+> *"A god can also pay-to-win, lowering their winnings but raising chance of success via
+> gifting its contractor specific things, with potential conditions on them."*
+
+This is canon's **"tipping the dealer"** made concrete (`cosmic-casino-canon.md:33-34`:
+*"gods can tip the dealer to help their luck — boons, buffs, items, or hindering others"*).
+v2 now has **three distinct divine-influence channels**, which should be kept separate:
+
+| Channel | Source | Cost to the god | Ruling |
+|---|---|---|---|
+| **ASSIST / NUDGE** | Ambient buff stream, every contestant | None — it's the domain multiplier | D-04 |
+| **Guidance** | Champion-only personal advice | None | Q-06 |
+| **Gifting (pay-to-win)** | Specific items/boons, **with conditions attached** | **Lowers their winnings** | Q-13 |
+
+**This substantially answers D-08** ("is a patron's tip a Directive, or a separate
+channel?"): the **gift is the carrot; the attached condition is the Directive.** They're
+linked, not identical — which is exactly the shape both canon docs were reaching for.
+
+It also gives the god a real economic decision — spend winnings to raise win probability —
+and a feedback loop, since a winning contestant generates more reverence to cut. **That's
+investment logic, which is the most casino-native thing in the design so far.**
+
+### 7.5 Q-12 — vassal or founder
+
+> *"Unspent divinity can be used to strengthen your hold within the pantheon you joined or
+> created."*
+
+**"Joined or created" maps exactly onto the Q-14 vassalage graph**, and makes the last
+choice of the campaign a real one:
+
+- **Join** — ascend as a vassal beneath your patron. Protected; your divinity flows upward.
+- **Create** — secede and found your own pantheon. Free; exposed; and by the Valkyrie rule
+  you take only the followers who revered *you*.
+
+Unspent divinity is your standing in whichever you pick. **This is why Q-05's hoarding
+matters after all** — not to ascend, but to arrive *powerful*.
+
+### 7.6 Rulings recorded
+
+| # | Ruling |
+|---|---|
+| **Q-11** | Floor 10's reveal is **"only one lives"** — hinted throughout, not declared |
+| **Q-12** | Unspent divinity strengthens your hold in the pantheon you **joined or created** |
+| **Q-13** | Gods may **pay to win** — gifting specific things with conditions, at the cost of their own winnings |
+| **Q-14** | **1 divinity = 1 reverent being**; non-humans count; vassals' divinity flows upward and is lost on secession |
+| **Q-15** | **10–15 champion skills** to start |
+| **Q-16** | A civilian **can** become a champion mid-run |
+| **Q-17** | The "leave room for humanity" limit is **enforced** |
+
+### 7.7 New and outstanding
+
+| # | Question | Note |
+|---|---|---|
+| **Q-18** | **Is Followers = reverence = divinity?** (§7.3) | Biggest open item. If yes, §17's redesign shrinks from L to S |
+| **Q-19** | **Table-safety on Q-11.** The reveal stays a reveal — but do the *players* get an out-of-character heads-up at session zero that the campaign has a competitive endgame? | The characters can still be blindsided at Floor 10; the people shouldn't be. Costs the reveal nothing |
+| **Q-20** | **Q-16 read as:** yes to becoming a champion mid-run, but **champion skills stay locked** (they're preparation you didn't do). Correct? | One-word confirm |
+| **Q-21** | Does a **patron-less** contestant keep 100% of Followers-as-divinity, making patron-less the fastest ascent? | Falls out of §7.3; confirms the trade is balanced |
+| **Q-22** | Can a contestant be **gifted followers** by a patron, or is reverence only earned? | Decides whether the cut can run backwards |
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there
