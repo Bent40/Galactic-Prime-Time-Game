@@ -342,3 +342,15 @@
     WIN are unchanged; a Mind-4 elite reads L3 on a 3+; Mind ≥ 7 auto-reads. Dumb
     bosses stay feintable by design — intelligence is the counter, which is the
     Antagonism personality system paying off.
+31. **Engine-first mandate; front rework is owner-led (owner 2026-07-25).** The owner
+    will rework the front completely and draft the mockups themselves ("Ill draft
+    mockups later so you can build them") — the KAN-4 mockup gate's SCREEN decisions
+    are therefore deferred to that pass, and engine work proceeds without waiting on
+    UI approval: run/recruitment engine, creation-spec engine, and the remaining
+    engine backlog land as sim/controller capability with driver-level tests, no new
+    scenes. Two mechanical defaults ship PROVISIONAL in the run engine (canon-leaning,
+    awaiting the owner's front pass): **recruits join AS-IS carrying their encounter
+    damage** (wounds-persist canon) and **a declined recruit is gone for the run**
+    (permanently-losable canon). The engine keeps trait sourcing agnostic (a creation
+    spec carries final traits; whether the front derives them from a background/epithet
+    track per R16 or direct allocation is presentation).
