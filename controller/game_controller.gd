@@ -32,6 +32,12 @@ signal command_rejected(event: Dictionary)
 ## payload is a synthetic {"type":"combat_ended","outcome":"WIN"|"LOSS"} event; it
 ## also flows on the generic sim_event, like every other event (see _emit_event).
 signal combat_ended(event: Dictionary)
+## RUN-level events (KAN-4, decision #31): every event the RunState reducer
+## returns from apply_run_command flows here — run_started, run_encounter_started,
+## run_encounter_ended, run_recruit_available/offered/joined/declined, run_ended,
+## run_command_rejected. Separate from sim_event on purpose: run events are not
+## sim events, and combat listeners keep their exact current traffic.
+signal run_event(event: Dictionary)
 
 ## event type -> typed signal name (generic sim_event fires for every event).
 const TYPED: Dictionary = {
@@ -58,6 +64,16 @@ var sim: CombatSim
 var dal: Dal = Dal.new()
 var saves: SaveManager = SaveManager.new()
 var command_log: Array[Dictionary] = []
+
+## RUN engine state (KAN-4, decision #31 — engine only). The controller owns the
+## RUN-COMMAND LOG exactly as it owns the combat one: RunState is the reducer,
+## the caller owns the log (run state = pure function of (run seed, run log) —
+## see simulation/run_state.gd's header for the command set + carry policy).
+var run: RunState = null
+var run_command_log: Array[Dictionary] = []
+## Static data bundle pinned at start_run so every encounter of the run stages
+## from the same tables ({} = load through the DAL, like start_combat).
+var _run_static_data: Dictionary = {}
 
 ## Latch so combat_ended fires EXACTLY ONCE per fight (reset by start_combat). The
 ## fight-over check runs after each tick; without this latch it would re-fire on
@@ -893,3 +909,166 @@ func load_game(save_name: String) -> bool:
 	sim = CombatSim.from_dict(envelope["snapshot"])
 	command_log.assign(envelope.get("command_log", []))
 	return true
+
+
+# ------------------------------------------------------------------ RUN engine
+# KAN-4 core (decision #31 — engine only, no scenes). The run walks ordered
+# encounters; each encounter is its own CombatSim staged through the EXISTING
+# start_combat/apply_command path, so every current view/signal keeps working
+# mid-encounter untouched. Party state crosses encounters ONLY as serialized
+# dictionaries (to_dict/from_dict splice — never live objects). Full model,
+# command set and the persists/resets policy: simulation/run_state.gd.
+
+
+## Starts a run: fresh RunState + run log, then the start_run command through
+## the one run funnel. `party` = add_combatant specs (the roster); `encounters` =
+## encounter defs (see RunState's header; data/demo_run.json is the canonical
+## authored example). Passing static_data pins the tables for every encounter
+## of the run (tests); {} loads through the DAL per encounter.
+func start_run(run_seed: int, party: Array, encounters: Array, static_data: Dictionary = {}) -> Array[Dictionary]:
+	run = RunState.new()
+	run_command_log = []
+	_run_static_data = static_data.duplicate(true)
+	return apply_run_command({
+		"type": "start_run", "seed": run_seed, "party": party, "encounters": encounters,
+	})
+
+
+## The one RUN-command funnel (mirror of apply_command): enriches end_encounter
+## from the live sim, logs the FULL command (so a bare RunState can replay the
+## run log with no sims), applies it to the reducer, re-emits every event on
+## run_event, and executes the one side effect — staging the CombatSim when an
+## encounter starts.
+func apply_run_command(cmd: Dictionary) -> Array[Dictionary]:
+	if run == null:
+		push_error("GameController.apply_run_command before start_run")
+		return []
+	var full: Dictionary = cmd.duplicate(true)
+	if String(cmd.get("type", "")) == "end_encounter":
+		var payload: Dictionary = _end_encounter_payload()
+		if payload.has("rejected"):
+			var rejection: Dictionary = {
+				"type": "run_command_rejected", "reason": String(payload["rejected"]),
+			}
+			run_event.emit(rejection)
+			var rejected: Array[Dictionary] = [rejection]
+			return rejected
+		full.merge(payload, true)
+	run_command_log.append(full.duplicate(true))
+	var events: Array[Dictionary] = run.apply_command(full)
+	for event: Dictionary in events:
+		run_event.emit(event)
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "run_encounter_started":
+			_stage_encounter(run.staging())
+			break
+	return events
+
+
+## Read-only RUN view (mirror of the view_* family): RunState.view() — run seed,
+## phase/outcome, encounter list state, roster with carried-damage summaries,
+## offer beats, records — plus the LIVE combat_status() while an encounter is on.
+func view_run() -> Dictionary:
+	if run == null:
+		return {}
+	var out: Dictionary = run.view()
+	if run.phase == "combat" and sim != null:
+		out["combat"] = combat_status()
+	return out
+
+
+## Restores a run from serialized state (in-memory resume — the test/driver
+## counterpart of load_game): run_snapshot = RunState.to_dict(); sim_snapshot =
+## the mid-encounter CombatSim.to_dict() when resuming inside a fight ({}
+## between encounters). Logs restart at the checkpoint — the history before it
+## lives with the earlier save (DIRECTION #5: snapshot + log offset).
+func restore_run(run_snapshot: Dictionary, sim_snapshot: Dictionary = {}, static_data: Dictionary = {}) -> void:
+	run = RunState.from_dict(run_snapshot)
+	run_command_log = []
+	_run_static_data = static_data.duplicate(true)
+	if not sim_snapshot.is_empty():
+		sim = CombatSim.from_dict(sim_snapshot)
+		command_log = []
+		_combat_ended_emitted = bool(combat_status().get("over", false))
+
+
+## end_encounter enrichment: the honest capture off the LIVE sim. Rejects
+## (without logging) when no fight is staged or the fight is not over — the run
+## never records an outcome the sim does not actually show.
+func _end_encounter_payload() -> Dictionary:
+	if sim == null:
+		return {"rejected": "no_active_combat"}
+	var status: Dictionary = combat_status()
+	if not bool(status.get("over", false)):
+		return {"rejected": "encounter_not_resolved"}
+	var carried: Dictionary = {}
+	var camera_used: Dictionary = {}
+	var tags_held: Dictionary = {}
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = sim.combatants[id]
+		if c.team != "party":
+			continue
+		carried[String(id)] = c.to_dict()
+		if int(sim.hype.camera_calls_used.get(String(id), 0)) > 0:
+			camera_used[String(id)] = int(sim.hype.camera_calls_used[String(id)])
+		if not (sim.tags.held.get(String(id), {}) as Dictionary).is_empty():
+			tags_held[String(id)] = (sim.tags.held[String(id)] as Dictionary).duplicate(true)
+	return {
+		"outcome": String(status.get("outcome", "LOSS")),
+		"carried": carried,
+		"camera_calls_used": camera_used,
+		"tags_held": tags_held,
+		"hype_meter": int(sim.hype.meter),
+	}
+
+
+## Executes RunState.staging(): a fresh CombatSim on the derived encounter seed,
+## every combatant added through the EXISTING command funnel (combatant_added
+## flows to listeners exactly as today), then the serialized-state hand-off —
+## carried members, the B9 spent-stack ledger and held tags are spliced into the
+## sim's own to_dict snapshot and the sim is rebuilt via from_dict (the public
+## serialization path; no live objects cross encounters). The encounter's
+## command log restarts empty at the spliced checkpoint: the initial snapshot is
+## re-derivable from the RUN log (DIRECTION #5), and in-combat commands append
+## from there.
+func _stage_encounter(staging: Dictionary) -> void:
+	start_combat(int(staging.get("sim_seed", 0)), _run_static_data)
+	for spec: Dictionary in staging.get("adds", []) as Array:
+		apply_command({"type": "add_combatant", "combatant": spec})
+	var carried: Dictionary = staging.get("carried", {})
+	var camera_used: Dictionary = staging.get("camera_calls_used", {})
+	var tags_held: Dictionary = staging.get("tags_held", {})
+	if not (carried.is_empty() and camera_used.is_empty() and tags_held.is_empty()):
+		var snapshot: Dictionary = sim.to_dict()
+		var ids: Array = carried.keys()
+		ids.sort()
+		for id: Variant in ids:
+			var combatants: Dictionary = snapshot["combatants"]
+			if not combatants.has(String(id)):
+				continue
+			var carry: Dictionary = (carried[id] as Dictionary).duplicate(true)
+			# The staging position wins (the carry was position-sanitized).
+			carry["position"] = (combatants[String(id)] as Dictionary).get("position", [0, 0])
+			combatants[String(id)] = carry
+			# Keep the tick-start snapshot honest for the spliced member (the
+			# same fields _snapshot_entry derives, computed off the carry).
+			(snapshot["tick_snapshot"] as Dictionary)[String(id)] = {
+				"position": (carry["position"] as Array).duplicate(),
+				"alive": bool(carry.get("alive", true)) and not bool(carry.get("removed_from_play", false)),
+				"exposed": false,
+				"helpless": not (carry.get("bleed_out", {}) as Dictionary).is_empty() \
+					or bool((carry.get("statuses", {}) as Dictionary).get("incapacitated", false)),
+				"overwhelmed": false,
+			}
+		var cam_ids: Array = camera_used.keys()
+		cam_ids.sort()
+		for id: Variant in cam_ids:
+			((snapshot["hype"] as Dictionary)["camera_calls_used"] as Dictionary)[String(id)] = int(camera_used[id])
+		var tag_ids: Array = tags_held.keys()
+		tag_ids.sort()
+		for id: Variant in tag_ids:
+			((snapshot["tags"] as Dictionary)["held"] as Dictionary)[String(id)] = (tags_held[id] as Dictionary).duplicate(true)
+		sim = CombatSim.from_dict(snapshot)
+	command_log = []
