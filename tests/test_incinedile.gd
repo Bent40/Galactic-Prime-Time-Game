@@ -82,6 +82,11 @@ func test_boss_dashes_a_lone_target() -> void:
 	assert_no_event(resolved, "combatant_died", "the tuned dash no longer one-shots a fresh 5-HP torso")
 	assert_eq(int((sim.combatants["h"] as CombatantState).parts["torso"]["hp"]), 1, "the 5-HP torso survives the dash at 1 HP")
 	assert_event(resolved, "condition_applied", "the landed dash seeds crushed T1 (a survivor, not a corpse)")
+	# Decision #31: the dash is a real CHARGE now — the boss runs its committed
+	# lane (0,0)->(3,0) and ends on the hex adjacent-before the target.
+	var charged: Dictionary = assert_event(resolved, "dash_charged", "the charge moves the boss along the lane")
+	assert_eq(charged.get("to", []), [2, 0], "the boss ends adjacent-before the target")
+	assert_eq(boss_state(sim).position, Vector2i(2, 0), "position actually moved by the charge")
 
 
 func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:

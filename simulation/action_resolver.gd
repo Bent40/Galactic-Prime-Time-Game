@@ -1316,19 +1316,44 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	var targets: Array = action.get("targets", [])
 
 	# Windups re-check range & validity against the tick-start snapshot (R2).
+	# Decision #31: an area action re-checks its REAL SHAPE instead of plain
+	# range — the cone re-evaluates its committed arc per target (leaving the
+	# arc dodges the sweep for THAT target; an emptied sweep collapses), and
+	# the dash re-validates + walks its committed charge lane.
 	if is_windup:
-		var invalid_reason: String = _windup_invalid_reason(actor, action, item, snapshot)
+		var shape: Dictionary = action.get("area_shape", {})
+		var shape_kind := String(shape.get("kind", ""))
+		var original_first: String = ""
+		if not targets.is_empty():
+			original_first = String((targets[0] as Dictionary).get("id", ""))
+		var invalid_reason: String = _windup_invalid_reason(actor, action, item, snapshot, shape_kind)
+		if invalid_reason == "" and shape_kind == "cone":
+			events.append_array(_recheck_cone_targets(actor, action, snapshot, shape))
+			targets = action.get("targets", [])
+			if targets.is_empty():
+				invalid_reason = "left_area"  # every target escaped the arc
+		if invalid_reason == "" and shape_kind == "line":
+			var charge: Dictionary = _resolve_dash_charge(actor, action, snapshot, shape)
+			var charge_events: Array[Dictionary] = charge["events"]
+			events.append_array(charge_events)
+			invalid_reason = String(charge["invalid"])
+			if invalid_reason == "" and bool(charge["stopped_short"]):
+				# An honest MISS, not a collapse: the boss spent the Moment
+				# charging and was stopped out of reach — no strike, no Tool roll.
+				events.append({
+					"type": "action_resolved", "actor": actor.id, "kind": kind,
+					"key": String(action.get("key", String(action.get("item", "")))),
+					"result": "stopped_short", "halved": false, "rounds": 0,
+				})
+				return events
 		if invalid_reason != "":
 			events.append({"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": invalid_reason})
 			var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
 			events.append(ForcedAction.make_event(actor.id, collapse, "invalidated_windup"))
-			var missed_target: String = ""
-			if not targets.is_empty():
-				missed_target = String((targets[0] as Dictionary).get("id", ""))
 			# The original target escaped the effect entirely — a Collateral
 			# consequence must not hit them (they dodged), so exclude them.
 			forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {
-				"part": acting_part, "target": missed_target,
+				"part": acting_part, "target": original_first,
 			}})
 			return events
 
@@ -1410,9 +1435,17 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	return events
 
 
-func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dictionary, snapshot: Dictionary) -> String:
+## Whole-action windup re-check (R2). Decision #31 splits area actions off:
+## `shape_kind` "cone" skips everything but the disarmed gate (the per-target
+## arc re-check in _recheck_cone_targets replaces the whole-action gate);
+## "line" keeps the target/head gates but skips the plain range check (the
+## committed lane in _resolve_dash_charge is the real geometry). "" (the
+## overwhelming default) is today's behavior, unchanged.
+func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dictionary, snapshot: Dictionary, shape_kind: String = "") -> String:
 	if not item.is_empty() and (bool(item.get("dropped", false)) or actor.unarmed_until_tick > clock.tick):
 		return "disarmed"
+	if shape_kind == "cone":
+		return ""
 	var actor_snap: Dictionary = snapshot.get(actor.id, {})
 	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
 	var reach: int = _attack_range(action, item)
@@ -1424,11 +1457,12 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 		var snap: Dictionary = snapshot.get(target.id, {})
 		if not bool(snap.get("alive", false)):
 			return "target_dead"
-		var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
-		var a := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
-		var b := Vector2i(int(target_pos[0]), int(target_pos[1]))
-		if CombatantState.hex_distance(a, b) > reach:
-			return "out_of_range"
+		if shape_kind != "line":
+			var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
+			var a := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+			var b := Vector2i(int(target_pos[0]), int(target_pos[1]))
+			if CombatantState.hex_distance(a, b) > reach:
+				return "out_of_range"
 		var part_key := String(t.get("part", ""))
 		if part_key.contains("head"):
 			var targetable: bool = bool(snap.get("exposed", false)) \
@@ -1437,6 +1471,143 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 			if not targetable:
 				return "head_not_targetable"
 	return ""
+
+
+## Decision #31 cone windup re-check (R2: leaving the AREA before resolution
+## dodges it — per target, since a sweep is multi-target): recompute the
+## committed arc from the actor's SNAPSHOT hex + the declared aim direction and
+## EXCLUDE every target whose snapshot hex is outside it (or who died, or whose
+## head-gate closed) — each exclusion is exactly the out-of-range windup dodge,
+## applied per head. rounds/rpm shrink with the list (one round per swept
+## target, the v1 multi-target model); survivors still get burned. The caller
+## collapses the whole windup only when EVERY target escaped.
+func _recheck_cone_targets(actor: CombatantState, action: Dictionary, snapshot: Dictionary, shape: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var toward_raw: Array = shape.get("toward", [])
+	var size: int = int(shape.get("size", 0))
+	if toward_raw.size() != 2 or size <= 0:
+		return events  # malformed shape — nothing to re-check against
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var origin := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(origin, origin + dir, size))
+	var remaining: Array = []
+	for target_entry: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = target_entry
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		var reason: String = ""
+		if target == null:
+			reason = "target_missing"
+		else:
+			var snap: Dictionary = snapshot.get(target.id, {})
+			var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
+			if not bool(snap.get("alive", false)):
+				reason = "target_dead"
+			elif not arc.has(Vector2i(int(target_pos[0]), int(target_pos[1]))):
+				reason = "left_area"
+			elif String(t.get("part", "")).contains("head") and not (bool(snap.get("exposed", false))
+					or bool(snap.get("helpless", false)) or bool(snap.get("overwhelmed", false))):
+				reason = "head_not_targetable"
+		if reason == "":
+			remaining.append(t)
+		else:
+			events.append({
+				"type": "windup_target_escaped", "actor": actor.id,
+				"target": String(t.get("id", "")), "reason": reason,
+			})
+	action["targets"] = remaining
+	action["rounds"] = mini(int(action.get("rounds", remaining.size())), remaining.size())
+	action["rpm"] = maxi(1, mini(int(action.get("rpm", maxi(1, remaining.size()))), maxi(1, remaining.size())))
+	return events
+
+
+## Decision #31 dash charge (retires "line resolves as plain reach"): the dash
+## is an honest CHARGE along its committed lane (the declared area_shape, built
+## by EnemyAI from HexGeometry.line_extended). All geometry evaluates against
+## the tick-start SNAPSHOT (R2 simultaneity — same-tick movement neither dodges
+## nor blocks); only the dasher's position mutation is live. Steps:
+##  1. lane validity: the dasher must still stand on lane[0] (lane_lost
+##     otherwise — no mechanic moves a winding-up dasher today, so this is a
+##     safety) and the target's snapshot hex must still be ON the lane beyond
+##     index 0 — a target that left the committed corridor dodged the windup
+##     (left_lane -> the standard invalidation collapse, like out_of_range).
+##  2. charge: the dasher advances along the lane toward the hex
+##     adjacent-before the target, stopping BEFORE the first hex occupied by a
+##     living, in-play combatant (snapshot hexes) — a charge is a run, not a
+##     teleport: bodies block it, and an interloper on the lane SHIELDS the
+##     declared target (v1: only declared targets are ever hit).
+##  3. contact: stopped short of adjacency = an honest MISS (dash_stopped_short;
+##     the Moment was spent charging, no strike, no Tool collapse); reaching
+##     adjacency lets the strike resolve through the normal round (R22 dodge
+##     ladder unchanged).
+## Returns {"invalid": String ("" = ok), "stopped_short": bool, "events": [...]}.
+func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: Dictionary, shape: Dictionary) -> Dictionary:
+	var out_events: Array[Dictionary] = []
+	var lane: Array[Vector2i] = _shape_lane(shape)
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var origin := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+	if lane.size() < 2 or origin != lane[0]:
+		return {"invalid": "lane_lost", "stopped_short": false, "events": out_events}
+	var targets: Array = action.get("targets", [])
+	if targets.is_empty():
+		return {"invalid": "target_missing", "stopped_short": false, "events": out_events}
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null:
+		return {"invalid": "target_missing", "stopped_short": false, "events": out_events}
+	var target_snap: Dictionary = snapshot.get(target.id, {})
+	var target_pos_raw: Array = target_snap.get("position", [target.position.x, target.position.y])
+	var target_pos := Vector2i(int(target_pos_raw[0]), int(target_pos_raw[1]))
+	var t_idx: int = lane.find(target_pos)
+	if t_idx < 1:
+		return {"invalid": "left_lane", "stopped_short": false, "events": out_events}
+	# Snapshot occupancy: everyone alive and in play except the dasher and the
+	# declared target (the charge stops before the target via stop_idx anyway).
+	var occupied: Dictionary = {}
+	var ids: Array = snapshot.keys()
+	ids.sort()
+	for id: Variant in ids:
+		if String(id) == actor.id or String(id) == target.id:
+			continue
+		var snap: Dictionary = snapshot[id]
+		if not bool(snap.get("alive", false)):
+			continue
+		var pos_raw: Array = snap.get("position", [])
+		if pos_raw.size() == 2:
+			occupied[Vector2i(int(pos_raw[0]), int(pos_raw[1]))] = true
+	var stop_idx: int = t_idx - 1
+	var final_idx: int = 0
+	for k: int in range(1, stop_idx + 1):
+		if occupied.has(lane[k]):
+			break
+		final_idx = k
+	if final_idx > 0:
+		var from: Vector2i = actor.position
+		actor.position = lane[final_idx]
+		out_events.append({
+			"type": "dash_charged", "actor": actor.id,
+			"from": [from.x, from.y], "to": [lane[final_idx].x, lane[final_idx].y],
+			"hexes": final_idx,
+		})
+	if final_idx < stop_idx:
+		out_events.append({
+			"type": "dash_stopped_short", "actor": actor.id, "target": target.id,
+			"at": [lane[final_idx].x, lane[final_idx].y],
+			"distance": HexGeometry.distance(lane[final_idx], target_pos),
+		})
+		return {"invalid": "", "stopped_short": true, "events": out_events}
+	return {"invalid": "", "stopped_short": false, "events": out_events}
+
+
+## The committed lane hexes off an area_shape (serialization-safe int pairs).
+static func _shape_lane(shape: Dictionary) -> Array[Vector2i]:
+	var lane: Array[Vector2i] = []
+	for pair: Variant in shape.get("lane", []) as Array:
+		var p: Array = pair
+		if p.size() == 2:
+			lane.append(Vector2i(int(p[0]), int(p[1])))
+	return lane
 
 
 ## Deterministic self-heal location: the not-destroyed part with the largest
@@ -1535,7 +1706,7 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				dodged_event.merge(dodge_detail)
 				events.append(dodged_event)
 				if is_dash_dodge:
-					events.append_array(_dash_dodge_riders(target, attacker, ability_dodge))
+					events.append_array(_dash_dodge_riders(target, attacker, ability_dodge, action))
 				if not group.is_empty():
 					events.append_array(_merge_drop(group, target))
 				return events
@@ -1629,21 +1800,29 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 ## R22 dash counters ladder riders on a SUCCESSFUL dash dodge: the sidestep
 ## rides ANY successful dodge (auto or rolled); the counterattack rides only a
 ## Reflexes >= counter_at auto-dodge. Both deterministic, both rng-free.
-func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_dodge: Dictionary) -> Array[Dictionary]:
+## Decision #31: the action's committed lane feeds the sidestep — dodging a
+## charge means getting OFF ITS LANE.
+func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_dodge: Dictionary, action: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if dasher == null:
 		return events
-	events.append_array(_dash_sidestep(dodger, dasher))
+	var lane_set: Dictionary = HexGeometry.to_set(_shape_lane(action.get("area_shape", {}) as Dictionary))
+	events.append_array(_dash_sidestep(dodger, dasher, lane_set))
 	var counter_at: int = int(ability_dodge.get("counter_at", 0))
 	if counter_at > 0 and dodger.trait_total("reflexes") >= counter_at:
 		events.append_array(_dash_counter(dodger, dasher))
 	return events
 
 
-## R22 1-hex sidestep: the first unoccupied hex in the fixed HEX_NEIGHBORS order
-## that strictly INCREASES distance from the dasher. No free improving hex ->
-## the dodge still negates, no displacement.
-func _dash_sidestep(dodger: CombatantState, dasher: CombatantState) -> Array[Dictionary]:
+## R22 1-hex sidestep, upgraded by decision #31: dodging a charge moves the
+## dodger OFF THE LANE specifically — the first unoccupied hex in the fixed
+## HEX_NEIGHBORS order that is NOT on the committed charge lane (the same
+## deterministic first-fit rule as before, aimed at the real geometry). When
+## the action carries no lane (an authored dodge block on a non-line action)
+## the pre-#31 rule stands: the first free hex strictly INCREASING distance
+## from the attacker. No qualifying free hex -> the dodge still negates, no
+## displacement.
+func _dash_sidestep(dodger: CombatantState, dasher: CombatantState, lane_set: Dictionary) -> Array[Dictionary]:
 	var occupied: Dictionary = {}
 	var ids: Array = combatants.keys()
 	ids.sort()
@@ -1658,7 +1837,10 @@ func _dash_sidestep(dodger: CombatantState, dasher: CombatantState) -> Array[Dic
 		var candidate: Vector2i = from + neighbor
 		if occupied.has(candidate):
 			continue
-		if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
+		if lane_set.is_empty():
+			if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
+				continue
+		elif lane_set.has(candidate):
 			continue
 		dodger.position = candidate
 		return [{

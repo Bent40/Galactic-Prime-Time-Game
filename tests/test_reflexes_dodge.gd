@@ -7,8 +7,9 @@ extends SimTestBase
 ## boss's aimed-round dodge (boss_traits.dodge_threshold, retuned 4 -> 7) and
 ## the Dash counters ladder (the dash ability's "dodge" block — threshold 7,
 ## counter_at 9: auto-dodge + 1-hex sidestep at 7+, + counterattack at 9+; the
-## sidestep rides ANY successful dash dodge). Prone joins Helpless/Exposed as
-## an ineligible window (the slam punish).
+## sidestep rides ANY successful dash dodge and, since decision #31, moves the
+## dodger OFF the committed charge lane specifically). Prone joins
+## Helpless/Exposed as an ineligible window (the slam punish).
 ##
 ## RNG-consumption pins use a TWIN RandomNumberGenerator seeded to the live
 ## stream's state: exactly-one-draw and zero-draw claims are proven against
@@ -207,11 +208,16 @@ func test_dash_vs_reflexes_seven_auto_dodges_and_sidesteps() -> void:
 	assert_eq(sim.ai.ai_rng.state, state_before, "the auto-dodge consumed no rng")
 	var sidestep: Dictionary = assert_event(resolved, "dash_sidestepped", "the sidestep rides the dodge")
 	assert_eq(sidestep.get("from", []), [1, 0], "from the pre-dodge hex")
-	assert_eq(sidestep.get("to", []), [2, 0], "first free HEX_NEIGHBORS hex that increases distance")
+	# Decision #31: dodging a CHARGE means leaving its LANE — the dash's
+	# committed lane runs (0,0)..(6,0), so the old pick (2,0) is ON it; the
+	# first free HEX_NEIGHBORS hex OFF the lane is (2,-1) ((1,0)+(1,-1)).
+	assert_eq(sidestep.get("to", []), [2, -1], "first free HEX_NEIGHBORS hex OFF the charge lane")
 	var dodger: CombatantState = sim.combatants["dodger"]
-	assert_eq([dodger.position.x, dodger.position.y], [2, 0], "position actually changed by 1 hex")
+	assert_eq([dodger.position.x, dodger.position.y], [2, -1], "position actually changed by 1 hex")
+	assert_false(HexGeometry.to_set(HexGeometry.line_extended(Vector2i(0, 0), Vector2i(1, 0), 6))
+		.has(dodger.position), "the dodger is genuinely off the lane")
 	assert_eq(CombatantState.hex_distance(dodger.position, boss_state(sim).position), 2,
-		"distance from the dasher increased (1 -> 2)")
+		"distance from the dasher still increased (1 -> 2)")
 	assert_no_event(resolved, "dash_countered", "Reflexes 7 < 9: no counterattack")
 	assert_no_event(resolved, "damage_applied", "the dodge negates the dash entirely")
 	assert_no_event(resolved, "condition_applied", "no crushed rider on a dodged dash")

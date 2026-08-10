@@ -171,16 +171,16 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
 		return _wait("boss", "no_targets")
-	# Priority 1: cone sweep when enough targets stand inside it.
+	# Priority 1: cone sweep when enough targets stand inside the REAL arc
+	# (decision #31 — retires the R11 #16 range-only deferral): the aim is the
+	# fixed-order direction whose 120-degree HexGeometry.cone catches the most
+	# opponents; a cone "reaches" an opponent iff that best arc contains it.
 	var cone: Dictionary = _first_cone_ability(actor, allowed)
 	if not cone.is_empty():
-		var cone_range: int = _ability_range(cone)
-		var in_cone: Array[CombatantState] = []
-		for opponent: CombatantState in opponents:
-			if CombatantState.hex_distance(actor.position, opponent.position) <= cone_range:
-				in_cone.append(opponent)
+		var sweep: Dictionary = _best_cone_sweep(actor, cone, opponents)
+		var in_cone: Array[CombatantState] = sweep["targets"]
 		if in_cone.size() >= CONE_MIN_TARGETS:
-			return _cone_decision(actor, cone, in_cone)
+			return _cone_decision(actor, cone, in_cone, sweep["toward"])
 	# Priority 2: single-target strike (dash), torso bias; else close distance.
 	var strike: Dictionary = _first_strike_ability(actor, allowed)
 	if strike.is_empty():
@@ -214,13 +214,32 @@ func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictio
 ## The old "nearest fallback" is gone on purpose: the mob moves toward whoever
 ## it is antagonized by. Exactly one ai_rng draw when >= 2 candidates, zero
 ## for a single candidate (grapple lock included) — see pick_weighted_target.
+##
+## LINE abilities (the dash — decision #31, retiring the R11 #16 deferral):
+## "reach" is a LEGAL CHARGE LANE, not plain range — the target must sit on the
+## HexGeometry lane from the acting hex within the ability's range with every
+## lane hex before it unoccupied (the charge stops before the first occupied
+## hex, so a blocked lane could never connect). No lane from here: plan the
+## free step toward the pick (allowance rules unchanged) and dash only if the
+## post-step hex has one; else just move (or wait when no step exists) — the
+## picked target must be genuinely lane-reachable or the AI does not dash.
+## The declared action carries the committed lane (area_shape) for the
+## resolver's windup re-check + charge. All pure and rng-free.
 func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, opponents: Array[CombatantState], elite_pick: bool) -> Dictionary:
 	var reach: int = _ability_range(strike)
+	var is_line: bool = String(strike.get("area", "")) == "line"
 	var target: CombatantState = pick_weighted_target(actor, opponents)
 	if target == null:
 		return _wait(tier, "no_reachable_action")
 	var move_to: Variant = null
-	if CombatantState.hex_distance(actor.position, target.position) > reach:
+	if is_line:
+		if not _dash_lane_exists(actor, actor.position, target, reach):
+			move_to = _step_toward(actor, target.position, 1)
+			if move_to == null:
+				return _wait(tier, "no_reachable_action")
+			if not _dash_lane_exists(actor, move_to, target, reach):
+				return {"choice": "move", "tier": tier, "move_to": move_to}
+	elif CombatantState.hex_distance(actor.position, target.position) > reach:
 		move_to = _step_toward(actor, target.position, reach)
 		if move_to == null:
 			return _wait(tier, "no_reachable_action")
@@ -229,18 +248,71 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	var part_key: String = _pick_part(target, strike, elite_pick)
 	if part_key == "":
 		return _wait(tier, "no_reachable_action")
+	var action: Dictionary = _attack_action(strike, [{"id": target.id, "part": part_key}])
+	if is_line:
+		# The committed charge corridor, from the hex the actor will act from
+		# (the free step resolves before the declare in _ai_decide).
+		var from: Vector2i = move_to if move_to != null else actor.position
+		var lane: Array = []
+		for hex: Vector2i in HexGeometry.line_extended(from, target.position, reach):
+			lane.append([hex.x, hex.y])
+		action["area_shape"] = {"kind": "line", "lane": lane}
 	var decision: Dictionary = {
 		"choice": "attack", "tier": tier,
 		"ability": String(strike.get("key", "")),
 		"target": target.id,
-		"action": _attack_action(strike, [{"id": target.id, "part": part_key}]),
+		"action": action,
 	}
 	if move_to != null:
 		decision["move_to"] = move_to
 	return decision
 
 
-func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[CombatantState]) -> Dictionary:
+## True when a legal dash lane exists from `from` to the target: the target
+## within `reach` (so it sits ON the from→target lane by construction) and
+## every lane hex strictly between unoccupied — the charge would genuinely
+## reach the hex adjacent-before the target. Pure, rng-free.
+func _dash_lane_exists(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> bool:
+	if from == target.position:
+		return false
+	if CombatantState.hex_distance(from, target.position) > reach:
+		return false
+	var occupied: Dictionary = _occupied_hexes(actor)
+	var lane: Array[Vector2i] = HexGeometry.line_extended(from, target.position, reach)
+	for k: int in range(1, lane.size()):
+		if lane[k] == target.position:
+			return true
+		if occupied.has(lane[k]):
+			return false
+	return false
+
+
+## The best cone aim (decision #31): try all six fixed-order directions and
+## keep the one whose HexGeometry.cone arc contains the most opponents —
+## strictly-more wins, so an exact tie keeps the EARLIER neighbor order entry.
+## Returns {"toward": Vector2i direction, "targets": in-arc opponents in the
+## candidates' given (sorted-id) order}. Pure and rng-free.
+func _best_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[CombatantState]) -> Dictionary:
+	var size: int = _ability_range(cone)
+	var best_dir: Vector2i = HEX_NEIGHBORS[0]
+	var best_targets: Array[CombatantState] = []
+	for dir: Vector2i in HEX_NEIGHBORS:
+		var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(actor.position, actor.position + dir, size))
+		var hit: Array[CombatantState] = []
+		for opponent: CombatantState in opponents:
+			if arc.has(opponent.position):
+				hit.append(opponent)
+		if hit.size() > best_targets.size():
+			best_dir = dir
+			best_targets = hit
+	return {"toward": best_dir, "targets": best_targets}
+
+
+## Builds the cone sweep declare: one round per swept target (v1 multi-target
+## model, unchanged) + the committed arc (area_shape) so the resolver's windup
+## re-check re-evaluates the CONE shape, not plain range (R2: leaving the arc
+## before resolution dodges it).
+func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[CombatantState], toward: Vector2i) -> Dictionary:
 	var targets: Array[Dictionary] = []
 	for opponent: CombatantState in in_cone:
 		var part_key: String = _pick_part(opponent, cone, false)
@@ -251,6 +323,7 @@ func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[Comb
 	var action: Dictionary = _attack_action(cone, targets)
 	action["rpm"] = targets.size()  # one round per swept target (v1 cone model)
 	action["rounds"] = targets.size()
+	action["area_shape"] = {"kind": "cone", "toward": [toward.x, toward.y], "size": _ability_range(cone)}
 	return {
 		"choice": "attack", "tier": "boss",
 		"ability": String(cone.get("key", "")),
@@ -480,8 +553,11 @@ static func _is_cone(ability: Dictionary) -> bool:
 	return String(ability.get("area", "")).begins_with("cone")
 
 
-## Reach: explicit "range", else the cone's size ("cone 10"), else 1. The v1
-## cone model is range-only (true cone/line geometry is KAN-5 scope, R11 #16).
+## Reach MAGNITUDE: explicit "range", else the cone's size ("cone 10"), else 1.
+## For cone/line abilities this is the SHAPE SIZE fed to HexGeometry (the arc
+## size / lane length) — whether a target is actually reachable is decided by
+## the real shape (_best_cone_sweep / _dash_lane_exists, decision #31), no
+## longer by plain distance (the retired R11 #16 deferral).
 static func _ability_range(ability: Dictionary) -> int:
 	if ability.has("range"):
 		return maxi(1, int(ability.get("range", 1)))
@@ -748,13 +824,16 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 		"combatant": actor.id, "phase": phase, "radius": radius,
 		"position": [actor.position.x, actor.position.y],
 	}]
+	# The blast shape is the shared HexGeometry primitive (decision #31);
+	# membership is identical to the old direct distance <= radius check.
+	var area: Dictionary = HexGeometry.to_set(HexGeometry.blast(actor.position, radius))
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
 		var other: CombatantState = combatants[id]
 		if other.id == actor.id or not other.alive or other.removed_from_play:
 			continue
-		if CombatantState.hex_distance(actor.position, other.position) > radius:
+		if not area.has(other.position):
 			continue
 		other.helpless_until_tick = maxi(other.helpless_until_tick, clock.tick + 2 * Clock.TICKS_PER_CLOCK)
 		events.append({
