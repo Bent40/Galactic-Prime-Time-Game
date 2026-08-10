@@ -8,6 +8,15 @@ passes over the TTRPG rulebook, the live campaign data, and the full v2 canon se
 Every finding is cited to `§section` or `file:line`. Full inventories in
 [`research/`](research/) (A–G).
 
+> ### ⚠️ Superseded in part — read [`v2-decisions-round2.md`](v2-decisions-round2.md) first
+> The owner ruled **D-01, D-03, D-04 and D-06** on 2026-08-10 and expanded **D-02**.
+> Round 2 changes three things in this document: **§6's stakes problem is solved**
+> (survival + your place in the world after the reset; divinity is a contestant-facing
+> currency, cut by your patron); **§7's "Ascension inverts / no exit" reading is corrected**
+> (the inversion is *memory*, not exit); and **D-03 was ruled the opposite of the
+> recommendation here** — the winner authors *events*, gods author *religion*.
+> Everything else stands.
+
 **Naming used throughout:**
 **v1** = the alien premise — abducted humans, The Corporation™, alien-broadcast dungeon
 runs. The live tabletop campaign. Master: `Galactic-Prime-Time/rulebook/gpt-system-v1.0.md` (v1.1, 2026-08-04).
