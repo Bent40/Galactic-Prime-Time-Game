@@ -73,6 +73,15 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	if prime_reason != "":
 		return _reject("prime_unmet", {"actor": actor_id, "prime": prime_reason})
 
+	# G1 Tactical Roll (rules-addendum R25): the declared_dodge archetype spends
+	# the actor's MOVEMENT for the Moment — not a Moment, not the free-action
+	# slot — and moves IMMEDIATELY at declare. Routed before the R3 slot caps
+	# because its economy is the movement allowance, not the action slots.
+	if kind == "skill":
+		var dodge_spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		if String(dodge_spec.get("archetype", "")) == "declared_dodge":
+			return _declare_tactical_roll(actor, action, dodge_spec)
+
 	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
 	var eff_cost: int = _effective_cost(actor, kind, action, uses_strained)
 
@@ -714,6 +723,68 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	var events: Array[Dictionary] = [{
 		"type": "action_declared", "actor": actor_id, "kind": "move", "cost": cost,
 		"resolve_tick": clock.tick + (cost if cost >= 2 else 0), "windup": window > 0,
+	}]
+	return events
+
+
+# ------------------------------------------------------------------ tactical roll (G1 / R25)
+
+## G1 (owner 2026-07-23; rules-addendum R25): Tactical Roll is a declared-hex
+## dodge — "you give up your movement for the Moment and declare the hex you
+## roll to; the attack still resolves". Semantics:
+##  * COST = exactly the movement allowance (design call, R25): the roll sets
+##    moved_this_tick — a free move after a roll rejects "already_moved", a roll
+##    after any move this tick rejects "movement_spent". It does NOT touch the
+##    free-action slot ("give up your movement", nothing more): The Bit, the
+##    first inventory use and 0-cost declares/reactions stay legal the same tick.
+##  * The move happens IMMEDIATELY at declare (it is a dodge): windup re-checks
+##    at later resolution ticks see the new hex through the R2 tick-start
+##    snapshot — the existing cone-arc / dash-lane / plain-range re-checks ARE
+##    the single/multi-target half of the G1 refinement, no new seam. Rolling on
+##    an attack's own resolution tick dodges nothing (R2 snapshot semantics;
+##    instants cost <= 1 are never dodged by movement).
+##  * The rolled_this_window marker (set here, cleared at the actor's next tick
+##    start) feeds the AoE-center rule: an AREA attack resolving this Moment
+##    misses the roller unless the destination is the area's CENTER
+##    (EnemyAI.resolve_explosion_blast).
+##  * Movement gates mirror move(): no roll while grappled (R9), winding up
+##    (R2 commit) or Prone (R3 prone-can-only-crawl + the R22 punish window).
+##    Exposed does NOT block the roll — Exposed combatants may still move (R3),
+##    and R22's Exposed gate governs the threshold dodge, not movement.
+func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if actor.grappled_by != "" or actor.grappling != "":
+		return _reject("grappled", {"actor": actor.id})
+	if actor.windup_pending:
+		return _reject("winding_up", {"actor": actor.id})
+	if bool(actor.statuses.get("prone", false)):
+		return _reject("prone", {"actor": actor.id})
+	if actor.moved_this_tick:
+		return _reject("movement_spent", {"actor": actor.id})
+	var to_raw: Array = action.get("to", [])
+	if to_raw.size() != 2:
+		return _reject("invalid_destination", {"actor": actor.id})
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	var spaces: int = CombatantState.hex_distance(actor.position, to)
+	if spaces <= 0:
+		return _reject("no_move", {"actor": actor.id})
+	var roll_range: int = int(spec.get("roll_range", 2))
+	if spaces > roll_range:
+		return _reject("roll_out_of_range", {"actor": actor.id, "range": roll_range, "spaces": spaces})
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id != actor.id and other.alive and not other.removed_from_play and other.position == to:
+			return _reject("hex_occupied", {"actor": actor.id, "by": other.id})
+	# --- all checks passed; mutate ---
+	actor.moved_this_tick = true
+	actor.rolled_this_window = true
+	var from: Vector2i = actor.position
+	actor.position = to
+	var events: Array[Dictionary] = [{
+		"type": "tactical_roll", "actor": actor.id,
+		"from": [from.x, from.y], "to": [to.x, to.y],
+		"spaces": spaces, "range": roll_range, "level": int(action.get("level", 1)),
 	}]
 	return events
 

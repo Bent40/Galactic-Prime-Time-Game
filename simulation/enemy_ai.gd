@@ -1087,9 +1087,16 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 ## Executes the "blast" choice: every OTHER living, in-play combatant within
 ## the hex radius is knocked out — Helpless for 2 Clocks (owner ruling,
 ## decision #27), no damage, no death. Friendly fire is ON (other enemies in
-## radius are caught; the boss itself is not) and the blast is never dodged
-## (collateral/environment, R22); an already-Helpless victim just has the
-## window extended (maxi). Then the canonical retreat applies when this valve
+## radius are caught; the boss itself is not) and the blast is never
+## threshold-dodged (collateral/environment, R22); an already-Helpless victim
+## just has the window extended (maxi). ONE exception — the G1 AoE-center rule
+## (rules-addendum R25): the blast is an AREA attack, so it MISSES a combatant
+## whose rolled_this_window marker is live (a Tactical Roll this Moment)
+## entirely, UNLESS the roller's hex is the area's CENTER. The blast centers on
+## the boss's own hex, and rolling onto an occupied hex is impossible — so in
+## practice a well-timed roller ALWAYS escapes the valve KO (flagged for the
+## owner in R25; the center check stays live for future area attacks with
+## unoccupied centers). Then the canonical retreat applies when this valve
 ## resets the breach, and the machine advances into the next phase — the boss
 ## resumes normal fight behavior next Moment.
 func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: ConditionEngine) -> Array[Dictionary]:
@@ -1110,6 +1117,16 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 		if other.id == actor.id or not other.alive or other.removed_from_play:
 			continue
 		if not area.has(other.position):
+			continue
+		# G1 AoE-center rule (R25): a rolling target is missed by an AREA attack
+		# entirely — unless the destination hex IS the area's center.
+		if other.rolled_this_window and other.position != actor.position:
+			events.append({
+				"type": "blast_missed_roller",
+				"combatant": other.id, "by": actor.id,
+				"at": [other.position.x, other.position.y],
+				"center": [actor.position.x, actor.position.y],
+			})
 			continue
 		other.helpless_until_tick = maxi(other.helpless_until_tick, clock.tick + 2 * Clock.TICKS_PER_CLOCK)
 		events.append({
