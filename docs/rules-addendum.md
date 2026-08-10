@@ -293,10 +293,15 @@ overturning one is a code change, not a rewrite.
       uniformly) and the compendium's Solo Action template.
     - **RULED (owner 2026-07-18) — takedown = a kill YOU caused:** a friendly death
       completes the takedown goal ONLY IF a contestant dealt the killing blow (friendly
-      fire counts — "it's cinema"); the payout is credited to that killer. IMPLEMENTATION
-      PENDING — this needs kill-attribution + team-awareness in the hype engine (the
-      deferred attribution v2); until then the v1 code over-fires on ANY `combatant_died`,
-      a known tracked gap (task queued). Enemy deaths still complete it.
+      fire counts — "it's cinema"); the payout is credited to that killer. **IMPLEMENTED
+      (attribution v2, 2026-07-25, task #13):** `combatant_died` carries the killer;
+      wound sources are serialized so condition deaths attribute to the wound's author
+      (latest named attacker wins); the hype takedown gate is team-aware (enemy deaths
+      complete unconditionally, friendly deaths only on a contestant killing blow) and
+      the payout credits the killer's ledger row. Flagged interpretation calls: merged
+      kill single-credits the last connected member; self-kill counts per the literal
+      text; per-event BASE hype points remain v1 victim-credited (the recorded
+      boundary). Enemy deaths still complete it. Tests: test_takedown_attribution.gd.
     - **RULED (owner 2026-07-18) — same-batch completion ALLOWED:** a goal offered at a
       clock_reset CAN be completed by later events in that same batch — an insta-win off
       good preparation or luck is not punished. Current behavior is correct as-is; no
