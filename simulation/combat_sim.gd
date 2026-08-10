@@ -181,6 +181,10 @@ func _breach_and_phase_checks() -> Array[Dictionary]:
 					part["hidden"] = false
 			events.append({"type": "breach_opened", "combatant": c.id})
 		events.append_array(ai.phase_events(c, cond))
+	# Death-spin abort sweep (wave 2b) — AFTER the phase machine so an entry
+	# into an explosion valve this very command aborts a live spin immediately
+	# (the valve outranks, #27 precedent). Idempotent like the latching flags.
+	events.append_array(ai.death_spin_checks())
 	return events
 
 
@@ -577,7 +581,11 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 		var to: Vector2i = decision["move_to"]
 		events.append_array(resolver.move(actor.id, to))
 	match String(decision.get("choice", "wait")):
-		"attack", "heal":
+		# grab/chew/spin are the death-spin beats (wave 2b) — each a REAL
+		# cost-1 declare through the resolver (grab = the R9 grapple kind;
+		# chew/spin = marker-carrying attacks), so validation, feints, shock
+		# and the Forced-Action machinery all apply like any other action.
+		"attack", "heal", "grab", "chew", "spin":
 			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
 		"stand":
 			# Skill-feel pass: a prone boss spends its Moment standing back up —

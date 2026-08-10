@@ -341,9 +341,10 @@ overturning one is a code change, not a rewrite.
     reach (ties: nearest, then id) and punishes exposure — head when targetable,
     else the lowest-HP part. BOSS — see #18. v1 ability model: `damage` +
     `range`/`area` = strike (first damage entry only), `summon`, `heal`;
-    `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
-    deferred); ~~"cone N"/"line" resolve as plain reach (true area geometry is
-    KAN-5 scope)~~ **RETIRED (decision #31, 2026-08-10): cone/line are REAL
+    `sequence`/`effect`-only abilities are skipped by the STRIKE lookup
+    (~~death_spin, drag_back deferred~~ — death_spin now has its own decide
+    path, wave 2b #19; drag_back stays deferred); ~~"cone N"/"line" resolve as
+    plain reach (true area geometry is KAN-5 scope)~~ **RETIRED (decision #31, 2026-08-10): cone/line are REAL
     shapes now** — `simulation/hex_geometry.gd` supplies the axial primitives
     (`line`/`line_extended`/`cone`/`blast`; deterministic tie rules and the
     120°-wedge cone model documented + ASCII-diagrammed in its header). The
@@ -396,17 +397,63 @@ overturning one is a code change, not a rewrite.
     and the boss keeps fighting. Phase-6 death explosion stays data-only (the
     fight ends at network 0).** The phase-2 beat is the slice's win moment
     (review-4 §5, DIRECTION Stage 1).
+19. **Death Spin is REAL; dash knock-aside is REAL (wave 2b, decision #31,
+    2026-08-10 — retires the #16 "sequence abilities skipped" deferral for
+    death_spin).** The authored 3-beat sequence runs as a real state machine
+    (serialized like the explosion beats: `ai.death_spins`, hash-covered).
+    **Pacing (documented ruling):** grab cost 1 → chew cost 1 → spin cost 1 —
+    the authored `moment_cost 3` spans the WHOLE sequence, one Moment per
+    beat; each beat is a real cost-1 resolver declare (feints, shock stutter,
+    Forced Actions all apply; a denied beat is RETRIED, never skipped).
+    **Decide order (documented ruling):** valve > stand > active-sequence
+    continuation > cone > GRAB > dash > close — the grab is the boss's punish
+    on a target that stays ADJACENT (authored grab range 1; no step-then-grab)
+    while it is free to act; scarier than the dash, so it outranks it; the
+    victim pick is the R23 draw over the ADJACENT candidates only.
+    **Grab hand (data-honest ruling):** the flamethrower is authored on the
+    LEFT hand, so the grab uses the first usable NON-flamethrower hand
+    (right_hand); no usable non-flamethrower hand = no grab (AI never decides
+    it; a hand-built command rejects `grab_hand_disabled`). The grab initiates
+    a REAL R9 grapple (adjacent instant — the dodge model does not apply, R2).
+    **Beat 2 CHEW:** 2 crushed to every arm part through the normal R14 gate,
+    conditions per the normal path. **Beat 3 SPIN-KILL:** still honest R14 —
+    a crushed hit of amount 8 (PLACEHOLDER R14; Force 8+3=11 fells a fresh
+    5-HP torso through the gate, and an armored monster can genuinely survive
+    it), then the victim is FLUNG down the spin lane (the HexGeometry ray from
+    the boss through the victim, 3 hexes or until a body, prone on landing if
+    it survives; the kill attributes to the boss through the normal
+    `combatant_died.killer` path). **Counterplay chain (the design):** 2 full
+    Moments of warning (grab → chew) in which ANY single recorded hit netting
+    ≥ 5 on the boss (the R15/NQ2 single-hit seam — a merged combined hit
+    counts as ONE) forces the release, or the victim escapes via R9 (1 Moment
+    needs Physique ≥ 6, else 2 Moments — too slow past the chew, intended
+    texture); grappling also EXPOSES the boss (R9), so its own dodge is off
+    mid-sequence. Valve entry aborts the spin honestly (the valve outranks,
+    #27 precedent), as do boss prone/helpless and victim death; a mid-batch
+    release makes a same-tick chew/spin close on air (live grip re-check,
+    the `grapple_suffocate` "grip_lost" family). The "death spin grab range
+    +1" / "death spin costs 2 moments" phase upgrades stay DATA-ONLY (wave
+    2d). **Dash knock-aside:** the authored `"effect": "knock aside"` is
+    real — a target the charge CONNECTS with (not dodged, not stopped-short;
+    a robustness-blocked 0-net hit still connected) is displaced to the first
+    free fixed-order neighbor OFF the committed lane (the involuntary sibling
+    of the R22 sidestep) and knocked PRONE; no free off-lane neighbor = prone
+    only (`knocked_aside`). The wave-2a charge rule is unchanged: the boss
+    stops adjacent-before the target's SNAPSHOT hex, so after the shove it
+    may stand adjacent to a now-empty hex (documented interaction).
+    Tests: tests/test_death_spin.gd.
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
-phase-2 transition beat; still open there: death_spin/drag_back (forced movement),
+phase-2 transition beat; still open there: drag_back (forced movement),
 pack synergy (R15 enemy combos), and AI stances for `aura_reading` (skills-audit
 dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL per
 R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
 decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
-arena BOUNDS remain KAN-5).
+arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
+wave 2b (2026-08-10, #19 — the death-spin phase upgrades stay data-only for wave 2d).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
