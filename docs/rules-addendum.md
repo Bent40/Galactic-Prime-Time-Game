@@ -342,8 +342,26 @@ overturning one is a code change, not a rewrite.
     else the lowest-HP part. BOSS — see #18. v1 ability model: `damage` +
     `range`/`area` = strike (first damage entry only), `summon`, `heal`;
     `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
-    deferred); "cone N"/"line" resolve as plain reach (true area geometry is
-    KAN-5 scope). Targets with no attackable part are skipped.
+    deferred); ~~"cone N"/"line" resolve as plain reach (true area geometry is
+    KAN-5 scope)~~ **RETIRED (decision #31, 2026-08-10): cone/line are REAL
+    shapes now** — `simulation/hex_geometry.gd` supplies the axial primitives
+    (`line`/`line_extended`/`cone`/`blast`; deterministic tie rules and the
+    120°-wedge cone model documented + ASCII-diagrammed in its header). The
+    flamethrower sweeps the arc whose fixed-order aim direction catches the
+    most opponents (a cone "reaches" an opponent iff the best arc contains
+    it); the windup re-check re-evaluates the ARC per target (leaving it
+    dodges the sweep for that target; an emptied sweep collapses). The dash is
+    an honest CHARGE along its committed `line_extended` lane: the AI dashes
+    only at a lane-reachable pick, the boss runs the lane to the hex
+    adjacent-before the target (bodies stop the charge BEFORE the first
+    occupied hex — stopped out of reach is an honest miss, not a collapse; an
+    interloper shields the declared target), leaving the lane mid-windup
+    dodges it, and the R22 sidestep now displaces the dodger OFF the lane
+    specifically (first free fixed-order neighbor not on it). The explosion
+    beat's radius rides the shared `blast` primitive, membership unchanged.
+    Geometry stays unbounded — `arena_hexes` is authored data the engine does
+    not read; bounds arrive with the KAN-5 arenas. Targets with no attackable
+    part are skipped.
 17. **Dodge Threshold — SUPERSEDED by R22 (owner 2026-07-23): thresholds now ask
     Reflexes with a 1d4 fallback; the flat d6 below is the retired v1 model.**
     (Original text kept for the record.) A combatant with
@@ -384,9 +402,11 @@ dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (h
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
 phase-2 transition beat; still open there: death_spin/drag_back (forced movement),
-true cone/line geometry (KAN-5), pack synergy (R15 enemy combos), and AI stances for
-`aura_reading` (skills-audit dependency). Explosion choreography and the Dash
-Reflexes-counters moved to REAL per R22/R23 + decision #27 (2026-07-23).
+pack synergy (R15 enemy combos), and AI stances for `aura_reading` (skills-audit
+dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL per
+R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
+decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
+arena BOUNDS remain KAN-5).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
