@@ -1001,6 +1001,36 @@ func restore_run(run_snapshot: Dictionary, sim_snapshot: Dictionary = {}, static
 		_combat_ended_emitted = bool(combat_status().get("over", false))
 
 
+## Persists the live run to disk (KAN-4 wave 2e — the disk counterpart of
+## restore_run; SaveManager owns the file). The envelope carries the RunState +
+## the FULL run log, plus the in-flight encounter's CombatSim + its log tail
+## when one is live — between-encounters saves carry an empty sim block (the
+## next encounter is re-derived from run state, exactly like restore_run).
+## false when no run is live (mirror of save_game's sim==null guard).
+func save_run(save_name: String) -> bool:
+	if run == null:
+		return false
+	var live: bool = run.phase == "combat" and sim != null
+	return saves.save_run(save_name, run, run_command_log,
+		sim if live else null, command_log if live else [])
+
+
+## Restores a run from disk through the EXISTING restore_run path, then
+## restores both logs from the envelope so the next save keeps the full
+## history (the load_game idiom). Soft fail: false with saves.last_error set
+## on a missing/corrupt/non-run/foreign-version file — the live session stays
+## untouched, no partial restore. `static_data` pins the tables for the
+## restored run's future encounters (tests); {} loads through the DAL.
+func load_run(save_name: String, static_data: Dictionary = {}) -> bool:
+	var envelope: Dictionary = saves.load_run(save_name)
+	if envelope.is_empty():
+		return false
+	restore_run(envelope["run_snapshot"], envelope.get("sim_snapshot", {}), static_data)
+	run_command_log.assign(envelope.get("run_command_log", []))
+	command_log.assign(envelope.get("sim_command_log", []))
+	return true
+
+
 ## end_encounter enrichment: the honest capture off the LIVE sim. Rejects
 ## (without logging) when no fight is staged or the fight is not over — the run
 ## never records an outcome the sim does not actually show.
