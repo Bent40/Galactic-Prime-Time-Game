@@ -3,8 +3,11 @@ extends SimTestBase
 ## decisions the verdict quotes. Every test drives the sim through real
 ## commands (fixed seeds) and asserts the ledger records exactly what happened:
 ## fire on the real signal, NO entry when the signal is absent (a safe bit, a
-## festering-wound breach, a party-side death), determinism + serialization,
+## festering-wound breach, an unauthored death), determinism + serialization,
 ## and the view_verdict projection (evidence array + endured + intact fields).
+## Takedown attribution rides R11 #14 v2 (killing-blow author; friendly fire
+## counts and is flagged) — the deeper v2 edge coverage lives in
+## test_takedown_attribution.gd.
 
 
 ## Authored-bit spec fragment (decision log #25): the sim rejects the_bit from
@@ -229,15 +232,23 @@ func test_takedown_credits_the_killer_of_an_enemy() -> void:
 	assert_eq(String((entries[0].get("detail", {}) as Dictionary).get("victim", "")), "m", "detail names the victim")
 
 
-func test_party_death_is_not_a_takedown() -> void:
-	# A contestant killing a PARTY member (friendly fire) is not a takedown.
+func test_party_death_by_contestant_is_a_friendly_fire_takedown() -> void:
+	# R11 #14 v2 (supersedes the v1 team gate this test used to pin): a FRIENDLY
+	# kill IS a takedown when a contestant dealt the killing blow — friendly
+	# fire counts ("it's cinema") — surfaced distinctly via detail.friendly_fire.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party"})
 	add_human(sim, "p", {"team": "party", "position": [1, 0]})
 	declare(sim, "h", attack_action("crushed", 5, "p", "torso"))
 	var events: Array[Dictionary] = advance(sim, 1)
-	assert_event(events, "combatant_died", "precondition: the party member died")
-	assert_eq(entries_of(sim, "takedown").size(), 0, "a party-side death is never a takedown entry")
+	var died: Dictionary = assert_event(events, "combatant_died", "precondition: the party member died")
+	assert_eq(String(died.get("killer", "")), "h", "the death event names the killing blow's author")
+	var entries: Array[Dictionary] = entries_of(sim, "takedown")
+	assert_eq(entries.size(), 1, "a friendly-fire kill by a contestant IS a takedown entry (v2)")
+	assert_eq(String(entries[0].get("actor", "")), "h", "credited to the killer")
+	var detail: Dictionary = entries[0].get("detail", {})
+	assert_eq(String(detail.get("victim", "")), "p", "detail names the victim")
+	assert_true(bool(detail.get("friendly_fire", false)), "and flags the friendly fire distinctly")
 
 
 # ---------------------------------------------------------------- determinism + serialization

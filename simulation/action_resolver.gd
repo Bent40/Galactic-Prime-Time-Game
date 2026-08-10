@@ -967,7 +967,12 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
-	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", String((connected[0] as Dictionary)["condition"]), clock.tick))
+	# R11 #14 v2: the merged hit is ONE blow; its author is the LAST member whose
+	# strike actually CONNECTED (the closing hit of the merged wound — a member
+	# who missed never authored it). Single credit, matching the ruling's
+	# singular "that killer" and the breach_risk closing-hitter convention.
+	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", String((connected[0] as Dictionary)["condition"]), clock.tick,
+			String((connected[connected.size() - 1] as Dictionary)["actor"])))
 	if target.dancing and reduced > 0:
 		events.append_array(_end_dance(target, "hit"))
 	# ONE recorded hit for the single-hit breach threshold (R15/NQ2).
@@ -996,6 +1001,7 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 				"source": "attack",
 				"injection": bool(md["injection"]),
 				"poison_type": String(md["poison_type"]),
+				"attacker": String(md["actor"]),  # R11 #14 v2: each rider keeps its own author
 			}))
 	return events
 
@@ -1584,7 +1590,8 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
-	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick))
+	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick,
+			attacker.id if attacker != null else ""))
 	# self_stance (dance): the stance ends when its owner is hit (takes damage).
 	if target.dancing and reduced > 0:
 		events.append_array(_end_dance(target, "hit"))
@@ -1614,6 +1621,7 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				"source": "attack",
 				"injection": bool(action.get("injection", false)),
 				"poison_type": String(action.get("poison_type", "")),
+				"attacker": attacker.id if attacker != null else "",  # R11 #14 v2 wound source
 			}))
 	return events
 
@@ -1757,7 +1765,7 @@ func _resolve_grapple_suffocate(actor: CombatantState, action: Dictionary) -> Ar
 		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple_suffocate", "reason": "grip_lost"})
 		return events
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "grapple_suffocate", "result": "ok"})
-	events.append_array(cond.apply(target, "torso", "suffocation", clock.tick, {"source": "attack"}))
+	events.append_array(cond.apply(target, "torso", "suffocation", clock.tick, {"source": "attack", "attacker": actor.id}))
 	return events
 
 

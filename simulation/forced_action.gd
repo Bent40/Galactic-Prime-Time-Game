@@ -63,7 +63,9 @@ static func apply_consequence(rolled: Dictionary, actor: CombatantState, ctx: Di
 				if not pick.is_empty():
 					events.append_array(cond.advance(actor, String(pick["part"]), String(pick["condition"]), 1, tick, "tear_something"))
 			else:
-				events.append_array(cond.damage_part(actor, part_key, 1, "forced", "", tick))
+				# R11 #14 v2: the actor authored their own tear — a self-kill
+				# attributes to the victim themselves (the literal killing blow).
+				events.append_array(cond.damage_part(actor, part_key, 1, "forced", "", tick, actor.id))
 		"lock_up":
 			actor.part_locked_until[part_key] = tick + 3
 			events.append({"type": "part_locked", "combatant": actor.id, "part": part_key, "until_tick": tick + 3})
@@ -81,7 +83,9 @@ static func apply_consequence(rolled: Dictionary, actor: CombatantState, ctx: Di
 				var victim: CombatantState = combatants[victim_id]
 				var dmg: int = maxi(1, int(ctx.get("damage", 1)))
 				events.append({"type": "collateral_hit", "combatant": actor.id, "victim": victim_id})
-				events.append_array(cond.damage_part(victim, default_part(victim), dmg, "forced", "", tick))
+				# R11 #14 v2: the wild swing is still the actor's blow — a collateral
+				# kill attributes to them (friendly fire counts, Q69 — "it's cinema").
+				events.append_array(cond.damage_part(victim, default_part(victim), dmg, "forced", "", tick, actor.id))
 		"drop":
 			var item_keys: Array = actor.items.keys()
 			item_keys.sort()

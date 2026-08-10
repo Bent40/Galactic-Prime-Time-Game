@@ -129,7 +129,10 @@ func forced_body_required(c: CombatantState, acting_part_key: String) -> bool:
 
 
 ## Applies (or re-applies) a condition. ctx keys: "source" ("attack"|"direct"|
-## "forced"), "tier" (direct set, default 1), "poison_type", "injection".
+## "forced"), "tier" (direct set, default 1), "poison_type", "injection",
+## "attacker" (the applying combatant's id, "" for environment/GM — R11 #14 v2
+## wound-source bookkeeping: the instance remembers its author so a later
+## condition death can name its killer).
 func apply(c: CombatantState, part_key: String, condition_id: String, tick: int, ctx: Dictionary = {}) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not c.alive:
@@ -188,7 +191,7 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 		return events
 
 	if is_timer_condition(condition_id):
-		return _apply_timer_condition(c, part_key, condition_id, def, events)
+		return _apply_timer_condition(c, part_key, condition_id, def, events, ctx)
 
 	var source := String(ctx.get("source", "direct"))
 	if condition_id == "poison":
@@ -206,6 +209,12 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 			return events
 		if source == "attack":
 			instance["last_attack_advance_tick"] = tick
+		# R11 #14 v2: the latest named author to feed the wound owns it — the
+		# "killing blow" convention. Updated BEFORE the advance so an advance
+		# that reaches a death tier credits the hitter who pushed it there.
+		# An authorless re-application (environment/GM) never erases an author.
+		if String(ctx.get("attacker", "")) != "":
+			instance["source"] = String(ctx.get("attacker", ""))
 		events.append_array(advance(c, part_key, condition_id, 1, tick, "reapplied"))
 		return events
 
@@ -220,6 +229,8 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 		"poison_type": String(ctx.get("poison_type", "")),
 		"activation_delay": int(ctx.get("activation_delay", 0)),
 		"last_attack_advance_tick": tick if source == "attack" else -1,
+		# R11 #14 v2 wound source: who seeded this wound ("" = environment/GM).
+		"source": String(ctx.get("attacker", "")),
 	}
 	if not c.conditions.has(part_key):
 		c.conditions[part_key] = {}
@@ -230,7 +241,7 @@ func apply(c: CombatantState, part_key: String, condition_id: String, tick: int,
 	return events
 
 
-func _apply_timer_condition(c: CombatantState, part_key: String, condition_id: String, def: Dictionary, events: Array[Dictionary]) -> Array[Dictionary]:
+func _apply_timer_condition(c: CombatantState, part_key: String, condition_id: String, def: Dictionary, events: Array[Dictionary], ctx: Dictionary = {}) -> Array[Dictionary]:
 	var spread: Dictionary = def.get("spread_rules", {})
 	for timer: Dictionary in c.timers:
 		if String(timer.get("condition", "")) == condition_id:
@@ -247,6 +258,9 @@ func _apply_timer_condition(c: CombatantState, part_key: String, condition_id: S
 		"delay": 0,
 		"paused": false,
 		"fresh": in_clock_reset,
+		# R11 #14 v2 wound source: the timer remembers who started it, so its
+		# terminal (suffocation death) can name its killer.
+		"source": String(ctx.get("attacker", "")),
 	})
 	events.append({"type": "timer_started", "combatant": c.id, "kind": condition_id, "clocks": clocks})
 	return events
@@ -277,7 +291,7 @@ func _poison_gate_and_soup(c: CombatantState, part_key: String, tick: int, ctx: 
 				burst = mini(burst, c.max_hp(part_key) - 1)
 			events.append({"type": "poison_soup", "combatant": c.id, "part": part_key, "types": [old_type, new_type], "burst": burst})
 			events.append_array(resolve(c, part_key, "poison", "poison_soup"))
-			events.append_array(damage_part(c, part_key, burst, "condition", "poison", tick))
+			events.append_array(damage_part(c, part_key, burst, "condition", "poison", tick, String(ctx.get("attacker", ""))))
 			return events
 	return []
 
@@ -457,8 +471,11 @@ func _drop_held_items(c: CombatantState) -> Array[Dictionary]:
 
 ## Central HP damage sink. source_kind: "weapon"|"condition"|"forced"|"environment".
 ## Emits damage_applied (even at 0 for transparency) and owns the death /
-## bleed-out decision (R5). `amount` is already post-resistance.
-func damage_part(c: CombatantState, part_key: String, amount: int, source_kind: String, source_condition: String, tick: int) -> Array[Dictionary]:
+## bleed-out decision (R5). `amount` is already post-resistance. `source_id`
+## (R11 #14 v2) names the combatant whose action authored this damage ("" =
+## environment / unattributed) — it becomes the killer on a kill and the wound
+## source when the hit starts a bleed-out.
+func damage_part(c: CombatantState, part_key: String, amount: int, source_kind: String, source_condition: String, tick: int, source_id: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not c.alive or not c.parts.has(part_key):
 		return events
@@ -479,7 +496,7 @@ func damage_part(c: CombatantState, part_key: String, amount: int, source_kind: 
 	if amount <= 0:
 		return events
 	if not c.bleed_out.is_empty():
-		events.append_array(_kill(c, "damage_during_bleed_out"))  # any damage kills (R5)
+		events.append_array(_kill(c, "damage_during_bleed_out", source_id))  # any damage kills (R5)
 		return events
 	c.damage_taken_this_tick += amount
 	part["hp"] = maxi(0, int(part["hp"]) - amount)
@@ -487,9 +504,9 @@ func damage_part(c: CombatantState, part_key: String, amount: int, source_kind: 
 		return events
 	if bool(part.get("lethal", false)):
 		if source_kind == "condition" and DELAYABLE.has(source_condition):
-			events.append_array(_start_bleed_out(c, part_key, source_condition))
+			events.append_array(_start_bleed_out(c, part_key, source_condition, source_id))
 		else:
-			events.append_array(_kill(c, "vital_part_destroyed"))
+			events.append_array(_kill(c, "vital_part_destroyed", source_id))
 	else:
 		if not bool(part.get("disabled", false)):
 			part["disabled"] = true
@@ -595,10 +612,18 @@ func _bleed_out_drain(c: CombatantState, tick: int) -> Array[Dictionary]:
 	if per_tier <= 0:
 		return events
 	var worst: int = 0
-	for pk: Variant in c.conditions.keys():
-		var t: int = int(((c.conditions[pk] as Dictionary).get("bleeding", {}) as Dictionary).get("tier", 0))
+	# R11 #14 v2: the drain is driven by the worst bleeding wound, so a drain
+	# death attributes to that wound's author. Sorted part order; a strictly
+	# higher tier takes over, ties keep the first sorted part — deterministic.
+	var drain_source: String = ""
+	var cond_parts: Array = c.conditions.keys()
+	cond_parts.sort()
+	for pk: Variant in cond_parts:
+		var instance: Dictionary = (c.conditions[pk] as Dictionary).get("bleeding", {})
+		var t: int = int(instance.get("tier", 0))
 		if t >= from_tier and t > worst:
 			worst = t
+			drain_source = String(instance.get("source", ""))
 	if worst <= 0:
 		return events
 	var drain: int = per_tier * worst
@@ -612,7 +637,7 @@ func _bleed_out_drain(c: CombatantState, tick: int) -> Array[Dictionary]:
 		if bool(part.get("bleed_immune", false)) or bool(part.get("hidden", false)) \
 				or bool(part.get("destroyed", false)) or int(part.get("hp", 0)) <= 0:
 			continue
-		events.append_array(damage_part(c, String(pk), drain, "bleed_out", "bleeding", tick))
+		events.append_array(damage_part(c, String(pk), drain, "bleed_out", "bleeding", tick, drain_source))
 	return events
 
 
@@ -654,7 +679,7 @@ func _advance_timers(c: CombatantState) -> Array[Dictionary]:
 		if kind == "dissolution":
 			events.append_array(_mind_collapse(c))
 		else:  # death / suffocation / bleed_out
-			events.append_array(_kill(c, kind))
+			events.append_array(_kill(c, kind, String(timer.get("source", ""))))
 	return events
 
 
@@ -711,7 +736,7 @@ func _apply_tier_entry_effects(c: CombatantState, part_key: String, condition_id
 			# Only a lethal part can end the combatant (F2). The source gate in apply()
 			# already bars a hidden part, so `lethal` here means lethal-and-exposed.
 			if lethal:
-				events.append_array(_kill(c, condition_id + "_t" + str(tier)))
+				events.append_array(_kill(c, condition_id + "_t" + str(tier), _condition_source(c, part_key, condition_id)))
 		elif eff.begins_with("death_timer_clocks:"):
 			# Poison/Infected terminal — gate on a lethal part (like burn's
 			# death_timer_clocks_if_vital), so it can't start on a cosmetic limb (F2).
@@ -735,6 +760,8 @@ func _add_death_timer(c: CombatantState, condition_id: String, part_key: String,
 		"kind": "death", "condition": condition_id, "part": part_key,
 		"clocks_remaining": clocks, "delay": 0, "paused": false,
 		"fresh": in_clock_reset,
+		# R11 #14 v2: the terminal timer inherits the fatal wound's author.
+		"source": _condition_source(c, part_key, condition_id),
 	})
 	events.append({"type": "timer_started", "combatant": c.id, "kind": "death", "condition": condition_id, "clocks": clocks})
 	return events
@@ -747,21 +774,25 @@ func _vital_zero_by_condition(c: CombatantState, part_key: String, condition_id:
 		var part: Dictionary = c.parts.get(part_key, {})
 		if not part.is_empty():
 			part["hp"] = 0
-		return _start_bleed_out(c, part_key, condition_id)
-	return _kill(c, condition_id + "_vital")
+		return _start_bleed_out(c, part_key, condition_id, _condition_source(c, part_key, condition_id))
+	return _kill(c, condition_id + "_vital", _condition_source(c, part_key, condition_id))
 
 
-func _start_bleed_out(c: CombatantState, part_key: String, condition_id: String) -> Array[Dictionary]:
+## `source` (R11 #14 v2): the fatal wound's author — carried on bleed_out and
+## its grace timer so the eventual bleed-out death can name its killer even
+## after the causing condition is treated away or the fight is saved/resumed.
+func _start_bleed_out(c: CombatantState, part_key: String, condition_id: String, source: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not c.bleed_out.is_empty() or not c.alive:
 		return events
-	c.bleed_out = {"condition": condition_id, "part": part_key}
+	c.bleed_out = {"condition": condition_id, "part": part_key, "source": source}
 	# Always fresh: the 1-Clock grace (R5) survives at least one full reset,
 	# even when the bleed-out starts during reset processing itself.
 	c.timers.append({
 		"kind": "bleed_out", "condition": condition_id, "part": part_key,
 		"clocks_remaining": 1, "delay": 0, "paused": false,
 		"fresh": true,
+		"source": source,
 	})
 	events.append({"type": "bleed_out_started", "combatant": c.id, "part": part_key, "condition": condition_id})
 	return events
@@ -781,15 +812,26 @@ func _stabilize(c: CombatantState) -> Array[Dictionary]:
 	return events
 
 
-func _kill(c: CombatantState, cause: String) -> Array[Dictionary]:
+## `killer` (R11 #14 v2 — "takedown = a kill YOU caused"): the killing blow's
+## author, "" when nobody authored it (environment). Direct kills thread the
+## striker in through damage_part's source_id; condition/timer/bleed-out kills
+## carry their serialized wound source. Consumers (hype takedown goal, evidence
+## takedown) read event.killer — never guessed.
+func _kill(c: CombatantState, cause: String, killer: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not c.alive:
 		return events
 	c.alive = false
 	c.bleed_out = {}
-	events.append({"type": "combatant_died", "combatant": c.id, "cause": cause})
+	events.append({"type": "combatant_died", "combatant": c.id, "cause": cause, "killer": killer})
 	events.append_array(_release_grapples(c))
 	return events
+
+
+## The recorded author of a live condition instance ("" when unattributed or
+## the instance is gone — e.g. resolved earlier in the same reset).
+func _condition_source(c: CombatantState, part_key: String, condition_id: String) -> String:
+	return String(c.condition_instance(part_key, condition_id).get("source", ""))
 
 
 ## Dissolution completion: mind collapsed, removed from play — NEVER engine
