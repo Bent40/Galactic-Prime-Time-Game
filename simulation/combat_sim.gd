@@ -567,7 +567,7 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 	if actor.windup_pending:
 		return [{"type": "command_rejected", "reason": "winding_up", "actor": actor.id}]
 	var decision: Dictionary = ai.decide(actor)
-	var events: Array[Dictionary] = [{
+	var decision_event: Dictionary = {
 		"type": "ai_decision",
 		"actor": actor.id,
 		"tier": String(decision.get("tier", "")),
@@ -576,7 +576,12 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 		"target": String(decision.get("target", "")),
 		"moves": decision.has("move_to"),
 		"reason": String(decision.get("reason", "")),
-	}]
+	}
+	# Additive (wave 2d): a cone decision surfaces its chosen arc direction —
+	# the phase-5 tracking aim is spectator-visible, not buried in the shape.
+	if decision.has("aim"):
+		decision_event["aim"] = decision["aim"]
+	var events: Array[Dictionary] = [decision_event]
 	if decision.has("move_to"):
 		var to: Vector2i = decision["move_to"]
 		events.append_array(resolver.move(actor.id, to))

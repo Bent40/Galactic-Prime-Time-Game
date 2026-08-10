@@ -525,6 +525,15 @@ func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> 
 
 
 func _validate_attack(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	# Wave 2d — "dash can change direction mid-run" (phase 4+): a BENT charge
+	# lane (area_shape carrying a bend point) is phase-gated at the command
+	# surface too, so a hand-built bent dash below phase 4 rejects exactly like
+	# the AI never deciding one. Phase gating derives from current_phase — no
+	# duplicated state.
+	var declared_shape: Dictionary = action.get("area_shape", {})
+	if String(declared_shape.get("kind", "")) == "line" and declared_shape.has("bend") \
+			and not ai.has_upgrade(actor, "dash_bend"):
+		return _reject("bend_not_available", {"actor": actor.id})
 	var item: Dictionary = {}
 	var item_key := String(action.get("item", ""))
 	if item_key != "":
@@ -576,16 +585,43 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 	# non-flamethrower hand — EnemyAI.grab_hand_part). A disabled grab hand
 	# blocks the grab OUTRIGHT, even when the R9 "any free hand" gate above
 	# would pass on the other hand (the flamethrower arm cannot hold a victim).
-	if bool(action.get("death_spin", false)):
+	# Wave 2d: a death-spin grab's reach is EnemyAI.grab_range — base 1, +1
+	# from phase 3 ("death spin grab range +1"); the plain R9 grapple stays 1.
+	var reach: int = 1
+	var is_death_spin: bool = bool(action.get("death_spin", false))
+	if is_death_spin:
 		var grab_part := String(action.get("grab_part", ""))
 		if grab_part == "" or not actor.part_usable(grab_part, clock.tick):
 			return _reject("grab_hand_disabled", {"actor": actor.id, "part": grab_part})
+		reach = ai.grab_range(actor)
 	# R9: target no more than one size larger.
 	if target.size_rank() - actor.size_rank() > 1:
 		return _reject("target_too_large", {"actor": actor.id, "target": target.id})
-	if CombatantState.hex_distance(actor.position, target.position) > 1:
-		return _reject("out_of_range", {"target": target.id, "range": 1})
+	var distance: int = CombatantState.hex_distance(actor.position, target.position)
+	if distance > reach:
+		return _reject("out_of_range", {"target": target.id, "range": reach})
+	# Wave 2d: a beyond-adjacent grab must DRAG the victim adjacent first —
+	# a living body on the pull hex blocks the drag, so the grab cannot land
+	# (re-verified live at resolution; this declare gate mirrors it).
+	if is_death_spin and distance > 1 \
+			and _pull_hex_blocked(actor, target):
+		return _reject("pull_blocked", {"actor": actor.id, "target": target.id})
 	return []
+
+
+## Is the range-2 grab's drag destination (EnemyAI.grab_pull_hex) occupied by
+## a living, in-play combatant other than the grabbing pair? Live state.
+func _pull_hex_blocked(actor: CombatantState, target: CombatantState) -> bool:
+	var pull: Vector2i = EnemyAI.grab_pull_hex(actor.position, target.position)
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or other.id == target.id:
+			continue
+		if other.alive and not other.removed_from_play and other.position == pull:
+			return true
+	return false
 
 
 func _validate_grapple_suffocate(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
@@ -1495,6 +1531,34 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 		if heal_part != "" and heal_amount > 0:
 			events.append_array(cond.heal_part(actor, heal_part, heal_amount))
 
+	# Wave 2d — the phase-5 MERGED death-spin beat ("death spin costs 2
+	# Moments"): the CHEW's arm rounds ride the SAME declare as the spin-kill
+	# and fire FIRST (grab -> chew+spin in one Moment), each through the normal
+	# R14 gate exactly like the 3-beat chew. Negated by Whiff with the rest of
+	# the action; a stale grip never reaches here (the beat gate above). Fired
+	# before the empty-targets exit so an armless/torso-less victim still gets
+	# whichever half applies.
+	if not whiffed and bool(action.get("death_spin_merged", false)):
+		var chew_arms: Array = []
+		for chew_entry: Variant in action.get("chew_targets", []) as Array:
+			var ct: Dictionary = chew_entry
+			var chew_target: CombatantState = combatants.get(String(ct.get("id", "")))
+			if chew_target == null:
+				continue
+			chew_arms.append(String(ct.get("part", "")))
+		events.append({
+			"type": "death_spin_chew", "combatant": actor.id,
+			"victim": String((ai.death_spins.get(actor.id, {}) as Dictionary).get("victim", "")),
+			"arms": chew_arms, "merged": true,
+		})
+		for chew_entry: Variant in action.get("chew_targets", []) as Array:
+			var ct: Dictionary = chew_entry
+			var chew_target: CombatantState = combatants.get(String(ct.get("id", "")))
+			if chew_target == null:
+				continue
+			events.append_array(_strike_round(chew_target, String(ct.get("part", "")),
+				"crushed", EnemyAI.CHEW_CRUSHED, {"kind": "attack", "key": "death_spin_chew"}, actor))
+
 	if whiffed or targets.is_empty() or damage.is_empty():
 		# Wave 2b: an armless victim still gets chewed ON (no arm rounds to
 		# fire) and a spin with nothing attackable still flings — the beat
@@ -1652,6 +1716,11 @@ func _recheck_cone_targets(actor: CombatantState, action: Dictionary, snapshot: 
 ##     the Moment was spent charging, no strike, no Tool collapse); reaching
 ##     adjacency lets the strike resolve through the normal round (R22 dodge
 ##     ladder unchanged).
+## Wave 2d — a BENT lane ("dash can change direction mid-run", phase 4+) walks
+## through this function UNCHANGED: the committed lane list IS the geometry, so
+## the occupation stop applies on either segment, leaving the bent corridor
+## dodges the windup (left_lane), and the adjacent-before rule reads the lane
+## order. The dash_charged event surfaces the bend point when one was declared.
 ## Returns {"invalid": String ("" = ok), "stopped_short": bool, "events": [...]}.
 func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: Dictionary, shape: Dictionary) -> Dictionary:
 	var out_events: Array[Dictionary] = []
@@ -1696,11 +1765,14 @@ func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: D
 	if final_idx > 0:
 		var from: Vector2i = actor.position
 		actor.position = lane[final_idx]
-		out_events.append({
+		var charged: Dictionary = {
 			"type": "dash_charged", "actor": actor.id,
 			"from": [from.x, from.y], "to": [lane[final_idx].x, lane[final_idx].y],
 			"hexes": final_idx,
-		})
+		}
+		if shape.has("bend"):
+			charged["bend"] = (shape.get("bend", []) as Array).duplicate()
+		out_events.append(charged)
 	if final_idx < stop_idx:
 		out_events.append({
 			"type": "dash_stopped_short", "actor": actor.id, "target": target.id,
@@ -1718,6 +1790,36 @@ static func _shape_lane(shape: Dictionary) -> Array[Vector2i]:
 		var p: Array = pair
 		if p.size() == 2:
 			lane.append(Vector2i(int(p[0]), int(p[1])))
+	return lane
+
+
+## Wave 2d — the R22 sidestep's exclusion set against a possibly-BENT lane:
+## "the sidestep steps off whichever segment the dodger stood on". A straight
+## lane (no bend) is one segment — today's behavior unchanged. A bent lane
+## splits at the bend hex (which belongs to BOTH segments; the second-segment
+## check runs first, deterministically): the dodger standing on segment 2 need
+## only leave segment 2 (a segment-1 hex is a legal sidestep), and vice versa.
+## A dodger on neither segment (moved off-lane already) keeps the full lane.
+static func _sidestep_lane(shape: Dictionary, dodger_pos: Vector2i) -> Array[Vector2i]:
+	var lane: Array[Vector2i] = _shape_lane(shape)
+	var bend_raw: Array = shape.get("bend", [])
+	if bend_raw.size() != 2:
+		return lane
+	var bend := Vector2i(int(bend_raw[0]), int(bend_raw[1]))
+	var bend_idx: int = lane.find(bend)
+	if bend_idx < 0:
+		return lane
+	var segment_one: Array[Vector2i] = []
+	var segment_two: Array[Vector2i] = []
+	for k: int in range(lane.size()):
+		if k <= bend_idx:
+			segment_one.append(lane[k])
+		if k >= bend_idx:
+			segment_two.append(lane[k])
+	if segment_two.has(dodger_pos):
+		return segment_two
+	if segment_one.has(dodger_pos):
+		return segment_one
 	return lane
 
 
@@ -1926,7 +2028,10 @@ func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_
 	var events: Array[Dictionary] = []
 	if dasher == null:
 		return events
-	var lane_set: Dictionary = HexGeometry.to_set(_shape_lane(action.get("area_shape", {}) as Dictionary))
+	# Wave 2d: against a BENT lane the sidestep steps off whichever SEGMENT the
+	# dodger stood on (_sidestep_lane) — the involuntary knock-aside keeps the
+	# FULL bent lane as its exclusion (see _dash_knock_aside's caller).
+	var lane_set: Dictionary = HexGeometry.to_set(_sidestep_lane(action.get("area_shape", {}) as Dictionary, dodger.position))
 	events.append_array(_dash_sidestep(dodger, dasher, lane_set))
 	var counter_at: int = int(ability_dodge.get("counter_at", 0))
 	if counter_at > 0 and dodger.trait_total("reflexes") >= counter_at:
@@ -2052,7 +2157,10 @@ func _death_spin_beat_stale(actor: CombatantState, action: Dictionary) -> bool:
 	var spin: Dictionary = ai.death_spins.get(actor.id, {})
 	if spin.is_empty():
 		return true
-	var expected_beat: int = 1 if String(action.get("death_spin_beat", "")) == "chew" else 2
+	# Wave 2d: the phase-5 MERGED beat (chew+spin in one Moment) closes the
+	# sequence straight from beat 1; the 3-beat spin still expects beat 2.
+	var expected_beat: int = 1 if String(action.get("death_spin_beat", "")) == "chew" \
+			or bool(action.get("death_spin_merged", false)) else 2
 	if int(spin.get("beat", 0)) != expected_beat:
 		return true
 	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
@@ -2086,7 +2194,10 @@ func _apply_death_spin_beat(actor: CombatantState, action: Dictionary) -> Array[
 			"type": "death_spin_chew", "combatant": actor.id, "victim": victim_id,
 			"arms": arms,
 		})
-	elif beat_kind == "spin" and int(spin.get("beat", 0)) == 2:
+	elif beat_kind == "spin" and (int(spin.get("beat", 0)) == 2
+			or (bool(action.get("death_spin_merged", false)) and int(spin.get("beat", 0)) == 1)):
+		# Wave 2d: the phase-5 merged beat closes straight from beat 1 — its
+		# chew half already fired inside _resolve_strike (event + arm rounds).
 		ai.death_spins.erase(actor.id)
 		var flung_from: Vector2i = victim.position if victim != null else Vector2i.ZERO
 		var fling: Dictionary = {"to": flung_from, "hexes": 0}
@@ -2190,6 +2301,20 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 	if is_death_spin and (grab_part == "" or not actor.part_usable(grab_part, clock.tick)):
 		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "grab_hand_disabled"})
 		return events
+	# Wave 2d — the beyond-adjacent grab ("grab range +1", phase 3+) DRAGS the
+	# victim adjacent FIRST: a 1-hex pull to the boss-adjacent hex of the
+	# boss→victim line (EnemyAI.grab_pull_hex), re-checked LIVE at resolution
+	# (same family as the grab-hand re-verify above) — a living body standing
+	# on the pull hex blocks the drag and the grab fails honestly: no pull, no
+	# hold, no sequence.
+	var drag: Dictionary = {}
+	if is_death_spin and CombatantState.hex_distance(actor.position, target.position) > 1:
+		if _pull_hex_blocked(actor, target):
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "pull_blocked"})
+			return events
+		var pull: Vector2i = EnemyAI.grab_pull_hex(actor.position, target.position)
+		drag = {"from": [target.position.x, target.position.y], "to": [pull.x, pull.y]}
+		target.position = pull
 	actor.grappling = target.id
 	target.grappled_by = actor.id
 	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id})
@@ -2202,10 +2327,16 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 			"beat": 1, "victim": target.id, "part": grab_part,
 			"started_tick": clock.tick,
 		}
-		events.append({
+		var grab_event: Dictionary = {
 			"type": "death_spin_grab", "combatant": actor.id, "victim": target.id,
 			"part": grab_part, "release_threshold": EnemyAI.RELEASE_HIT_THRESHOLD,
-		})
+			# Wave 2d: the drag is part of the grab's story — emitted on it.
+			"dragged": not drag.is_empty(),
+		}
+		if not drag.is_empty():
+			grab_event["dragged_from"] = drag["from"]
+			grab_event["dragged_to"] = drag["to"]
+		events.append(grab_event)
 	# R9: automatic when grappler Physique >= target's; otherwise the attempt
 	# is Forced Action – Body — always allowed, consequences apply, hold lands.
 	if actor.trait_total("physique") < target.trait_total("physique"):
