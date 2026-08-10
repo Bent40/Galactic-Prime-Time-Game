@@ -14,10 +14,13 @@ extends RefCounted
 ##   setup_debuff         — no damage; the target's next action collapses to Tool
 ##   conditional_followup — a strike with a bonus rider when a setup is pending
 ##   self_stance          — no target; a stance buff that ends on a trigger
+##   declared_dodge       — the G1 declared-hex dodge (tactical_roll): spends the
+##                          actor's MOVEMENT for the Moment, moves at declare
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
-## placeholders). The remaining 37 skills in data/skills.json are the
+## placeholders); tactical_roll (G1, rules-addendum R25) is implemented with a
+## PLACEHOLDER-R14 base range. The remaining skills in data/skills.json are the
 ## fill-in-later content pass; until encoded they resolve through the generic
 ## `strike` fallback so an unknown key still does a real, honest thing.
 ##
@@ -32,14 +35,19 @@ extends RefCounted
 ##     pressure_strike with NO preceding feint, which an enforced declare-time CHAIN
 ##     would reject. The CHAIN predicate is exercised on a test-only skill instead
 ##     (tests/test_priming.gd); this note records the sequence the ladder pass wires.
-##   - tactical_roll (skills.json id 9)   -> STANCE (usable only in a defensive stance)
-##   - acrobatic_save (skills.json id 37) -> STANCE (usable only in a defensive stance)
+##   - ~~tactical_roll (skills.json id 9) -> STANCE~~ SUPERSEDED by G1 (owner
+##     2026-07-23, skills-passover RULINGS; rules-addendum R25): no stance, no
+##     charges, no cooldown — the cost is the MOVEMENT FORFEIT. Implemented below
+##     as the declared_dodge archetype.
+##   - acrobatic_save (skills.json id 37) -> the SAME movement-forfeit cost model
+##     (G1: "Acrobatic Save gets the same movement-forfeit cost in place of its
+##     cooldown"). Cost model RULED; the skill's effect (die manipulation) stays
+##     UNIMPLEMENTED content — do not encode a stance prime when it lands (R25).
 ##   - slip_through   (skills.json id 21) -> CHAIN  (must follow Pounce immediately)
-## These three are NOT in the demo-6 and are not mechanically built as reactions
-## here; the note above is for when their full reaction mechanics are implemented.
 
 const KNOWN_KEYS: Array[String] = [
 	"strong_strike", "overhead_slam", "brace", "feint", "pressure_strike", "dance",
+	"tactical_roll",
 ]
 
 ## Generic fallback for any un-encoded skill: a plain single-target strike so the
@@ -138,6 +146,22 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"archetype": "self_stance",
 				"cost": 0,
 				"charm_bonus": lv,
+			}
+		"tactical_roll":
+			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the
+			# Moment (G1, owner 2026-07-23; rules-addendum R25): a declared-hex
+			# dodge that moves IMMEDIATELY at declare and forfeits this tick's
+			# move. Roll range: base 2 hexes at L1 (PLACEHOLDER R14 — the book
+			# says 1; the digital base is under tuning) + the seed-data ladder's
+			# space increments (skills.json id 9: L2 "+1 Space", L3 "+1 Space",
+			# L4 "+2 Space" — each row's "-2 Moment cooldown" rider is DEAD text
+			# per G1/R3: no cooldowns). The L5/L6 threshold rows (char-sheet
+			# template ids 15–16, cooldown-based) are superseded and un-ruled —
+			# DATA-ONLY, not implemented.
+			spec = {
+				"archetype": "declared_dodge",
+				"cost": 0,
+				"roll_range": [2, 3, 4, 6][lv - 1],
 			}
 		_:
 			spec = FALLBACK.duplicate(true)

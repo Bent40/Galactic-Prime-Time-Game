@@ -99,6 +99,14 @@ var windup_pending: bool = false
 var free_action_used: bool = false
 var reaction_used: bool = false
 var moved_this_tick: bool = false
+## G1 Tactical Roll marker (rules-addendum R25): set when the combatant
+## tactical-rolls, cleared with the other per-tick flags at the next tick start —
+## the dodge window IS the roll's Moment ("you give up your movement for the
+## Moment"). Consumed by the AoE-center rule: an AREA attack (the explosion
+## blast) resolving this Moment MISSES a roller entirely unless the roller's
+## hex is the area's CENTER. Single/multi-target windups need no marker — the
+## roll's immediate position update flows through the R2 snapshot re-checks.
+var rolled_this_window: bool = false
 var inventory_uses: int = 0
 var took_scheduled_action_this_clock: bool = false
 var damage_taken_this_tick: int = 0
@@ -452,6 +460,7 @@ func reset_tick_flags() -> void:
 	free_action_used = false
 	reaction_used = false
 	moved_this_tick = false
+	rolled_this_window = false
 	damage_taken_this_tick = 0
 	largest_single_hit_this_tick = 0
 	combo_hits_this_tick.clear()
@@ -507,6 +516,7 @@ func to_dict() -> Dictionary:
 		"free_action_used": free_action_used,
 		"reaction_used": reaction_used,
 		"moved_this_tick": moved_this_tick,
+		"rolled_this_window": rolled_this_window,
 		"inventory_uses": inventory_uses,
 		"took_scheduled_action_this_clock": took_scheduled_action_this_clock,
 		"damage_taken_this_tick": damage_taken_this_tick,
@@ -576,6 +586,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.free_action_used = bool(data.get("free_action_used", false))
 	c.reaction_used = bool(data.get("reaction_used", false))
 	c.moved_this_tick = bool(data.get("moved_this_tick", false))
+	# Pre-R25 saves lack the marker: false matches a fresh tick (no live roll).
+	c.rolled_this_window = bool(data.get("rolled_this_window", false))
 	c.inventory_uses = int(data.get("inventory_uses", 0))
 	c.took_scheduled_action_this_clock = bool(data.get("took_scheduled_action_this_clock", false))
 	c.damage_taken_this_tick = int(data.get("damage_taken_this_tick", 0))

@@ -93,13 +93,18 @@ of the next Clock. Order of operations at each tick:
   feint→pressure_strike); **STANCE** (hold a declared stance that ends on triggers);
   **STACK** (consume N accumulated charges — the Camera-Call model); **STATE/POSITION**
   (target/self in a state or relative position: Exposed, downed, behind); **PREP/CHANNEL**
-  (spend a prep action to arm a one-shot prime). The two literal cooldown-texted defensive
+  (spend a prep action to arm a one-shot prime). ~~The two literal cooldown-texted defensive
   reactions (Tactical Roll, Acrobatic Save) are **STANCE-gated** — usable only while holding
-  a light-footed/defensive stance (no timers). Implementation this pass: build the 5 prime
-  predicates into the requirements gate, DELETE the dormant cooldown code, convert the
-  explicitly cooldown-texted skills (Tactical Roll, Acrobatic Save, the "-4 Moment cooldown"
-  threshold → CHAIN discount); per-skill prime tags for the other ~37 ride the R19 ladder
-  finalization. (Engine implementation PENDING — this records the design ruling.)
+  a light-footed/defensive stance (no timers).~~ **SUPERSEDED by G1 (owner, 2026-07-23,
+  skills-passover RULINGS; see R25): no stance, no charges, no cooldown — both skills'
+  cost is the MOVEMENT FORFEIT** ("you give up your movement for the Moment"). The prime
+  vocabulary itself is unchanged; these two simply no longer carry a prime. Implementation
+  this pass: build the 5 prime predicates into the requirements gate, DELETE the dormant
+  cooldown code, convert the explicitly cooldown-texted skills (Tactical Roll, Acrobatic
+  Save, the "-4 Moment cooldown" threshold → CHAIN discount — the first two now resolved
+  by R25's movement forfeit instead); per-skill prime tags for the other ~37 ride the R19
+  ladder finalization. (Tactical Roll's engine implementation landed with R25; Acrobatic
+  Save stays unimplemented content.)
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -748,6 +753,11 @@ ability; boss dodging an aimed round):
 - Surfaced consequence: Reflexes 2 + d4 maxes at 6 < 7 — Imani **cannot** dodge the
   Dash until a die or stat upgrade; positioning and Brace are her counterplay. This is
   intended texture, recorded so it never reads as a bug.
+- **Tactical Roll is a DIFFERENT, positional dodge (R25)** — a roll is movement, so
+  where an ability authors an R22 threshold, that check still applies independently: a
+  roller whose destination is still inside the attack's pattern at resolution gets hit
+  through the pattern re-check AND still rolls its authored R22 dodge there, exactly as
+  any repositioned combatant would.
 
 ## R23 — The Antagonism engine (owner, 2026-07-23)
 
@@ -797,6 +807,66 @@ mobs read feints by Mind**, through the R22 threshold machinery unchanged:
   (max 5 < 7) — the slice fight and the full-cadence balance WIN are byte-identical;
   intelligence, not stats-frozen tuning, is the counter (rulebook v0.92 G4 stat
   freeze is respected).
+
+## R25 — Tactical Roll: the declared-hex dodge + the AoE-center rule (owner G1, 2026-07-23)
+
+The G1 ruling (char-sheet repo, `rulebook/skills-passover.md` RULINGS block) — SUPERSEDES
+the R3/S2.1 "STANCE-gated" line for both skills: **"Tactical Roll is a declared-hex dodge:
+you give up your movement for the Moment and declare the hex you roll to; the attack still
+resolves — if your hex is inside its range/area you get hit anyway. No charges, no stance,
+no cooldown. Acrobatic Save gets the same movement-forfeit cost in place of its cooldown."**
+And the round-2 refinement: **"AREA attacks (blasts/bursts) MISS a rolling target entirely
+unless the destination hex is the area's CENTER; single/multi-target attacks (arcs, lines,
+cones) hit if the new hex is still within their range/pattern."**
+
+- **Cost = exactly the movement allowance (design call).** The G1 text says "you give up
+  your movement" — nothing more — so the roll consumes the R3 movement allowance
+  (`moved_this_tick`) and ONLY that: rolling and moving are mutually exclusive in a tick
+  (roll after any move → rejected `movement_spent`; free move after a roll → rejected
+  `already_moved`), while the free-ACTION slot stays untouched — The Bit, the first
+  inventory use and 0-cost declares/reactions remain legal the same tick.
+- **The move happens IMMEDIATELY at declare** (it is a dodge, not a scheduled action; 0
+  Moments). Through the R2 tick-start-snapshot rules this IS the single/multi-target half
+  of the refinement with no new machinery: a windup resolving on a LATER tick re-checks
+  its cone arc / dash lane / plain range against the roller's new hex (still inside the
+  pattern → hit anyway; outside → the standard windup dodge/collapse). Rolling on an
+  attack's own resolution tick dodges nothing, and instants (cost ≤ 1) are never dodged
+  by movement — R2 unchanged.
+- **The AREA half rides a `rolled_this_window` marker** (serialized, hash-covered): set at
+  roll declare, cleared at the actor's next tick start — the honest minimal model: the
+  dodge window IS the roll's Moment ("give up your movement for the Moment"). An AREA
+  attack resolving that Moment misses the roller entirely unless the roller's hex is the
+  area's CENTER. Dodging the explosion blast therefore means rolling ON the blast Moment —
+  informed counterplay, since the telegraph broadcasts `moments_until_blast`.
+- **VALVE-COUNTER CONSEQUENCE (flagged for the owner).** The one real AREA attack today,
+  the explosion blast, centers on the boss's OWN hex — and rolling onto an occupied hex is
+  impossible — so a well-timed roller ALWAYS escapes the valve KO, from anywhere in the
+  radius, regardless of distance. Tactical Roll is a hard counter to explosion valves.
+  This is presumably the design (the declared-hex dodge is the skill's whole identity),
+  and the center-hex exception stays live in the engine for future area attacks with
+  unoccupied centers — but it deserves an explicit owner sign-off.
+- **Eligibility (mirrors movement, PROVISIONAL).** No roll while grappled (R9 movement
+  lock), winding up (R2 commit) or Prone (R3 prone-can-only-crawl + the R22 punish
+  window). Exposed does NOT block the roll: Exposed combatants may still move under R3,
+  and R22's Exposed gate governs the threshold dodge, not movement. Slowed/terrain
+  interactions are UN-RULED — no interaction implemented yet.
+- **R22 interaction:** Tactical Roll is a positional dodge, orthogonal to the R22
+  threshold dodge — a roll is movement, so where an ability authors an R22 threshold that
+  check still applies independently to a roller who ended up inside the pattern.
+- **Range ladder.** Base **2 hexes at L1 — PLACEHOLDER (R14)**; the book's effect text
+  says 1 and the digital base is a tuning call. Level scaling follows the seed ladder's
+  space increments (skills.json id 9 / the skills-audit's "levels upgrade spaces"):
+  L2 +1, L3 +1, L4 +2 → ranges 2/3/4/6. The "-2 Moment cooldown" riders on L3/L4 and the
+  cooldown-based L5/L6 threshold rows (char-sheet template ids 15–16) are DEAD per
+  G1/R3 — **data-only, not implemented**.
+- **Acrobatic Save:** its COST MODEL is ruled (the same movement forfeit, replacing its
+  cooldown), but the skill itself (die manipulation) is NOT implemented — recorded here
+  so the ruling isn't lost and nobody re-derives a stance prime for it.
+- Event vocabulary: `tactical_roll` (actor, from, to, spaces, range, level) on success;
+  `blast_missed_roller` when the AoE-center rule spares a roller; rejections
+  `movement_spent` / `no_move` / `roll_out_of_range` / `hex_occupied` /
+  `invalid_destination` plus the mirrored movement gates (`grappled` / `winding_up` /
+  `prone`).
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
