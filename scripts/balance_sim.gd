@@ -148,6 +148,10 @@ func _initialize() -> void:
 ## Fresh, isolated micro-scenarios: what is the boss's biggest SINGLE hit on a fresh
 ## contestant torso (5 HP)? Dash fires against a LONE target; the cone against a crowd.
 ## A `died` here means the hit took a fresh lethal part from full to 0 — a one-shot.
+## Wave 2b staging: the lone dash target stands at distance 3 — an ADJACENT lone
+## target is now death-spin GRAB prey (grab > dash in the decide order), which
+## would make this line measure a grab's first beat instead of the dash. The
+## dash's damage is distance-independent, so the measurement is unchanged.
 func _probe() -> void:
 	var out: Array = []
 	for phys: int in [2, 3, 5]:
@@ -170,7 +174,9 @@ func _one_hit(_ability: String, phys: int, crowd: bool) -> Dictionary:
 	root.add_child(g)
 	g.start_combat(PROBE_SEED)
 	_add_boss_to(g)
-	_add_contestant_to(g, "p", {"physique": phys, "reflexes": 2, "mind": 3, "charm": 3}, Vector2i(1, 0))
+	# Lone target at distance 3 (out of grab range — see the wave 2b note above);
+	# the crowd pair stays adjacent (the cone outranks the grab either way).
+	_add_contestant_to(g, "p", {"physique": phys, "reflexes": 2, "mind": 3, "charm": 3}, Vector2i(3, 0) if not crowd else Vector2i(1, 0))
 	if crowd:
 		_add_contestant_to(g, "q", {"physique": phys, "reflexes": 2, "mind": 3, "charm": 3}, Vector2i(0, 1))
 	var net: int = 0

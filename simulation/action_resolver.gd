@@ -563,6 +563,14 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 		return _reject("already_grappling", {"actor": actor.id})
 	if actor.usable_hands(clock.tick) < 1:
 		return _reject("no_free_hand", {"actor": actor.id})
+	# Wave 2b: a death-spin grab names its grabbing hand (the boss's
+	# non-flamethrower hand — EnemyAI.grab_hand_part). A disabled grab hand
+	# blocks the grab OUTRIGHT, even when the R9 "any free hand" gate above
+	# would pass on the other hand (the flamethrower arm cannot hold a victim).
+	if bool(action.get("death_spin", false)):
+		var grab_part := String(action.get("grab_part", ""))
+		if grab_part == "" or not actor.part_usable(grab_part, clock.tick):
+			return _reject("grab_hand_disabled", {"actor": actor.id, "part": grab_part})
 	# R9: target no more than one size larger.
 	if target.size_rank() - actor.size_rank() > 1:
 		return _reject("target_too_large", {"actor": actor.id, "target": target.id})
@@ -977,6 +985,10 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 		events.append_array(_end_dance(target, "hit"))
 	# ONE recorded hit for the single-hit breach threshold (R15/NQ2).
 	target.record_hit(String(group["combo_id"]), reduced)
+	# Wave 2b: the merged hit is ONE hit for "release if hit for 5" too — the
+	# party's combined-action seam works on the grab exactly like the breach.
+	if reduced > 0:
+		events.append_array(ai.check_death_spin_release(target, reduced))
 	# R23: each connected member earns grudge for its OWN contribution — the one
 	# merged net hit is attributed per member proportionally to the Force it
 	# contributed (the same per-member Forces the merged gate was built from).
@@ -1315,6 +1327,15 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	var acting_part: String = actor.acting_part(clock.tick)
 	var targets: Array = action.get("targets", [])
 
+	# Wave 2b death-spin beat gate: a chew/spin beat resolves only while the
+	# HOLD is still live (the LIVE grip re-check _resolve_grapple_suffocate
+	# uses — a same-tick release-on-5 or R9 escape that resolved earlier in the
+	# batch makes the jaws close on air: invalidated, no strike, no Tool roll).
+	if String(action.get("death_spin_beat", "")) != "" \
+			and _death_spin_beat_stale(actor, action):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "grip_lost"})
+		return events
+
 	# Windups re-check range & validity against the tick-start snapshot (R2).
 	# Decision #31: an area action re-checks its REAL SHAPE instead of plain
 	# range — the cone re-evaluates its committed arc per target (leaving the
@@ -1404,6 +1425,11 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 			events.append_array(cond.heal_part(actor, heal_part, heal_amount))
 
 	if whiffed or targets.is_empty() or damage.is_empty():
+		# Wave 2b: an armless victim still gets chewed ON (no arm rounds to
+		# fire) and a spin with nothing attackable still flings — the beat
+		# advances/finishes off the empty-targets exit too.
+		if not whiffed:
+			events.append_array(_apply_death_spin_beat(actor, action))
 		events.append({
 			"type": "action_resolved", "actor": actor.id, "kind": kind,
 			"key": String(action.get("key", String(action.get("item", "")))),
@@ -1427,6 +1453,20 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 			continue
 		# R14: `actor` is the attacker — its Physique feeds Force.
 		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, amount, action, actor))
+	# Wave 2b: the dash's authored "knock aside" becomes real — a CONNECTED
+	# target (its strike round produced a damage_applied: not dodged, not
+	# surface-blocked, not fire-healed; a robustness-blocked 0 still connected
+	# — the charge's mass hit, even if no wound opened) is shoved off the lane
+	# and knocked prone. A dodged dash sidesteps instead (mutually exclusive:
+	# the dodge returns before damage_applied). Stopped-short never gets here.
+	if bool(action.get("knock_aside", false)) and not targets.is_empty():
+		var shape: Dictionary = action.get("area_shape", {})
+		if String(shape.get("kind", "")) == "line":
+			var knock_target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+			if knock_target != null and _hit_landed(events, knock_target.id):
+				events.append_array(_dash_knock_aside(knock_target, actor, HexGeometry.to_set(_shape_lane(shape))))
+	# Wave 2b: a really-resolved chew/spin beat advances/finishes the sequence.
+	events.append_array(_apply_death_spin_beat(actor, action))
 	events.append({
 		"type": "action_resolved", "actor": actor.id, "kind": kind,
 		"key": String(action.get("key", String(action.get("item", "")))),
@@ -1769,6 +1809,15 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
 	# linked strikes (shared combo_id) merge into one hit for the threshold.
 	target.record_hit(String(action.get("combo_id", "")), reduced)
+	# Wave 2b: "release if hit for 5" listens at this same single-hit seam — a
+	# net hit (post-record, so a combo reads its merged running total) >= 5 on
+	# a boss mid-death-spin forces the release and aborts the sequence.
+	if reduced > 0:
+		var hit_total: int = reduced
+		var release_combo := String(action.get("combo_id", ""))
+		if release_combo != "":
+			hit_total = int(target.combo_hits_this_tick.get(release_combo, reduced))
+		events.append_array(ai.check_death_spin_release(target, hit_total))
 	# R23: net damage dealt to an AI-controlled combatant builds grudge on it,
 	# keyed by the attacker (1:1 net-damage scale, PLACEHOLDER R14) — a hit
 	# blocked to 0 builds nothing. EnemyAI's weighted targeting reads the score.
@@ -1876,6 +1925,153 @@ func _dash_counter(dodger: CombatantState, dasher: CombatantState) -> Array[Dict
 	return events
 
 
+## Wave 2b — the dash's authored "knock aside", now real: a target the charge
+## CONNECTED with is displaced to the first free fixed-order neighbor OFF the
+## committed lane (the involuntary sibling of the R22 sidestep's first-fit
+## rule, decision #31 geometry) and knocked PRONE (the "aside" cost). No free
+## off-lane neighbor: no displacement, still prone. A victim FELLED by the
+## dash is down already (dead, not prone) — no knock-aside on a corpse. The
+## charge rule itself is unchanged (wave 2a): the dasher stopped
+## adjacent-before the target's SNAPSHOT hex, so after the shove it may
+## legally stand adjacent to a now-empty hex — that is the documented
+## interaction, not a bug.
+func _dash_knock_aside(target: CombatantState, dasher: CombatantState, lane_set: Dictionary) -> Array[Dictionary]:
+	if not target.alive or target.removed_from_play:
+		return []
+	var events: Array[Dictionary] = []
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == target.id or not other.alive or other.removed_from_play:
+			continue
+		occupied[other.position] = true
+	var from: Vector2i = target.position
+	var to: Vector2i = from
+	var displaced: bool = false
+	for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
+		var candidate: Vector2i = from + neighbor
+		if occupied.has(candidate) or lane_set.has(candidate):
+			continue
+		to = candidate
+		displaced = true
+		break
+	if displaced:
+		target.position = to
+	events.append({
+		"type": "knocked_aside", "combatant": target.id, "by": dasher.id,
+		"from": [from.x, from.y], "to": [to.x, to.y], "displaced": displaced,
+	})
+	if not bool(target.statuses.get("prone", false)):
+		target.statuses["prone"] = true
+		events.append({"type": "knocked_prone", "combatant": target.id,
+			"source": dasher.id, "skill": "dash"})
+		events.append_array(_end_dance(target, "knocked_prone"))
+	return events
+
+
+# ------------------------------------------------------ death spin beats (wave 2b)
+
+## True when a chew/spin beat's preconditions broke between decide and
+## resolution: no live sequence, wrong beat, or the hold is gone (victim
+## dead/removed, released, escaped). LIVE state, mirroring
+## _resolve_grapple_suffocate's grip check.
+func _death_spin_beat_stale(actor: CombatantState, action: Dictionary) -> bool:
+	var spin: Dictionary = ai.death_spins.get(actor.id, {})
+	if spin.is_empty():
+		return true
+	var expected_beat: int = 1 if String(action.get("death_spin_beat", "")) == "chew" else 2
+	if int(spin.get("beat", 0)) != expected_beat:
+		return true
+	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
+	return victim == null or not victim.alive or victim.removed_from_play \
+			or actor.grappling != victim.id or victim.grappled_by != actor.id
+
+
+## Advances/finishes a REALLY-resolved death-spin beat (the marker hook after
+## the strike rounds — a feinted/stuttered beat never reaches this, so the
+## sequence retries instead of skipping). CHEW: beat 1 -> 2, event. SPIN: the
+## victim is FLUNG down the spin lane (prone on landing when it survives), the
+## hold ends, the sequence clears, death_spin_kill closes the show. The strike
+## itself already ran the honest R14 gate; a kill in it auto-released via
+## _release_grapples, which is why the release here is conditional.
+func _apply_death_spin_beat(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	var beat_kind := String(action.get("death_spin_beat", ""))
+	if beat_kind == "":
+		return []
+	var spin: Dictionary = ai.death_spins.get(actor.id, {})
+	if spin.is_empty():
+		return []
+	var events: Array[Dictionary] = []
+	var victim_id := String(spin.get("victim", ""))
+	var victim: CombatantState = combatants.get(victim_id)
+	if beat_kind == "chew" and int(spin.get("beat", 0)) == 1:
+		spin["beat"] = 2
+		var arms: Array = []
+		for t: Variant in action.get("targets", []) as Array:
+			arms.append(String((t as Dictionary).get("part", "")))
+		events.append({
+			"type": "death_spin_chew", "combatant": actor.id, "victim": victim_id,
+			"arms": arms,
+		})
+	elif beat_kind == "spin" and int(spin.get("beat", 0)) == 2:
+		ai.death_spins.erase(actor.id)
+		var flung_from: Vector2i = victim.position if victim != null else Vector2i.ZERO
+		var fling: Dictionary = {"to": flung_from, "hexes": 0}
+		var prone: bool = false
+		if victim != null:
+			fling = _death_spin_fling_target(actor, victim)
+			victim.position = fling["to"]
+			if victim.alive and not victim.removed_from_play \
+					and not bool(victim.statuses.get("prone", false)):
+				victim.statuses["prone"] = true
+				prone = true
+				events.append({"type": "knocked_prone", "combatant": victim.id,
+					"source": actor.id, "skill": "death_spin"})
+				events.append_array(_end_dance(victim, "knocked_prone"))
+			if actor.grappling == victim_id and victim.grappled_by == actor.id:
+				actor.grappling = ""
+				victim.grappled_by = ""
+				events.append({"type": "grapple_ended", "grappler": actor.id,
+					"target": victim_id, "reason": "death_spin_finished"})
+		var to: Vector2i = fling["to"]
+		events.append({
+			"type": "death_spin_kill", "combatant": actor.id, "victim": victim_id,
+			"flung_from": [flung_from.x, flung_from.y], "flung_to": [to.x, to.y],
+			"hexes_flung": int(fling["hexes"]), "prone": prone,
+		})
+	return events
+
+
+## The beat-3 fling geometry: the spin lane is the HexGeometry ray from the
+## boss THROUGH the victim; the victim flies SPIN_FLING_HEXES hexes down it,
+## stopping before the first hex occupied by another living, in-play
+## combatant. Deterministic, rng-free. {"to": Vector2i, "hexes": int} —
+## hexes 0 means nowhere to fly (the victim drops on the spot).
+func _death_spin_fling_target(boss: CombatantState, victim: CombatantState) -> Dictionary:
+	var start: Vector2i = victim.position
+	var span: int = HexGeometry.distance(boss.position, start)
+	var lane: Array[Vector2i] = HexGeometry.line_extended(boss.position, start, span + EnemyAI.SPIN_FLING_HEXES)
+	var start_idx: int = lane.find(start)
+	if start_idx < 0:
+		return {"to": start, "hexes": 0}
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == victim.id or not other.alive or other.removed_from_play:
+			continue
+		occupied[other.position] = true
+	var final_idx: int = start_idx
+	for k: int in range(start_idx + 1, mini(lane.size(), start_idx + 1 + EnemyAI.SPIN_FLING_HEXES)):
+		if occupied.has(lane[k]):
+			break
+		final_idx = k
+	return {"to": lane[final_idx], "hexes": final_idx - start_idx}
+
+
 ## First damage entry of an ability (the v1 multi-damage deferral, R11 #16).
 static func _first_ability_damage(ability: Dictionary) -> Dictionary:
 	var damage: Array = ability.get("damage", [])
@@ -1915,9 +2111,30 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 	if target == null or not target.alive or actor.grappling != "":
 		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "invalid_target"})
 		return events
+	# Wave 2b: re-verify the death-spin grabbing hand at resolution (it may have
+	# been disabled between declare and resolve — same live re-check family as
+	# reload's needs_both_hands). No hold lands on a dead hand.
+	var is_death_spin: bool = bool(action.get("death_spin", false))
+	var grab_part := String(action.get("grab_part", ""))
+	if is_death_spin and (grab_part == "" or not actor.part_usable(grab_part, clock.tick)):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "grab_hand_disabled"})
+		return events
 	actor.grappling = target.id
 	target.grappled_by = actor.id
 	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id})
+	# Wave 2b: a death-spin grab ARMS the 3-beat sequence at the moment the hold
+	# actually lands (beat 1 done — chew next). The dodge model does NOT apply
+	# to the grab (an adjacent cost-1 instant, R2); the counterplay is the
+	# authored release-on-5 / R9 escape chain, not a dodge roll.
+	if is_death_spin:
+		ai.death_spins[actor.id] = {
+			"beat": 1, "victim": target.id, "part": grab_part,
+			"started_tick": clock.tick,
+		}
+		events.append({
+			"type": "death_spin_grab", "combatant": actor.id, "victim": target.id,
+			"part": grab_part, "release_threshold": EnemyAI.RELEASE_HIT_THRESHOLD,
+		})
 	# R9: automatic when grappler Physique >= target's; otherwise the attempt
 	# is Forced Action – Body — always allowed, consequences apply, hold lands.
 	if actor.trait_total("physique") < target.trait_total("physique"):

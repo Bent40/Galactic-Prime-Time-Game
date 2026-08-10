@@ -29,6 +29,16 @@ func ai_decide(sim: CombatSim, id: String) -> Array[Dictionary]:
 	return sim.apply_command({"type": "ai_decide", "actor": id})
 
 
+## Wave 2b: the death-spin GRAB now outranks the dash for an ADJACENT lone
+## target (R11 #19 decide order). These tests pin the DASH LADDER itself, so
+## the boss is staged with a dash-only phase list — the same behavior-list
+## staging idiom as test_incinedile's phase-filter test — keeping every
+## position-exact ladder pin on its original geometry.
+func dash_only_phases() -> Array:
+	return [{"phase_number": 1, "name": "T1", "trigger_condition": "staging",
+		"behavior": {"abilities": ["flamethrower", "dash"]}}]
+
+
 func boss_state(sim: CombatSim, id: String = "boss") -> CombatantState:
 	return sim.combatants.get(id)
 
@@ -197,7 +207,7 @@ func test_dash_vs_reflexes_seven_auto_dodges_and_sidesteps() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dodger", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 3, "reflexes": 7, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var events: Array[Dictionary] = ai_decide(sim, "boss")
 	assert_eq(String(first_event(events, "ai_decision").get("ability", "")), "dash", "lone target -> dash")
 	var state_before: int = sim.ai.ai_rng.state
@@ -227,7 +237,7 @@ func test_dash_vs_reflexes_nine_counters_the_dasher() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dodger", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 8, "reflexes": 9, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var state_before: int = sim.ai.ai_rng.state
 	ai_decide(sim, "boss")
 	var resolved: Array[Dictionary] = advance(sim, 3)
@@ -260,7 +270,7 @@ func test_dash_vs_imani_reflexes_two_always_connects() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "imani", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var state_before: int = sim.ai.ai_rng.state
 	ai_decide(sim, "boss")
 	var resolved: Array[Dictionary] = advance(sim, 3)
@@ -278,7 +288,7 @@ func test_dash_windup_is_visible_before_it_resolves() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var events: Array[Dictionary] = ai_decide(sim, "boss")
 	var declared: Dictionary = assert_event(events, "action_declared", "the dash declares")
 	assert_eq(int(declared.get("cost", 0)), 2, "cost 2")
@@ -318,7 +328,7 @@ func _staged_fight(sim_seed: int) -> CombatSim:
 		"traits": {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}})
 	add_human(sim, "far", {"team": "party", "position": [12, 0],
 		"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	return sim
 
 
