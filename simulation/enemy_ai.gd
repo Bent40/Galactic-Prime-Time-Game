@@ -36,8 +36,9 @@ const HEAL_LETHAL_PART_RATIO: float = 0.5
 ## Boss cone sweep wants at least this many targets in reach. PLACEHOLDER (R14).
 const CONE_MIN_TARGETS: int = 2
 ## Death Spin (wave 2b, decision #31 — the authored 3-beat sequence is REAL):
-## GRAB reach in hexes. The authored "death spin grab range +1" phase upgrade
-## stays DATA-ONLY for wave 2d, so this is the flat rule for every phase.
+## BASE grab reach in hexes. Wave 2d: the authored "death spin grab range +1"
+## phase upgrade is REAL — grab_range() adds 1 from its authored phase (3) on;
+## this constant stays the flat pre-upgrade rule.
 const GRAB_RANGE: int = 1
 ## Beat-2 CHEW damage: "chew: 2 crushed to both arms" — canon off the authored
 ## sequence line (data/enemies.json), delivered through the normal R14 gate.
@@ -61,6 +62,24 @@ const HEX_NEIGHBORS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
 	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
 ]
+
+## Wave 2d — the authored per-phase `behavior.upgrades` STRINGS are the source
+## of truth; this map parses them into the effect keys the sim consumes. An
+## authored string with NO entry here is a DATA-ONLY no-op by design: it stays
+## visible in the data, upgrades_active() never reports it, nothing executes.
+## The two deliberate data-only entries (and why — see rules-addendum R11 #20):
+##  * "dash bounces between walls up to 2 bounces" — there are NO walls yet:
+##    geometry is unbounded (hex_geometry.gd header); bounces arrive with the
+##    KAN-5 arenas.
+##  * "flamethrower pops trash cans instantly" — trash cans are not sim
+##    entities; environment objects are KAN-5 scope.
+const UPGRADE_EFFECTS: Dictionary = {
+	"death spin grab range +1": "grab_range_plus_1",
+	"death spin costs 2 moments": "spin_two_moments",
+	"dash can change direction mid-run": "dash_bend",
+	"network fully exposed": "network_stays_exposed",
+	"flamethrower tracks closest target": "cone_track_closest",
+}
 
 ## Wired refs (never serialized — re-wired by CombatSim, like ConditionEngine).
 var combatants: Dictionary = {}
@@ -184,10 +203,10 @@ func _decide_elite(actor: CombatantState) -> Dictionary:
 ## valve outranks it). The cone stays the marquee crowd opener (>= 2 in arc).
 ## The death-spin GRAB is the boss's PUNISH on a target that stays ADJACENT
 ## while it is free to act — a grab-and-kill threat scarier than the dash, so
-## it sits above it; it fires only when a valid adjacent grab target exists AND
-## the grabbing hand is functional (no step-then-grab: reach is the authored
-## grab range, flat 1 — the "grab range +1" phase upgrade stays data-only,
-## wave 2d). The dash remains the reach tool, then close distance. The ability
+## it sits above it; it fires only when a valid in-reach grab target exists AND
+## the grabbing hand is functional (no step-then-grab: reach is grab_range —
+## base 1, +1 from phase 3 per the authored "grab range +1" upgrade, wave 2d).
+## The dash remains the reach tool, then close distance. The ability
 ## set is filtered to the current phase's behavior list (which gates STARTING
 ## a sequence; an in-flight one continues on its own state).
 func _decide_boss(actor: CombatantState) -> Dictionary:
@@ -219,9 +238,16 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	# (decision #31 — retires the R11 #16 range-only deferral): the aim is the
 	# fixed-order direction whose 120-degree HexGeometry.cone catches the most
 	# opponents; a cone "reaches" an opponent iff that best arc contains it.
+	# Wave 2d "flamethrower tracks closest target" (phase 5): the AIM hunts the
+	# NEAREST opponent instead — only the toward selection shifts; the shape,
+	# size and the >= CONE_MIN_TARGETS gate below are unchanged.
 	var cone: Dictionary = _first_cone_ability(actor, allowed)
 	if not cone.is_empty():
-		var sweep: Dictionary = _best_cone_sweep(actor, cone, opponents)
+		var sweep: Dictionary
+		if has_upgrade(actor, "cone_track_closest"):
+			sweep = _tracking_cone_sweep(actor, cone, opponents)
+		else:
+			sweep = _best_cone_sweep(actor, cone, opponents)
 		var in_cone: Array[CombatantState] = sweep["targets"]
 		if in_cone.size() >= CONE_MIN_TARGETS:
 			return _cone_decision(actor, cone, in_cone, sweep["toward"])
@@ -267,8 +293,11 @@ func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictio
 ## resolver (so feints, shock stutter and the R9 grapple machinery all apply
 ## normally). Fires only when: death_spin is in the phase's behavior list, the
 ## boss is not already holding anyone, the grabbing hand is functional, and an
-## adjacent (GRAB_RANGE) R9-legal target exists. The victim pick is the R23
-## antagonism draw over the ADJACENT candidates.
+## in-reach (grab_range — base 1, +1 at phase 3+, wave 2d) R9-legal target
+## exists. A range-2 candidate must also have a FREE drag hex (the pull would
+## fail on a blocked one, so the AI never decides it — the resolver still fails
+## a hand-built command honestly). The victim pick is the R23 antagonism draw
+## over the in-reach candidates.
 func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[CombatantState]) -> Dictionary:
 	var ability: Dictionary = _first_sequence_ability(actor, allowed)
 	if ability.is_empty() or actor.grappling != "":
@@ -276,12 +305,17 @@ func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[Comb
 	var grab_hand: String = grab_hand_part(actor)
 	if grab_hand == "":
 		return {}
+	var reach: int = grab_range(actor)
+	var occupied: Dictionary = _occupied_hexes(actor)
 	var adjacent: Array[CombatantState] = []
 	for opponent: CombatantState in opponents:
-		if CombatantState.hex_distance(actor.position, opponent.position) > GRAB_RANGE:
+		var distance: int = CombatantState.hex_distance(actor.position, opponent.position)
+		if distance > reach:
 			continue
 		if opponent.size_rank() - actor.size_rank() > 1:
 			continue  # R9: target no more than one size larger
+		if distance > 1 and occupied.has(grab_pull_hex(actor.position, opponent.position)):
+			continue  # wave 2d: a blocked drag hex means the grab cannot land
 		adjacent.append(opponent)
 	if adjacent.is_empty():
 		return {}
@@ -308,18 +342,25 @@ func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[Comb
 ## feinted/stuttered beat is retried, never skipped. The stale guard is
 ## belt-and-braces: death_spin_checks aborts broken sequences after every
 ## command, before any decide can see one.
+##
+## Wave 2d — "death spin costs 2 moments" (phase 5, PROVISIONAL model): the
+## sequence ACCELERATES by merging chew and spin into ONE beat — grab (1
+## Moment) then chew+spin (1 Moment), total 2. The merged declare is the SPIN
+## action carrying the chew's arm rounds as riders (chew_targets) + the
+## death_spin_merged marker; the resolver fires the chew rounds first, then
+## the kill, then closes the sequence from beat 1. The counterplay window
+## shrinks by exactly one Moment: release-on-5 / R9 escape must land in the
+## single Moment between the grab and the merged beat's resolution (a
+## same-tick release still makes the merged jaws close on air). Derived from
+## current_phase at decide time — no new state; the markers ride the declared
+## action only.
 func _decide_spin_beat(actor: CombatantState, spin: Dictionary) -> Dictionary:
 	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
 	if victim == null or not victim.alive or victim.removed_from_play \
 			or victim.grappled_by != actor.id or actor.grappling != victim.id:
 		return _wait("boss", "death_spin_stale")
-	if int(spin.get("beat", 1)) == 1:
-		var arm_targets: Array[Dictionary] = []
-		var keys: Array = victim.parts.keys()
-		keys.sort()
-		for part_key: Variant in keys:
-			if String(part_key).contains("arm"):
-				arm_targets.append({"id": victim.id, "part": String(part_key)})
+	if int(spin.get("beat", 1)) == 1 and not has_upgrade(actor, "spin_two_moments"):
+		var arm_targets: Array[Dictionary] = _arm_targets(victim)
 		return {
 			"choice": "chew", "tier": "boss", "ability": "death_spin",
 			"target": victim.id,
@@ -337,17 +378,33 @@ func _decide_spin_beat(actor: CombatantState, spin: Dictionary) -> Dictionary:
 	var targets: Array[Dictionary] = []
 	if part_key != "":
 		targets.append({"id": victim.id, "part": part_key})
+	var action: Dictionary = {
+		"kind": "attack", "key": "death_spin_kill", "cost": 1,
+		"damage": {"type": "crushed", "amount": SPIN_KILL_AMOUNT},
+		"attack_range": GRAB_RANGE,
+		"targets": targets,
+		"death_spin_beat": "spin",
+	}
+	if int(spin.get("beat", 1)) == 1:
+		# Phase-5 merged beat: the chew rides the spin declare (wave 2d).
+		action["death_spin_merged"] = true
+		action["chew_targets"] = _arm_targets(victim)
 	return {
 		"choice": "spin", "tier": "boss", "ability": "death_spin",
 		"target": victim.id,
-		"action": {
-			"kind": "attack", "key": "death_spin_kill", "cost": 1,
-			"damage": {"type": "crushed", "amount": SPIN_KILL_AMOUNT},
-			"attack_range": GRAB_RANGE,
-			"targets": targets,
-			"death_spin_beat": "spin",
-		},
+		"action": action,
 	}
+
+
+## The chew's per-arm target rows on the victim, in sorted part-key order.
+static func _arm_targets(victim: CombatantState) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var keys: Array = victim.parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		if String(part_key).contains("arm"):
+			out.append({"id": victim.id, "part": String(part_key)})
+	return out
 
 
 ## The hand the boss grabs with — DATA-HONEST ruling (documented decision):
@@ -373,6 +430,18 @@ func grab_hand_part(actor: CombatantState) -> String:
 		if actor.part_usable(key, clock.tick):
 			return key
 	return ""
+
+
+## Wave 2d — the range-2 grab's DRAG destination: the hex adjacent to the boss
+## on the boss→victim HexGeometry line (lane index 1; the line's fixed tie rule
+## makes it deterministic). The grab drags the victim there FIRST — a 1-hex
+## pull along the line — so the hold always closes adjacent; a living body on
+## this hex blocks the pull and the grab fails honestly (resolver).
+static func grab_pull_hex(boss_pos: Vector2i, victim_pos: Vector2i) -> Vector2i:
+	var lane: Array[Vector2i] = HexGeometry.line(boss_pos, victim_pos)
+	if lane.size() < 2:
+		return victim_pos
+	return lane[1]
 
 
 ## First sequence-carrying ability (death_spin), filtered to the phase's
@@ -490,12 +559,16 @@ func check_death_spin_release(boss: CombatantState, hit: int) -> Array[Dictionar
 ## "reach" is a LEGAL CHARGE LANE, not plain range — the target must sit on the
 ## HexGeometry lane from the acting hex within the ability's range with every
 ## lane hex before it unoccupied (the charge stops before the first occupied
-## hex, so a blocked lane could never connect). No lane from here: plan the
-## free step toward the pick (allowance rules unchanged) and dash only if the
-## post-step hex has one; else just move (or wait when no step exists) — the
-## picked target must be genuinely lane-reachable or the AI does not dash.
-## The declared action carries the committed lane (area_shape) for the
-## resolver's windup re-check + charge. All pure and rng-free.
+## hex, so a blocked lane could never connect). Wave 2d "dash can change
+## direction mid-run" (phase 4+): when no STRAIGHT lane exists the AI may bend
+## the lane ONCE (_bent_dash_lane — the bend reaches a lane-valid target
+## otherwise unreachable; fixed-order candidate search, no rng). No lane at
+## all from here: plan the free step toward the pick (allowance rules
+## unchanged) and dash only if the post-step hex has one; else just move (or
+## wait when no step exists) — the picked target must be genuinely
+## lane-reachable or the AI does not dash. The declared action carries the
+## committed lane (area_shape, + the bend point when bent) for the resolver's
+## windup re-check + charge. All pure and rng-free.
 func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, opponents: Array[CombatantState], elite_pick: bool) -> Dictionary:
 	var reach: int = _ability_range(strike)
 	var is_line: bool = String(strike.get("area", "")) == "line"
@@ -503,12 +576,15 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	if target == null:
 		return _wait(tier, "no_reachable_action")
 	var move_to: Variant = null
+	var lane_info: Dictionary = {}
 	if is_line:
-		if not _dash_lane_exists(actor, actor.position, target, reach):
+		lane_info = _dash_lane_for(actor, actor.position, target, reach)
+		if lane_info.is_empty():
 			move_to = _step_toward(actor, target.position, 1)
 			if move_to == null:
 				return _wait(tier, "no_reachable_action")
-			if not _dash_lane_exists(actor, move_to, target, reach):
+			lane_info = _dash_lane_for(actor, move_to, target, reach)
+			if lane_info.is_empty():
 				return {"choice": "move", "tier": tier, "move_to": move_to}
 	elif CombatantState.hex_distance(actor.position, target.position) > reach:
 		move_to = _step_toward(actor, target.position, reach)
@@ -521,13 +597,16 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 		return _wait(tier, "no_reachable_action")
 	var action: Dictionary = _attack_action(strike, [{"id": target.id, "part": part_key}])
 	if is_line:
-		# The committed charge corridor, from the hex the actor will act from
-		# (the free step resolves before the declare in _ai_decide).
-		var from: Vector2i = move_to if move_to != null else actor.position
+		# The committed charge corridor (straight or bent), from the hex the
+		# actor will act from (the free step resolves before the declare in
+		# _ai_decide) — _dash_lane_for already built it from that hex.
 		var lane: Array = []
-		for hex: Vector2i in HexGeometry.line_extended(from, target.position, reach):
-			lane.append([hex.x, hex.y])
+		for hex: Vector2i in lane_info.get("lane", []) as Array:
+			lane.append([(hex as Vector2i).x, (hex as Vector2i).y])
 		action["area_shape"] = {"kind": "line", "lane": lane}
+		if lane_info.has("bend"):
+			var bend: Vector2i = lane_info["bend"]
+			action["area_shape"]["bend"] = [bend.x, bend.y]
 	var decision: Dictionary = {
 		"choice": "attack", "tier": tier,
 		"ability": String(strike.get("key", "")),
@@ -537,6 +616,74 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	if move_to != null:
 		decision["move_to"] = move_to
 	return decision
+
+
+## The committed dash lane from `from` to the target, or {} when none exists:
+## {"lane": Array[Vector2i]} for a straight lane; {"lane", "bend": Vector2i}
+## for a bent one (wave 2d, phase 4+ only). Straight is always preferred — the
+## bend exists to reach a lane-valid target OTHERWISE unreachable.
+func _dash_lane_for(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> Dictionary:
+	if _dash_lane_exists(actor, from, target, reach):
+		return {"lane": HexGeometry.line_extended(from, target.position, reach)}
+	if has_upgrade(actor, "dash_bend"):
+		return _bent_dash_lane(actor, from, target, reach)
+	return {}
+
+
+## Wave 2d — "dash can change direction mid-run" (phase 4+): a ONE-bend charge
+## lane. Geometry: two chained HexGeometry segments — line(from, bend) then
+## line_extended(bend, target) — total length still <= the dash's range. The
+## candidate search is deterministic and rng-free (documented order): segment-1
+## length d1 ascending (the earliest bend first), then candidate bend hexes at
+## exactly d1 in HexGeometry.blast's sorted (q, then r) order; the FIRST
+## candidate producing a legal lane wins. Legal means: both segment lengths
+## >= 1, d1 + d2 <= reach, the composite never revisits a hex (no hairpins
+## through the origin), the target sits ON it exactly once, and every hex
+## strictly between origin and target is unoccupied (the same rule the
+## straight lane obeys — the charge must genuinely reach adjacent-before the
+## target). Returns {} when no bend reaches the target.
+func _bent_dash_lane(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> Dictionary:
+	if from == target.position:
+		return {}
+	var occupied: Dictionary = _occupied_hexes(actor)
+	occupied.erase(target.position)  # the charge stops BEFORE the target anyway
+	for d1: int in range(1, reach):
+		for bend: Vector2i in HexGeometry.blast(from, d1):
+			if HexGeometry.distance(from, bend) != d1 or bend == target.position:
+				continue
+			var d2: int = HexGeometry.distance(bend, target.position)
+			if d2 < 1 or d1 + d2 > reach:
+				continue
+			var lane: Array[Vector2i] = _compose_bent_lane(from, bend, target.position, reach - d1)
+			if lane.is_empty():
+				continue
+			var t_idx: int = lane.find(target.position)
+			if t_idx < 1:
+				continue
+			var blocked: bool = false
+			for k: int in range(1, t_idx):
+				if occupied.has(lane[k]):
+					blocked = true
+					break
+			if not blocked:
+				return {"lane": lane, "bend": bend}
+	return {}
+
+
+## Chains line(from, bend) + line_extended(bend, target, tail_len) into one
+## lane, rejecting self-intersections ([] — a lane that revisits a hex is not
+## a chargeable corridor). Pure, static, rng-free.
+static func _compose_bent_lane(from: Vector2i, bend: Vector2i, target_pos: Vector2i, tail_len: int) -> Array[Vector2i]:
+	var lane: Array[Vector2i] = HexGeometry.line(from, bend)
+	var seen: Dictionary = HexGeometry.to_set(lane)
+	var tail: Array[Vector2i] = HexGeometry.line_extended(bend, target_pos, tail_len)
+	for k: int in range(1, tail.size()):
+		if seen.has(tail[k]):
+			var empty: Array[Vector2i] = []
+			return empty
+		seen[tail[k]] = true
+		lane.append(tail[k])
+	return lane
 
 
 ## True when a legal dash lane exists from `from` to the target: the target
@@ -579,6 +726,43 @@ func _best_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[
 	return {"toward": best_dir, "targets": best_targets}
 
 
+## Wave 2d — "flamethrower tracks closest target" (phase 5): the cone AIMS at
+## the NEAREST opponent instead of the biggest crowd — the authored text says
+## the sweep TRACKS, i.e. it hunts its closest quarry (a behavior shift, not a
+## shape change). Selection (documented, PROVISIONAL like the rest of the
+## upgrade models): nearest = minimal hex distance, an exact tie keeps the
+## EARLIER candidate in the given (sorted-id) order; among the fixed-order
+## directions whose arc CONTAINS the nearest, the most swept targets wins
+## (exact ties keep the earlier direction) — the sweep stays maximal SUBJECT TO
+## tracking its quarry. A nearest outside cone range leaves every arc check
+## false and the decide gate falls through. Pure and rng-free.
+func _tracking_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[CombatantState]) -> Dictionary:
+	var size: int = _ability_range(cone)
+	var nearest: CombatantState = opponents[0]
+	var nearest_d: int = CombatantState.hex_distance(actor.position, nearest.position)
+	for opponent: CombatantState in opponents:
+		var d: int = CombatantState.hex_distance(actor.position, opponent.position)
+		if d < nearest_d:
+			nearest = opponent
+			nearest_d = d
+	var best_dir: Vector2i = HEX_NEIGHBORS[0]
+	var best_targets: Array[CombatantState] = []
+	var found: bool = false
+	for dir: Vector2i in HEX_NEIGHBORS:
+		var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(actor.position, actor.position + dir, size))
+		if not arc.has(nearest.position):
+			continue
+		var hit: Array[CombatantState] = []
+		for opponent: CombatantState in opponents:
+			if arc.has(opponent.position):
+				hit.append(opponent)
+		if not found or hit.size() > best_targets.size():
+			found = true
+			best_dir = dir
+			best_targets = hit
+	return {"toward": best_dir, "targets": best_targets}
+
+
 ## Builds the cone sweep declare: one round per swept target (v1 multi-target
 ## model, unchanged) + the committed arc (area_shape) so the resolver's windup
 ## re-check re-evaluates the CONE shape, not plain range (R2: leaving the arc
@@ -599,6 +783,9 @@ func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[Comb
 		"choice": "attack", "tier": "boss",
 		"ability": String(cone.get("key", "")),
 		"target": String((targets[0] as Dictionary).get("id", "")),
+		# The chosen arc direction, surfaced on the ai_decision event (wave 2d:
+		# the phase-5 tracking aim is visible, not just buried in the shape).
+		"aim": [toward.x, toward.y],
 		"action": action,
 	}
 
@@ -1030,6 +1217,36 @@ func _phase_entry(actor: CombatantState, phase_number: int) -> Dictionary:
 	return {}
 
 
+# ------------------------------------------------------- phase upgrades (wave 2d)
+
+## The actor's ACTIVE upgrade effects: {effect_key: true}. Upgrades ACCUMULATE —
+## the union of every phase entry's authored `behavior.upgrades` strings with
+## phase_number <= the actor's current phase, parsed through UPGRADE_EFFECTS
+## (unknown strings are data-only no-ops and never reported). Pure function of
+## (authored boss_phases data, the serialized boss_phase number) — upgrades are
+## DERIVED, never stored, so there is no new state to serialize or drift.
+func upgrades_active(actor: CombatantState) -> Dictionary:
+	var out: Dictionary = {}
+	var phase: int = current_phase(actor.id)
+	for entry: Dictionary in actor.boss_phases:
+		if int(entry.get("phase_number", 0)) > phase:
+			continue
+		for authored: Variant in (entry.get("behavior", {}) as Dictionary).get("upgrades", []) as Array:
+			var effect := String(UPGRADE_EFFECTS.get(String(authored), ""))
+			if effect != "":
+				out[effect] = true
+	return out
+
+
+func has_upgrade(actor: CombatantState, effect_key: String) -> bool:
+	return bool(upgrades_active(actor).get(effect_key, false))
+
+
+## The grab's live reach: base 1, +1 from the authored phase-3 upgrade on.
+func grab_range(actor: CombatantState) -> int:
+	return GRAB_RANGE + (1 if has_upgrade(actor, "grab_range_plus_1") else 0)
+
+
 ## Phase-machine check, run by CombatSim._post after every command: while in a
 ## fight phase, the health part dropping to an explosion phase's hp_at_or_below
 ## fires boss_phase_changed — the boss enters the valve, and the explosion beat
@@ -1137,8 +1354,16 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 	explosion_beats.erase(actor.id)
 	var immunity: Dictionary = actor.boss_traits.get("surface_immunity", {})
 	var health_part := String(immunity.get("health_part", ""))
+	# Wave 2d — "network fully exposed" (phase 4+): from the phase-4 valve on
+	# the network NEVER re-hides. For the seeded Incinedile this was already
+	# emergent (breach_resets_after_phase: 2 gates the retreat to the phase-2
+	# valve only — the phase-4/6 blasts never retreated); the upgrade guard
+	# makes the authored string the CANON rather than a data coincidence: even
+	# a boss whose data retreats at a later valve stays exposed once the
+	# upgrade is active.
 	if health_part != "" and actor.parts.has(health_part) \
-			and int(immunity.get("breach_resets_after_phase", 0)) == phase:
+			and int(immunity.get("breach_resets_after_phase", 0)) == phase \
+			and not has_upgrade(actor, "network_stays_exposed"):
 		events.append_array(_retreat(actor, health_part, cond))
 	for entry: Dictionary in actor.boss_phases:
 		var num: int = int(entry.get("phase_number", 0))

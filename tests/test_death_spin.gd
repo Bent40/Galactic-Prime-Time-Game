@@ -11,6 +11,9 @@ extends SimTestBase
 ##
 ## PACING PIN (documented ruling): grab cost 1 -> chew cost 1 -> spin cost 1 —
 ## the authored moment_cost 3 spans the whole sequence, one beat per Moment.
+## (Wave 2d: at phase 5 the authored "death spin costs 2 moments" upgrade
+## merges chew+spin into one beat — tests/test_phase_upgrades.gd; this file
+## pins the BASE sequence, staged below phase 5.)
 ## DECIDE-ORDER PIN: valve > stand > continuation > cone > GRAB > dash.
 
 
@@ -476,11 +479,14 @@ func test_dash_still_chosen_for_a_non_adjacent_target() -> void:
 	assert_eq(String(decision.get("ability", "")), "dash", "out of grab range -> the line charge")
 
 
-func test_every_threshold_phase_reaches_death_spin_and_upgrades_stay_data_only() -> void:
+func test_every_threshold_phase_reaches_death_spin_and_upgrades_gate_by_phase() -> void:
 	# death_spin sits in the behavior list of Threshold 1/3/5 — each phase can
-	# genuinely reach the grab. The authored phase upgrades ("death spin grab
-	# range +1", "death spin costs 2 moments") stay DATA-ONLY until wave 2d:
-	# the grab range is flat 1 and the grab beat costs 1 in EVERY phase.
+	# genuinely reach the grab, and the grab DECLARE costs 1 in every phase
+	# (the phase-5 "costs 2 moments" upgrade restructures the BEATS — the chew
+	# merges into the spin — never the grab's own cost). Wave 2d flips the old
+	# wave-2b data-only pin: "death spin grab range +1" is REAL from its
+	# authored phase (3) — a distance-2 target is grab prey at 3/5 and out of
+	# reach at 1. Full upgrade behavior: tests/test_phase_upgrades.gd.
 	for phase: int in [1, 3, 5]:
 		var sim: CombatSim = stage()
 		sim.ai.boss_phase["boss"] = phase
@@ -490,16 +496,20 @@ func test_every_threshold_phase_reaches_death_spin_and_upgrades_stay_data_only()
 			"Threshold phase %d reaches the grab" % phase)
 		var declared: Dictionary = assert_event(events, "action_declared", "declared in phase %d" % phase)
 		assert_eq(int(declared.get("cost", 0)), 1,
-			"phase %d: the grab beat still costs 1 ('costs 2 moments' upgrade is data-only, wave 2d)" % phase)
-		# Range stays flat 1: a distance-2 target is never grabbed in any phase.
+			"phase %d: the grab declare costs 1 (the phase-5 upgrade merges BEATS, not this cost)" % phase)
+		# Grab range gates by phase (wave 2d): flat 1 below phase 3, 2 from 3 on.
 		var sim2: CombatSim = make_sim()
 		add_human(sim2, "vic", {"team": "party", "position": [2, 0],
 			"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
 		add_boss(sim2, "boss", {"boss_traits": traits_without_dodge()})
 		sim2.ai.boss_phase["boss"] = phase
 		var far_decision: Dictionary = first_event(ai_decide(sim2, "boss"), "ai_decision")
-		assert_ne(String(far_decision.get("choice", "")), "grab",
-			"phase %d: distance 2 is out of grab range ('range +1' upgrade is data-only, wave 2d)" % phase)
+		if phase >= 3:
+			assert_eq(String(far_decision.get("choice", "")), "grab",
+				"phase %d: distance 2 is grab prey ('range +1' is REAL, wave 2d)" % phase)
+		else:
+			assert_ne(String(far_decision.get("choice", "")), "grab",
+				"phase %d: distance 2 stays out of the base grab range" % phase)
 
 
 # ------------------------------------------------------------ serialization + determinism

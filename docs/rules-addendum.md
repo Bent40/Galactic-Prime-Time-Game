@@ -401,7 +401,13 @@ overturning one is a code change, not a rewrite.
     Helpless 2 Clocks) → retreat → the machine advances into the next Threshold
     and the boss keeps fighting. Phase-6 death explosion stays data-only (the
     fight ends at network 0).** The phase-2 beat is the slice's win moment
-    (review-4 §5, DIRECTION Stage 1).
+    (review-4 §5, DIRECTION Stage 1). **Wave 2d (2026-08-10): the authored
+    per-phase `behavior.upgrades` lists activate REAL effects as the machine
+    advances — see #20 for the string→effect mapping; upgrades accumulate
+    (union of every entered phase's list) and derive from `current_phase`, so
+    the phase number stays the only serialized upgrade state. The retreat is
+    now phase-2-only BY CANON, not by data coincidence: "network fully
+    exposed" (phase 4+) suppresses any later valve's re-hide.**
 19. **Death Spin is REAL; dash knock-aside is REAL (wave 2b, decision #31,
     2026-08-10 — retires the #16 "sequence abilities skipped" deferral for
     death_spin).** The authored 3-beat sequence runs as a real state machine
@@ -436,9 +442,11 @@ overturning one is a code change, not a rewrite.
     mid-sequence. Valve entry aborts the spin honestly (the valve outranks,
     #27 precedent), as do boss prone/helpless and victim death; a mid-batch
     release makes a same-tick chew/spin close on air (live grip re-check,
-    the `grapple_suffocate` "grip_lost" family). The "death spin grab range
+    the `grapple_suffocate` "grip_lost" family). ~~The "death spin grab range
     +1" / "death spin costs 2 moments" phase upgrades stay DATA-ONLY (wave
-    2d). **Dash knock-aside:** the authored `"effect": "knock aside"` is
+    2d).~~ **SUPERSEDED (wave 2d, 2026-08-10): both are REAL — grab range 2
+    with a 1-hex drag from phase 3, the merged 2-Moment sequence at phase 5;
+    see #20.** **Dash knock-aside:** the authored `"effect": "knock aside"` is
     real — a target the charge CONNECTS with (not dodged, not stopped-short;
     a robustness-blocked 0-net hit still connected) is displaced to the first
     free fixed-order neighbor OFF the committed lane (the involuntary sibling
@@ -447,6 +455,27 @@ overturning one is a code change, not a rewrite.
     stops adjacent-before the target's SNAPSHOT hex, so after the shove it
     may stand adjacent to a now-empty hex (documented interaction).
     Tests: tests/test_death_spin.gd.
+20. **The Incine-Dile phase upgrades are REAL (wave 2d, 2026-08-10 — the last
+    wave-2 story; retires #19's data-only note).** The authored per-phase
+    `behavior.upgrades` STRINGS in data/enemies.json are the SOURCE OF TRUTH;
+    `EnemyAI.UPGRADE_EFFECTS` parses them into effect keys (an unmapped string
+    is a data-only no-op — visible in data, never executed). Upgrades
+    ACCUMULATE: active set = union over every phase entry with
+    `phase_number <= current_phase`; everything derives from the serialized
+    phase number — no new state. The mapping:
+    | authored string (phase) | effect | model |
+    |---|---|---|
+    | "death spin grab range +1" (3) | `grab_range_plus_1` | grab reach 2; a range-2 grab DRAGS the victim adjacent first — a 1-hex pull to the boss-adjacent hex of the boss→victim line (fixed line tie rule); a living body on the pull hex blocks it and the grab fails honestly (`pull_blocked` — the AI never decides one, a hand-built command rejects/invalidates). The drag rides the `death_spin_grab` event (`dragged`/`dragged_from`/`dragged_to`). Plain R9 grapples stay range 1. |
+    | "dash bounces between walls up to 2 bounces" (3) | — | **DATA-ONLY**: there are NO walls — geometry is unbounded (`arena_hexes` unread); bounces arrive with the KAN-5 arenas. Pinned inert. |
+    | "flamethrower pops trash cans instantly" (3) | — | **DATA-ONLY**: trash cans are not sim entities (environment objects are KAN-5). Pinned inert. |
+    | "network fully exposed" (4) | `network_stays_exposed` | from the phase-4 valve on the network NEVER re-hides. For the seeded boss this was already emergent (`breach_resets_after_phase: 2` gates the retreat to Valve I); the upgrade guard makes the string canon — a later valve's retreat is suppressed outright. Pinned by a full valve-II drive test. |
+    | "dash can change direction mid-run" (4) | `dash_bend` | the charge lane may bend ONCE: two chained `line_extended` segments, total length ≤ the dash's range; the declare's `area_shape` carries the composite lane + the bend hex (phase-gated at the command surface — `bend_not_available` below phase 4). AI bend pick is deterministic and rng-free: tried only when no straight lane exists; candidates by segment-1 length ascending, then blast's (q, r) order; first legal composite (no self-intersection, intermediate hexes unoccupied) wins. ALL wave-2a/2b lane rules apply to the BENT lane (occupation stop on either segment, `left_lane` windup dodge, knock-aside off the FULL lane); the R22 sidestep steps off whichever SEGMENT the dodger stood on (the bend hex belongs to both; segment-2 checks first). `dash_charged` carries the bend. |
+    | "flamethrower tracks closest target" (5) | `cone_track_closest` | the cone's `toward` selection AIMS at the NEAREST opponent (min hex distance, ties keep the earlier sorted-id candidate) instead of maximize-targets — the authored text says TRACKS, i.e. it hunts YOU. Among the arcs containing the quarry, most swept targets wins (ties keep the earlier fixed-order direction). ONLY the aim shifts: shape, size and the ≥ 2-target decide gate are unchanged — a lone quarry is not a crowd, so the boss falls through to the (upgraded-reach) grab instead. The chosen aim rides the `ai_decision` event (`aim`). PROVISIONAL. |
+    | "death spin costs 2 moments" (5) | `spin_two_moments` | ruled reading of the authored line (PROVISIONAL): the sequence ACCELERATES — chew and spin MERGE into one beat, so the kill is grab (1 Moment) → chew+spin (1 Moment), total 2. The merged declare is the spin action carrying the chew's arm rounds as riders; chew fires first, then the kill, same R14 gates as the 3-beat run. The counterplay window shrinks by exactly one Moment — release-on-5 / R9 escape must land in the single Moment between grab and merged beat (a same-tick release still makes the jaws close on air; nothing lands). The grab's own cost never changes. |
+    Every effect activates exactly AT its authored phase and is OFF below it;
+    serialization round-trips mid-phase-5 sequence with no new state.
+    Tests: tests/test_phase_upgrades.gd (+ the flipped pin in
+    tests/test_death_spin.gd).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
@@ -458,7 +487,8 @@ dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL
 R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
 decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
 arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
-wave 2b (2026-08-10, #19 — the death-spin phase upgrades stay data-only for wave 2d).
+wave 2b (2026-08-10, #19); the phase upgrades moved to REAL per wave 2d (2026-08-10,
+#20 — only wall bounces + trash cans stay data-only, both blocked on KAN-5 arenas).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
