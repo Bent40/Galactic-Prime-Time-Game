@@ -3,7 +3,7 @@
 Answers to the Tier-1 docket in [`v1-v2-fork-spec.md`](v1-v2-fork-spec.md) §8, the
 design that falls out of them, and the remaining open questions.
 
-**Status:** D-01, D-03, D-04, D-06 RULED · D-02 expanded, awaiting choice · D-05 resolved
+**Status:** Rounds 2 and 3 both ruled. D-01/D-03/D-04/D-06 RULED · D-02 → **Frame-C** · D-05 resolved
 against D-01, two residues to confirm.
 
 ---
@@ -199,14 +199,16 @@ residues need you.
 
 ### ✅ C1 — "Divinity is spent on advancement" vs "winners accumulate divinity → become gods"
 
-**Not a contradiction — it is the central dilemma, and it is the best thing D-01 produces.**
+**Not a contradiction — it is the central dilemma.**
 
-One pool. **Spend it during the run to survive; whatever you carry to the end is what you
-ascend with.** Survival and apotheosis compete for the same resource, every session.
+> **⚠️ CORRECTED by round 3 (Q-03 + Q-05).** My first resolution was *"spend to survive vs
+> bank to ascend."* **That was wrong.** Q-03 rules there are **no non-winning survivors**, so
+> a loser's banked divinity buys nothing — banking-to-ascend is strictly dominated by
+> spending. The dilemma is real but differently shaped. See **Part 6 §6.2** for the correct
+> form: **spend on advancement vs hold as leverage over your patron** (Q-05).
 
-That makes "your place in the world" *literally your closing divinity balance* — the stake
-is a number the player watches all campaign. Buddhist canon already frames divinity as
-"spendable **and losable**," so spending down is doctrinally correct, not a fudge.
+Buddhist canon frames divinity as "spendable **and losable**" (`research/mythology/buddhist.md:9`),
+which holds under either reading.
 
 ### ✅ C2 — "Everything resets" vs "the retired become patrons" (Ascension as a retirement door)
 
@@ -252,20 +254,20 @@ Marked INFERRED — it is not in canon. **→ Q-03.**
 
 ## Part 4 — The remaining docket
 
-### New questions raised by round 2
+### New questions raised by round 2 — **ALL RULED 2026-08-10 (round 3)**
 
-| # | Question | Why it matters | Rec |
-|---|---|---|---|
-| **Q-01** | **Frame-A, Frame-B, or Frame-C?** | Decides what a contestant thinks is happening; 8× cost swing between A and B | **Frame-C** |
-| **Q-02** | **In a group game, is there one winner or a collective one?** (C5) | Decides the finale's shape — collective triumph vs a party that turns | Needed before any floor-9+ authoring |
-| **Q-03** | **What does a non-winning survivor get?** (residue) | Makes every divinity spend cost something | Station-without-memory |
-| **Q-04** | **Is the patron's cut fixed, or negotiated per contract?** | If negotiated it becomes the **deal sheet's headline term** — a god who wants more takes more | Negotiated — it makes bidding a real scene |
-| **Q-05** | **Can you fire a patron mid-run to stop the cut?** `patron-gods.md:50` already lets you decline a *new* contract at level-up | Decides whether patronage is a lock or a lease | Lease, with a cost |
-| **Q-06** | **Champion vs civilian — what does the champion's "advantage" concretely buy?** Starting skills, items, a free patron tier, foreknowledge of floor 1? | It is a creation path, and it must not simply be "better" | Preparation, not power |
-| **Q-07** | **Do the dead exist in the reset world?** | Permadeath's meaning under a universal reset | — |
-| **Q-08** | **Is the winner's event-authorship played on screen** (an epilogue the group plays) **or narrated?** | The finale's staging (I-18) | Played — it is the verdict made literal |
-| **Q-09** | **Is the current world the product of a previous cycle's winner?** (from D-03) | Follows logically from D-03; decides whether real history is diegetically authored, and how close the camera may get | Yes, but never narrated over a real atrocity |
-| **Q-10** | **Two rendered books from one source, or a hand-forked second file?** (from D-06) | Decides whether v1/v2 drift again | Two renders |
+| # | Question | **Ruling** |
+|---|---|---|
+| **Q-01** | Frame-A, Frame-B, or Frame-C? | **Frame-C** — vocabulary splits by information plane |
+| **Q-02** | One winner or a collective one? | **One winner** — and winning includes **deciding what to do with those who lose**. A winner *can* delete his enemies from reality, for any reason he likes |
+| **Q-03** | What does a non-winning survivor get? | **There are no non-winning survivors.** Anyone who lost deals with the consequences of whoever won |
+| **Q-04** | Is the patron's cut fixed or negotiated? | **Negotiated** — per contract |
+| **Q-05** | Can you fire a patron mid-run? | **No — unless you hold more divinity than they do, or the contract specifically allows it** |
+| **Q-06** | What does the champion's advantage buy? | **Preparation**: champion-specific skills (things not practised in modern daily life) + **guidance from the god — personal intervention** |
+| **Q-07** | Do the dead exist in the reset world? | **All the dead are respawned, at the winner's mercy.** He decides who lives and who dies — bounded only by **leaving room for humanity to survive as a race** |
+| **Q-08** | Is the winner's authorship played or narrated? | **Played** |
+| **Q-09** | Is the current world a previous winner's work? | **Yes.** Atrocities need not be his *direct* influence — they can be a **side effect** of his choices *(e.g. wanting the German people defeated drags a world war behind it)* |
+| **Q-10** | Two renders, or a hand-forked file? | **Two renders — and this applies to the character-sheet app as well** |
 
 ### Still open from round 1 — Tier 2
 
@@ -309,6 +311,150 @@ Box Namer HOUSE lane? · three coupon renames? · Med Bay comp-or-marker? · ren
 Nine Lives and Unkillable go now both are epithets? · do Skill Tomes split into God Relics
 and Follower Relics? · enemy disposition template- or encounter-level? · rename the four
 TV-coded skills? Full detail in [`research/`](research/).
+
+---
+
+## Part 6 — Round 3: what the Q-01…Q-10 rulings build
+
+### 6.1 The endgame, as now ruled
+
+```
+The games run ──▶ ONE winner ──▶ everything resets
+                      │
+                      ├── remembers everything (only he does)
+                      ├── authors EVENTS (gods author religion)      [D-03]
+                      ├── respawns all the dead, and decides
+                      │   who lives and who stays dead               [Q-07]
+                      └── disposes of those who lost — up to and
+                          including deleting them from reality       [Q-02]
+
+  THE ONE LIMIT: he must leave room for humanity to survive as a race.
+```
+
+**That single limit is the only constraint on a winner's power, and it is load-bearing** —
+it is what stops the ending being arbitrary, and it is the reason the cycle can repeat every
+~250 years. Record it as canon.
+
+**The spine now pays off literally.** The campaign's defining question is
+*"how much can we break your essence down in the name of entertainment?"*, and the ending
+names *what kind of ruler you'll be* (`story-canon.md:63`, `:74-75`). Under Q-02 + Q-07 +
+Q-09, that verdict stops being a label and becomes **a test the player actually sits**: you
+are handed the authorship that produced this world's atrocities, and what you do with the
+people who lost to you *is* the answer. The verdict system no longer has to score the player
+— **the epilogue makes him score himself, out loud, at the table** (Q-08: played).
+
+### 6.2 The corrected divinity dilemma — the golden cage, made mechanical
+
+Q-03 kills "bank it to ascend" (a loser's balance buys nothing). **Q-05 replaces it with
+something better.** Divinity has exactly two uses:
+
+| Use | Effect |
+|---|---|
+| **Spend** on the divinity shop | Advancement — you get stronger now |
+| **Hold** | **Leverage.** You may break your patron's contract only if you hold **more divinity than the god does** (or the contract allows it) |
+
+> **The trap:** you take a patron for power. The patron cuts your divinity income. That cut
+> makes reaching the balance needed to *fire* them slower — **the longer you stay patroned,
+> the harder leaving becomes.** Spend to survive the next floor and you never escape;
+> hoard to escape and you may not reach the next floor.
+
+This is the Golden Cage as a live, session-by-session decision, and it costs no new
+machinery — it falls out of Q-04 + Q-05 alone. It also gives the **negotiated cut** (Q-04)
+real teeth: the cut is not flavour on a deal sheet, it is *the interest rate on your
+freedom*. A cheap god who takes 40% may be a worse deal than an expensive one who takes 10%.
+
+**Patron-less is now fully coherent:** diffuse, weaker buffs — but the fastest route to a
+divinity stock large enough to matter, and nobody to buy your way out from.
+
+### 6.3 Champion skills — a new content pool (Q-06)
+
+Q-06 creates something v1 has no equivalent of: **skills not practised in modern daily
+life**, available only to champions, plus **personal divine guidance** as an ongoing
+intervention channel.
+
+- The live catalogue's 44 skills are modern-human-shaped (see
+  [`research/D-combat-skills-enemies.md`](research/D-combat-skills-enemies.md)) — so this is
+  **net-new authored content**, not a reskin. First real content cost v2 has incurred.
+- It cleanly justifies the champion/civilian asymmetry as **preparation, not raw power** —
+  a champion knows sword forms and rites; a civilian knows how to drive.
+- **"Personal intervention" is distinct from D-04's ASSIST/NUDGE** — that was the *buff*
+  stream every contestant gets; this is a champion-only *advisory* channel. Confirm they are
+  two systems, not one (**Q-13**).
+
+### 6.4 Q-09 — this closes the Nikita concern
+
+Your refinement does the work: the winner sets **intentions**, and history carries the
+**consequences** — *"he wanted the German people defeated… and that dragged a world war with
+victims and atrocities."*
+
+That is a **causal** relationship, not an **authorial** one. A previous winner did not write
+the Holocaust; he wanted something, and the world paid for it in ways he did not specify.
+That is recognisable tragic irony, it keeps `GPT_Master_Compendium.md:430`'s guardrail
+intact in substance, and it makes Nikita *more* legible rather than less — he is a man
+living inside someone else's careless wish.
+
+**Adopt D-20 as the handling rule** (never narrate authorship over an atrocity in scene;
+keep Nikita clear of the Abrahamic-corporate satire) and this is closed. **No further
+flagging from me.**
+
+### 6.5 Two renders — now including the app (Q-10)
+
+**Frame-C makes this dramatically cheaper than it looks**, and the reason is worth stating:
+
+Frame-C keeps the **broadcast-plane nouns** (Viewers, Followers, Camera Call, Directives).
+The app's existing data keys — `exposure.viewers`, `cameraCallUsed`, `objectives.directives`
+— **are broadcast-plane names, so they stay valid in v2 unchanged.** The audit already
+confirmed all 11 Mongoose models are v1-clean and `grep -riE corporat client/src` returns 0
+hits.
+
+So the app's v2 work is **additive**, not a rename pass:
+
+| Work | Shape |
+|---|---|
+| A `version` field on Character | v1 / v2 — drives everything below |
+| A vocabulary map | One label set per version; the wager-plane register is *additional*, not a replacement |
+| v2-only state | Divinity balance · patron contract (cut %, clauses) · champion-vs-civilian · epithets alongside tags |
+| Wiki route | Renders the matching book |
+
+**The freeze holds:** v1 renders exactly as it does today. Nothing about a v1 character
+changes. This is the two-renders principle applied to the app, which is precisely what you
+asked for.
+
+**Estimate: M** — the schema additions and the version switch are small; the v2-only
+subsystems (divinity, contracts) are the real work, and they cannot be built until the
+Tier-2 economy questions land.
+
+### 6.6 One design note on running this for a group
+
+Q-02 + Q-03 + Q-08 together mean: **at the final session, one player decides the fate of the
+other players' characters, in scene.** That is a strong, coherent ending — and it is the
+kind of thing that must be **declared at session zero, not discovered at the finale.**
+
+Three ways to run it, all compatible with your rulings:
+
+1. **Declared competitive** — "only one of you walks out" is the pitch from session one.
+   Strongest version of the premise; needs buy-in up front.
+2. **Collectively winnable** — the party can arrive together and the winner is free to
+   restore everyone. The choice still gets played (Q-08), the verdict still scores, but the
+   table isn't structurally adversarial.
+3. **Verdict-determined** — the winner is decided by the question axes rather than by force,
+   so it is a moral outcome rather than a PvP one.
+
+**Recommendation: 1 or 3 declared up front.** Not because 2 is weaker fiction — it is
+because an unannounced competitive finale is the one failure mode that damages a real table.
+**→ Q-11.**
+
+### 6.7 New questions from round 3
+
+| # | Question | Why | Rec |
+|---|---|---|---|
+| **Q-11** | **Which group-mode do you run** — declared competitive / collectively winnable / verdict-determined? (§6.6) | Must be set before session zero, and it shapes floors 4–9's route exclusivity | 1 or 3, declared |
+| **Q-12** | **If you win, does unspent divinity matter?** Does it set what kind of god you become? | Restores an endgame reason to hold divinity beyond the Q-05 leverage | Yes — it grades your godhood |
+| **Q-13** | **Is champion "guidance/personal intervention" a separate system from D-04's ASSIST/NUDGE?** (§6.3) | Two channels or one | Two |
+| **Q-14** | **What is a god's divinity on the same scale as a contestant's?** Q-05 requires the two be comparable | Without a number, "more divinity than them" is unadjudicable at a table | Publish a rough god-tier ladder |
+| **Q-15** | **How many champion-specific skills, and are they a separate pool or a tier of the existing catalogue?** | Sizes the first real v2 content job | Separate small pool (~10–15) |
+| **Q-16** | **Can a civilian ever become a champion mid-run** (by accepting a patron), and does that unlock champion skills retroactively? | Decides whether the classes are a start-state or a live track | Yes, but skills stay locked |
+| **Q-17** | **Is the "leave room for humanity to survive" limit enforced, or honour-system?** (§6.1) | It is the only bound on a winner's power | Enforced — it's why the cycle repeats |
 
 ---
 

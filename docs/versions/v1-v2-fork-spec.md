@@ -9,7 +9,10 @@ Every finding is cited to `§section` or `file:line`. Full inventories in
 [`research/`](research/) (A–G).
 
 > ### ⚠️ Superseded in part — read [`v2-decisions-round2.md`](v2-decisions-round2.md) first
-> The owner ruled **D-01, D-03, D-04 and D-06** on 2026-08-10 and expanded **D-02**.
+> The owner ruled **D-01 … D-06 and Q-01 … Q-10** on 2026-08-10. **D-02 → Frame-C**
+> (vocabulary splits by information plane). The **endgame is now fully ruled**: one winner,
+> who disposes of the losers, respawns the dead, and authors events — bounded only by
+> leaving room for humanity to survive.
 > Round 2 changes three things in this document: **§6's stakes problem is solved**
 > (survival + your place in the world after the reset; divinity is a contestant-facing
 > currency, cut by your patron); **§7's "Ascension inverts / no exit" reading is corrected**
