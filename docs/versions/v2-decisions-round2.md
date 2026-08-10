@@ -595,6 +595,85 @@ matters after all** — not to ascend, but to arrive *powerful*.
 
 ---
 
+## Part 8 — Round 5: Followers become a named ledger
+
+**Rulings:** Q-18 … Q-22, 2026-08-10.
+
+| # | Ruling |
+|---|---|
+| **Q-18** | **Yes** — Followers = reverence = divinity. **But vastly different numbers, and followers are actual, *named* beings** — a village, a person, a god, anything living, but it must be named |
+| **Q-19** | **Yes** — players get an out-of-character heads-up at session zero |
+| **Q-20** | **Confirmed** — a civilian may become a champion mid-run; champion skills stay locked |
+| **Q-21** | **Yes** — patron-less keeps 100%, and is the fastest ascent |
+| **Q-22** | **Only earned** — a patron cannot gift you followers |
+
+### 8.1 ⚠️ Sizing correction — §17 goes L → **M**, not L → S
+
+I told you Q-18 would shrink §17's redesign from L to S. **The named-beings refinement makes
+that wrong, and I'm correcting it before it becomes a plan.**
+
+v1's Followers are an **abstract decaying count in the billions**
+(`gpt-system-v1.0.md:874-878`). v2's are a **named roster of living beings**. That is a
+mechanical fork, not a re-skin — the tier changes representation, not just meaning. §17 is
+**M**: smaller than a ground-up redesign, larger than a relabel.
+
+### 8.2 The two tiers finally became different things
+
+This is the payoff, and it fixes a weakness v1 has always carried — Viewers and Followers
+were two numbers doing similar work.
+
+| | **Viewers** | **Followers** |
+|---|---|---|
+| Nature | **Mass, anonymous attention** | **Named, individual reverence** |
+| Scale | Billions | Small — dozens, not millions |
+| Gained by | Spectacle | **Story events** — you saved the village, it now reveres you |
+| Lost by | Being boring | Losing what earned it |
+| Is | The hype meter | **Your divinity** |
+
+> **Every follower is a name a GM can say at the table.** That is what makes this workable
+> in the book (D-06): no GM tracks billions, but any GM tracks *the village of Threshold, the
+> smith who owes you, the minor god of doorways.* Reverence stops being a stat and becomes a
+> cast list.
+
+**The patron's cut (Q-04) becomes fully concrete:** it is **which named followers are listed
+under you, and which under your patron.** The Valkyrie rule, applied at table scale.
+
+**And Q-22 ("only earned") locks the loop honestly** — a patron can buy you power (Q-13's
+gifting) but *cannot* buy you reverence. Divinity must be earned in play. The cut can only
+ever run one way.
+
+### 8.3 Proposal — this may answer D-09 too
+
+D-09 asked: *with a finite 24-god roster, does a Goal still convert a Patron?* It couldn't
+scale — you cannot convert 24 gods repeatedly.
+
+**Under Q-18 it resolves cleanly by moving one rung down the pyramid:**
+
+```
+  Goals convert NAMED FOLLOWERS  (repeatable, story-shaped, unbounded)
+              │
+              ▼
+  Your reverence base grows
+              │
+              ▼
+  At thresholds, a GOD NOTICES  ──▶  Patron  (rare, finite, a real event)
+```
+
+That preserves §17.2's Patron Tokens as genuine milestones, keeps Goals repeatable, and is
+exactly Q-14's vassalage running upward: mortals revere you, which makes you worth betting
+on. **→ Q-24.**
+
+### 8.4 New questions
+
+| # | Question | Why it matters | Rec |
+|---|---|---|---|
+| **Q-23** | **Is a village one entry worth many divinity, or many entries?** Q-14 says *1 divinity = 1 revering being*; Q-18 says a *village* can be a follower | The arithmetic of the whole economy hangs on it | **One named entry, carrying a weight** — the name is the ledger row, the divinity is its value |
+| **Q-24** | **Do Goals convert named Followers, with gods taking notice at thresholds?** (§8.3) | Answers D-09 and keeps Patron Tokens meaningful | Yes |
+| **Q-25** | **Can a contestant, a defeated enemy, or an NPC become your follower?** "Anything living, but named" suggests yes | Turns mercy and rivalry into economy — a beaten enemy who reveres you is worth more than a dead one | Yes — it makes non-lethal play pay |
+| **Q-26** | **Do Viewers stay abstract billions in v2** while Followers are named? (§8.2) | Confirms the two-tier contrast is deliberate | Yes |
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there
