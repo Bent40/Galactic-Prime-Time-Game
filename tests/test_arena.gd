@@ -232,10 +232,11 @@ func test_free_move_rejects_bounds_walls_and_cans() -> void:
 
 
 func test_ai_step_routes_around_walls() -> void:
-	# A SLOWED mob (allowance 1) at (2,1) hunting (0,0): the greedy step's
-	# first fixed-order improving candidate is NW (2,0) — walled, so the one
-	# visible step lands on the next improving candidate W (1,1) instead. The
-	# wall observably diverted the step (without it the mob stands on (2,0)).
+	# A SLOWED mob (allowance 1) at (2,1) hunting (0,0): the pathfound route's
+	# first step is W (1,1) — the walled NW (2,0) is not on any legal route.
+	# The wall observably diverted the step (without it the mob stands on
+	# (2,0)); the pinned hex is unchanged from the wave-3d greedy pin (wave
+	# 4a byte-compat where greedy was already right).
 	var sim: CombatSim = make_sim()
 	set_arena(sim, arena_cfg([[2, 0]]))
 	add_human(sim, "vic", {"team": "party", "position": [0, 0]})
@@ -248,16 +249,22 @@ func test_ai_step_routes_around_walls() -> void:
 	assert_eq(String(decision.get("choice", "")), "move", "one slowed step cannot reach yet")
 	assert_eq((sim.combatants["mob"] as CombatantState).position, Vector2i(1, 1),
 		"the step DETOURS around the wall (the unwalled pick would be (2,0))")
-	# A mob with no legal improving step just waits — it cannot phase through.
+	# FLIPPED PIN (wave 4a — real pathfinding retires the R28 stranding
+	# limitation): a mob whose straight approach is walled no longer waits
+	# forever — it routes around the wall ((2,-1) then (1,-1), the fixed-order
+	# tie-break's route) and bites from the flank in the same decide.
 	var sim2: CombatSim = make_sim()
 	set_arena(sim2, arena_cfg([[1, 0]]))
 	add_human(sim2, "vic", {"team": "party", "position": [0, 0]})
 	sim2.apply_command({"type": "add_combatant", "combatant": {
 		"id": "mob", "name": "mob", "enemy": "roach_dog", "team": "enemies", "position": [2, 0],
 	}})
-	var stuck: Dictionary = first_event(ai_decide(sim2, "mob"), "ai_decision")
-	assert_eq(String(stuck.get("choice", "")), "wait", "walled off: the mob waits")
-	assert_eq((sim2.combatants["mob"] as CombatantState).position, Vector2i(2, 0), "and never moved")
+	var freed: Array[Dictionary] = ai_decide(sim2, "mob")
+	var routed: Dictionary = first_event(freed, "ai_decision")
+	assert_eq(String(routed.get("choice", "")), "attack", "walled off no more: route around, then bite")
+	assert_eq(first_event(freed, "moved").get("to", []), [1, -1],
+		"the pathfound flank hex (via (2,-1)) — adjacent to the victim")
+	assert_event(freed, "action_declared", "the bite is declared after the detour")
 
 
 func test_sidestep_respects_walls_and_negates_without_displacement() -> void:
@@ -390,27 +397,34 @@ func test_feint_reposition_blocked_by_wall_holds_position() -> void:
 
 func test_grab_drag_blocked_by_a_wall_on_the_pull_hex() -> void:
 	# Phase-3 range-2 grab: the drag destination (the boss-adjacent line hex)
-	# is WALLED — the AI never decides the grab, a hand-built one rejects.
+	# is WALLED — a hand-built grab rejects, and the AI never decides one
+	# (the declare runs FIRST: wave 4a's pathfound step lets the decide walk
+	# around the wall and commit the boss's Moment to a dash instead — the
+	# old strand-then-wait left the Moment free by accident, not by design).
 	var sim: CombatSim = make_sim()
 	set_arena(sim, arena_cfg([[1, 0]]))
 	add_human(sim, "vic", {"team": "party", "position": [2, 0]})
 	add_boss(sim, "boss", {"boss_traits": traits_without_dodge()})
 	sim.ai.boss_phase["boss"] = 3
-	var decision: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
-	assert_ne(String(decision.get("choice", "")), "grab", "the AI never grabs through a walled pull hex")
 	assert_rejected(declare(sim, "boss", {
 		"kind": "grapple", "target": "vic", "cost": 1,
 		"death_spin": true, "grab_part": "right_hand",
 	}), "pull_blocked", "the hand-built range-2 grab rejects on the walled drag hex")
+	var decision: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
+	assert_ne(String(decision.get("choice", "")), "grab", "the AI never grabs through a walled pull hex")
 
 
 # ------------------------------------------------- dash wall bounces (phase 3)
 
 func test_real_boss_phase_gate_no_bounces_below_three() -> void:
-	# The real Incinedile, victim reachable ONLY by carom (walls kill both
-	# the straight lane and every improving step). Phase 1: no bounce — the
-	# boss can only wait. Phase 3: the authored upgrade banks the dash off
-	# the wall and the charge lands.
+	# The real Incinedile, victim reachable by carom OR on foot (walls kill
+	# the straight lane and every strictly-improving greedy step). Phase 1:
+	# no bounce — but wave 4a's pathfound step walks the boss AROUND the wall
+	# ((-1,0) -> (-2,1) -> (-3,2), the wave-3d "the boss can only wait" strand
+	# is retired) and the dash charges a plain STRAIGHT lane from there — no
+	# bounce, no bend below phase 3 (the gate under test). Phase 3: the
+	# authored upgrade banks the dash off the wall from where the boss STANDS
+	# (the lane search runs before any step), and the charge lands.
 	var stage: Callable = func(phase: int) -> CombatSim:
 		var s: CombatSim = make_sim()
 		set_arena(s, arena_cfg([[-1, 1], [2, 1]]))
@@ -420,9 +434,17 @@ func test_real_boss_phase_gate_no_bounces_below_three() -> void:
 		s.ai.boss_phase["boss"] = phase
 		return s
 	var low: CombatSim = stage.call(1)
-	var low_decision: Dictionary = first_event(ai_decide(low, "boss"), "ai_decision")
-	assert_eq(String(low_decision.get("choice", "")), "wait",
-		"phase 1: no lane through the wall, no bounce, no step — the boss waits")
+	var low_events: Array[Dictionary] = ai_decide(low, "boss")
+	var low_decision: Dictionary = first_event(low_events, "ai_decision")
+	assert_eq(String(low_decision.get("choice", "")), "attack",
+		"phase 1: the pathfound step reaches around the wall — dash, not strand")
+	assert_eq(first_event(low_events, "moved").get("to", []), [-3, 2],
+		"the walk-around lands adjacent to the victim (3 pathfound steps)")
+	var low_shape: Dictionary = _scheduled_shape(low)
+	assert_eq(lane_pairs(low_shape).slice(0, 2), [[-3, 2], [-3, 3]],
+		"the committed lane is the plain straight charge from the post-step hex")
+	assert_false(low_shape.has("bounces"), "no bounce below phase 3 — the gate holds")
+	assert_false(low_shape.has("bend"), "and no bend below phase 4")
 	var sim: CombatSim = stage.call(3)
 	var decision: Dictionary = first_event(ai_decide(sim, "boss"), "ai_decision")
 	assert_eq(String(decision.get("choice", "")), "attack", "phase 3: the bank shot reaches")

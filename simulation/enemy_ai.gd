@@ -1334,10 +1334,17 @@ func _wants_heal(actor: CombatantState) -> bool:
 
 # ------------------------------------------------------------------ movement
 
-## Greedy free-move plan toward `goal`: up to the allowance, each step the
-## fixed-order neighbor that strictly reduces hex distance and is not occupied
-## by a living combatant. Stops inside `stop_range`. Returns null when no legal
-## improving step exists or the actor cannot move this tick.
+## Free-move plan toward `goal` (wave 4a — Pathing.next_steps is the route
+## authority): up to the allowance, the first steps of the deterministic
+## optimal route — real A* around walls/bounds/cans/bodies when the arena has
+## walls (or concave explicit-hex bounds), so concave traps are navigated
+## across successive decides; the EXACT legacy greedy walk when it has none
+## (Pathing's fast path IS the old loop verbatim — no-arena and wall-less
+## fights stay byte-identical, R28). Stops inside `stop_range`. Returns the
+## destination hex, or null when the actor cannot move this tick or no legal
+## step exists — a walls-arena goal proven unreachable now WAITS honestly
+## (empty route) instead of thrashing against the wall. Tie-breaks, the 4096
+## node-expansion cap and its honest greedy fallback: simulation/pathing.gd.
 func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Variant:
 	if actor.grappled_by != "" or actor.grappling != "" or actor.windup_pending:
 		return null
@@ -1347,30 +1354,10 @@ func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Var
 	var slowed: bool = bool(actor.statuses.get("slowed", false))
 	var allowance: int = 1 if (prone or slowed) else FREE_MOVE_SPACES
 	var occupied: Dictionary = _occupied_hexes(actor)
-	var pos: Vector2i = actor.position
-	for step: int in range(allowance):
-		var current_d: int = CombatantState.hex_distance(pos, goal)
-		if current_d <= stop_range:
-			break
-		var best: Variant = null
-		var best_d: int = current_d
-		for neighbor: Vector2i in HEX_NEIGHBORS:
-			var candidate: Vector2i = pos + neighbor
-			if occupied.has(candidate):
-				continue
-			# KAN-5: walls/bounds/trash cans block AI steps like occupied hexes.
-			if arena != null and arena.blocks_movement(candidate):
-				continue
-			var d: int = CombatantState.hex_distance(candidate, goal)
-			if d < best_d:
-				best = candidate
-				best_d = d
-		if best == null:
-			break
-		pos = best
-	if pos == actor.position:
+	var steps: Array[Vector2i] = Pathing.next_steps(actor.position, goal, allowance, stop_range, occupied, arena)
+	if steps.is_empty():
 		return null
-	return pos
+	return steps[steps.size() - 1]
 
 
 func _occupied_hexes(actor: CombatantState) -> Dictionary:
