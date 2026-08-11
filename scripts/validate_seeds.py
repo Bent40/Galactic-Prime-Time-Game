@@ -312,6 +312,9 @@ def main() -> int:
         # R15 pack synergy (wave 3a): pack_hunter is a bool gate, pack is the
         # non-empty family string; a pack_hunter without a pack never links,
         # so authoring one without the other is flagged.
+        # Wave 4d herding (R11 #21): herder is a bool gate riding the SAME
+        # pack family; a herder without a pack never splits roles, flagged
+        # like the pack_hunter case.
         pers = e.get("personality")
         if pers is not None:
             if not isinstance(pers, dict):
@@ -319,7 +322,7 @@ def main() -> int:
             else:
                 allowed = {"proximity_bias", "grudge_weight", "mock_sensitive",
                            "mock_grudge", "low_hp_bias", "decay", "spare_respect", "note",
-                           "pack_hunter", "pack"}
+                           "pack_hunter", "pack", "herder"}
                 extra = set(pers) - allowed
                 if extra:
                     fail("enemies.json", f"{k}: personality keys {sorted(extra)} invalid (R23)")
@@ -336,6 +339,10 @@ def main() -> int:
                     fail("enemies.json", f"{k}: personality.pack must be a non-empty string (R15 wave 3a)")
                 if pers.get("pack_hunter") and not pers.get("pack"):
                     fail("enemies.json", f"{k}: pack_hunter without a pack family never links (R15 wave 3a)")
+                if "herder" in pers and not isinstance(pers["herder"], bool):
+                    fail("enemies.json", f"{k}: personality.herder must be a bool (wave 4d, R11 #21)")
+                if pers.get("herder") and not pers.get("pack"):
+                    fail("enemies.json", f"{k}: herder without a pack family never splits roles (wave 4d, R11 #21)")
         # abilities — the shapes EnemyAI v1 consumes (simulation/enemy_ai.gd):
         # damage list (strike), range/area reach, summon, heal.
         for a in e.get("abilities", []):

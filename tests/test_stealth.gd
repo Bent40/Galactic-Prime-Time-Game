@@ -39,11 +39,17 @@ extends SimTestBase
 ##    determinism, zero rng from any stealth path (R20 authors no roll).
 ##  * RunState carry: stealth never crosses the encounter gap.
 
-## Pre-stealth engine hashes (recorded at e6c7c37 via a throwaway probe, the
-## test_arena compat-pin idiom): the same command logs must reproduce these
-## EXACTLY — any drift means legacy fights are no longer byte-identical.
-const LEGACY_HASH_PLAIN: String = "d66a301f80ae74ded4e56479c8f40997674c52a9cc602d7cc36f0101c8d9a86b"
-const LEGACY_HASH_ARENA_DOOR: String = "1c75b66fe3455298e840238925611a6ed4b5bd4116efd520e66f32c835fd82a8"
+## Pre-stealth engine hashes (recorded via a throwaway probe, the test_arena
+## compat-pin idiom): the same command logs must reproduce these EXACTLY —
+## any ENGINE drift means legacy fights are no longer byte-identical.
+## RE-RECORDED wave 4d (2026-08-11): to_dict embeds static_data verbatim, so
+## the war_hound herding DATA edit (enemies.json — `herder: true` + note
+## rewrites, R11 #21) legitimately moved every hash. Re-record procedure
+## (the honest one): the 9f0638c BASELINE engine + the new data produced
+## these values, and the wave-4d engine reproduces them byte-identically —
+## the engine change itself is proven byte-compatible; only the data moved.
+const LEGACY_HASH_PLAIN: String = "f772da32ebec177ca96f0243e1aad7b5cfaa25e09b80d46255d4fa2930db50bf"
+const LEGACY_HASH_ARENA_DOOR: String = "aa9257b0081cc5687053044601349e198b21e6156d2ccc051375bb351474f35e"
 
 
 func stealth(sim: CombatSim, actor: String, to_state: String = "hide") -> Array[Dictionary]:

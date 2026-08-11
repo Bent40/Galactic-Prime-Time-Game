@@ -9,9 +9,11 @@ extends SimTestBase
 ## in tests/test_run_state.gd / test_run_persistence.gd):
 ##   * the data contract: Elite/Medium quadruped (R21 layout), pack personality
 ##     (pack_hunter + family "war_hound"), the rending_bite numbers, the
-##     PROVISIONAL marker, and the DATA-ONLY downscope note on corner_the_prey
-##     (the §4.6 maze-funnel herding needs KAN-5 AI that does not exist — the
-##     drag_back precedent, R11 #16);
+##     PROVISIONAL marker, and the corner_the_prey FLAVOR-RECORD note (the
+##     §4.6 maze funnel is REAL since wave 4d — the engine reads the
+##     personality's `herder: true` gate, never this effect-only entry, which
+##     the strike lookup still skips; the herding behavior itself is pinned in
+##     tests/test_herding.gd);
 ##   * real staged combat via ai_decide: the hound HUNTS (closes) then BITES
 ##     through the standard elite decide path — move/attack choices, stance
 ##     substrate reads, the elite lowest-HP "limb latch" part pick;
@@ -122,14 +124,20 @@ func test_war_hound_data_contract() -> void:
 	assert_eq(int((damage[0] as Dictionary).get("amount", 0)), 1, "bleeding 1 — attrition, not burst")
 	assert_true(String(bite.get("note", "")).contains("Force = 1 + floor(phys 3/2) = 2"),
 		"the bite note shows the R14 force math (incinedile note style)")
-	# The honest downscope: the §4.6 maze funnel stays DATA-ONLY (no herding AI).
+	# Wave 4d: the §4.6 maze funnel is REAL — the personality carries the
+	# engine-read gate; corner_the_prey stays the effect-only FLAVOR RECORD
+	# the strike lookup skips (the herding behavior: tests/test_herding.gd).
+	assert_true(bool(pers.get("herder", false)),
+		"herder: true — THE engine-read gate for the wave-4d maze funnel (R11 #21)")
 	var corner: Dictionary = ability_of(t, "corner_the_prey")
 	assert_false(corner.is_empty(), "corner_the_prey carries the authored signature as data")
-	assert_false(corner.has("damage"), "effect-only: no damage (the AI skips it — drag_back precedent)")
+	assert_false(corner.has("damage"), "effect-only: no damage (the strike lookup skips it — drag_back precedent)")
 	assert_false(corner.has("summon"), "effect-only: no summon")
 	assert_false(corner.has("heal"), "effect-only: no heal")
-	assert_true(String(corner.get("note", "")).contains("DATA-ONLY"),
-		"the downscope is flagged loudly in the data note")
+	assert_false(String(corner.get("note", "")).contains("DATA-ONLY"),
+		"the DATA-ONLY downscope marker is GONE — the signature shipped (wave 4d)")
+	assert_true(String(corner.get("note", "")).contains("personality.herder"),
+		"the flavor record points at the personality gate the engine reads")
 	# The demo run stages it as the mid room, as a PAIR (the pack it is).
 	var run_def: Dictionary = (SimTestBase.load_json("res://data/demo_run.json") as Dictionary).get("run", {})
 	var encounters: Array = run_def.get("encounters", [])

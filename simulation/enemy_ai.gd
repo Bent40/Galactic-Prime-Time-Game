@@ -45,11 +45,46 @@ extends RefCounted
 ##   heal / wait / stand           -> "defensive"   (recovering / holding back)
 ##   summon / telegraph / blast    -> "building"    (mustering the brood /
 ##                                                   charging the valve beat)
-## ONE documented exception: a "wait" whose reason is "explosion_building"
-## reads "building" — the venting boss is still charging its blast; the stance
-## reads INTENT, not idleness. Unknown/future choices default to "defensive"
-## (the wait bucket) until mapped. The audit's fuller emotion ladder
-## ("fleeing"/"desperate") awaits behaviors that exist — v1 AI never flees.
+## TWO documented exceptions: a "wait" whose reason is "explosion_building"
+## reads "building" — the venting boss is still charging its blast; a "wait"
+## whose reason is "holding_cutoff" reads "hunting" — the herder on its post
+## (wave 4d below) is mid-hunt, not recovering. The stance reads INTENT, not
+## idleness. Unknown/future choices default to "defensive" (the wait bucket)
+## until mapped. The audit's fuller emotion ladder ("fleeing"/"desperate")
+## awaits behaviors that exist — v1 AI never flees.
+##
+## HERDING — the war-hound maze funnel (KAN-5 wave 4d, R11 #21 — makes
+## corner_the_prey REAL; the compendium §4.6 signature: the pack corners the
+## quarry and cuts off its escape). Personality-gated (`herder: true` + the
+## shared `pack` family — data-driven, no hardcoded species) and layered ON
+## TOP of the unchanged strike-or-close flow: only a decide that could NOT
+## strike its quarry this Moment (the plain-move and no-step exits) may be
+## rewritten into a cut-off move, so a herder NEVER skips a kill it can make —
+## herding is positioning, never pacifism. THE CONTRACT (v1, documented):
+##   * ROLE SPLIT (pure function of sorted state, zero rng — the actor's own
+##     R23 antagonism draw already picked the quarry, one draw as ever): among
+##     the living, able-to-act herders of the actor's team+family, the one
+##     CLOSEST to the quarry chases (hex distance; ties keep the earliest
+##     sorted id); every OTHER herder cuts off.
+##   * CUT-OFF HEX (the v1 escape rule, documented choice): the OPEN door
+##     nearest the QUARRY (hex distance; ties keep the earliest authored door).
+##     No arena, no open door, or no legal step toward it -> fall back to the
+##     normal chase, honest and simple (widest-gap inference is future work).
+##   * R20 HONESTY: a herder herds only prey it can SEE right now
+##     (Stealth.sees — sight 2 x Mind, LOS, hostile): the war hound's Mind 1
+##     = sight 2, so the funnel is CLOSE-QUARTERS behavior (blocked corridors,
+##     bodies in the way), thematically the hound snapping at heels. A
+##     stealthed quarry never reaches herding at all (_opponents excludes it).
+##   * The cut-off move routes via Pathing.next_steps to the cut-off hex
+##     (stop_range 0 — standing ON the open door denies it); a herder already
+##     ON the hex HOLDS its post (wait, reason "holding_cutoff" — no thrash
+##     back into the chase) until the quarry comes into reach, when the normal
+##     strike flow resumes. Stance for both: "hunting".
+##   * EVENTS: a decided cut-off move emits `pack_herding` (herder, quarry,
+##     cutoff_hex) once the step really resolves (CombatSim — the pack_synergy
+##     honesty pattern); the hold emits nothing new (the post was announced
+##     when taken). No new serialized state anywhere — the role split and the
+##     cut-off hex re-derive from sorted state every decide.
 ##
 ## All numbers PLACEHOLDER (R14) pending the numbers rework, unless marked canon.
 
@@ -222,6 +257,8 @@ static func stance_for_decision(decision: Dictionary) -> String:
 	var choice := String(decision.get("choice", "wait"))
 	if choice == "wait" and String(decision.get("reason", "")) == "explosion_building":
 		return "building"  # the venting boss is still charging its blast
+	if choice == "wait" and String(decision.get("reason", "")) == "holding_cutoff":
+		return "hunting"  # wave 4d: the herder on its post is mid-hunt, not recovering
 	return String(STANCE_FOR_CHOICE.get(choice, "defensive"))
 
 
@@ -758,21 +795,28 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 		return _wait(tier, "no_reachable_action")
 	var move_to: Variant = null
 	var lane_info: Dictionary = {}
+	# Wave 4d: every exit below that could NOT strike the quarry this Moment
+	# (a plain chase move, or no step at all) first offers the herding
+	# override — a non-closest pack herder repositions onto the quarry's
+	# nearest escape instead (header HERDING contract; {} = not a herder /
+	# chaser role / no open door / cannot see -> the normal exit stands).
 	if is_line:
 		lane_info = _dash_lane_for(actor, actor.position, target, reach)
 		if lane_info.is_empty():
 			move_to = _step_toward(actor, target.position, 1)
 			if move_to == null:
-				return _wait(tier, "no_reachable_action")
+				return _herd_or(actor, tier, target, _wait(tier, "no_reachable_action"))
 			lane_info = _dash_lane_for(actor, move_to, target, reach)
 			if lane_info.is_empty():
-				return {"choice": "move", "tier": tier, "move_to": move_to}
+				return _herd_or(actor, tier, target,
+					{"choice": "move", "tier": tier, "move_to": move_to})
 	elif CombatantState.hex_distance(actor.position, target.position) > reach:
 		move_to = _step_toward(actor, target.position, reach)
 		if move_to == null:
-			return _wait(tier, "no_reachable_action")
+			return _herd_or(actor, tier, target, _wait(tier, "no_reachable_action"))
 		if CombatantState.hex_distance(move_to, target.position) > reach:
-			return {"choice": "move", "tier": tier, "move_to": move_to}
+			return _herd_or(actor, tier, target,
+				{"choice": "move", "tier": tier, "move_to": move_to})
 	var part_key: String = _pick_part(target, strike, elite_pick)
 	if part_key == "":
 		return _wait(tier, "no_reachable_action")
@@ -805,6 +849,111 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	if move_to != null:
 		decision["move_to"] = move_to
 	return decision
+
+
+# ------------------------------------------------------ herding (wave 4d, R11 #21)
+
+## The herding override, or `fallback` unchanged (the header HERDING contract).
+func _herd_or(actor: CombatantState, tier: String, quarry: CombatantState, fallback: Dictionary) -> Dictionary:
+	var herd: Dictionary = _herd_cutoff(actor, tier, quarry)
+	return herd if not herd.is_empty() else fallback
+
+
+## The cut-off decision for a herder that cannot strike its quarry this
+## Moment, or {} when herding does not apply and the normal exit stands.
+## Pure function of sorted state — ZERO rng (the quarry was already picked by
+## the actor's own R23 draw; role split, cut-off hex and the step are all
+## deterministic). Full contract: the class header's HERDING section.
+func _herd_cutoff(actor: CombatantState, tier: String, quarry: CombatantState) -> Dictionary:
+	if not actor.personality_herder():
+		return {}
+	var family: String = actor.personality_pack()
+	if family == "" or arena == null:
+		return {}
+	# R20 honesty: the herder herds only prey it can SEE right now (sight
+	# 2 x Mind + LOS — the war hound's Mind 1 makes the funnel close-quarters).
+	if not Stealth.sees(actor, quarry, arena, clock.tick):
+		return {}
+	var pack: Array[CombatantState] = _herder_pack(actor, family)
+	if pack.size() < 2:
+		return {}  # a lone herder just chases — the pack is what corners
+	if _closest_herder_id(pack, quarry.position) == actor.id:
+		return {}  # the CHASER role — the normal strike-or-close flow
+	var cutoff: Variant = nearest_open_door_hex(quarry.position)
+	if cutoff == null:
+		return {}  # v1 rule: no open door = no escape to deny -> normal chase
+	var cutoff_hex: Vector2i = cutoff
+	if actor.position == cutoff_hex:
+		# Already ON the escape: HOLD the post (stance "hunting" via the
+		# documented holding_cutoff exception) — never thrash back into the
+		# chase; the strike branch above resumes when the quarry closes.
+		return {"choice": "wait", "tier": tier, "reason": "holding_cutoff",
+				"target": quarry.id}
+	var move_to: Variant = _step_toward(actor, cutoff_hex, 0)
+	if move_to == null:
+		return {}  # no legal step toward the escape -> honest normal chase
+	return {
+		"choice": "move", "tier": tier, "move_to": move_to, "target": quarry.id,
+		# The cut-off record CombatSim turns into the pack_herding event once
+		# the step really resolves (transient — never serialized).
+		"herding": {"quarry": quarry.id, "cutoff": [cutoff_hex.x, cutoff_hex.y]},
+	}
+
+
+## The actor's herder pack: living, in-play, able-to-act combatants of the
+## actor's TEAM carrying `herder: true` + the same non-empty `pack` family
+## (the actor included), in sorted-id order — a downed/fainted hound holds no
+## role in the hunt. Pure over sorted state.
+func _herder_pack(actor: CombatantState, family: String) -> Array[CombatantState]:
+	var out: Array[CombatantState] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.team != actor.team:
+			continue
+		if not c.personality_herder() or c.personality_pack() != family:
+			continue
+		if not c.can_act(clock.tick):
+			continue
+		out.append(c)
+	return out
+
+
+## The chaser: the pack member closest to the quarry by hex distance; an exact
+## tie keeps the EARLIEST entry in the pack's sorted-id order. Pure, static.
+static func _closest_herder_id(pack: Array[CombatantState], quarry_pos: Vector2i) -> String:
+	var best_id: String = ""
+	var best_d: int = 0
+	for c: CombatantState in pack:
+		var d: int = CombatantState.hex_distance(c.position, quarry_pos)
+		if best_id == "" or d < best_d:
+			best_id = c.id
+			best_d = d
+	return best_id
+
+
+## The quarry's nearest ESCAPE (the v1 cut-off rule): the OPEN door hex
+## nearest `pos` by hex distance; an exact tie keeps the EARLIEST authored
+## door (the doors array is command-stream state, order deterministic).
+## null when the arena is unset or has no open door. Pure and rng-free.
+func nearest_open_door_hex(pos: Vector2i) -> Variant:
+	if arena == null:
+		return null
+	var best: Variant = null
+	var best_d: int = 0
+	for door: Dictionary in arena.doors:
+		if String(door.get("state", "")) != "open":
+			continue
+		var pair: Array = door.get("position", [])
+		if pair.size() != 2:
+			continue
+		var hex := Vector2i(int(pair[0]), int(pair[1]))
+		var d: int = CombatantState.hex_distance(pos, hex)
+		if best == null or d < best_d:
+			best = hex
+			best_d = d
+	return best
 
 
 ## The committed dash lane from `from` to the target, or {} when none exists:

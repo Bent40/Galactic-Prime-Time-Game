@@ -378,6 +378,15 @@ func personality_pack() -> String:
 	return String(personality.get("pack", ""))
 
 
+## KAN-5 wave 4d herding gate (the war_hound's corner_the_prey signature —
+## R11 #21): a pack of >= 2 herders sharing a `pack` family splits chase /
+## cut-off roles (EnemyAI._herd_cutoff). Data-driven — the personality key is
+## what the engine reads, never a species check; the corner_the_prey ability
+## entry stays the authored flavor record. Default false.
+func personality_herder() -> bool:
+	return bool(personality.get("herder", false))
+
+
 ## Over-10 stat-cap formulas — adopted verbatim from the char-sheet app (R6).
 static func over_cap(total: int, divisor: int) -> int:
 	return int(floor(maxi(0, total - 10) / float(divisor)))
