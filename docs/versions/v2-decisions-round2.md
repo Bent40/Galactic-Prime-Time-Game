@@ -1192,6 +1192,108 @@ costed in [`research/E`](research/E-data-audit.md).
 
 ---
 
+## Part 14 — Round 10: the puppet floor, and a brief for floors 1–3
+
+### 14.1 Q-35 / Q-36 / Q-37 ✅
+
+- **Q-35 — the Incinedile is the Floor-0 boss.** The puppeteering re-theme lands as designed:
+  the tutorial's host is a puppeteer, so the tutorial's boss is its puppet.
+- **Q-37 — applied.** `narrative-design.md:89` no longer calls the casino *"a famine of
+  attention."* That was residual **Option-E** flavour, rejected 2026-07-16. It now reads
+  *"an appetite with a house style, and a ledger that quietly ruins its own"* — which is the
+  ruled lore (self-inflicted status-loss) and now also points at Q-29's floor-god debts.
+
+### 14.2 Q-36 — the mycelium renames, drafted
+
+The naming test: the puppet network must read as *strings you can find and cut*, and the
+shopkeep's joke has to survive the swap.
+
+| v1 (frozen — unchanged) | **v2** | Why |
+|---|---|---|
+| Mycelium Core | **Puppeteer's Cross** | The cross-bar a marionettist holds *is* the control point — so the boss's core is now a thing with an obvious use, which is exactly what a discoverable win condition wants |
+| Mycelium-Threaded Hide | **String-Threaded Hide** | Same grammar, one word swapped. Nothing else about the item changes |
+| Mycelius Chrom Production Co *(shopkeep NPC)* | **Cordelius Chrom Production Co** | `Myc-elius` → `Cord-elius` — identical rhythm, and *cord* is the string. The joke survives intact because the shape of the name does |
+| Incinedile | **unchanged** | The name is good and premise-neutral; only its network re-themes |
+
+**Veto any of these and I'll redraft.** The Incinedile's tuned structure — 6 phases, breach
+paths, network-as-body-part, sever points — is untouched throughout.
+
+### 14.3 Floors 1–3: brief and proposal
+
+> **Owner's direction:** *"demon related and dragon opposed, with ties to disease and
+> immortality."*
+
+**Constraints this has to satisfy:**
+
+| Source | Requirement |
+|---|---|
+| Q-31 | Floor-runners are a **separate broke cast** — **not** from the 24-god roster *(verified: the roster holds Amaterasu, Zeus, Odin, Beelzebub, Lucifer et al.; none of the figures below are in it)* |
+| Q-29 | The god needs a **debt** and a reason it went bankrupt |
+| Q-33 | The floor must hide its **myth-source** — a sword, a temple, a relic |
+| `story-canon.md:91-93` | The F1–F3 set already asks: ***"will you cure what's corrupted, and at what cost?"*** |
+| Existing content | The **Loong** (a dragon, already canon as a Worshipped Creature), the demonic brand contract, Sasha's demon encounter, Nullrot |
+
+#### The proposal — the bankruptcy writes itself
+
+**A plague god who made his name killing a dragon, and went bankrupt by curing too well.**
+
+```
+  He was a PLAGUE god ──────▶ people revered him to be spared. Reverence = income.
+  He SLEW A DRAGON ─────────▶ the deed that made his name. The blade is his myth-source.
+  He granted a CURE ────────▶ a lineage made permanently immune. His masterpiece.
+                                        │
+                    permanent immunity = nobody needs to pray any more
+                                        │
+                                        ▼
+                          ZERO REVERENCE. He cured himself into bankruptcy.
+                                        │
+  His demons — the plague-carriers who revered HIM — are now unemployed and feral.
+  That is why this floor-set is demon-infested.
+```
+
+**Why this is the right shape:**
+
+1. **The bankruptcy is causal, not decorative.** Under Q-14 divinity *is* reverence, so a god
+   whose cure was permanent has no income by construction. He is broke **because he
+   succeeded** — no villainy required, exactly the morally-alien register canon asks for.
+2. **It *is* the floor-set's question.** *"Will you cure what's corrupted, and at what
+   cost?"* — the cost is on the table in front of you: the last god who cured something
+   properly is the beggar asking you for prayers. The set's question and its host are the
+   same argument.
+3. **The demons are explained, not imported.** Q-28 makes demons NPCs and enemies who revere
+   demon gods; here they are a *bankrupt* god's abandoned workforce. The demonic brand
+   contract becomes a rival goetic power recruiting from his lapsed staff.
+4. **The dragon is already on the board.** The Loong needs no new justification — either the
+   dragon he killed, or its descendant with a grudge. `research/G` flagged the Loong's
+   escort-quest weakness as unfixable by the frame; giving it a blood claim on the floor's
+   host gives it a motive it currently lacks.
+5. **The myth-source is obvious and findable.** **The blade that killed the dragon**, buried
+   somewhere in F1–F3. Find it → he can speak → his debt becomes visible → pray or walk away.
+
+**Sourcing note.** The corpus already carries this archetype — Susanoo (`disease_poison` +
+the Orochi-slaying myth, `myth_japanese_shinto_orochi_slaying`), Nergal, Namtar (already cast
+as a *dealer*, with `luck_gambling`), Whiro, Babalú-Ayé. But **Susanoo, Amaterasu, Benzaiten
+and Xiwangmu are `depiction_risk: living`**, and casting a living-religion kami as a
+debt-ridden beggar is a different proposition from casting Zeus that way.
+
+| | Option | Trade |
+|---|---|---|
+| **a** | **An original bankrupt god built in the archetype's shape** — the wandering plague-warder who tests hospitality and rewards shelter with immunity | No depiction risk, full authorial freedom, and he can be tuned exactly to the floor-set's question. Costs one new entity |
+| **b** | **Use a low-risk corpus figure** — **Nergal** (`risk: none`, war/disease/underworld/chaos) or **Whiro** (`risk: low`) | Free sourcing, already authored. Neither has the immortality thread; it would need adding |
+| **c** | Use Susanoo | The tightest myth fit — dragon-slayer *and* disease — but `risk: living`, and the depiction policy would need an explicit carve-out |
+
+**Recommend (a)**, with the corpus figures as his lapsed rivals and creditors. It keeps the
+living-religion policy clean and lets the *cure-yourself-broke* mechanism be authored
+precisely rather than retrofitted onto a god who already means other things.
+
+**→ Q-38: pick a, b or c.** **→ Q-39: is the Loong the dragon he killed, or its descendant?**
+(Descendant is stronger — it puts a living claimant on the floor.) **→ Q-40: does his cured
+lineage still exist in F1–F3** — a village that cannot get sick and does not know why? *(That
+would be a named Follower under Q-18 worth a great deal of divinity, sitting in plain sight,
+already owed to someone.)*
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there

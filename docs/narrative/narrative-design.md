@@ -87,8 +87,14 @@ sheet the player writes by playing. Player-OC death consequence: **OPEN** (Ascen
 default until ruled).
 
 ### Antagonists
-- **The framework itself** — the casino has no motive; it's a famine of attention with a
-  house style. The true antagonist is the *question* each floor asks.
+- **The framework itself** — the casino has no motive; it's an appetite with a house
+  style, and a ledger that quietly ruins its own. The true antagonist is the *question*
+  each floor asks.
+  **↳ Corrected 2026-08-10 (Q-37):** this line previously read *"a famine of attention"* —
+  residual Option-E flavour, which was **REJECTED** on 2026-07-16. The gods are **not**
+  starving; ruin is **self-inflicted status-loss** from debaucherous spending
+  (`../setting-rebrand-options.md:160-164`). Each floor-set's runner is a bankrupt god
+  working off a debt to the house (Q-29).
 - **The fallen god running the table** (forgotten religion, "anything goes" license) —
   the house voice; host identity ~~**OPEN** (Momus shared with the novel vs a sibling)~~
   **RULED 2026-07-16: MOMUS, shared host** (`../setting-rebrand-options.md:157`;
