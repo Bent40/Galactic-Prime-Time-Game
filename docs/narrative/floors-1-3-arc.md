@@ -145,13 +145,149 @@ why *champions* were the instrument (Q-06: champions are what gods prepare in ad
 
 ---
 
-## 8. Open
+## 8. The Medium route — the first follower (Q-45, Q-46 RULED)
+
+> **The queen of the capital is a demon**, hiding among humans: the plague god's **first
+> follower**, and the only one who survived the plague that killed the rest. She has spent
+> two centuries trying to revive it — to be cured of **the hunger**.
+
+**She is the arc's keystone, and the reason the whole thing is not academic.**
+
+### 8.1 Its divinity is not zero. It is one.
+
+Under Q-14 divinity is **named, living beings who revere you**. Every follower the plague
+god had died of its own plague — **except her.**
+
+```
+   The plague god's ledger, 170 years buried:
+
+   ┌──────────────────────────────────────────┐
+   │  FOLLOWERS                               │
+   │  ────────────────────────────────────────│
+   │  the Queen ........................... 1 │
+   │                                          │
+   │  TOTAL DIVINITY ...................... 1 │
+   └──────────────────────────────────────────┘
+```
+
+- It is not a dead god. It is a god **with one name left**, which is why it can still be
+  found, still owes a debt, and still has something to lose.
+- **If she dies, it hits absolute zero** — and a god at zero cannot be prayed back. The
+  Medium route's "save the demon" beat is therefore not sentiment: **it is the difference
+  between a revivable god and a permanently deleted one.**
+- She is a **named Follower** in the Q-18 sense, sitting on a throne, worth a great deal,
+  and already owed to someone.
+
+### 8.2 Why she built a city on top of him
+
+She searched the desert for a hundred years and then **built the capital over the grave** —
+because a queen can put a palace anywhere, and a palace is the only building nobody digs
+under. The capital is not a setting the arc passes through; **it is a two-century-long
+excavation disguised as a civilisation.**
+
+**Q-46 RULED:** the **queen and her followers** know what lies under the palace. **Nobody
+else does** — so the court is demons wearing court dress, and the city is a population
+living on a lid.
+
+### 8.3 The three routes are three answers to the same question
+
+| Route | Where you meet it | What you are offered |
+|---|---|---|
+| **Easy** (F1) | The forest — the original burial | Find it first, before anyone built anything on it |
+| **Medium** | The queen's court | **Her story.** Revive it *with* her — the one path where the god's last follower is a person you know |
+| **Hard** (F3) | Beneath the palace | Reach the core the hard way, on your own terms |
+
+All three converge on the grave. Only the Medium route makes you understand what the
+1 in that ledger means before you decide what to do with it. *(The demonic brand contract
+and the Dissolution-songs, existing Medium-route canon, now have an obvious home: hers is
+the court issuing the brand.)*
+
+---
+
+## 9. Draft — the plague god (Q-42)
+
+Q-38 ruled an **original** figure, so this is built to Goetic form rather than lifted:
+a rank, legions, a beast-shape, a seal, and one line of power that turns out to be a curse.
+
+**Name — three options, all in Goetic register** (cf. Amdusias, Andrealphus, Andromalius):
+
+| | Name | Root | Why |
+|---|---|---|---|
+| **1 ★** | **Cinabrus** | *cinnabar* — the mercury ore used for centuries as both poison and cure | Encodes the whole tragedy in the name: **the medicine that kills**. Stands on its own, doesn't borrow its rival's |
+| 2 | **Vermalch** | *vermis* (worm) + *malus* | Anchored on **Sabnock**, 43rd spirit, who *"afflicteth men with wounds and sores rotten and full of worms."* Blunt, rotten, physical |
+| 3 | **Marbelloth** | built off **Marbas** (§10) | Makes the rivalry legible in the name — he reads as a scion or imitator of the incumbent, which is exactly what he was. Costs him his independence |
+
+**Recommend Cinabrus.**
+
+**Form (Goetic template):** *a President, once commanding legions, now none.* Appears as a
+crowned figure whose crown is sores. Its seal is still cut into the palace foundations —
+the queen laid the city out to match it.
+
+---
+
+## 10. Draft — the opposition (Q-43)
+
+> Owner's direction: *"Draft in opposition to the first draft. Use real goetic myth to find
+> the rivals."*
+
+**The rival is real Goetia, and the fit is almost embarrassing.**
+
+### MARBAS — the 5th spirit of the Ars Goetia
+
+A **President**, 36 legions, appears as a great lion. His canonical line:
+
+> ***"He causeth diseases and cureth them."***
+
+**He is the incumbent in precisely this market, and he runs both halves of it.**
+
+**Why he acted — an economic motive, not a moral one:**
+
+1. **Cinabrus was an amateur flooding his market.** An upstart who only knows how to *cause*
+   is a competitor.
+2. **Then the amateur killed the customers.** A plague that does not stop does not create
+   demand — it removes the people who would have paid for the cure. Cinabrus was not just
+   competition; he was **destroying the addressable market.**
+3. So Marbas **held the wager and sent champions** — Q-06's mechanism used in backstory,
+   and exactly the "tip the dealer" play canon already describes.
+
+**And here is why he is a live antagonist for F1–F3, not backstory:**
+
+> **Marbas can cure the crystallization. He simply won't.**
+>
+> A dragon's-blood cure is *permanent* — and a permanent cure ends the disease business
+> forever. It would bankrupt him **exactly the way permanent immunity would**. So the one
+> being in the world who could end the suffering has the strongest possible reason to
+> ensure nobody else does.
+
+That gives the set's question — *"will you cure what's corrupted, and at what cost?"* — an
+opponent who has already answered it, in the negative, for profit, and is still doing very
+well out of it.
+
+**Depiction:** Goetic spirits are grimoire figures, not objects of living worship —
+`risk: low`, same tier as the corpus's Asmodeus. **No living-religion carve-out needed.**
+
+> **Corpus gap flagged:** only **one** entity in `data/mythology/entities.jsonl` is tagged
+> `pantheon: goetia` (Asmodeus). Q-28 made demon gods a whole tier of the cosmology, so the
+> goetic cast needs building out — **Marbas, Buer** (10th, *"healeth all distempers"* — a
+> natural third party) **and Sabnock** are the three this arc alone requires.
+
+---
+
+## 11. Open
 
 | # | Question | Rec |
 |---|---|---|
-| **Q-41** | Which body part is the core? | **The tongue** (§3) |
-| **Q-42** | The plague demon's name | Draft on request |
-| **Q-43** | The opposing god — who, and why? | A rival with a **wager** (§6); drawn from the low-risk corpus, not the 24-god roster |
-| **Q-44** | Is **crystallization** the demon's original plague, or a mutation of it after 170 years underground? | Mutation — it explains why the old cure is only *nearly* right |
-| **Q-45** | What does the **Medium route** do? Existing canon puts the brand contract and the Dissolution-songs there | Make it the *third* answer: neither pray nor rob — **sell** the grave's location |
-| **Q-46** | Does the capital's population know what is under the palace? | The court does; the city doesn't |
+| **Q-47** | Name: **Cinabrus**, Vermalch, or Marbelloth? (§9) | **Cinabrus** |
+| **Q-48** | Confirm **Marbas** as the opposition (§10) | Yes |
+| **Q-49** | Does the **queen** know Marbas buried her god, or does she think it was mortals? | She doesn't know — it is the Medium route's late reveal |
+| **Q-50** | What is **the hunger**, exactly — and does curing it end demons as a threat, or only as *victims*? | Only as victims; a fed demon is still a demon |
+| **Q-51** | Should **Marbas, Buer and Sabnock** be authored into the corpus now? (§10) | Yes — the arc needs them and the goetic tier is nearly empty |
+| **Q-52** | Does the queen count as a **Follower of Cinabrus** *and* a potential follower of the party? Q-25 allows spared enemies to revere you | If yes, "saving" her is a **transfer of divinity** — and the god notices |
+
+### Settled this round
+
+**Q-41** the core is **the tongue** · **Q-44** crystallization is a **mutation** of the
+original plague after 170 years underground — which is why the dragon-blood cure Cinabrus
+devised is only *nearly* right, and why the Loong's blood alone may not be enough ·
+**Q-45** the Medium route is the first follower's story · **Q-46** only the queen and her
+followers know.
