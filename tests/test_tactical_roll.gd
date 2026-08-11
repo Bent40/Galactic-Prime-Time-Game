@@ -4,9 +4,12 @@ extends SimTestBase
 ## actor's MOVEMENT for the Moment (not a Moment, not the free-action slot),
 ## moves IMMEDIATELY at declare, and "the attack still resolves": single/multi-
 ## target windups re-check their real pattern against the new hex through the
-## existing R2 snapshot machinery, while AREA attacks (the explosion blast) miss
-## a rolling target entirely unless the destination is the area's CENTER —
-## tracked by the tick-scoped rolled_this_window marker.
+## existing R2 snapshot machinery, while AREA attacks miss a rolling target
+## entirely unless the destination is the area's CENTER — tracked by the
+## tick-scoped rolled_this_window marker. R26 (owner 2026-07-25, decision #32)
+## made the SEEDED valve blast undodgable, so the AoE-center mechanism tests
+## below stage a synthetic DODGABLE area (the seeded phases with the R26 flag
+## stripped); the valve-catches-the-roller side lives in test_undodgable.gd.
 
 
 func roll_action(to: Array, level: int = 1) -> Dictionary:
@@ -44,6 +47,24 @@ func traits_without_dodge() -> Dictionary:
 ## max = 6 < 7) so charge outcomes are deterministic and consume no rng.
 func cannot_dodge_traits() -> Dictionary:
 	return {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}
+
+
+## The seeded Incinedile phases with the R26 "undodgable" flag STRIPPED from
+## every explosion block — the synthetic DODGABLE area: the R25 AoE-center
+## machinery must stay live for authored areas WITHOUT the flag (regression),
+## even though the seeded valve itself is undodgable now (R26).
+func dodgable_valve_phases() -> Array:
+	var enemies: Array = SimTestBase.load_json("res://data/enemies.json")
+	for entry: Variant in enemies:
+		var e: Dictionary = entry
+		if String(e.get("key", "")) == "incinedile":
+			var phases: Array = (e.get("phases", []) as Array).duplicate(true)
+			for phase: Variant in phases:
+				var behavior: Dictionary = (phase as Dictionary).get("behavior", {})
+				if behavior.has("explosion"):
+					(behavior.get("explosion") as Dictionary).erase("undodgable")
+			return phases
+	return []
 
 
 ## Stages the canonical Valve-I entry (test_explosion_beats pattern): h burst-
@@ -271,11 +292,14 @@ func test_instant_attacks_are_unaffected_by_the_roll_marker() -> void:
 
 # ---------------------------------------------------------------- AREA attacks (AoE-center rule)
 
-func test_blast_catches_a_non_roller_and_misses_a_roller() -> void:
+func test_dodgable_blast_catches_a_non_roller_and_misses_a_roller() -> void:
+	# The R25 mechanism on a synthetic DODGABLE area (R26 flag stripped) — the
+	# seeded valve itself now catches rollers; see test_undodgable.gd.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
 	add_human(sim, "buddy", {"team": "party", "position": [2, 0]})
-	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge()})
+	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge(),
+		"phases": dodgable_valve_phases()})
 	enter_valve_one(sim)
 	drive_to_blast_tick(sim)
 	# ON the blast Moment: h rolls (destination [0, 2] — INSIDE radius 5, NOT
@@ -299,13 +323,16 @@ func test_blast_catches_a_non_roller_and_misses_a_roller() -> void:
 func test_center_hex_exception_and_its_occupied_boss_hex_impossibility() -> void:
 	# G1: the roller IS hit when the destination is the area's CENTER. The blast
 	# centers on the boss's own hex and rolling onto an occupied hex is
-	# impossible — so via commands a roller ALWAYS escapes (the R25 valve-counter
-	# consequence, flagged for the owner). Both halves asserted: the command path
-	# rejects the center roll, and the center exception is proven live by staging
-	# the unreachable state directly (future area attacks may have open centers).
+	# impossible — so via commands a DODGABLE-area roller always escapes (the
+	# R25 valve-counter consequence — SUPERSEDED for the seeded valve by R26,
+	# hence the stripped-flag phases here). Both halves asserted: the command
+	# path rejects the center roll, and the center exception is proven live by
+	# staging the unreachable state directly (future area attacks may have open
+	# centers).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
-	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge()})
+	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge(),
+		"phases": dodgable_valve_phases()})
 	enter_valve_one(sim)
 	drive_to_blast_tick(sim)
 	assert_rejected(declare(sim, "h", roll_action([0, 0])), "hex_occupied",
@@ -326,10 +353,13 @@ func test_center_hex_exception_and_its_occupied_boss_hex_impossibility() -> void
 func test_rolling_early_gives_no_area_protection() -> void:
 	# The R25 window model, honestly: the marker clears at the next tick start,
 	# so a roll during the ESCAPE window only helps through position (as any
-	# move would) — dodging the blast by marker means rolling ON its Moment.
+	# move would) — dodging a DODGABLE blast by marker means rolling ON its
+	# Moment (stripped-flag phases: the marker expiry is what this test proves,
+	# so the area must be one a live marker COULD have escaped).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
-	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge()})
+	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge(),
+		"phases": dodgable_valve_phases()})
 	enter_valve_one(sim)
 	ai_decide(sim, "boss")  # telegraph
 	advance(sim, 1)
@@ -351,9 +381,12 @@ func test_rolling_early_gives_no_area_protection() -> void:
 # ---------------------------------------------------------------- serialization + determinism
 
 func test_marker_serialization_roundtrip_mid_window() -> void:
+	# Stripped-flag phases: the restored-roller-still-missed assertion needs a
+	# DODGABLE area (the undodgable-valve roundtrip lives in test_undodgable.gd).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0]})
-	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge()})
+	add_enemy(sim, "boss", "incinedile", {"boss_traits": traits_without_dodge(),
+		"phases": dodgable_valve_phases()})
 	enter_valve_one(sim)
 	drive_to_blast_tick(sim)
 	declare(sim, "h", roll_action([0, 2]))  # marker live, blast pending

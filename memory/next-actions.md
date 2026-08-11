@@ -1,53 +1,45 @@
 # Next Actions
 
 <!-- wf memory: required sections below; keep the headings. -->
-<!-- OWNER-FACING BY-ANGLE TRACKER. Last refreshed 2026-07-20. -->
+<!-- OWNER-FACING BY-ANGLE TRACKER. Last refreshed 2026-07-25. -->
 
 ## Next actions
 
 ### 🔀 branches
-`claude/session-continuation-next-steps-mpycyj` and `main` are kept in **lockstep**
-(every commit pushed to both). Both at the audit/loop work as of 2026-07-20. Develop on
-the session branch; push `-u` to both.
+`claude/session-continuation-next-steps-mpycyj` and `main` in **lockstep** (every
+commit pushed to both). Both at `e13d8e2` (wave 2 complete, CI green). Develop on
+the session branch; push `-u` to both. NOTE: the owner also pushes ledger commits
+directly to `main` — fetch + merge origin/main before pushing.
 
-### ▶️ Active dev — implement the 3 DECIDED KAN-2 sittings
-The design is ruled (rules-addendum R3/R13/R14, decision-log #20–22); this is engine work:
-1. **S2.1 Priming** — build the 5 prime predicates (CHAIN/STANCE/STACK/STATE-POSITION/
-   PREP-CHANNEL) into the requirements gate; DELETE the dormant cooldown code; convert the
-   cooldown-texted skills (Tactical Roll + Acrobatic Save → STANCE-gated; the "-4 Moment
-   cooldown" threshold → CHAIN discount).
-2. **S2.2 Shock** — wire the finalized event-model: high-water mark, `max(current+1,
-   source_tier)` escalation, tier effects T1 Shout / T2 Stutter / T3 Faint / T4 Helpless,
-   Burn T1→Shock T1. Regression tests.
-3. **S2.3 R14 numbers** — implement `damage = max(0, Force − Robustness)` (Force = physique +
-   weapon rating + merged combined force; Robustness = physique base + per-part armor);
-   blocked hits land Shock but not bleed/burn/poison; reseed magnitudes as PLACEHOLDER;
-   mutation pass after.
+### ⏸️ Owner-paced (open items)
+1. **Front rework (decision #31):** the owner drafts ALL mockups; we build against
+   them. The engines are ready — everything driveable via commands + view API.
+   KAN-4 mockup-gate UI decisions (docs/ux-designs/kan4/README.md) deferred to
+   that pass.
+2. **Sign-off batch RULED 2026-07-25 (decision #32) — implemented at `4d26a70`,
+   CI green:** approvals as shipped + three changes now live: R26 undodgable
+   attacks (valve blast first application, telegraph/schedule/preview all carry
+   it); hype chains 40/60/80/100% retention; story-driven declines. Small
+   leftovers still open: the premades' 4th skill slots; cross-character CHAIN
+   on Pressure Strike (stands as-is); my two PROVISIONAL story readings —
+   Sasha "Little shadow" may_reoffer / Nikita "The lonely" gone_for_run.
 
-### ▶️ Queued (me) — after the sittings, still under the content freeze
-- **Incine-Dile: tuned & fun full fight** (review #2) — phase progression, telegraphed
-  breach, 10–20 min pacing target.
-- **Evidence-based verdict** — record the player's real choices; the card quotes them.
-- **HUD declutter + real visuals** — the "Rework Visuals Properly" epic (decision #19).
-- Remaining **37 skills' mechanics**; **CI** (pin Godot, run tests/seeds/import/smoke);
-  **KAN-4 party** (real OC creation → recruitment → replace the Imani/Dario fixtures + the
-  Charm-30 hack with a proper granted-stacks field).
-- ~~R11 #14 takedown attribution v2 (task #13)~~ DONE 2026-07-25; I-11 priming impl folds into S2.1 above.
+### ▶️ Backlog status (wave 3 DONE 2026-07-25 — all four landed at `9af6d09`)
+- ~~Pack synergy + AI stances~~ · ~~keyword tree + mutations~~ · ~~second enemy
+  (war hound) + 3-encounter run~~ · ~~KAN-5 arenas (bounces + can pops real)~~.
+- ~~KAN-5 proper~~ **wave 4 DONE 2026-08-11 at `927fd0e`**: pathfinding, doors +
+  room graph (R29), stealth/detection/cover (R20), the maze funnel (R11 #21).
+  Still open there: R20's own deferred phases (facing cones, hearing/alert,
+  disguise), objects beyond trash cans, owner-authored room layouts (all
+  wall/can/door positions PLACEHOLDER).
+- **Content pass:** the ~37 unimplemented skills (incl. aura_reading on the new
+  stance substrate, Intercept, Iron Stance's retarget-guard archetype).
+- **KAN-7 (parked — needs owner pricing):** threshold-dice upgrade economy,
+  Gemstone Bronze pricing, R6 XP, patron-roster migration, cap enforcement.
 
-### ⏸️ Owner decision queue (none blocks the work above)
-- LICENSE: substitute your legal name/entity as the copyright holder.
-- Asset provenance: 15 raw photo/screenshot placeholders flagged in
-  `docs/asset-provenance.md` — confirm rights / check watermarks before any public build.
-- Animal-parts sitting (Sasha body plan) · telepathy manipulation-lane confirm ·
-  living-religion cultural review before public release · patron slice→roster migration
-  (deferred, decision-log #23).
-
-### 🔄 Running now (agent)
-- Nothing. All background agents complete, verified, and merged.
-
-### ✅ Landed this session (2026-07-20)
-- Integrated run loop (title→bid→combat→verdict→restart) + the boss fights back.
-- Per-skill mechanics (SkillBook + 6 demo skills, 5 archetypes).
-- The 3 KAN-2 sittings decided + formalized; window responsive.
-- Full repo audit: dead-file cleanup, drift reconciled, STATUS.md, LICENSE, PDF
-  archive, asset manifest, patron ruling. Content freeze adopted.
+### 🧰 process notes
+- Every wave: worktree → subagent ("do the work yourself") → main-agent verify
+  (scope diff + real suite run + harness gates) → --no-ff merge → push both →
+  CI monitor on the tip.
+- Harness honesty: balance_sim WIN t15 zero-damage is the pinned regression bar;
+  `feint_reads=0` proves R24 doesn't touch the seeded fight.

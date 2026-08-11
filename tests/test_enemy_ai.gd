@@ -172,14 +172,20 @@ func test_mob_closes_distance_then_attacks() -> void:
 
 
 func test_team_rules_and_wait_mutates_nothing() -> void:
-	# No opponents at all: wait, and the state hash is untouched.
+	# No opponents at all: wait, and the state is untouched EXCEPT the wave-3a
+	# stance read (every decide now records its readable intent — the
+	# aura_reading substrate; wait maps to "defensive" per the documented
+	# table). Proven exactly: stamping only that stance onto the before-
+	# snapshot reproduces the after-hash.
 	var sim: CombatSim = make_sim()
 	add_enemy(sim, "roach", "roach_dog")
-	var before: String = sim.state_hash()
+	var before: Dictionary = sim.to_dict()
 	var decision: Dictionary = first_event(ai_decide(sim, "roach"), "ai_decision")
 	assert_eq(String(decision.get("choice", "")), "wait", "nobody to fight")
 	assert_eq(String(decision.get("reason", "")), "no_targets", "wait reason recorded")
-	assert_eq(sim.state_hash(), before, "a wait decision mutates nothing")
+	(before["ai"] as Dictionary)["stances"] = {"roach": "defensive"}
+	assert_eq(sim.state_hash(), CombatSim.from_dict(before).state_hash(),
+		"a wait decision mutates nothing BUT the wave-3a stance read")
 	# Same team is never a target.
 	var sim2: CombatSim = make_sim()
 	add_enemy(sim2, "roach_a", "roach_dog")

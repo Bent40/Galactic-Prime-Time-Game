@@ -1,14 +1,14 @@
 {
   "_meta": {
-    "note": "PROVISIONAL — RECRUIT PREMADES AWAITING OWNER REVIEW (KAN-4). Owner-approved concept Q68: player OC + Sasha & Nikita recruitment encounters, party of 3. These are the two recruitable premades as full combatant loadouts. NOT yet canon: every number (trait spreads, skill levels, Camera Call stacks) is PLACEHOLDER (R14) and the personas/bits are draft copy — the owner may rewrite freely. Schema mirrors data/demo_loadouts.json EXACTLY (no new keys); skills draw ONLY from the six implemented demo-slice skills (simulation/skill_book.gd KNOWN_KEYS) — nothing aspirational. Neither recruit takes the R16 cap trade: the 4th background skill slot is left OPEN for the owner (do not over-invest in canon, §RULED item 9).",
-    "schema": "loadout: { id, key, display_name, broadcast_persona, bit? { key, name, line } (decision log #25 — AUTHORED signature bit; OPTIONAL: not everyone has one, the sim rejects the_bit from an actor without it), race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], rewireable, notes }"
+    "note": "PROVISIONAL — RECRUIT PREMADES AWAITING OWNER REVIEW (KAN-4). Owner-approved concept Q68: player OC + Sasha & Nikita recruitment encounters, party of 3. These are the two recruitable premades as full combatant loadouts. NOT yet canon: every number (trait spreads, skill levels, Camera Call stacks) is PLACEHOLDER (R14) and the personas/bits are draft copy — the owner may rewrite freely. EPITHETS RULED 2026-07-25 (decision #32): Sasha 'Little shadow', Nikita 'The lonely' — renamed in display_name/broadcast_persona; the loadout KEYS keep their original epithet tokens as stable cross-file identifiers (demo_run.json recruit_offer / tests reference them). Schema mirrors data/demo_loadouts.json plus ONE recruit-only additive key, on_decline (decision #32 story-driven declines); skills draw ONLY from the six implemented demo-slice skills (simulation/skill_book.gd KNOWN_KEYS) — nothing aspirational. Neither recruit takes the R16 cap trade: the 4th background skill slot is left OPEN for the owner (do not over-invest in canon, §RULED item 9).",
+    "schema": "loadout: { id, key, display_name, broadcast_persona, bit? { key, name, line } (decision log #25 — AUTHORED signature bit; OPTIONAL: not everyone has one, the sim rejects the_bit from an actor without it), race (races.json id), traits { physique/reflexes/mind/charm, _placeholder note }, skills [{ id (skills.json id), key (annotation, must match skills.json), level, cap? (R16 trade raise over default_cap), cap_note? }], camera_call_stacks, chosen_patron (patron_gods.json id), tags [tags.json keys — RULED: start empty], on_decline ('gone_for_run' | 'may_reoffer' — decision #32: what a declined offer means for THIS recruit's story; absent = the engine's gone_for_run default; the authored values here are PROVISIONAL story readings of the #32 epithets, trivially flippable — FLAG for the owner), rewireable, notes }"
   },
   "loadouts": [
     {
       "id": 3,
       "key": "sasha_the_tell",
-      "display_name": "Sasha \"The Tell\" Marchenko",
-      "broadcast_persona": "The oddsmaker's nightmare — a casino floor manager who counted cards on her own abductors; she calls an opponent's move before they make it, and the table never sees her bet coming.",
+      "display_name": "Sasha \"Little shadow\" Marchenko",
+      "broadcast_persona": "The little shadow on the casino floor — a floor manager who counted cards on her own abductors; she trails the party half a step behind the action, calls an opponent's move before they make it, and no matter how many times the table waves her off, she keeps showing up.",
       "race": 1,
       "traits": {
         "physique": 3,
@@ -25,14 +25,15 @@
       "camera_call_stacks": 1,
       "chosen_patron": 5,
       "tags": [],
+      "on_decline": "may_reoffer",
       "rewireable": true,
-      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: Mind-leaning reader/setup — fills the party gap neither demo covers (Imani tanks on Physique 5, Dario tricks on Reflexes/Charm 5/5; nobody fields Mind 5). She reads enemy feints per R24 (Mind 5 auto-reads the L1 threshold of 5), throws her own L2 feints (read threshold 6 — harder to counter than L1) to arm partners' follow-ups, and holds a line with Brace when the plan goes sideways. NO authored bit (decision #25 — not everyone has one): Sasha's whole act is that she never performs; she reads the room instead of playing it — mirrors the Imani/Dario has-bit/no-bit variety. chosen_patron 5 = tyche (fortune/debt/trickery — the house always knows the odds). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
+      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: Mind-leaning reader/setup — fills the party gap neither demo covers (Imani tanks on Physique 5, Dario tricks on Reflexes/Charm 5/5; nobody fields Mind 5). She reads enemy feints per R24 (Mind 5 auto-reads the L1 threshold of 5), throws her own L2 feints (read threshold 6 — harder to counter than L1) to arm partners' follow-ups, and holds a line with Brace when the plan goes sideways. NO authored bit (decision #25 — not everyone has one): Sasha's whole act is that she never performs; she shadows the room instead of playing it — mirrors the Imani/Dario has-bit/no-bit variety. DECLINE STORY (decision #32, PROVISIONAL — a story reading of the owner's 'Little shadow' epithet, trivially flippable, FLAG for the owner): she shadows the party and keeps showing up — on_decline = may_reoffer (a declined Sasha can be offered again by a later encounter's recruit_offer, same run). chosen_patron 5 = tyche (fortune/debt/trickery — the house always knows the odds). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
     },
     {
       "id": 4,
       "key": "nikita_headliner",
-      "display_name": "Nikita \"Headliner\" Volkov",
-      "broadcast_persona": "The show-off who backs it up — a circus strongman who flexes for the drones between hits and guards his partners like the act depends on it, because it does.",
+      "display_name": "Nikita \"The lonely\" Volkov",
+      "broadcast_persona": "The lonely strongman — a circus showman who flexes for the drones between hits and guards his partners like the act depends on it, because the act is the only company he keeps.",
       "bit": {
         "key": "the_pose",
         "name": "The Pose",
@@ -54,8 +55,9 @@
       "camera_call_stacks": 1,
       "chosen_patron": 1,
       "tags": [],
+      "on_decline": "gone_for_run",
       "rewireable": true,
-      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: balanced bruiser-support/showman — real merged-force contribution (Strong Strike Force 6+2=8 links with Imani for R15 breach math), a follow-up Pressure Strike that cashes in a PARTNER's feint (the resolve-time feint_forced gate is cross-character today — Sasha feints, Nikita collects the Shock rider; FLAG for the owner: if the ladder pass later encodes Pressure Strike's documented actor-local CHAIN prime, his kit needs his own feint first), and Brace L2 as the support piece. AUTHORED bit (decision #25): The Pose — he is showfolk to the bone; one bit between the two recruits mirrors the Imani/Dario variety. chosen_patron 1 = ares (melee/war — the crowd chants his name). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
+      "notes": "PROVISIONAL RECRUIT PREMADE (Q68), awaiting owner sign-off. ROLE: balanced bruiser-support/showman — real merged-force contribution (Strong Strike Force 6+2=8 links with Imani for R15 breach math), a follow-up Pressure Strike that cashes in a PARTNER's feint (the resolve-time feint_forced gate is cross-character today — Sasha feints, Nikita collects the Shock rider; FLAG for the owner: if the ladder pass later encodes Pressure Strike's documented actor-local CHAIN prime, his kit needs his own feint first), and Brace L2 as the support piece. AUTHORED bit (decision #25): The Pose — he is showfolk to the bone; one bit between the two recruits mirrors the Imani/Dario variety. DECLINE STORY (decision #32, PROVISIONAL — a story reading of the owner's 'The lonely' epithet, trivially flippable, FLAG for the owner): pride wounded, he walks for good — on_decline = gone_for_run (the #31 default, now authored per-character). chosen_patron 1 = ares (melee/war — the crowd chants his name). Starts tagless (RULED: everything is earned on camera). No R16 cap trade taken; 4th background skill slot left open for the owner."
     }
   ]
 }

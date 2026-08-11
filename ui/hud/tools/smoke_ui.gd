@@ -685,6 +685,10 @@ func _initialize() -> void:
 	var tele_line := _log_line("explosion_telegraph")
 	_check("valve: telegraph line is the broadcast copy",
 		tele_line.contains("STEAM SCREAMS") and tele_line.contains("RUN."))
+	# R26: the valve blast is authored undodgable — the telegraph announce must
+	# carry the explicit marker (declared on the windup, owner decision #32).
+	_check("valve: telegraph line carries the UNDODGABLE marker (R26)",
+		tele_line.contains("UNDODGABLE"))
 	_check("valve: ticker keeps the telegraph over the END TURN line",
 		String(hud._shell.ticker._line.text).contains("STEAM SCREAMS"))
 	await _render("smoke_valve_telegraph.png")
@@ -698,6 +702,8 @@ func _initialize() -> void:
 	_check("valve: explosion_blast reached the log", blast_seen)
 	_check("valve: blast line is the broadcast copy",
 		_log_line("explosion_blast").contains("THE VALVE BLOWS"))
+	_check("valve: blast line carries the UNDODGABLE marker (R26)",
+		_log_line("explosion_blast").contains("UNDODGABLE"))
 	var ko_lines: Array = []
 	for ed in hud._event_log:
 		if String((ed as Dictionary).get("type", "")) == "explosion_knockout":

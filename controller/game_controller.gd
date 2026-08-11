@@ -34,9 +34,11 @@ signal command_rejected(event: Dictionary)
 signal combat_ended(event: Dictionary)
 ## RUN-level events (KAN-4, decision #31): every event the RunState reducer
 ## returns from apply_run_command flows here — run_started, run_encounter_started,
-## run_encounter_ended, run_recruit_available/offered/joined/declined, run_ended,
-## run_command_rejected. Separate from sim_event on purpose: run events are not
-## sim events, and combat listeners keep their exact current traffic.
+## run_encounter_ended, run_recruit_available/offered/joined/declined,
+## run_exploration_beat / run_exit_chosen (KAN-5 wave 4b room graph — R29),
+## run_ended, run_command_rejected. Separate from sim_event on purpose: run
+## events are not sim events, and combat listeners keep their exact current
+## traffic.
 signal run_event(event: Dictionary)
 
 ## event type -> typed signal name (generic sim_event fires for every event).
@@ -297,10 +299,24 @@ func view_combatants() -> Array[Dictionary]:
 			# free move, the first inventory use and 0-cost reactions all consume
 			# it. Straight off the state so UIs can gate 0-cost entries honestly.
 			"free_action_used": c.free_action_used,
+			# R20 (ADDITIVE, wave 4c): true while this combatant is stealthed —
+			# concealed from HOSTILE targeting (AI exclusion + target_stealthed
+			# rejections), never from the broadcast: the cameras are omniscient
+			# (R20: stealth does not suppress hype — what you DO with it does),
+			# so the view carries the flag and presentation decides how a
+			# hidden contestant reads on screen.
+			"stealthed": c.stealthed,
 			# R23 (ADDITIVE): an AI combatant's antagonism map (opponent id ->
 			# grudge score, plain copy) so the HUD/inspector can show who the
 			# boss hates. {} for contestants — they never hold grudges here.
 			"antagonism": c.antagonism.duplicate(true) if EnemyAI.AI_CATEGORIES.has(c.category) else {},
+			# Wave 3a (ADDITIVE): the AI stance substrate for `aura_reading` —
+			# the actor's last-decide intent read (aggressive / hunting /
+			# defensive / building; the table lives in EnemyAI's header).
+			# "unknown" for an AI that has not decided yet; "" for contestants
+			# (stances are AI-only — the skill reads ENEMY intent).
+			"ai_stance": (String(sim.ai.stances.get(String(id), "unknown"))
+					if EnemyAI.AI_CATEGORIES.has(c.category) else ""),
 			"parts": parts,
 		})
 	return out
@@ -398,6 +414,24 @@ func view_encounter() -> Dictionary:
 	}
 
 
+## Read-only ARENA probe (KAN-5 wave 3d — ADDITIVE, spectator contract): the
+## OPT-IN arena's bounds, walls and environment objects as plain sorted
+## primitives, so a renderer can draw the room and its props without touching
+## simulation classes. {} before start_combat AND for every no-arena combat
+## (the unbounded legacy default — the harnesses, all pre-arena saves), so
+## existing consumers see nothing new unless an encounter authors an arena.
+##   bounds:  {"kind": "rect", "origin": [q, r], "width", "height"}
+##            | {"kind": "hexes", "hexes": [[q, r], ...] sorted}
+##   walls:   [[q, r], ...] sorted
+##   objects: [{"key", "position": [q, r], "burn"}, ...] in store order —
+##            a destroyed can simply disappears from the list (its hex
+##            unblocks); "burn" is the live accumulation toward the pop at 5.
+func view_arena() -> Dictionary:
+	if sim == null or sim.arena == null:
+		return {}
+	return sim.arena.view()
+
+
 func view_clock() -> Dictionary:
 	if sim == null:
 		return {}
@@ -415,6 +449,9 @@ func view_clock() -> Dictionary:
 ##   resolve_tick:  the tick the entry resolves on
 ##   windup:        window > 0 (a committed multi-Moment declare/resolve gap)
 ##   combo_id:      present only on R15 combined-action members
+##   undodgable:    present (true) only when the declared action carries the
+##                  R26 data-driven flag — declared loudly so the schedule
+##                  never hides that no dodge-shaped escape exists (additive)
 func view_schedule() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if sim == null:
@@ -439,6 +476,8 @@ func view_schedule() -> Array[Dictionary]:
 		}
 		if action.has("combo_id"):
 			row["combo_id"] = String(action.get("combo_id", ""))
+		if bool(action.get("undodgable", false)):
+			row["undodgable"] = true
 		out.append(row)
 	return out
 
@@ -1066,20 +1105,28 @@ func _end_encounter_payload() -> Dictionary:
 ## Executes RunState.staging(): a fresh CombatSim on the derived encounter seed,
 ## every combatant added through the EXISTING command funnel (combatant_added
 ## flows to listeners exactly as today), then the serialized-state hand-off —
-## carried members, the B9 spent-stack ledger and held tags are spliced into the
-## sim's own to_dict snapshot and the sim is rebuilt via from_dict (the public
-## serialization path; no live objects cross encounters). The encounter's
+## carried members, the B9 spent-stack ledger, held tags and the #32
+## chain-retained hype meter are spliced into the sim's own to_dict snapshot
+## and the sim is rebuilt via from_dict (the public serialization path; no live
+## objects cross encounters). The encounter's
 ## command log restarts empty at the spliced checkpoint: the initial snapshot is
 ## re-derivable from the RUN log (DIRECTION #5), and in-combat commands append
 ## from there.
 func _stage_encounter(staging: Dictionary) -> void:
 	start_combat(int(staging.get("sim_seed", 0)), _run_static_data)
+	# KAN-5 (wave 3d): the encounter's authored arena stages FIRST, so every
+	# spawn below is validated against its bounds/walls (staging rejection).
+	# {} = no arena block on the def = the unbounded legacy combat.
+	var arena_cfg: Dictionary = staging.get("arena", {})
+	if not arena_cfg.is_empty():
+		apply_command({"type": "set_arena", "arena": arena_cfg})
 	for spec: Dictionary in staging.get("adds", []) as Array:
 		apply_command({"type": "add_combatant", "combatant": spec})
 	var carried: Dictionary = staging.get("carried", {})
 	var camera_used: Dictionary = staging.get("camera_calls_used", {})
 	var tags_held: Dictionary = staging.get("tags_held", {})
-	if not (carried.is_empty() and camera_used.is_empty() and tags_held.is_empty()):
+	var hype_start: int = int(staging.get("hype_start", 0))
+	if not (carried.is_empty() and camera_used.is_empty() and tags_held.is_empty() and hype_start == 0):
 		var snapshot: Dictionary = sim.to_dict()
 		var ids: Array = carried.keys()
 		ids.sort()
@@ -1109,5 +1156,21 @@ func _stage_encounter(staging: Dictionary) -> void:
 		tag_ids.sort()
 		for id: Variant in tag_ids:
 			((snapshot["tags"] as Dictionary)["held"] as Dictionary)[String(id)] = (tags_held[id] as Dictionary).duplicate(true)
+		# Hype-chain retention (decision #32, supersedes the per-encounter hype
+		# reset): a chained encounter OPENS with RunState.staging()'s retained
+		# meter, spliced through the same public serialization path as the carry
+		# (never a live-object poke). The band is re-derived from HypeEngine's
+		# own BANDS floors (highest-first) so views read consistently from tick
+		# 0. hype_start is derived purely from LOGGED run state (the previous
+		# end_encounter's recorded meter + the serialized chain index), so a
+		# replay of the run log stages the identical meter; a chain-opening
+		# encounter (hype_start 0) leaves the fresh engine untouched.
+		if hype_start > 0:
+			var hype_block: Dictionary = snapshot["hype"]
+			hype_block["meter"] = hype_start
+			for entry: Variant in HypeEngine.BANDS:
+				if hype_start >= int((entry as Array)[1]):
+					hype_block["band"] = String((entry as Array)[0])
+					break
 		sim = CombatSim.from_dict(snapshot)
 	command_log = []

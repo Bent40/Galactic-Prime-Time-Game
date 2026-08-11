@@ -335,7 +335,9 @@ overturning one is a code change, not a rewrite.
 16. **Policy tiers v1 (all numbers PLACEHOLDER, R14):** MOB — nearest target
     (ties: lowest total HP, then id), torso-line part pick (`part_bias`
     honored), free-move up to 3 toward the target (greedy hex steps, fixed
-    neighbor order, occupied hexes skipped, only strictly-improving steps),
+    neighbor order, occupied hexes skipped, only strictly-improving steps;
+    wave 4a upgrades this walk to real A* pathfinding when an arena has
+    walls — no-arena movement stays this exact greedy rule, see R28),
     attack when in reach — move-then-attack can share a tick (free + scheduled,
     R3); a grappled mob bites its grappler. ELITE — summon once per combat when
     it has a summon ability (brood spawns on the nearest free hexes,
@@ -401,7 +403,13 @@ overturning one is a code change, not a rewrite.
     Helpless 2 Clocks) → retreat → the machine advances into the next Threshold
     and the boss keeps fighting. Phase-6 death explosion stays data-only (the
     fight ends at network 0).** The phase-2 beat is the slice's win moment
-    (review-4 §5, DIRECTION Stage 1).
+    (review-4 §5, DIRECTION Stage 1). **Wave 2d (2026-08-10): the authored
+    per-phase `behavior.upgrades` lists activate REAL effects as the machine
+    advances — see #20 for the string→effect mapping; upgrades accumulate
+    (union of every entered phase's list) and derive from `current_phase`, so
+    the phase number stays the only serialized upgrade state. The retreat is
+    now phase-2-only BY CANON, not by data coincidence: "network fully
+    exposed" (phase 4+) suppresses any later valve's re-hide.**
 19. **Death Spin is REAL; dash knock-aside is REAL (wave 2b, decision #31,
     2026-08-10 — retires the #16 "sequence abilities skipped" deferral for
     death_spin).** The authored 3-beat sequence runs as a real state machine
@@ -436,9 +444,11 @@ overturning one is a code change, not a rewrite.
     mid-sequence. Valve entry aborts the spin honestly (the valve outranks,
     #27 precedent), as do boss prone/helpless and victim death; a mid-batch
     release makes a same-tick chew/spin close on air (live grip re-check,
-    the `grapple_suffocate` "grip_lost" family). The "death spin grab range
+    the `grapple_suffocate` "grip_lost" family). ~~The "death spin grab range
     +1" / "death spin costs 2 moments" phase upgrades stay DATA-ONLY (wave
-    2d). **Dash knock-aside:** the authored `"effect": "knock aside"` is
+    2d).~~ **SUPERSEDED (wave 2d, 2026-08-10): both are REAL — grab range 2
+    with a 1-hex drag from phase 3, the merged 2-Moment sequence at phase 5;
+    see #20.** **Dash knock-aside:** the authored `"effect": "knock aside"` is
     real — a target the charge CONNECTS with (not dodged, not stopped-short;
     a robustness-blocked 0-net hit still connected) is displaced to the first
     free fixed-order neighbor OFF the committed lane (the involuntary sibling
@@ -447,18 +457,89 @@ overturning one is a code change, not a rewrite.
     stops adjacent-before the target's SNAPSHOT hex, so after the shove it
     may stand adjacent to a now-empty hex (documented interaction).
     Tests: tests/test_death_spin.gd.
+20. **The Incine-Dile phase upgrades are REAL (wave 2d, 2026-08-10 — the last
+    wave-2 story; retires #19's data-only note).** The authored per-phase
+    `behavior.upgrades` STRINGS in data/enemies.json are the SOURCE OF TRUTH;
+    `EnemyAI.UPGRADE_EFFECTS` parses them into effect keys (an unmapped string
+    is a data-only no-op — visible in data, never executed). Upgrades
+    ACCUMULATE: active set = union over every phase entry with
+    `phase_number <= current_phase`; everything derives from the serialized
+    phase number — no new state. The mapping:
+    | authored string (phase) | effect | model |
+    |---|---|---|
+    | "death spin grab range +1" (3) | `grab_range_plus_1` | grab reach 2; a range-2 grab DRAGS the victim adjacent first — a 1-hex pull to the boss-adjacent hex of the boss→victim line (fixed line tie rule); a living body on the pull hex blocks it and the grab fails honestly (`pull_blocked` — the AI never decides one, a hand-built command rejects/invalidates). The drag rides the `death_spin_grab` event (`dragged`/`dragged_from`/`dragged_to`). Plain R9 grapples stay range 1. |
+    | "dash bounces between walls up to 2 bounces" (3) | `dash_wall_bounce` | ~~DATA-ONLY~~ **REAL since wave 3d (KAN-5 arenas)** — ARENA-GATED: with an arena set, a dash lane that hits a wall/bounds REFLECTS (up to 2 bounces; the edge-mirror model + all lane rules in **R28**); without an arena there are no walls and no bounces — the inert pin flipped to assert exactly that continuation. |
+    | "flamethrower pops trash cans instantly" (3) | `cans_pop_instantly` | ~~DATA-ONLY~~ **REAL since wave 3d (KAN-5 arenas)** — ARENA-GATED: a burn cone's arc accumulates its burn on swept trash cans (5 explodes: 3 spaces, 2 Burn, environment attribution); with this upgrade the FIRST touch pops the can (no accumulation). Full model in **R28**; no arena = no cans = the old behavior. |
+    | "network fully exposed" (4) | `network_stays_exposed` | from the phase-4 valve on the network NEVER re-hides. For the seeded boss this was already emergent (`breach_resets_after_phase: 2` gates the retreat to Valve I); the upgrade guard makes the string canon — a later valve's retreat is suppressed outright. Pinned by a full valve-II drive test. |
+    | "dash can change direction mid-run" (4) | `dash_bend` | the charge lane may bend ONCE: two chained `line_extended` segments, total length ≤ the dash's range; the declare's `area_shape` carries the composite lane + the bend hex (phase-gated at the command surface — `bend_not_available` below phase 4). AI bend pick is deterministic and rng-free: tried only when no straight lane exists; candidates by segment-1 length ascending, then blast's (q, r) order; first legal composite (no self-intersection, intermediate hexes unoccupied) wins. ALL wave-2a/2b lane rules apply to the BENT lane (occupation stop on either segment, `left_lane` windup dodge, knock-aside off the FULL lane); the R22 sidestep steps off whichever SEGMENT the dodger stood on (the bend hex belongs to both; segment-2 checks first). `dash_charged` carries the bend. |
+    | "flamethrower tracks closest target" (5) | `cone_track_closest` | the cone's `toward` selection AIMS at the NEAREST opponent (min hex distance, ties keep the earlier sorted-id candidate) instead of maximize-targets — the authored text says TRACKS, i.e. it hunts YOU. Among the arcs containing the quarry, most swept targets wins (ties keep the earlier fixed-order direction). ONLY the aim shifts: shape, size and the ≥ 2-target decide gate are unchanged — a lone quarry is not a crowd, so the boss falls through to the (upgraded-reach) grab instead. The chosen aim rides the `ai_decision` event (`aim`). PROVISIONAL. |
+    | "death spin costs 2 moments" (5) | `spin_two_moments` | ruled reading of the authored line (PROVISIONAL): the sequence ACCELERATES — chew and spin MERGE into one beat, so the kill is grab (1 Moment) → chew+spin (1 Moment), total 2. The merged declare is the spin action carrying the chew's arm rounds as riders; chew fires first, then the kill, same R14 gates as the 3-beat run. The counterplay window shrinks by exactly one Moment — release-on-5 / R9 escape must land in the single Moment between grab and merged beat (a same-tick release still makes the jaws close on air; nothing lands). The grab's own cost never changes. |
+    Every effect activates exactly AT its authored phase and is OFF below it;
+    serialization round-trips mid-phase-5 sequence with no new state.
+    Tests: tests/test_phase_upgrades.gd (+ the flipped pin in
+    tests/test_death_spin.gd; the wave-3d arena-gated mechanics in
+    tests/test_arena.gd).
+21. **The war-hound maze funnel is REAL (KAN-5 wave 4d, 2026-08-11 —
+    `corner_the_prey` flips from the wave-3c DATA-ONLY note to the shipped
+    §4.6 signature: the pack corners the quarry and cuts off its escape).**
+    Personality-gated — `herder: true` + the shared `pack` family on the
+    war_hound personality is THE engine-read gate (data-driven, no species
+    check; the corner_the_prey ability entry stays the authored FLAVOR
+    RECORD, still skipped by the strike lookup like drag_back, #16) — and
+    layered ON TOP of the unchanged strike-or-close flow: only a decide that
+    could NOT strike its quarry this Moment (the plain-move / no-step exits)
+    may be rewritten, so **a herder never skips a kill it can make** —
+    herding is positioning, never pacifism. **The contract (v1, all
+    deterministic, ZERO new rng — the actor's own R23 draw picks the quarry,
+    one draw as ever):** among the living able-to-act herders of the actor's
+    team+family, the CLOSEST to the quarry chases (hex distance; ties keep
+    the earliest sorted id); every OTHER herder repositions onto the
+    quarry's nearest ESCAPE — **the v1 escape rule: the OPEN door nearest
+    the quarry** (ties keep the earliest authored door); no arena / no open
+    door / no legal step → fall back to the normal chase (widest-gap
+    inference is future work). The cut-off routes via `Pathing.next_steps`
+    (stop_range 0 — standing ON the open door denies it); a herder already
+    ON the hex HOLDS its post (`wait`, reason `holding_cutoff`, stance
+    "hunting" via the second documented stance exception) until the quarry
+    comes into reach. **R20 honesty: a herder herds only prey it can SEE**
+    (`Stealth.sees` — the war hound's Mind 1 = sight 2, so the funnel is
+    close-quarters: blocked corridors, bodies in the way; a stealthed quarry
+    never reaches herding at all). A decided cut-off move emits
+    `pack_herding {herder, quarry, cutoff_hex}` once the step really
+    resolves (the pack_synergy honesty pattern). **No new serialized
+    state** — roles and cut-off hexes re-derive from sorted state every
+    decide; the AI dict keeps its exact wave-3a key set. The kennel arena
+    authors the funnel's stage (the kennel-run fence + open gate,
+    PROVISIONAL — R29). Tests: tests/test_herding.gd (+ the flipped
+    data-contract pin in tests/test_second_enemy.gd).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
-phase-2 transition beat; still open there: drag_back (forced movement),
-pack synergy (R15 enemy combos), and AI stances for `aura_reading` (skills-audit
-dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL per
+phase-2 transition beat; still open there: drag_back (forced movement) only —
+pack synergy (R15 enemy combos) and the AI stances for `aura_reading` moved to REAL per
+wave 3a (2026-08-11): personality-gated (`pack_hunter` + a shared `pack` family, authored
+on the roach mob) opportunistic pair-linking through the EXISTING R15 merged-force path
+(each pack hunter's own R23 draw picks; draws agreeing on the victim link the second
+strike to the first's pending declare — zero extra rng, pairs only, `pack_synergy` event),
+and every AI combatant now carries a serialized, hash-covered `ai_stance` written at
+decide time (aggressive / hunting / defensive / building — table in
+`simulation/enemy_ai.gd`'s header), exposed additively on `view_combatants` (AI rows).
+The `aura_reading` SKILL itself remains unimplemented — it rides the content pass; the
+stance substrate is the readable layer the audit said it needs.
+Explosion choreography and the Dash Reflexes-counters moved to REAL per
 R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
-decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
-arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
-wave 2b (2026-08-10, #19 — the death-spin phase upgrades stay data-only for wave 2d).
+decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note);
+death_spin + the dash knock-aside moved to REAL per
+wave 2b (2026-08-10, #19); the phase upgrades moved to REAL per wave 2d (2026-08-10,
+#20); wall bounces + trash cans — the last two — moved to REAL per wave 3d
+(2026-08-11, KAN-5 arenas: OPT-IN bounds/walls/objects, R28 — no arena = the
+unbounded legacy combat, byte-identical; rooms/dungeon FLOW shipped wave 4b
+(R29) and stealth/detection R20 shipped its v1 binary-sight slice wave 4c —
+see the R20 IMPLEMENTED marker for what remains downscoped); the war-hound
+maze funnel (`corner_the_prey` herding) moved to REAL per wave 4d
+(2026-08-11, #21 — the KAN-5 capstone).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -569,7 +650,9 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
   Coordination risk is drama, never a veto.
 - **Spectacle:** combined actions earn a hype bonus (the crowd loves choreography) —
   PLACEHOLDER weight in the hype engine.
-- Enemy pack-combos become possible by the same mechanism (Mob synergy) — not v1.
+- Enemy pack-combos become possible by the same mechanism (Mob synergy) — SHIPPED for
+  pairs per wave 3a (2026-08-11): see the R11 tail — personality-gated opportunistic
+  linking through this section's merged-force path, untouched.
 
 ## R16 — Races: Earth-life only; background-granted skills (owner, 2026-07-16)
 
@@ -681,6 +764,75 @@ facing are KAN-5-era** (they need positional facing + sized terrain the sim does
 yet). The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or on move")
 is the seed of the sight rule; Shock-T1 Shout ("breaks stealth") is the noise seed. This
 ruling supersedes the review-1 B10 gap ("stealth referenced, no rules"). Q58 CLOSED.
+
+**IMPLEMENTED — the v1 binary sight/hearing slice (KAN-5 wave 4c, 2026-08-11), exactly
+the phase-in the paragraph above authorizes.** `simulation/stealth.gd` (pure sight
+queries) + the sim's `stealth` command (`{"actor", "set": "hide"|"reveal"}`; hide costs
+the R3 FREE-ACTION SLOT — the door/bit family; this section prices nothing, so the slot
+is a documented v1 choice — reveal is free). **STRICTLY OPT-IN, default = everyone
+detected:** the `stealthed` key serializes (combatant dict + tick snapshot) ONLY while
+true, so a stealth-free fight's dict/hash is **byte-identical** to the pre-stealth
+engine (pinned against recorded e6c7c37 hashes in `tests/test_stealth.gd`; both CI
+harnesses byte-diff clean). Every check is deterministic and **rng-free** — this section
+authors no detection roll, so no stream is ever touched.
+
+- **SHIPPED — sight:** seen iff a hostile observer (alive, in play, not helpless — a
+  fainted guard keeps no watch; allies are exempt: you hide WITH your party FROM the
+  enemy) has the target within **exactly 2 × Mind** ("roughly 2×" resolved to exactly —
+  PROVISIONAL number, R14 family) **and** line-of-sight: the hex line with walls +
+  **CLOSED doors** + out-of-bounds blocking — the one R29 query LOS was promised to
+  read; an OPEN door blocks nothing. "Mind sufficient" IS the range: Mind 0 sees
+  nothing, even adjacent (the roach_dog). Entry requires being UNSEEN (rejected
+  `in_enemy_sight`, observer named) and un-grappled (`in_grapple` — physical contact is
+  detection). Detection re-checks after **every command** (either side moving, a door
+  opening, an observer recovering — the `_stealth_checks` sweep in `_post`); breaks emit
+  `stealth_broken` with reason `seen` (+observer) / `shout` / `downed` /
+  `revealed_self`.
+- **SHIPPED — the noise seed:** Shock-T1 Shout **breaks the shouter's stealth**
+  (R13 wire via `shock_shout`, range-free — a shout is heard). Damage ALONE never
+  breaks stealth (not a ruled break) — but a hit whose condition shocks (burn T1) shouts
+  the hider out through this path.
+- **SHIPPED — AI honesty:** a stealthed target is **excluded from `_opponents`**
+  (targeting, cone counting, the R23 draw — zero rng consumed on the shrunken pool);
+  with every opponent hidden the mob **waits (`no_targets`) — it honestly loses the
+  target**. Hostile player-surface asks mirror it: declares (attack/skill/grapple) and
+  damaging reactions at a stealthed hostile reject `target_stealthed`; an aimed hostile
+  **windup collapses** if its target hides mid-windup (R2 snapshot re-check). Attacking
+  FROM stealth neither breaks it (sight/noise are the only ruled breaks — sight usually
+  reveals a melee attacker anyway: adjacent + Mind ≥ 1) **nor grants any bonus** (this
+  section authors no first-strike rule; none invented).
+- **SHIPPED — physicality over information (documented v1 line):** committed AREA
+  geometry — cone arcs, charge lanes, blasts — hits **bodies by hex**, stealthed or
+  not; stealth gates targeted INFORMATION, it never phases the body out.
+- **SHIPPED — views (additive):** `view_combatants().stealthed` (the broadcast stays
+  omniscient — cameras see everything, per the hype bullet above); preview rows carry
+  `target_stealthed` when the ask would reject. Stealth resets between encounters
+  (RunState carry) and never touches hype (nothing scored, nothing suppressed).
+- **DOWNSCOPED — flagged loudly, not silently dropped** (each needs a system that does
+  not exist yet):
+  * **vision cones/facing** — no positional facing exists (this section's own phasing
+    defers true cones); v1 sight is 360°;
+  * **hearing beyond the Shout** — no noise-propagation substrate: the
+    investigate/ignore personality reactions, the per-creature smart threshold, and the
+    **ALERTED-but-unlocated** state (the scapegoating/illusion/decoy design space) all
+    wait on it;
+  * **disguise** — no disguise items/skills exist to carry the range property
+    (PLACEHOLDER R14 regardless);
+  * **cover heights / sized gaps / skill-by-gap-size** — sized terrain unmodeled (own
+    phasing defers); v1 cover = full-height wall/closed-door LOS blocking only, and
+    environment OBJECTS (trash cans) deliberately do NOT block sight (no height model
+    to say they should);
+  * **the rival-god curse-unstealthy lever** — divine interventions are KAN-7;
+  * **the Camouflage skill itself** — rides the content pass (the `stealth` command is
+    its substrate); enemy AI never DECIDES to stealth in v1 (no policy path — the
+    command works for any combatant, like doors).
+
+Tests: `tests/test_stealth.gd` (entry/exit/slot, the exact 2×Mind boundary both sides,
+Mind-0 blindness, ally exemption, wall/door LOS both states with the mid-fight door
+reveal, the Shout wire + the quiet-damage negative, AI exclusion/honest loss/
+re-acquisition with rng pins, every hostile-surface gate, windup collapse vs. instant
+no-re-check, cone-burns-the-hidden-body, serialization round-trip mid-stealth,
+lockstep, determinism, zero-rng discipline, carry reset, and the legacy hash pins).
 
 ## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
 
@@ -882,6 +1034,259 @@ cones) hit if the new hex is still within their range/pattern."**
   `movement_spent` / `no_move` / `roll_out_of_range` / `hex_occupied` /
   `invalid_destination` plus the mirrored movement gates (`grappled` / `winding_up` /
   `prone`).
+
+## R26 — Undodgable attacks: declared, announced, honest (owner, 2026-07-25)
+
+Some attacks are **specifically undodgable** — a data-driven flag on the ability or
+effect, never a hardcoded case:
+
+- An undodgable attack is immune to EVERY dodge-shaped escape: the R22 threshold
+  dodge, the R25 Tactical Roll / AoE-center rule, and any authored dodge block.
+  **Movement is not a dodge** — leaving an area/range before resolution still works
+  where the shape allows it (R2 windup re-checks unchanged).
+- **Transparency is the rule's other half (owner's words: "declared on attack
+  windup so the player knows and doesnt die due to a misunderstanding"):** the flag
+  must ride the windup/telegraph event, `view_schedule`, and `preview_action` —
+  loudly. An undodgable attack the player couldn't see coming is a bug, not a
+  feature.
+- **The valve blast IS undodgable** (first application — supersedes R25's
+  valve-counter consequence): a blast-Moment Tactical Roll no longer escapes the
+  KO; running out of the radius during the escape window remains the counterplay.
+
+## R27 — The G3 keyword tree + Gemstone mutations (owner G3/G6, 2026-07-23)
+
+**SETTLED (ruled — G3 round 2 + G6 round 3, char-sheet repo
+`rulebook/skills-passover.md` RULINGS; book `gpt-system-v0.92.md` §4.5).** The
+Gemstone compatibility system is **model A: the keyword tree**, adopted as data +
+machinery in this repo:
+
+- **Data:** `data/skill_keywords.json` — the book §4.5 taxonomy (9 BROAD groups,
+  31 NARROW members — the book classifies EXPLICITLY, nothing provisional about
+  the split) + the ruled per-skill assignments, a VERBATIM port of the char-sheet
+  repo's `server/apply-skill-passover.js` KEYWORDS map (44 skills) plus the 5
+  G6-approved new-skill seeds (intercept, death_grip_jaws, field_triage,
+  iron_stance, play_to_the_camera). This is DATA canon even where the sim has not
+  implemented the skill. `reversion` has NO ruled assignment (postdates the
+  44-row table) — flagged, not invented; `validate_seeds` surfaces it as a NOTE.
+- **The rule** (`simulation/skill_keywords.gd`): share ≥ 1 NARROW keyword =
+  compatible (`basis: "narrow_shared"`, auto-legal). Sharing only a BROAD group =
+  the ruled **GM-call tier** — machine-READABLE (`basis: "broad_only"`), never
+  machine-LEGAL: the engine rejects it unless a recipe carries an explicit
+  authored `compatibility_override` (the recorded GM fiat). No overlap =
+  incompatible (`basis: "none"`). Deterministic, symmetric, data-driven.
+- **Mutations** (`simulation/skill_forge.gd` + `data/skill_mutations.json`):
+  recipes are authored data `{key, name, parents: [{key, min_level}], result:
+  {key, level}, note}`. `validate_mutation` returns EVERY violation at once
+  (missing parent / underleveled / incompatible parents / result already owned /
+  malformed recipe); `apply_mutation` is a PURE function on the from_spec-shaped
+  skills array — **both parents CONSUMED**, result granted at the recipe level.
+  Recipes validate against skill KEYS + LEVELS only: a roster may own an
+  unimplemented skill as data (`CombatantState.from_spec` has no KNOWN_KEYS
+  gate), which is load-bearing — neither parent Intercept nor any mutation
+  result needs a SkillBook entry to be granted.
+- **The canonical example (G6 round 3):** **Intercept Lv 5 + Brace Lv 3 →
+  Iron Stance Lv 1, both parents consumed** — compatible through the shared
+  NARROW keyword `bracing` in the ported data (exactly as the book records:
+  "compatible through *bracing*"), so the shipped recipe carries no override.
+  Iron Stance itself stays **DATA-ONLY** in the sim: its ruled effect (stance —
+  attacks on adjacent allies retarget to you, persistent Crush/Burn reduction)
+  needs a retarget-guard archetype in ActionResolver before an honest encode;
+  seeding it into `data/skills.json` rides the same content pass.
+- **Economy is deferred to KAN-7:** the compendium's Modification Center prices
+  a Skill Gemstone use at **1 Bronze** ("disassemble/consume/merge") — recorded
+  in the data note, deliberately unpriced in the engine. When/how a merge is
+  OFFERED (Lounge flow, player consent — §4.5 "never automatic") is
+  progression/UI scope; the engine here only answers "is this merge legal, and
+  what does the roster look like after."
+
+## R28 — Arenas: bounds, walls, environment objects (KAN-5 wave 3d, 2026-08-11 — PROVISIONAL)
+
+**The arena is STRICTLY OPT-IN.** A combat carries an arena only when staged
+with one (`set_arena` — issued by the controller from the encounter def's
+`arena` block; defs LIVE on the encounter in `data/demo_run.json`, documented
+in `simulation/arena.gd`). **Absent arena = the unbounded legacy combat,
+byte-identical**: no behavior changes, and `to_dict()` carries no `arena` key,
+so every pre-arena save/hash/harness is untouched (pinned; the CI harnesses
+stage no arena and byte-diff clean). `data/enemies.json`'s `arena_hexes`
+(`[41, 60]` on the incinedile) stays the per-enemy design record the den's
+encounter block mirrors.
+
+- **Model** (`simulation/arena.gd`, serialized on CombatSim under `arena`,
+  hash-covered): `bounds` (axial rect `width`×`height` with an optional
+  `origin`, default centered — an axial parallelogram, PROVISIONAL room shape —
+  or an explicit hex set), `walls` (blocked hex set, authored), `objects`
+  (trash cans: `{key, position, burn}`).
+- **Movement honesty** — bounds+walls block EVERY position-changing path when
+  an arena is set; trash cans block like an OCCUPIED hex until destroyed
+  (occupied-hex logic composes with walls — both block). Per path: free +
+  scheduled **moves** reject (`out_of_bounds`/`hex_blocked`); **AI steps**
+  are PATHFOUND (wave 4a, 2026-08-11 — `simulation/pathing.gd` retires the
+  wave-3d "greedy step strands on concave walls" limitation): with any
+  authored wall (or explicit-hex-set bounds, which can be concave) the
+  walker plans a deterministic A* route around walls/bounds/cans/bodies —
+  concave traps are navigated across successive decides, allowance
+  permitting — and a goal PROVEN unreachable (sealed room) yields no step,
+  so the AI waits honestly instead of thrashing at the wall. Bounded: a
+  4096 node-expansion cap; hitting it falls back to the legacy greedy walk
+  honestly (never hangs, never fakes a path). Without an arena, or in a
+  wall-less rect arena, the walker IS the legacy greedy step, byte-identical
+  (no-arena space is infinite, and straight-line greedy is provably optimal
+  in the open — the tie-break/cap contract and the convexity argument live
+  in `simulation/pathing.gd`'s header); **tactical rolls**
+  reject; **feint/pressure repositions** into a blocked hex hold position;
+  **sidesteps** skip blocked candidates (no legal hex = dodge still negates,
+  no displacement); **knock-asides** skip blocked candidates (no legal hex =
+  no displacement, target stays and is STILL knocked prone); **flings** stop
+  on the last free lane hex before a blocked one (still prone on landing);
+  **grab drags** fail on a blocked pull hex (`pull_blocked`); **summons**
+  place on legal ground only; **staging** rejects a spawn on a blocked hex
+  (`staging_out_of_bounds`/`staging_blocked_hex`), and `set_arena` itself
+  rejects walls/objects out of bounds or any already-staged combatant left
+  illegal.
+- **Dash wall bounces** (un-inerts the phase-3 "dash bounces between walls up
+  to 2 bounces" — `dash_wall_bounce`): with an arena set and the upgrade
+  active, a dash lane that hits a wall/bounds REFLECTS, up to 2 bounces;
+  without the upgrade (or past the budget) the lane ENDS at the wall. **The
+  reflection model** (authority: `Arena.bounced_lane`; verbatim from its
+  header): the lane walks hex-by-hex along its current ray direction v (an
+  INTEGER cube vector); when the next hex W is a wall/out-of-bounds, the
+  incoming unit step n = W − P (always axial — consecutive lane hexes are
+  adjacent) names the blocked EDGE, and the ray mirrors across that edge's
+  plane: **v' = v − (v·n)n** (cube; n·n = 2) — the n-component reverses, the
+  tangential component is preserved; equivalently a SWAP of the two cube axes
+  n mixes. Integer in, integer out, hex norm preserved. A head-on hit
+  reflects straight back (a ricochet may legally revisit hexes; the
+  chosen-bend no-hairpin rule does not apply to forced bounces). Total lane
+  length stays ≤ the dash's range ACROSS ALL SEGMENTS. ASCII (the arena.gd
+  example — the (1,1)-diagonal ray, wall W at (2,1), range 6):
+
+  ```
+        q ->                          lane (in order):
+    r=0   O  1  .          O=(0,0)    (0,0) (1,0) (1,1)   incoming E,SE,...
+    r=1    4  2  W         1=(1,0)    -- step E into W=(2,1): BOUNCE at 2 --
+    r=2   .  5  .  .       2=(1,1)*   v=(3,-6,3) n=E=(1,-1,0) v.n=9
+    r=3    6  .  .         4=(0,1)    v'=v-9n=(-6,3,3)  (cube x<->y swap)
+                           5=(-1,2)   (0,1) (-1,2) (-2,2) (-3,3) outgoing
+                           6=(-2,2)   W,SW,... — the mirror image of the
+                           7=(-3,3)   incoming diagonal across the N-S edge
+  ```
+
+  ALL lane rules apply to the full reflected lane: occupation stops the
+  charge on any segment, leaving the corridor mid-windup dodges it
+  (`left_lane`), the R22 sidestep steps off the whole bounced lane (bounces
+  never split the sidestep exclusion — only a chosen bend does), knock-aside
+  shoves off it. **Bounce vs bend composition:** a bounce is FORCED by walls,
+  a bend (phase 4) is CHOSEN — one lane may carry both (validated: ≤ 1 bend +
+  ≤ 2 bounces; each marker phase-gated: `bounce_not_available` /
+  `too_many_bounces` / `lane_blocked` for a lane containing a wall hex). The
+  AI planner never composes them itself: it tries the straight/direct ray
+  (with forced bounces), then a fixed-order bank-shot aim search (6 axial + 6
+  diagonal directions — coarse by design, PROVISIONAL), then the chosen-bend
+  search on wall-free corridors. Cans never bounce or end a lane — **a
+  charge SMASHES through a trash can**, destroying it (`trash_can_smashed`,
+  no explosion — a smash is not a burn touch).
+- **Trash cans** (un-inerts the phase-3 "flamethrower pops trash cans
+  instantly" — `cans_pop_instantly`); canon off the authored flamethrower
+  note "trash cans explode at Burn 5 (3 spaces, 2 Burn)": a can in a resolved
+  BURN cone's arc accumulates the cone's per-round burn amount (independent
+  of whether the combatant rounds landed; a Whiff negates the sweep); at
+  burn ≥ 5 it EXPLODES — `HexGeometry.blast` radius 3, burn 2 to every
+  living combatant in it **through the normal damage/condition paths with NO
+  attacker** (environment: no killer on a death — takedown-v2 honesty; no
+  grudge; the boss's fire-heal hook applies, so the Incinedile is HEALED by
+  its own props). Collateral is never threshold-dodged (R22 valve precedent
+  — implemented via the R26 undodgable skip, ZERO rng); the R25 AoE-center
+  roller-miss still applies. The blast is a burn TOUCH (+2) on other cans in
+  radius (cascades; the instant pop never chains — it belongs to the
+  flamethrower). With the upgrade active the FIRST cone touch pops the can
+  (no accumulation). A destroyed can's hex unblocks. Events:
+  `trash_can_burned` / `trash_can_exploded` / `trash_can_smashed`; state
+  additively exposed via `view_arena()` (bounds/walls/objects + live burn).
+- **Still OPEN for KAN-5 proper:** ~~real AI pathfinding~~ SHIPPED wave 4a
+  (`simulation/pathing.gd`, the AI-steps bullet above); ~~rooms/dungeon FLOW
+  (corridors, doors, multi-room exploration)~~ SHIPPED wave 4b (R29 below);
+  ~~stealth/detection/cover (R20, wave 4c)~~ SHIPPED wave 4c — the v1
+  binary-sight slice (`simulation/stealth.gd` + the `stealth` command; the
+  R20 IMPLEMENTED marker lists what stays downscoped: cones/facing, hearing
+  beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever);
+  ~~the hound maze-funnel herding (`corner_the_prey`, wave 4d)~~ SHIPPED
+  wave 4d — the herder chase/cut-off role split, R11 #21 (the KAN-5
+  capstone: `pack_herding`, the kennel gate, tests/test_herding.gd).
+  Remaining: hearing/facing per R20's own phasing (the investigate/ALERTED
+  reactions a fuller funnel would lean on), environment objects beyond the
+  trash can, and owner-authored room layouts (every authored wall/can/door
+  position is PLACEHOLDER — the owner redesigns rooms with the front).
+  Tests: `tests/test_arena.gd` (+ the flipped pins in
+  `tests/test_phase_upgrades.gd`); the wave-4a pathfinding contract is
+  pinned in `tests/test_pathing.gd`; the wave-4c stealth contract in
+  `tests/test_stealth.gd`; the wave-4d herding contract in
+  `tests/test_herding.gd`.
+
+## R29 — Doors & dungeon flow: the room graph (KAN-5 wave 4b, 2026-08-11 — PROVISIONAL)
+
+**Doors and the dungeon room-graph shipped** — the structure layer of KAN-5
+proper. Both are STRICTLY OPT-IN like the arena itself: a door-less arena and
+an exits-less encounter list behave (and serialize) byte-identically to wave
+3d; the CI harnesses stage neither and byte-diff clean.
+
+- **Doors** (`simulation/arena.gd` `doors: [{key, position, state:
+  "open"|"closed"}]`, authored per arena on the encounter def; serialized with
+  the arena, hash-covered, the `doors` key present only when authored): a
+  **CLOSED door blocks exactly like a wall through the ONE existing blocking
+  query** (`Arena.is_wall`, which `blocks_lane`/`blocks_movement` compose) —
+  so every consumer inherits doors with zero edits: free/scheduled moves
+  reject `hex_blocked`, AI steps detour or wait, dash lanes END at a closed
+  door (and a phase-3+ dash **BOUNCES off a closed door like any wall**),
+  sidesteps/knock-asides/flings/summons/repositions all treat it as solid,
+  and LOS-when-it-exists will read the same query. An **OPEN door blocks
+  nothing** (standing in a doorway is legal). **Staging never spawns on a
+  door hex**, open or closed (`staging_on_door_hex`); `set_arena` validates
+  door placement (in bounds, off walls/objects/other doors —
+  `arena_door_misplaced`) and the seed validator mirrors both plus the
+  spawn check.
+- **The `door` command** (`{actor, key, set: "open"|"closed"}`): the actor
+  must be alive/ready and **ADJACENT** (distance exactly 1 — standing ON an
+  open door cannot close it under itself), and the flip **costs the
+  free-action slot** (R3, the inventory-interaction family: one free action
+  per combatant per tick, shared with The Bit / the free move / the first
+  inventory use / 0-cost reactions; v1 deliberately grants NO Moment-cost
+  fallback, so one door interaction per tick is the cap). Closing onto a hex
+  with a live body rejects (`door_blocked_by_body`). **Enemies never issue
+  it in v1** — the AI never decides doors (no enemy_ai path exists; a closed
+  door honestly walls an enemy off — the greedy walker waits like any walled
+  mob). Event: `door_changed {actor, key, position, state}`.
+- **Dungeon flow** (`simulation/run_state.gd`): the run's encounter list
+  generalizes to a **room graph** — defs author `exits: [{key, to, label}]`;
+  index 0 is the entry room. After a room's combat WINs (and any recruit
+  beat resolves — the offer outranks), the cleared room's exits decide:
+  **0 exits = a TERMINAL room, the run auto-finishes WIN** (the graph
+  counterpart of "every encounter cleared"; `end_run` in a graph run is
+  always early extraction = ABANDONED); **1 exit auto-advances**
+  (`run_exit_chosen {auto: true}` — corridor cadence, no beat); **2+ exits
+  open the EXPLORATION beat** (`run_exploration_beat`; the view exposes the
+  exits; the `choose_exit {key}` run command resolves it — rejected
+  mid-combat/mid-offer/outside the beat, and the beat is unmissable like the
+  offer beat). **The graph is a DAG in v1** (documented; loops are future):
+  `revisitable` defaults false, visited tracking is DERIVED from logged
+  state (records + active room — replay-safe), and the validator gates
+  authored maps (exits resolve, terminal exists, no cycles, all rooms
+  reachable). **Chain semantics:** choosing an exit is still back-to-back —
+  the hype chain persists through exploration beats untouched; a future REST
+  beat stays the one chain-breaker (unchanged data hook). Sim seeds stay
+  `encounter_seed(room index)` — path-independent. Full backward compat: a
+  def set with no exits is the exact pre-graph linear run (same behavior,
+  same serialization — no graph key ever appears).
+- **The authored demo branch** (`data/demo_run.json`): Brood Landing →
+  choice of the Kennel Gauntlet (hound pair) or the Service Corridor (light
+  roach reuse) → the Incine-Dile den (terminal; its arena authors the closed
+  service hatch + the open kennel gate — ~~the §4.6 maze-funnel texture as
+  DATA, no herding AI~~ **the maze funnel is REAL since wave 4d (R11 #21)**:
+  the kennel arena now also authors the kennel-run fence + the OPEN
+  kennel_run_gate, the escape the second hound's cut-off posts on).
+  **Every door/exit position and label is PLACEHOLDER (R14) —
+  owner-authored maps still pending.**
+  Tests: `tests/test_doors.gd` + `tests/test_dungeon_flow.gd` (+ the updated
+  run-engine pins in `tests/test_run_state.gd` / `tests/test_run_persistence.gd`).
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

@@ -133,6 +133,15 @@ var armed_primes: Dictionary = {}
 var charges: Dictionary = {}
 
 # Status effects / forced-action fallout
+## R20 stealth (KAN-5 wave 4c): true while this combatant is STEALTHED —
+## concealed from the opposing team's information surface (EnemyAI._opponents
+## excludes it; hostile declares/reactions/grapples reject target_stealthed).
+## Default false = detected (the opt-in compat pin). Entered via the sim's
+## `stealth` command; broken by sight (Stealth.sees, swept every command), the
+## Shock-T1 Shout (R13 noise seed), going down, or a voluntary reveal.
+## Serialized ONLY while true, so a stealth-free fight's to_dict() — and every
+## hash over it — stays byte-identical to the pre-stealth engine.
+var stealthed: bool = false
 var exposed_until_tick: int = 0
 var helpless_until_tick: int = 0
 var unarmed_until_tick: int = 0
@@ -356,6 +365,28 @@ func personality_decay() -> float:
 	return float(personality.get("decay", 1.0))
 
 
+## R15 pack synergy gate (wave 3a): does this creature hunt as a pack? Authored
+## on mob templates only (roach_dog); elites/bosses fight alone — default false.
+func personality_pack_hunter() -> bool:
+	return bool(personality.get("pack_hunter", false))
+
+
+## R15 pack FAMILY (wave 3a, documented choice: the explicit personality key,
+## not an id/enemy_key prefix): two pack hunters link only when both carry the
+## same non-empty pack name ("roach"). "" = no family = never links.
+func personality_pack() -> String:
+	return String(personality.get("pack", ""))
+
+
+## KAN-5 wave 4d herding gate (the war_hound's corner_the_prey signature —
+## R11 #21): a pack of >= 2 herders sharing a `pack` family splits chase /
+## cut-off roles (EnemyAI._herd_cutoff). Data-driven — the personality key is
+## what the engine reads, never a species check; the corner_the_prey ability
+## entry stays the authored flavor record. Default false.
+func personality_herder() -> bool:
+	return bool(personality.get("herder", false))
+
+
 ## Over-10 stat-cap formulas — adopted verbatim from the char-sheet app (R6).
 static func over_cap(total: int, divisor: int) -> int:
 	return int(floor(maxi(0, total - 10) / float(divisor)))
@@ -480,7 +511,7 @@ func record_hit(combo_id: String, amount: int) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"id": id,
 		"display_name": display_name,
 		"team": team,
@@ -542,6 +573,12 @@ func to_dict() -> Dictionary:
 		"grappled_by": grappled_by,
 		"bleed_out": bleed_out.duplicate(true),
 	}
+	# R20 compat pin (wave 4c, the arena-key pattern): "stealthed" exists ONLY
+	# while true — a stealth-free combatant serializes byte-identically to the
+	# pre-stealth engine (state_hash covered either way).
+	if stealthed:
+		out["stealthed"] = true
+	return out
 
 
 static func from_dict(data: Dictionary) -> CombatantState:
@@ -612,4 +649,6 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.grappling = String(data.get("grappling", ""))
 	c.grappled_by = String(data.get("grappled_by", ""))
 	c.bleed_out = (data.get("bleed_out", {}) as Dictionary).duplicate(true)
+	# Pre-stealth saves lack the key: false = detected, the legacy default.
+	c.stealthed = bool(data.get("stealthed", false))
 	return c

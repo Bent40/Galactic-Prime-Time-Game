@@ -364,3 +364,25 @@
     (permanently-losable canon). The engine keeps trait sourcing agnostic (a creation
     spec carries final traits; whether the front derives them from a background/epithet
     track per R16 or direct allocation is presentation).
+32. **The 2026-07-25 sign-off batch (owner, verbatim by number).** Approved as
+    implemented: phase-5 merged spin beat, cone-tracking ties, the death-spin decide
+    order, the R22 boss-threshold retune 4→7, roll eligibility (Exposed may roll),
+    recruits join as-is, camera stacks 0..1, cap-raise stacking, the takedown edge
+    readings (merged = last connected member; self-kill counts). Changed/new rulings:
+    - **Undodgable attacks (supersedes R25's valve consequence):** some attacks can be
+      declared **specifically undodgable — announced on the attack's windup so the
+      player knows and never dies to a misunderstanding**. The valve blast IS
+      undodgable: Tactical Roll's AoE-center escape does not apply to it (leaving the
+      radius still does — that is movement, not a dodge). Mechanism is data-driven per
+      ability/effect; the telegraph, schedule view, and preview must all carry the flag
+      loudly. See R26.
+    - **Hype chains across encounters (supersedes the per-encounter hype reset):**
+      back-to-back encounters retain hype — the next encounter starts with **40%** of
+      the previous meter, then **60%**, then **80%**, then **100%** for further links.
+      Chaining encounters is rewarded with hype.
+    - **Declined recruits: depends on their character story** (supersedes the global
+      "gone for the run"): per-recruit data decides whether a declined offer can
+      return. Authored per character.
+    - **Epithets renamed:** Sasha **"Little shadow"**, Nikita **"The lonely"**.
+    Open from #10 (unanswered, standing as-is): both premades' 4th skill slots; the
+    cross-character CHAIN cash-in on Nikita's Pressure Strike.

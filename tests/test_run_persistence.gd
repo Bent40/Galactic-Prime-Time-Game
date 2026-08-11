@@ -11,11 +11,12 @@ extends SimTestBase
 ##   * save BETWEEN encounters -> load into a fresh controller -> identical
 ##     continuation (final run hash equals an UNSAVED control run's), and the
 ##     restored run log alone still rebuilds a bare RunState (DIRECTION #5 one
-##     level up — the full history survives the disk round trip);
-##   * save MID-encounter-2 (recruited roster) -> load -> the same command tail
-##     lands on identical run AND sim hashes, with every existing view
-##     (view_run, view_combatants, view_clock) reading identically right after
-##     the load;
+##     level up — the full history survives the disk round trip); the wave-3c
+##     continuation crosses BOTH remaining rooms (kennel + finale);
+##   * save MID-encounter-2 (recruited roster, one tick into the KENNEL — a
+##     live war hound in the sim) -> load -> the same command tail lands on
+##     identical run AND sim hashes, with every existing view (view_run,
+##     view_combatants, view_clock) reading identically right after the load;
 ##   * corruption honesty: a corrupt file, a combat save, a foreign-version
 ##     envelope and a missing file each fail SOFT with their typed last_error —
 ##     the live session's run and sim are untouched, no partial restore;
@@ -23,8 +24,10 @@ extends SimTestBase
 ##     envelope stamps no wall-clock metadata anywhere — the combat envelope
 ##     stamps none, run envelopes mirror that — so the WHOLE file is
 ##     deterministic payload and the comparison excludes nothing);
-##   * a save from a run with a DECLINED recruit restores the declined state:
-##     re-offer still impossible, encounter 2 staged without her.
+##   * a save from a run with a DECLINED recruit restores the STORY-honored
+##     decline (decision #32): Sasha's may_reoffer decline leaves NO
+##     gone-for-run mark — its absence survives the round trip — and
+##     encounter 2 stages without her (it carries no recruit_offer).
 
 const DEMO_RUN_PATH := "res://data/demo_run.json"
 const MAX_FIGHT_TICKS := 60
@@ -87,7 +90,56 @@ func _treat_carried_wounds(gc: Node) -> void:
 			gc.apply_command({"type": "treat", "target": id, "part": "torso", "condition": "crushed", "mode": "resolve"})
 
 
-## Encounter 2 fight: breach the surface, then put the exposed network down.
+## Kennel staging (wave 3c — the test_run_state.gd drive, verbatim): two hound
+## bites at tick 0 with the REAL rending_bite numbers (imani blocks the lone
+## bite; sasha takes net 1 + bleeding). Guarded — the decline path has no sasha.
+func _stage_hound_bites(gc: Node) -> void:
+	_declare(gc, "war_hound_1", attack_action("bleeding", 1, "imani", "torso"))
+	if gc.sim.combatants.has("sasha"):
+		_declare(gc, "war_hound_2", attack_action("bleeding", 1, "sasha", "torso"))
+
+
+## The kennel fight body (guarded, lockstep — test_run_state.gd, verbatim):
+## imani puts down hound 1; sasha holds one Moment so hound 2 gets ONE LIVE
+## ai_decide through the run funnel before she puts it down.
+func _fight_hounds(gc: Node, max_ticks: int) -> void:
+	for _i: int in range(max_ticks):
+		if bool(gc.combat_status().get("over", false)):
+			return
+		var tick: int = gc.sim.clock.tick
+		var pairs: Array = [["imani", "war_hound_1"], ["sasha", "war_hound_2"]]
+		for pair: Variant in pairs:
+			var attacker: CombatantState = gc.sim.combatants.get(String((pair as Array)[0]))
+			var target: CombatantState = gc.sim.combatants.get(String((pair as Array)[1]))
+			if attacker == null or target == null or not target.alive:
+				continue
+			if attacker.id == "sasha" and tick < 1:
+				continue  # hound 2 gets its one live decide before she strikes
+			if not attacker.can_act(tick) or tick < attacker.next_action_tick or attacker.windup_pending:
+				continue
+			if CombatantState.hex_distance(attacker.position, target.position) > 2:
+				continue
+			_declare(gc, attacker.id, attack_action("crushed", 9, target.id, "torso", {"attack_range": 2}))
+		gc.run_enemy_turn()
+		gc.apply_command({"type": "advance_tick"})
+
+
+## The finale's treatment beat: resolve every bleeding the kennel left, so
+## bleed advancement does not add noise to the boss drive. Guarded off live state.
+func _treat_hound_wounds(gc: Node) -> void:
+	for id: String in ["imani", "dario", "sasha"]:
+		var c: CombatantState = gc.sim.combatants.get(id)
+		if c == null:
+			continue
+		var part_keys: Array = c.parts.keys()
+		part_keys.sort()
+		for part_key: Variant in part_keys:
+			if c.condition_tier(String(part_key), "bleeding") > 0:
+				gc.apply_command({"type": "treat", "target": id, "part": String(part_key),
+					"condition": "bleeding", "mode": "resolve"})
+
+
+## Finale fight: breach the surface, then put the exposed network down.
 func _fight_boss(gc: Node, max_ticks: int) -> void:
 	for _i: int in range(max_ticks):
 		if bool(gc.combat_status().get("over", false)):
@@ -105,24 +157,38 @@ func _fight_boss(gc: Node, max_ticks: int) -> void:
 		gc.apply_command({"type": "advance_tick"})
 
 
-## The accept-path continuation from the between-encounters checkpoint. Shared
-## by the live drives and every loaded continuation so they are command-identical.
+## The accept-path continuation from the between-encounters checkpoint (kennel,
+## then finale — wave 3c). Shared by the live drives and every loaded
+## continuation so they are command-identical.
 func _finish_from_between(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc)
+	_stage_hound_bites(gc)
+	_fight_hounds(gc, MAX_FIGHT_TICKS)
+	gc.apply_run_command({"type": "end_encounter"})
+	_finish_finale(gc)
+
+
+## The finale (the den, room index 3) from the post-kennel checkpoint (the
+## kennel's single exit auto-advanced). Wave 4b: the den is TERMINAL —
+## clearing it auto-finishes the run WIN, so there is no end_run.
+func _finish_finale(gc: Node) -> void:
+	gc.apply_run_command({"type": "begin_encounter"})
+	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
-	gc.apply_run_command({"type": "end_run"})
 
 
 ## Drives the accept path up to the between-encounters checkpoint (encounter 1
-## fought, offer accepted — the recruit is on the roster, no fight live).
+## fought, offer accepted, branch A chosen through wave 4b's exploration beat
+## — the recruit is on the roster, no fight live, phase "between").
 func _drive_to_between(gc: Node) -> void:
 	_start_demo_run(gc)
 	_drive_encounter_one(gc)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	gc.apply_run_command({"type": "accept_recruit"})
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 
 
 ## The on-disk path for a slot (the test_dal_saves staging idiom — tests live
@@ -170,11 +236,14 @@ func test_save_load_between_encounters_identical_continuation() -> void:
 # --------------------------------------- (2) save/load MID-encounter-2
 
 func test_save_load_mid_encounter_two_identical_continuation() -> void:
+	# Mid-KENNEL (wave 3c): hound 1 down, hound 2 alive — the second authored
+	# enemy itself crosses the disk round trip mid-fight.
 	var gc_live: Node = _controller()
 	_drive_to_between(gc_live)
 	gc_live.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc_live)
-	_fight_boss(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
+	_stage_hound_bites(gc_live)
+	_fight_hounds(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
 	assert_false(bool(gc_live.combat_status().get("over", false)), "precondition: the fight is NOT over at the save")
 	assert_true(gc_live.save_run("runpersist_mid"), "save_run succeeds mid-encounter")
 	# The view surface at save time — the loaded session must read identically.
@@ -182,9 +251,9 @@ func test_save_load_mid_encounter_two_identical_continuation() -> void:
 	var view_combatants_at_save: Array[Dictionary] = gc_live.view_combatants()
 	var view_clock_at_save: Dictionary = gc_live.view_clock()
 	# Live continuation to the end of the run.
-	_fight_boss(gc_live, MAX_FIGHT_TICKS)
+	_fight_hounds(gc_live, MAX_FIGHT_TICKS)
 	gc_live.apply_run_command({"type": "end_encounter"})
-	gc_live.apply_run_command({"type": "end_run"})
+	_finish_finale(gc_live)
 	var live_run_hash: String = gc_live.run.state_hash()
 	var live_sim_hash: String = gc_live.sim.state_hash()
 	assert_eq(String(gc_live.run.outcome), "WIN", "precondition: the live continuation wins the run")
@@ -193,14 +262,16 @@ func test_save_load_mid_encounter_two_identical_continuation() -> void:
 	var gc_loaded: Node = _controller()
 	assert_true(gc_loaded.load_run("runpersist_mid", load_static_data()), "load_run succeeds")
 	assert_true(gc_loaded.sim.combatants.has("sasha"), "the recruited member is in the restored mid-fight sim")
-	assert_eq(int((gc_loaded.sim.combatants["sasha"] as CombatantState).parts["torso"]["hp"]), 3,
-		"her carried encounter-1 wound is in the restored fight")
+	assert_eq(int((gc_loaded.sim.combatants["sasha"] as CombatantState).parts["torso"]["hp"]), 2,
+		"her carried encounter-1 wound + the staged kennel bite are in the restored fight")
+	assert_true((gc_loaded.sim.combatants["war_hound_2"] as CombatantState).alive,
+		"the live war hound crossed the disk round trip")
 	assert_eq(gc_loaded.view_run(), view_run_at_save, "view_run reads identically after the load")
 	assert_eq(gc_loaded.view_combatants(), view_combatants_at_save, "view_combatants reads identically after the load")
 	assert_eq(gc_loaded.view_clock(), view_clock_at_save, "view_clock reads identically after the load")
-	_fight_boss(gc_loaded, MAX_FIGHT_TICKS)
+	_fight_hounds(gc_loaded, MAX_FIGHT_TICKS)
 	gc_loaded.apply_run_command({"type": "end_encounter"})
-	gc_loaded.apply_run_command({"type": "end_run"})
+	_finish_finale(gc_loaded)
 	assert_eq(gc_loaded.run.state_hash(), live_run_hash,
 		"mid-encounter-2 save -> load -> same command tail = identical final run hash")
 	assert_eq(gc_loaded.sim.state_hash(), live_sim_hash,
@@ -217,7 +288,8 @@ func test_failed_loads_are_typed_and_leave_the_live_session_untouched() -> void:
 	_drive_to_between(gc)
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc)
-	_fight_boss(gc, 1)
+	_stage_hound_bites(gc)
+	_fight_hounds(gc, 1)
 	var run_hash_before: String = gc.run.state_hash()
 	var sim_hash_before: String = gc.sim.state_hash()
 	var run_log_before: int = gc.run_command_log.size()
@@ -264,10 +336,12 @@ func test_save_load_save_round_trip_is_byte_identical() -> void:
 	assert_eq(FileAccess.get_file_as_string(_save_path("runpersist_rt_b")),
 		FileAccess.get_file_as_string(_save_path("runpersist_rt_a")),
 		"between-encounters save -> load -> save is byte-identical")
-	# Mid-encounter round trip (exercises the CombatSim block too).
+	# Mid-encounter round trip (exercises the CombatSim block too — a live
+	# war hound rides the envelope).
 	gc_b.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc_b)
-	_fight_boss(gc_b, 1)
+	_stage_hound_bites(gc_b)
+	_fight_hounds(gc_b, 1)
 	assert_true(gc_b.save_run("runpersist_rt_mid_a"), "first mid-encounter save")
 	var gc_c: Node = _controller()
 	assert_true(gc_c.load_run("runpersist_rt_mid_a", load_static_data()), "mid-encounter round-trip load")
@@ -280,7 +354,7 @@ func test_save_load_save_round_trip_is_byte_identical() -> void:
 	gc_c.free()
 
 
-# --------------------------------------- (5) the DECLINED recruit persists
+# --------------------------------------- (5) the DECLINED-recruit state persists
 
 func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 	var gc: Node = _controller()
@@ -293,12 +367,22 @@ func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 	var gc_loaded: Node = _controller()
 	assert_true(gc_loaded.load_run("runpersist_declined", load_static_data()), "load the declined-state save")
 	assert_eq(gc_loaded.run.roster.size(), 2, "the restored roster stays the founding pair")
-	assert_true(gc_loaded.run.declined.has("sasha_the_tell"), "the declined record survived the round trip")
-	# Re-offer still impossible after the restore (PROVISIONAL #31: gone for the run).
+	# Sasha's authored on_decline is may_reoffer (decision #32 story-driven
+	# declines): the decline leaves NO gone-for-run mark, and what must survive
+	# the round trip is that ABSENCE — a later encounter's recruit_offer could
+	# re-offer her (the demo run's encounter 2 simply carries none; the re-offer
+	# beats themselves are pinned in test_run_state.gd's synthetic runs).
+	assert_true(gc_loaded.run.declined.is_empty(),
+		"a may_reoffer decline leaves no gone-mark, load or no load (#32)")
+	# Wave 4b: the decline resolved into the exploration beat, and the SAVE
+	# landed mid-beat — the restored run is still mid-beat, so the re-ask
+	# rejects on the phase (only a later encounter's recruit_offer re-offers).
+	assert_eq(String(gc_loaded.run.phase), "exploration", "the restored run is still mid-exploration-beat")
 	var reoffer: Array[Dictionary] = gc_loaded.apply_run_command(
 		{"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
-	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "recruit_declined_for_run",
-		"a declined recruit can never be re-offered, load or no load")
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_offer_beat_here",
+		"no offer beat is open mid-exploration — only a later encounter's recruit_offer re-offers")
+	gc_loaded.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc_loaded.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc_loaded.sim.combatants.has("sasha"), "encounter 2 stages WITHOUT the declined recruit")
 	gc.free()

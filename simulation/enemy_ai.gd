@@ -19,11 +19,72 @@ extends RefCounted
 ##   goal_rng pattern) — and only on the ROLLED fallback: an auto or an
 ##   impossible check consumes nothing — so none of the draws ever perturb the
 ##   action RNG's Forced-Action sequence.
-## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
-##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
+## - All state (ai_rng.state, boss phases, summon counts, explosion beats,
+##   stances) is serialized in CombatSim.to_dict() under "ai" and covered by
+##   state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
 ##   Forced Action d6 remains the failure path. The dodge threshold is an
 ##   authored ENEMY ability (R2's explicit-miss pattern), not a universal rule.
+##
+## PACK SYNERGY (R15 enemy combos — wave 3a, closing the R11 "still open" item):
+## personality-gated (pack_hunter + a shared pack family) and OPPORTUNISTIC —
+## each pack hunter's own R23 antagonism draw picks its victim exactly as
+## before; only when a second ready pack hunter's draw AGREES with a packmate's
+## already-declared strike this tick does the second LINK its strike (shared
+## combo_id -> the EXISTING R15 merged-force path sums their Forces through one
+## Robustness gate). Pairs only in v1. See _link_pack_strike for the contract.
+##
+## AI STANCE SUBSTRATE (wave 3a — the readable layer `aura_reading` needs;
+## skills-audit: "reveals the target's current AI stance"; the SKILL itself
+## still rides the content pass). Every decide writes the actor's stance from
+## the decision it just made — serialized, hash-covered, exposed additively on
+## view_combatants (AI rows only; "unknown" before the first decide). THE TABLE
+## (documented contract — every decide choice maps):
+##   attack / grab / chew / spin   -> "aggressive"  (committing violence)
+##   move                          -> "hunting"     (closing on prey)
+##   heal / wait / stand           -> "defensive"   (recovering / holding back)
+##   summon / telegraph / blast    -> "building"    (mustering the brood /
+##                                                   charging the valve beat)
+## TWO documented exceptions: a "wait" whose reason is "explosion_building"
+## reads "building" — the venting boss is still charging its blast; a "wait"
+## whose reason is "holding_cutoff" reads "hunting" — the herder on its post
+## (wave 4d below) is mid-hunt, not recovering. The stance reads INTENT, not
+## idleness. Unknown/future choices default to "defensive" (the wait bucket)
+## until mapped. The audit's fuller emotion ladder ("fleeing"/"desperate")
+## awaits behaviors that exist — v1 AI never flees.
+##
+## HERDING — the war-hound maze funnel (KAN-5 wave 4d, R11 #21 — makes
+## corner_the_prey REAL; the compendium §4.6 signature: the pack corners the
+## quarry and cuts off its escape). Personality-gated (`herder: true` + the
+## shared `pack` family — data-driven, no hardcoded species) and layered ON
+## TOP of the unchanged strike-or-close flow: only a decide that could NOT
+## strike its quarry this Moment (the plain-move and no-step exits) may be
+## rewritten into a cut-off move, so a herder NEVER skips a kill it can make —
+## herding is positioning, never pacifism. THE CONTRACT (v1, documented):
+##   * ROLE SPLIT (pure function of sorted state, zero rng — the actor's own
+##     R23 antagonism draw already picked the quarry, one draw as ever): among
+##     the living, able-to-act herders of the actor's team+family, the one
+##     CLOSEST to the quarry chases (hex distance; ties keep the earliest
+##     sorted id); every OTHER herder cuts off.
+##   * CUT-OFF HEX (the v1 escape rule, documented choice): the OPEN door
+##     nearest the QUARRY (hex distance; ties keep the earliest authored door).
+##     No arena, no open door, or no legal step toward it -> fall back to the
+##     normal chase, honest and simple (widest-gap inference is future work).
+##   * R20 HONESTY: a herder herds only prey it can SEE right now
+##     (Stealth.sees — sight 2 x Mind, LOS, hostile): the war hound's Mind 1
+##     = sight 2, so the funnel is CLOSE-QUARTERS behavior (blocked corridors,
+##     bodies in the way), thematically the hound snapping at heels. A
+##     stealthed quarry never reaches herding at all (_opponents excludes it).
+##   * The cut-off move routes via Pathing.next_steps to the cut-off hex
+##     (stop_range 0 — standing ON the open door denies it); a herder already
+##     ON the hex HOLDS its post (wait, reason "holding_cutoff" — no thrash
+##     back into the chase) until the quarry comes into reach, when the normal
+##     strike flow resumes. Stance for both: "hunting".
+##   * EVENTS: a decided cut-off move emits `pack_herding` (herder, quarry,
+##     cutoff_hex) once the step really resolves (CombatSim — the pack_synergy
+##     honesty pattern); the hold emits nothing new (the post was announced
+##     when taken). No new serialized state anywhere — the role split and the
+##     cut-off hex re-derive from sorted state every decide.
 ##
 ## All numbers PLACEHOLDER (R14) pending the numbers rework, unless marked canon.
 
@@ -36,8 +97,9 @@ const HEAL_LETHAL_PART_RATIO: float = 0.5
 ## Boss cone sweep wants at least this many targets in reach. PLACEHOLDER (R14).
 const CONE_MIN_TARGETS: int = 2
 ## Death Spin (wave 2b, decision #31 — the authored 3-beat sequence is REAL):
-## GRAB reach in hexes. The authored "death spin grab range +1" phase upgrade
-## stays DATA-ONLY for wave 2d, so this is the flat rule for every phase.
+## BASE grab reach in hexes. Wave 2d: the authored "death spin grab range +1"
+## phase upgrade is REAL — grab_range() adds 1 from its authored phase (3) on;
+## this constant stays the flat pre-upgrade rule.
 const GRAB_RANGE: int = 1
 ## Beat-2 CHEW damage: "chew: 2 crushed to both arms" — canon off the authored
 ## sequence line (data/enemies.json), delivered through the normal R14 gate.
@@ -62,9 +124,56 @@ const HEX_NEIGHBORS: Array[Vector2i] = [
 	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
 ]
 
+## Wave 2d — the authored per-phase `behavior.upgrades` STRINGS are the source
+## of truth; this map parses them into the effect keys the sim consumes. An
+## authored string with NO entry here is a DATA-ONLY no-op by design: it stays
+## visible in the data, upgrades_active() never reports it, nothing executes.
+## Wave 3d (KAN-5 arenas) un-inerts the last two: "dash bounces between walls"
+## and "flamethrower pops trash cans instantly" now map to real effects — but
+## both are ARENA-GATED: without an arena there are no walls and no cans, so
+## a no-arena fight behaves exactly as before (the flipped inert pin in
+## tests/test_phase_upgrades.gd). See rules-addendum R11 #20 + R28.
+const UPGRADE_EFFECTS: Dictionary = {
+	"death spin grab range +1": "grab_range_plus_1",
+	"death spin costs 2 moments": "spin_two_moments",
+	"dash can change direction mid-run": "dash_bend",
+	"network fully exposed": "network_stays_exposed",
+	"flamethrower tracks closest target": "cone_track_closest",
+	"dash bounces between walls up to 2 bounces": "dash_wall_bounce",
+	"flamethrower pops trash cans instantly": "cans_pop_instantly",
+}
+
+## KAN-5 (wave 3d) — the bank-shot aim candidates the bounce-lane planner
+## tries AFTER the direct from->target ray fails (documented, PROVISIONAL —
+## coarse by design): the six axial directions in HEX_NEIGHBORS order, then
+## the six "diagonal" directions derived as HEX_NEIGHBORS[i] +
+## HEX_NEIGHBORS[(i+1) % 6] (E+NE, NE+NW, NW+W, W+SW, SW+SE, SE+E). The first
+## candidate whose bounced walk legally reaches the target wins. Oblique bank
+## shots outside this set stay hand-buildable — the resolver honors any
+## committed lane; the planner just never finds them.
+const DASH_BANK_DIRECTIONS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+	Vector2i(2, -1), Vector2i(1, -2), Vector2i(-1, -1),
+	Vector2i(-2, 1), Vector2i(-1, 2), Vector2i(1, 1),
+]
+
+## Wave 3a — the stance TABLE (see the header contract): decide choice -> the
+## serialized ai_stance the substrate exposes for `aura_reading`.
+const STANCE_FOR_CHOICE: Dictionary = {
+	"attack": "aggressive", "grab": "aggressive", "chew": "aggressive", "spin": "aggressive",
+	"move": "hunting",
+	"heal": "defensive", "wait": "defensive", "stand": "defensive",
+	"summon": "building", "telegraph": "building", "blast": "building",
+}
+
 ## Wired refs (never serialized — re-wired by CombatSim, like ConditionEngine).
 var combatants: Dictionary = {}
 var clock: Clock
+## KAN-5 (wave 3d): the sim's OPT-IN arena, wired by CombatSim at set_arena /
+## from_dict (the arena itself serializes on CombatSim under "arena"). null =
+## unbounded legacy — every arena check below is guarded on it.
+var arena: Arena = null
 ## Serialized AI state.
 var ai_rng := RandomNumberGenerator.new()
 var boss_phase: Dictionary = {}  # combatant id -> current phase_number (default 1)
@@ -82,6 +191,12 @@ var explosion_beats: Dictionary = {}
 ## valve entry, victim/boss down), so a mid-sequence save restores the exact
 ## continuation. Serialized + hash-covered under "ai".
 var death_spins: Dictionary = {}
+## Wave 3a — the AI stance substrate: combatant id -> stance string, written by
+## decide() from the decision it just made (STANCE_FOR_CHOICE + the documented
+## explosion_building exception). Serialized + hash-covered under "ai";
+## view_combatants exposes it additively ("unknown" before the first decide).
+## Entries persist for downed combatants (their last read stays inspectable).
+var stances: Dictionary = {}
 
 
 ## Fresh-sim wiring: refs + deterministic salted RNG seed. from_dict restores
@@ -111,8 +226,22 @@ static func is_ai_controlled(c: CombatantState) -> bool:
 ##    "ability": String?, "target": String?, "move_to": Vector2i?,
 ##    "action": Dictionary? (resolver.declare payload),
 ##    "summon": Dictionary? ({enemy_key, count, ability, cost}),
-##    "reason": String? (wait only)}
+##    "reason": String? (wait only),
+##    "pack_link": Dictionary? (R15 pack synergy, wave 3a — set when this
+##    attack LINKED to a packmate's pending strike; see _link_pack_strike)}
 func decide(actor: CombatantState) -> Dictionary:
+	var decision: Dictionary = _dispatch_decide(actor)
+	# R15 pack synergy (wave 3a): links AFTER the tier policy ran, so the
+	# actor's own antagonism draw already happened — linking consumes ZERO rng.
+	_link_pack_strike(actor, decision)
+	# Wave 3a stance substrate: the decision just made IS the readable intent.
+	stances[actor.id] = stance_for_decision(decision)
+	return decision
+
+
+## The per-tier decision policy (unchanged decide flow — decide() wraps it with
+## the wave-3a pack-link pass + stance write).
+func _dispatch_decide(actor: CombatantState) -> Dictionary:
 	match actor.category:
 		"Boss", "Super Boss":
 			return _decide_boss(actor)
@@ -120,6 +249,107 @@ func decide(actor: CombatantState) -> Dictionary:
 			return _decide_elite(actor)
 		_:
 			return _decide_mob(actor)
+
+
+## Wave 3a — the stance a decision maps to (the header's documented table).
+## Pure and static so tests/views can assert the full contract directly.
+static func stance_for_decision(decision: Dictionary) -> String:
+	var choice := String(decision.get("choice", "wait"))
+	if choice == "wait" and String(decision.get("reason", "")) == "explosion_building":
+		return "building"  # the venting boss is still charging its blast
+	if choice == "wait" and String(decision.get("reason", "")) == "holding_cutoff":
+		return "hunting"  # wave 4d: the herder on its post is mid-hunt, not recovering
+	return String(STANCE_FOR_CHOICE.get(choice, "defensive"))
+
+
+# ------------------------------------------------------ pack synergy (R15, wave 3a)
+
+## R15 pack synergy — enemy combos through the EXISTING merged-force machinery
+## (rules-addendum R15 "Enemy pack-combos become possible by the same
+## mechanism"; wave 3a moves it to REAL for pairs). The DESIGN (documented):
+## packs converge PROBABILISTICALLY via proximity/grudge — each pack hunter's
+## own R23 weighted draw picks its victim exactly as before (no draw-forcing,
+## zero extra rng) — and only when the draws AGREE on the victim do the strikes
+## merge. The synergy is opportunistic, never scripted.
+##
+## FAMILY (documented choice — the explicit personality key, NOT an
+## id/enemy_key prefix): personality.pack names the family ("roach") and
+## personality.pack_hunter gates the behavior. Two mobs link iff BOTH are pack
+## hunters AND share the same non-empty pack. Authored on the roach mob
+## template (data/enemies.json); incinedile/little_brother_roach (boss/elite)
+## are NOT pack hunters — the brood swarms, the big ones fight alone.
+##
+## LINK MECHANISM (deterministic from sorted state — no coordination oracle,
+## no extra rng): the driver feeds ai_decide per enemy sequentially, so the
+## SECOND decide can SEE the first's declared strike in the pending schedule
+## (clock.queue — append order IS seq order, deterministic). The first eligible
+## entry wins: resolves THIS tick, another actor, a ready packmate of the same
+## family, kind "attack", single target equal to this actor's own pick, not
+## already linked. Linking writes the shared combo_id ("pack:<tick>:<seq of
+## first>" — deterministic) onto BOTH actions (the pending entry's action is
+## serialized with the queue, so a mid-tick save restores the link) and the
+## second ADOPTS the first's part — part agreement is what merging requires
+## (one gate at one target+part, the player-side combined_action contract).
+## The R15 merge path then sums their Forces through ONE Robustness gate,
+## untouched — nothing forked. A declare rejected AFTER linking leaves the
+## partner's combo_id as residue: harmless — the pre-scan drops groups of one
+## and the solo path is byte-identical.
+##
+## CAP (v1): PAIRS only — an already-linked entry (combo_id present) is never
+## eligible, so a third packmate whose draw lands on the same victim attacks
+## solo. PLACEHOLDER R14 for wider packs: triples+ wait on the numbers rework
+## (summed Force scales fast against flat Robustness).
+func _link_pack_strike(actor: CombatantState, decision: Dictionary) -> void:
+	if String(decision.get("choice", "")) != "attack":
+		return
+	if not actor.personality_pack_hunter():
+		return
+	var family: String = actor.personality_pack()
+	if family == "":
+		return
+	var action: Dictionary = decision.get("action", {})
+	if String(action.get("kind", "")) != "attack" or action.has("combo_id"):
+		return
+	if int(action.get("cost", 1)) > 1:
+		return  # only a same-tick instant can merge with an entry resolving NOW
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return
+	var victim_id := String((targets[0] as Dictionary).get("id", ""))
+	var victim: CombatantState = combatants.get(victim_id)
+	if victim == null:
+		return
+	for entry: Dictionary in clock.queue:  # append order == seq order (deterministic)
+		if int(entry["tick"]) != clock.tick or String(entry["actor"]) == actor.id:
+			continue
+		var partner: CombatantState = combatants.get(String(entry["actor"]))
+		if partner == null or not is_ai_controlled(partner):
+			continue
+		if not partner.personality_pack_hunter() or partner.personality_pack() != family:
+			continue
+		var partner_action: Dictionary = entry["action"]
+		if String(partner_action.get("kind", "")) != "attack" or partner_action.has("combo_id"):
+			continue
+		if partner_action.has("death_spin_beat"):
+			continue  # sequences never pack-link (belt-and-braces; bosses aren't pack hunters)
+		var partner_targets: Array = partner_action.get("targets", [])
+		if partner_targets.size() != 1:
+			continue
+		var pt: Dictionary = partner_targets[0]
+		if String(pt.get("id", "")) != victim_id:
+			continue  # the draws DISAGREED — no link, both strike solo
+		var part := String(pt.get("part", ""))
+		if not _attackable_parts(victim).has(part):
+			continue  # part agreement must be legal for the joiner too
+		var combo_id := "pack:%d:%d" % [clock.tick, int(entry["seq"])]
+		partner_action["combo_id"] = combo_id  # the LIVE pending entry — rides the queue's serialization
+		action["combo_id"] = combo_id
+		action["targets"] = [{"id": victim_id, "part": part}]
+		decision["pack_link"] = {
+			"partner": String(entry["actor"]), "combo_id": combo_id,
+			"target": victim_id, "part": part,
+		}
+		return
 
 
 ## MOB: bite the antagonism-weighted target (R23 — closer much likelier,
@@ -184,10 +414,10 @@ func _decide_elite(actor: CombatantState) -> Dictionary:
 ## valve outranks it). The cone stays the marquee crowd opener (>= 2 in arc).
 ## The death-spin GRAB is the boss's PUNISH on a target that stays ADJACENT
 ## while it is free to act — a grab-and-kill threat scarier than the dash, so
-## it sits above it; it fires only when a valid adjacent grab target exists AND
-## the grabbing hand is functional (no step-then-grab: reach is the authored
-## grab range, flat 1 — the "grab range +1" phase upgrade stays data-only,
-## wave 2d). The dash remains the reach tool, then close distance. The ability
+## it sits above it; it fires only when a valid in-reach grab target exists AND
+## the grabbing hand is functional (no step-then-grab: reach is grab_range —
+## base 1, +1 from phase 3 per the authored "grab range +1" upgrade, wave 2d).
+## The dash remains the reach tool, then close distance. The ability
 ## set is filtered to the current phase's behavior list (which gates STARTING
 ## a sequence; an in-flight one continues on its own state).
 func _decide_boss(actor: CombatantState) -> Dictionary:
@@ -219,9 +449,16 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	# (decision #31 — retires the R11 #16 range-only deferral): the aim is the
 	# fixed-order direction whose 120-degree HexGeometry.cone catches the most
 	# opponents; a cone "reaches" an opponent iff that best arc contains it.
+	# Wave 2d "flamethrower tracks closest target" (phase 5): the AIM hunts the
+	# NEAREST opponent instead — only the toward selection shifts; the shape,
+	# size and the >= CONE_MIN_TARGETS gate below are unchanged.
 	var cone: Dictionary = _first_cone_ability(actor, allowed)
 	if not cone.is_empty():
-		var sweep: Dictionary = _best_cone_sweep(actor, cone, opponents)
+		var sweep: Dictionary
+		if has_upgrade(actor, "cone_track_closest"):
+			sweep = _tracking_cone_sweep(actor, cone, opponents)
+		else:
+			sweep = _best_cone_sweep(actor, cone, opponents)
 		var in_cone: Array[CombatantState] = sweep["targets"]
 		if in_cone.size() >= CONE_MIN_TARGETS:
 			return _cone_decision(actor, cone, in_cone, sweep["toward"])
@@ -247,15 +484,20 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictionary) -> Dictionary:
 	var radius: int = int(explosion.get("radius", 0))
 	var escape: int = maxi(0, int(explosion.get("escape_moments", 0)))
+	# R26: the authored undodgable flag rides both beat choices so the telegraph
+	# can announce it and the blast can honor it — data-driven, never hardcoded.
+	var undodgable: bool = bool(explosion.get("undodgable", false))
 	var beat: Dictionary = explosion_beats.get(actor.id, {})
 	if beat.is_empty():
 		return {
 			"choice": "telegraph", "tier": "boss", "phase": phase,
 			"radius": radius, "moments_until_blast": escape + 1,
+			"undodgable": undodgable,
 		}
 	if clock.tick <= int(beat.get("telegraph_tick", 0)) + escape:
 		return _wait("boss", "explosion_building")
-	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius}
+	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius,
+			"undodgable": undodgable}
 
 
 # ------------------------------------------------------------ death spin (wave 2b)
@@ -267,8 +509,11 @@ func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictio
 ## resolver (so feints, shock stutter and the R9 grapple machinery all apply
 ## normally). Fires only when: death_spin is in the phase's behavior list, the
 ## boss is not already holding anyone, the grabbing hand is functional, and an
-## adjacent (GRAB_RANGE) R9-legal target exists. The victim pick is the R23
-## antagonism draw over the ADJACENT candidates.
+## in-reach (grab_range — base 1, +1 at phase 3+, wave 2d) R9-legal target
+## exists. A range-2 candidate must also have a FREE drag hex (the pull would
+## fail on a blocked one, so the AI never decides it — the resolver still fails
+## a hand-built command honestly). The victim pick is the R23 antagonism draw
+## over the in-reach candidates.
 func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[CombatantState]) -> Dictionary:
 	var ability: Dictionary = _first_sequence_ability(actor, allowed)
 	if ability.is_empty() or actor.grappling != "":
@@ -276,12 +521,19 @@ func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[Comb
 	var grab_hand: String = grab_hand_part(actor)
 	if grab_hand == "":
 		return {}
+	var reach: int = grab_range(actor)
+	var occupied: Dictionary = _occupied_hexes(actor)
 	var adjacent: Array[CombatantState] = []
 	for opponent: CombatantState in opponents:
-		if CombatantState.hex_distance(actor.position, opponent.position) > GRAB_RANGE:
+		var distance: int = CombatantState.hex_distance(actor.position, opponent.position)
+		if distance > reach:
 			continue
 		if opponent.size_rank() - actor.size_rank() > 1:
 			continue  # R9: target no more than one size larger
+		var pull: Vector2i = grab_pull_hex(actor.position, opponent.position)
+		if distance > 1 and (occupied.has(pull) \
+				or (arena != null and arena.blocks_movement(pull))):
+			continue  # wave 2d/3d: a blocked drag hex means the grab cannot land
 		adjacent.append(opponent)
 	if adjacent.is_empty():
 		return {}
@@ -308,18 +560,25 @@ func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[Comb
 ## feinted/stuttered beat is retried, never skipped. The stale guard is
 ## belt-and-braces: death_spin_checks aborts broken sequences after every
 ## command, before any decide can see one.
+##
+## Wave 2d — "death spin costs 2 moments" (phase 5, PROVISIONAL model): the
+## sequence ACCELERATES by merging chew and spin into ONE beat — grab (1
+## Moment) then chew+spin (1 Moment), total 2. The merged declare is the SPIN
+## action carrying the chew's arm rounds as riders (chew_targets) + the
+## death_spin_merged marker; the resolver fires the chew rounds first, then
+## the kill, then closes the sequence from beat 1. The counterplay window
+## shrinks by exactly one Moment: release-on-5 / R9 escape must land in the
+## single Moment between the grab and the merged beat's resolution (a
+## same-tick release still makes the merged jaws close on air). Derived from
+## current_phase at decide time — no new state; the markers ride the declared
+## action only.
 func _decide_spin_beat(actor: CombatantState, spin: Dictionary) -> Dictionary:
 	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
 	if victim == null or not victim.alive or victim.removed_from_play \
 			or victim.grappled_by != actor.id or actor.grappling != victim.id:
 		return _wait("boss", "death_spin_stale")
-	if int(spin.get("beat", 1)) == 1:
-		var arm_targets: Array[Dictionary] = []
-		var keys: Array = victim.parts.keys()
-		keys.sort()
-		for part_key: Variant in keys:
-			if String(part_key).contains("arm"):
-				arm_targets.append({"id": victim.id, "part": String(part_key)})
+	if int(spin.get("beat", 1)) == 1 and not has_upgrade(actor, "spin_two_moments"):
+		var arm_targets: Array[Dictionary] = _arm_targets(victim)
 		return {
 			"choice": "chew", "tier": "boss", "ability": "death_spin",
 			"target": victim.id,
@@ -337,17 +596,33 @@ func _decide_spin_beat(actor: CombatantState, spin: Dictionary) -> Dictionary:
 	var targets: Array[Dictionary] = []
 	if part_key != "":
 		targets.append({"id": victim.id, "part": part_key})
+	var action: Dictionary = {
+		"kind": "attack", "key": "death_spin_kill", "cost": 1,
+		"damage": {"type": "crushed", "amount": SPIN_KILL_AMOUNT},
+		"attack_range": GRAB_RANGE,
+		"targets": targets,
+		"death_spin_beat": "spin",
+	}
+	if int(spin.get("beat", 1)) == 1:
+		# Phase-5 merged beat: the chew rides the spin declare (wave 2d).
+		action["death_spin_merged"] = true
+		action["chew_targets"] = _arm_targets(victim)
 	return {
 		"choice": "spin", "tier": "boss", "ability": "death_spin",
 		"target": victim.id,
-		"action": {
-			"kind": "attack", "key": "death_spin_kill", "cost": 1,
-			"damage": {"type": "crushed", "amount": SPIN_KILL_AMOUNT},
-			"attack_range": GRAB_RANGE,
-			"targets": targets,
-			"death_spin_beat": "spin",
-		},
+		"action": action,
 	}
+
+
+## The chew's per-arm target rows on the victim, in sorted part-key order.
+static func _arm_targets(victim: CombatantState) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var keys: Array = victim.parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		if String(part_key).contains("arm"):
+			out.append({"id": victim.id, "part": String(part_key)})
+	return out
 
 
 ## The hand the boss grabs with — DATA-HONEST ruling (documented decision):
@@ -373,6 +648,18 @@ func grab_hand_part(actor: CombatantState) -> String:
 		if actor.part_usable(key, clock.tick):
 			return key
 	return ""
+
+
+## Wave 2d — the range-2 grab's DRAG destination: the hex adjacent to the boss
+## on the boss→victim HexGeometry line (lane index 1; the line's fixed tie rule
+## makes it deterministic). The grab drags the victim there FIRST — a 1-hex
+## pull along the line — so the hold always closes adjacent; a living body on
+## this hex blocks the pull and the grab fails honestly (resolver).
+static func grab_pull_hex(boss_pos: Vector2i, victim_pos: Vector2i) -> Vector2i:
+	var lane: Array[Vector2i] = HexGeometry.line(boss_pos, victim_pos)
+	if lane.size() < 2:
+		return victim_pos
+	return lane[1]
 
 
 ## First sequence-carrying ability (death_spin), filtered to the phase's
@@ -490,12 +777,16 @@ func check_death_spin_release(boss: CombatantState, hit: int) -> Array[Dictionar
 ## "reach" is a LEGAL CHARGE LANE, not plain range — the target must sit on the
 ## HexGeometry lane from the acting hex within the ability's range with every
 ## lane hex before it unoccupied (the charge stops before the first occupied
-## hex, so a blocked lane could never connect). No lane from here: plan the
-## free step toward the pick (allowance rules unchanged) and dash only if the
-## post-step hex has one; else just move (or wait when no step exists) — the
-## picked target must be genuinely lane-reachable or the AI does not dash.
-## The declared action carries the committed lane (area_shape) for the
-## resolver's windup re-check + charge. All pure and rng-free.
+## hex, so a blocked lane could never connect). Wave 2d "dash can change
+## direction mid-run" (phase 4+): when no STRAIGHT lane exists the AI may bend
+## the lane ONCE (_bent_dash_lane — the bend reaches a lane-valid target
+## otherwise unreachable; fixed-order candidate search, no rng). No lane at
+## all from here: plan the free step toward the pick (allowance rules
+## unchanged) and dash only if the post-step hex has one; else just move (or
+## wait when no step exists) — the picked target must be genuinely
+## lane-reachable or the AI does not dash. The declared action carries the
+## committed lane (area_shape, + the bend point when bent) for the resolver's
+## windup re-check + charge. All pure and rng-free.
 func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, opponents: Array[CombatantState], elite_pick: bool) -> Dictionary:
 	var reach: int = _ability_range(strike)
 	var is_line: bool = String(strike.get("area", "")) == "line"
@@ -503,31 +794,52 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	if target == null:
 		return _wait(tier, "no_reachable_action")
 	var move_to: Variant = null
+	var lane_info: Dictionary = {}
+	# Wave 4d: every exit below that could NOT strike the quarry this Moment
+	# (a plain chase move, or no step at all) first offers the herding
+	# override — a non-closest pack herder repositions onto the quarry's
+	# nearest escape instead (header HERDING contract; {} = not a herder /
+	# chaser role / no open door / cannot see -> the normal exit stands).
 	if is_line:
-		if not _dash_lane_exists(actor, actor.position, target, reach):
+		lane_info = _dash_lane_for(actor, actor.position, target, reach)
+		if lane_info.is_empty():
 			move_to = _step_toward(actor, target.position, 1)
 			if move_to == null:
-				return _wait(tier, "no_reachable_action")
-			if not _dash_lane_exists(actor, move_to, target, reach):
-				return {"choice": "move", "tier": tier, "move_to": move_to}
+				return _herd_or(actor, tier, target, _wait(tier, "no_reachable_action"))
+			lane_info = _dash_lane_for(actor, move_to, target, reach)
+			if lane_info.is_empty():
+				return _herd_or(actor, tier, target,
+					{"choice": "move", "tier": tier, "move_to": move_to})
 	elif CombatantState.hex_distance(actor.position, target.position) > reach:
 		move_to = _step_toward(actor, target.position, reach)
 		if move_to == null:
-			return _wait(tier, "no_reachable_action")
+			return _herd_or(actor, tier, target, _wait(tier, "no_reachable_action"))
 		if CombatantState.hex_distance(move_to, target.position) > reach:
-			return {"choice": "move", "tier": tier, "move_to": move_to}
+			return _herd_or(actor, tier, target,
+				{"choice": "move", "tier": tier, "move_to": move_to})
 	var part_key: String = _pick_part(target, strike, elite_pick)
 	if part_key == "":
 		return _wait(tier, "no_reachable_action")
 	var action: Dictionary = _attack_action(strike, [{"id": target.id, "part": part_key}])
 	if is_line:
-		# The committed charge corridor, from the hex the actor will act from
-		# (the free step resolves before the declare in _ai_decide).
-		var from: Vector2i = move_to if move_to != null else actor.position
+		# The committed charge corridor (straight or bent), from the hex the
+		# actor will act from (the free step resolves before the declare in
+		# _ai_decide) — _dash_lane_for already built it from that hex.
 		var lane: Array = []
-		for hex: Vector2i in HexGeometry.line_extended(from, target.position, reach):
-			lane.append([hex.x, hex.y])
+		for hex: Vector2i in lane_info.get("lane", []) as Array:
+			lane.append([(hex as Vector2i).x, (hex as Vector2i).y])
 		action["area_shape"] = {"kind": "line", "lane": lane}
+		if lane_info.has("bend"):
+			var bend: Vector2i = lane_info["bend"]
+			action["area_shape"]["bend"] = [bend.x, bend.y]
+		# Wave 3d: the wall-bounce points ride the committed shape (like the
+		# bend) — the declare gate phase-checks them and the dash_charged
+		# event surfaces them.
+		if lane_info.has("bounces"):
+			var bounce_pairs: Array = []
+			for bounce_hex: Vector2i in lane_info["bounces"] as Array:
+				bounce_pairs.append([bounce_hex.x, bounce_hex.y])
+			action["area_shape"]["bounces"] = bounce_pairs
 	var decision: Dictionary = {
 		"choice": "attack", "tier": tier,
 		"ability": String(strike.get("key", "")),
@@ -537,6 +849,251 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	if move_to != null:
 		decision["move_to"] = move_to
 	return decision
+
+
+# ------------------------------------------------------ herding (wave 4d, R11 #21)
+
+## The herding override, or `fallback` unchanged (the header HERDING contract).
+func _herd_or(actor: CombatantState, tier: String, quarry: CombatantState, fallback: Dictionary) -> Dictionary:
+	var herd: Dictionary = _herd_cutoff(actor, tier, quarry)
+	return herd if not herd.is_empty() else fallback
+
+
+## The cut-off decision for a herder that cannot strike its quarry this
+## Moment, or {} when herding does not apply and the normal exit stands.
+## Pure function of sorted state — ZERO rng (the quarry was already picked by
+## the actor's own R23 draw; role split, cut-off hex and the step are all
+## deterministic). Full contract: the class header's HERDING section.
+func _herd_cutoff(actor: CombatantState, tier: String, quarry: CombatantState) -> Dictionary:
+	if not actor.personality_herder():
+		return {}
+	var family: String = actor.personality_pack()
+	if family == "" or arena == null:
+		return {}
+	# R20 honesty: the herder herds only prey it can SEE right now (sight
+	# 2 x Mind + LOS — the war hound's Mind 1 makes the funnel close-quarters).
+	if not Stealth.sees(actor, quarry, arena, clock.tick):
+		return {}
+	var pack: Array[CombatantState] = _herder_pack(actor, family)
+	if pack.size() < 2:
+		return {}  # a lone herder just chases — the pack is what corners
+	if _closest_herder_id(pack, quarry.position) == actor.id:
+		return {}  # the CHASER role — the normal strike-or-close flow
+	var cutoff: Variant = nearest_open_door_hex(quarry.position)
+	if cutoff == null:
+		return {}  # v1 rule: no open door = no escape to deny -> normal chase
+	var cutoff_hex: Vector2i = cutoff
+	if actor.position == cutoff_hex:
+		# Already ON the escape: HOLD the post (stance "hunting" via the
+		# documented holding_cutoff exception) — never thrash back into the
+		# chase; the strike branch above resumes when the quarry closes.
+		return {"choice": "wait", "tier": tier, "reason": "holding_cutoff",
+				"target": quarry.id}
+	var move_to: Variant = _step_toward(actor, cutoff_hex, 0)
+	if move_to == null:
+		return {}  # no legal step toward the escape -> honest normal chase
+	return {
+		"choice": "move", "tier": tier, "move_to": move_to, "target": quarry.id,
+		# The cut-off record CombatSim turns into the pack_herding event once
+		# the step really resolves (transient — never serialized).
+		"herding": {"quarry": quarry.id, "cutoff": [cutoff_hex.x, cutoff_hex.y]},
+	}
+
+
+## The actor's herder pack: living, in-play, able-to-act combatants of the
+## actor's TEAM carrying `herder: true` + the same non-empty `pack` family
+## (the actor included), in sorted-id order — a downed/fainted hound holds no
+## role in the hunt. Pure over sorted state.
+func _herder_pack(actor: CombatantState, family: String) -> Array[CombatantState]:
+	var out: Array[CombatantState] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.team != actor.team:
+			continue
+		if not c.personality_herder() or c.personality_pack() != family:
+			continue
+		if not c.can_act(clock.tick):
+			continue
+		out.append(c)
+	return out
+
+
+## The chaser: the pack member closest to the quarry by hex distance; an exact
+## tie keeps the EARLIEST entry in the pack's sorted-id order. Pure, static.
+static func _closest_herder_id(pack: Array[CombatantState], quarry_pos: Vector2i) -> String:
+	var best_id: String = ""
+	var best_d: int = 0
+	for c: CombatantState in pack:
+		var d: int = CombatantState.hex_distance(c.position, quarry_pos)
+		if best_id == "" or d < best_d:
+			best_id = c.id
+			best_d = d
+	return best_id
+
+
+## The quarry's nearest ESCAPE (the v1 cut-off rule): the OPEN door hex
+## nearest `pos` by hex distance; an exact tie keeps the EARLIEST authored
+## door (the doors array is command-stream state, order deterministic).
+## null when the arena is unset or has no open door. Pure and rng-free.
+func nearest_open_door_hex(pos: Vector2i) -> Variant:
+	if arena == null:
+		return null
+	var best: Variant = null
+	var best_d: int = 0
+	for door: Dictionary in arena.doors:
+		if String(door.get("state", "")) != "open":
+			continue
+		var pair: Array = door.get("position", [])
+		if pair.size() != 2:
+			continue
+		var hex := Vector2i(int(pair[0]), int(pair[1]))
+		var d: int = CombatantState.hex_distance(pos, hex)
+		if best == null or d < best_d:
+			best = hex
+			best_d = d
+	return best
+
+
+## The committed dash lane from `from` to the target, or {} when none exists:
+## {"lane": Array[Vector2i]} for a straight lane; {"lane", "bend": Vector2i}
+## for a bent one (wave 2d, phase 4+); {"lane", "bounces": Array[Vector2i]}
+## for a wall-bounced one (wave 3d, arena + phase 3+). Preference order
+## (documented): straight > bounced (forced by walls, phase-3 upgrade) >
+## bent (chosen, phase-4 upgrade) — a bounce is the wall's doing, a bend is
+## the boss's choice, and the planner never composes both (a hand-built lane
+## may carry both markers; the resolver walks any committed corridor).
+##
+## ARENA HONESTY (wave 3d): with an arena set, the straight lane is the
+## bounced walk at budget 0 — it ENDS at the first wall/bounds hex, so a
+## target beyond a wall is simply not lane-reachable without the phase-3
+## bounce upgrade. With the upgrade, the walk REFLECTS off walls (up to 2 —
+## Arena.bounced_lane, the reflection-model authority) and, when the direct
+## ray misses, the planner tries the fixed DASH_BANK_DIRECTIONS aims in order
+## (deterministic, rng-free bank shots). Trash cans never block or bounce a
+## lane — the charge smashes through them (resolver).
+func _dash_lane_for(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> Dictionary:
+	if arena == null:
+		if _dash_lane_exists(actor, from, target, reach):
+			return {"lane": HexGeometry.line_extended(from, target.position, reach)}
+		if has_upgrade(actor, "dash_bend"):
+			return _bent_dash_lane(actor, from, target, reach)
+		return {}
+	if from == target.position:
+		return {}
+	var max_bounces: int = Arena.MAX_DASH_BOUNCES if has_upgrade(actor, "dash_wall_bounce") else 0
+	# Direct ray first (budget 0 == today's straight rule, wall-truncated).
+	var walk: Dictionary = arena.bounced_lane(from, target.position, reach, max_bounces)
+	if _lane_connects(actor, walk["lane"], target.position):
+		return _lane_result(walk)
+	# Bank-shot search (bounce upgrade only): fixed-order aim candidates.
+	if max_bounces > 0:
+		for dir: Vector2i in DASH_BANK_DIRECTIONS:
+			walk = arena.bounced_lane(from, from + dir, reach, max_bounces)
+			if _lane_connects(actor, walk["lane"], target.position):
+				return _lane_result(walk)
+	if has_upgrade(actor, "dash_bend"):
+		return _bent_dash_lane(actor, from, target, reach)
+	return {}
+
+
+## Packs a bounced-walk result into the committed-lane shape (the "bounces"
+## key rides only when a reflection actually happened).
+static func _lane_result(walk: Dictionary) -> Dictionary:
+	var out: Dictionary = {"lane": walk["lane"]}
+	if not (walk["bounces"] as Array).is_empty():
+		out["bounces"] = walk["bounces"]
+	return out
+
+
+## True when `lane` legally CONNECTS with the target: the target's hex sits on
+## the lane beyond index 0 and every hex strictly between origin and target is
+## unoccupied by a living, in-play combatant (the same rule the straight lane
+## has always obeyed — the charge must genuinely reach adjacent-before the
+## target). Trash cans do not occupy for lanes (charges smash through).
+func _lane_connects(actor: CombatantState, lane_variant: Variant, target_pos: Vector2i) -> bool:
+	var lane: Array[Vector2i] = lane_variant
+	var t_idx: int = lane.find(target_pos)
+	if t_idx < 1:
+		return false
+	var occupied: Dictionary = _occupied_hexes(actor)
+	occupied.erase(target_pos)
+	for k: int in range(1, t_idx):
+		if occupied.has(lane[k]):
+			return false
+	return true
+
+
+## Wave 2d — "dash can change direction mid-run" (phase 4+): a ONE-bend charge
+## lane. Geometry: two chained HexGeometry segments — line(from, bend) then
+## line_extended(bend, target) — total length still <= the dash's range. The
+## candidate search is deterministic and rng-free (documented order): segment-1
+## length d1 ascending (the earliest bend first), then candidate bend hexes at
+## exactly d1 in HexGeometry.blast's sorted (q, then r) order; the FIRST
+## candidate producing a legal lane wins. Legal means: both segment lengths
+## >= 1, d1 + d2 <= reach, the composite never revisits a hex (no hairpins
+## through the origin), the target sits ON it exactly once, and every hex
+## strictly between origin and target is unoccupied (the same rule the
+## straight lane obeys — the charge must genuinely reach adjacent-before the
+## target). Returns {} when no bend reaches the target.
+func _bent_dash_lane(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> Dictionary:
+	if from == target.position:
+		return {}
+	var occupied: Dictionary = _occupied_hexes(actor)
+	occupied.erase(target.position)  # the charge stops BEFORE the target anyway
+	for d1: int in range(1, reach):
+		for bend: Vector2i in HexGeometry.blast(from, d1):
+			if HexGeometry.distance(from, bend) != d1 or bend == target.position:
+				continue
+			# Wave 3d: with an arena, a bend point on a wall/out-of-bounds hex
+			# is never a candidate (the planner's chosen-bend lanes are wall-
+			# free; walls force BOUNCES, handled before the bend search).
+			if arena != null and arena.blocks_lane(bend):
+				continue
+			var d2: int = HexGeometry.distance(bend, target.position)
+			if d2 < 1 or d1 + d2 > reach:
+				continue
+			var lane: Array[Vector2i] = _compose_bent_lane(from, bend, target.position, reach - d1)
+			if lane.is_empty():
+				continue
+			var t_idx: int = lane.find(target.position)
+			if t_idx < 1:
+				continue
+			if arena != null and _lane_crosses_wall(lane):
+				continue  # a chosen-bend corridor must be wall-free end to end
+			var blocked: bool = false
+			for k: int in range(1, t_idx):
+				if occupied.has(lane[k]):
+					blocked = true
+					break
+			if not blocked:
+				return {"lane": lane, "bend": bend}
+	return {}
+
+
+## True when any lane hex is a wall/out-of-bounds hex (arena must be set).
+func _lane_crosses_wall(lane: Array[Vector2i]) -> bool:
+	for hex: Vector2i in lane:
+		if arena.blocks_lane(hex):
+			return true
+	return false
+
+
+## Chains line(from, bend) + line_extended(bend, target, tail_len) into one
+## lane, rejecting self-intersections ([] — a lane that revisits a hex is not
+## a chargeable corridor). Pure, static, rng-free.
+static func _compose_bent_lane(from: Vector2i, bend: Vector2i, target_pos: Vector2i, tail_len: int) -> Array[Vector2i]:
+	var lane: Array[Vector2i] = HexGeometry.line(from, bend)
+	var seen: Dictionary = HexGeometry.to_set(lane)
+	var tail: Array[Vector2i] = HexGeometry.line_extended(bend, target_pos, tail_len)
+	for k: int in range(1, tail.size()):
+		if seen.has(tail[k]):
+			var empty: Array[Vector2i] = []
+			return empty
+		seen[tail[k]] = true
+		lane.append(tail[k])
+	return lane
 
 
 ## True when a legal dash lane exists from `from` to the target: the target
@@ -579,6 +1136,43 @@ func _best_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[
 	return {"toward": best_dir, "targets": best_targets}
 
 
+## Wave 2d — "flamethrower tracks closest target" (phase 5): the cone AIMS at
+## the NEAREST opponent instead of the biggest crowd — the authored text says
+## the sweep TRACKS, i.e. it hunts its closest quarry (a behavior shift, not a
+## shape change). Selection (documented, PROVISIONAL like the rest of the
+## upgrade models): nearest = minimal hex distance, an exact tie keeps the
+## EARLIER candidate in the given (sorted-id) order; among the fixed-order
+## directions whose arc CONTAINS the nearest, the most swept targets wins
+## (exact ties keep the earlier direction) — the sweep stays maximal SUBJECT TO
+## tracking its quarry. A nearest outside cone range leaves every arc check
+## false and the decide gate falls through. Pure and rng-free.
+func _tracking_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[CombatantState]) -> Dictionary:
+	var size: int = _ability_range(cone)
+	var nearest: CombatantState = opponents[0]
+	var nearest_d: int = CombatantState.hex_distance(actor.position, nearest.position)
+	for opponent: CombatantState in opponents:
+		var d: int = CombatantState.hex_distance(actor.position, opponent.position)
+		if d < nearest_d:
+			nearest = opponent
+			nearest_d = d
+	var best_dir: Vector2i = HEX_NEIGHBORS[0]
+	var best_targets: Array[CombatantState] = []
+	var found: bool = false
+	for dir: Vector2i in HEX_NEIGHBORS:
+		var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(actor.position, actor.position + dir, size))
+		if not arc.has(nearest.position):
+			continue
+		var hit: Array[CombatantState] = []
+		for opponent: CombatantState in opponents:
+			if arc.has(opponent.position):
+				hit.append(opponent)
+		if not found or hit.size() > best_targets.size():
+			found = true
+			best_dir = dir
+			best_targets = hit
+	return {"toward": best_dir, "targets": best_targets}
+
+
 ## Builds the cone sweep declare: one round per swept target (v1 multi-target
 ## model, unchanged) + the committed arc (area_shape) so the resolver's windup
 ## re-check re-evaluates the CONE shape, not plain range (R2: leaving the arc
@@ -599,6 +1193,9 @@ func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[Comb
 		"choice": "attack", "tier": "boss",
 		"ability": String(cone.get("key", "")),
 		"target": String((targets[0] as Dictionary).get("id", "")),
+		# The chosen arc direction, surfaced on the ai_decision event (wave 2d:
+		# the phase-5 tracking aim is visible, not just buried in the shape).
+		"aim": [toward.x, toward.y],
 		"action": action,
 	}
 
@@ -612,8 +1209,16 @@ static func _wait(tier: String, reason: String) -> Dictionary:
 ## Living, in-play combatants whose team differs from the actor's. An actor
 ## with an EMPTY team sees no targets (teams are explicit — R11 #15); a
 ## teamless combatant IS hostile to any teamed enemy. A grappled actor is
-## locked onto its living grappler. Targets without an attackable part are
-## skipped. Sorted-id iteration keeps this deterministic.
+## locked onto its living grappler (physical contact — a grappler can never be
+## stealthed anyway, the stealth command rejects in_grapple). Targets without
+## an attackable part are skipped, and so is a STEALTHED target (R20 AI
+## honesty, wave 4c): an undetected opponent does not EXIST to the policy —
+## no targeting, no cone counting, no pack draw, no antagonism weight ever
+## reads it. With every opponent stealthed the tier policies wait
+## ("no_targets"): the mob honestly loses the target — no search or
+## last-known-position behavior (R20's "investigate" rides the downscoped
+## hearing model; documented in the addendum's IMPLEMENTED marker).
+## Sorted-id iteration keeps this deterministic.
 func _opponents(actor: CombatantState) -> Array[CombatantState]:
 	var out: Array[CombatantState] = []
 	if actor.team == "":
@@ -632,6 +1237,8 @@ func _opponents(actor: CombatantState) -> Array[CombatantState]:
 			continue
 		if not other.alive or other.removed_from_play:
 			continue
+		if other.stealthed:
+			continue  # R20: the fiction says the actor does not know it is there
 		if _attackable_parts(other).is_empty():
 			continue
 		out.append(other)
@@ -860,6 +1467,10 @@ func _attack_action(ability: Dictionary, targets: Array[Dictionary]) -> Dictiona
 	# action so the resolver can run the target-side dodge at the strike round.
 	if ability.has("dodge"):
 		action["dodge"] = (ability.get("dodge", {}) as Dictionary).duplicate(true)
+	# R26: an ability-authored undodgable flag rides the action — the resolver
+	# skips every dodge-shaped escape for it (data-driven, never a boss special).
+	if bool(ability.get("undodgable", false)):
+		action["undodgable"] = true
 	# Wave 2b: the dash's authored "knock aside" effect rides the action — the
 	# resolver applies it to a CONNECTED (not dodged, not stopped-short) target
 	# after the charge's strike round.
@@ -882,10 +1493,17 @@ func _wants_heal(actor: CombatantState) -> bool:
 
 # ------------------------------------------------------------------ movement
 
-## Greedy free-move plan toward `goal`: up to the allowance, each step the
-## fixed-order neighbor that strictly reduces hex distance and is not occupied
-## by a living combatant. Stops inside `stop_range`. Returns null when no legal
-## improving step exists or the actor cannot move this tick.
+## Free-move plan toward `goal` (wave 4a — Pathing.next_steps is the route
+## authority): up to the allowance, the first steps of the deterministic
+## optimal route — real A* around walls/bounds/cans/bodies when the arena has
+## walls (or concave explicit-hex bounds), so concave traps are navigated
+## across successive decides; the EXACT legacy greedy walk when it has none
+## (Pathing's fast path IS the old loop verbatim — no-arena and wall-less
+## fights stay byte-identical, R28). Stops inside `stop_range`. Returns the
+## destination hex, or null when the actor cannot move this tick or no legal
+## step exists — a walls-arena goal proven unreachable now WAITS honestly
+## (empty route) instead of thrashing against the wall. Tie-breaks, the 4096
+## node-expansion cap and its honest greedy fallback: simulation/pathing.gd.
 func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Variant:
 	if actor.grappled_by != "" or actor.grappling != "" or actor.windup_pending:
 		return null
@@ -895,27 +1513,10 @@ func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Var
 	var slowed: bool = bool(actor.statuses.get("slowed", false))
 	var allowance: int = 1 if (prone or slowed) else FREE_MOVE_SPACES
 	var occupied: Dictionary = _occupied_hexes(actor)
-	var pos: Vector2i = actor.position
-	for step: int in range(allowance):
-		var current_d: int = CombatantState.hex_distance(pos, goal)
-		if current_d <= stop_range:
-			break
-		var best: Variant = null
-		var best_d: int = current_d
-		for neighbor: Vector2i in HEX_NEIGHBORS:
-			var candidate: Vector2i = pos + neighbor
-			if occupied.has(candidate):
-				continue
-			var d: int = CombatantState.hex_distance(candidate, goal)
-			if d < best_d:
-				best = candidate
-				best_d = d
-		if best == null:
-			break
-		pos = best
-	if pos == actor.position:
+	var steps: Array[Vector2i] = Pathing.next_steps(actor.position, goal, allowance, stop_range, occupied, arena)
+	if steps.is_empty():
 		return null
-	return pos
+	return steps[steps.size() - 1]
 
 
 func _occupied_hexes(actor: CombatantState) -> Dictionary:
@@ -1030,6 +1631,36 @@ func _phase_entry(actor: CombatantState, phase_number: int) -> Dictionary:
 	return {}
 
 
+# ------------------------------------------------------- phase upgrades (wave 2d)
+
+## The actor's ACTIVE upgrade effects: {effect_key: true}. Upgrades ACCUMULATE —
+## the union of every phase entry's authored `behavior.upgrades` strings with
+## phase_number <= the actor's current phase, parsed through UPGRADE_EFFECTS
+## (unknown strings are data-only no-ops and never reported). Pure function of
+## (authored boss_phases data, the serialized boss_phase number) — upgrades are
+## DERIVED, never stored, so there is no new state to serialize or drift.
+func upgrades_active(actor: CombatantState) -> Dictionary:
+	var out: Dictionary = {}
+	var phase: int = current_phase(actor.id)
+	for entry: Dictionary in actor.boss_phases:
+		if int(entry.get("phase_number", 0)) > phase:
+			continue
+		for authored: Variant in (entry.get("behavior", {}) as Dictionary).get("upgrades", []) as Array:
+			var effect := String(UPGRADE_EFFECTS.get(String(authored), ""))
+			if effect != "":
+				out[effect] = true
+	return out
+
+
+func has_upgrade(actor: CombatantState, effect_key: String) -> bool:
+	return bool(upgrades_active(actor).get(effect_key, false))
+
+
+## The grab's live reach: base 1, +1 from the authored phase-3 upgrade on.
+func grab_range(actor: CombatantState) -> int:
+	return GRAB_RANGE + (1 if has_upgrade(actor, "grab_range_plus_1") else 0)
+
+
 ## Phase-machine check, run by CombatSim._post after every command: while in a
 ## fight phase, the health part dropping to an explosion phase's hp_at_or_below
 ## fires boss_phase_changed — the boss enters the valve, and the explosion beat
@@ -1080,6 +1711,10 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 		"phase": int(decision.get("phase", 0)),
 		"radius": int(decision.get("radius", 0)),
 		"moments_until_blast": int(decision.get("moments_until_blast", 0)),
+		# R26 transparency (additive): an undodgable blast is declared on the
+		# windup so nobody dies to a misunderstanding — the flag rides the
+		# telegraph loudly, straight off the authored explosion block.
+		"undodgable": bool(decision.get("undodgable", false)),
 	}]
 	return events
 
@@ -1096,16 +1731,24 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 ## the boss's own hex, and rolling onto an occupied hex is impossible — so in
 ## practice a well-timed roller ALWAYS escapes the valve KO (flagged for the
 ## owner in R25; the center check stays live for future area attacks with
-## unoccupied centers). Then the canonical retreat applies when this valve
-## resets the breach, and the machine advances into the next phase — the boss
-## resumes normal fight behavior next Moment.
+## unoccupied centers). R26 (owner 2026-07-25, decision #32) SUPERSEDES that
+## consequence for the VALVE: the authored explosion block carries
+## "undodgable": true, and an undodgable AREA attack skips the roller-escape
+## check entirely — a blast-Moment Tactical Roll no longer escapes the KO;
+## leaving the radius during the escape window (movement, not a dodge) remains
+## the counterplay. The center machinery stays live for authored DODGABLE
+## areas. Then the canonical retreat applies when this valve resets the
+## breach, and the machine advances into the next phase — the boss resumes
+## normal fight behavior next Moment.
 func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: ConditionEngine) -> Array[Dictionary]:
 	var phase: int = int(decision.get("phase", current_phase(actor.id)))
 	var radius: int = int(decision.get("radius", 0))
+	var undodgable: bool = bool(decision.get("undodgable", false))
 	var events: Array[Dictionary] = [{
 		"type": "explosion_blast",
 		"combatant": actor.id, "phase": phase, "radius": radius,
 		"position": [actor.position.x, actor.position.y],
+		"undodgable": undodgable,
 	}]
 	# The blast shape is the shared HexGeometry primitive (decision #31);
 	# membership is identical to the old direct distance <= radius check.
@@ -1119,8 +1762,11 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 		if not area.has(other.position):
 			continue
 		# G1 AoE-center rule (R25): a rolling target is missed by an AREA attack
-		# entirely — unless the destination hex IS the area's center.
-		if other.rolled_this_window and other.position != actor.position:
+		# entirely — unless the destination hex IS the area's center. R26: an
+		# UNDODGABLE area skips the roller escape outright (the roll is a
+		# dodge-shaped escape; movement out of the radius already happened or
+		# didn't) — no rng lives on this path either way.
+		if not undodgable and other.rolled_this_window and other.position != actor.position:
 			events.append({
 				"type": "blast_missed_roller",
 				"combatant": other.id, "by": actor.id,
@@ -1137,8 +1783,16 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 	explosion_beats.erase(actor.id)
 	var immunity: Dictionary = actor.boss_traits.get("surface_immunity", {})
 	var health_part := String(immunity.get("health_part", ""))
+	# Wave 2d — "network fully exposed" (phase 4+): from the phase-4 valve on
+	# the network NEVER re-hides. For the seeded Incinedile this was already
+	# emergent (breach_resets_after_phase: 2 gates the retreat to the phase-2
+	# valve only — the phase-4/6 blasts never retreated); the upgrade guard
+	# makes the authored string the CANON rather than a data coincidence: even
+	# a boss whose data retreats at a later valve stays exposed once the
+	# upgrade is active.
 	if health_part != "" and actor.parts.has(health_part) \
-			and int(immunity.get("breach_resets_after_phase", 0)) == phase:
+			and int(immunity.get("breach_resets_after_phase", 0)) == phase \
+			and not has_upgrade(actor, "network_stays_exposed"):
 		events.append_array(_retreat(actor, health_part, cond))
 	for entry: Dictionary in actor.boss_phases:
 		var num: int = int(entry.get("phase_number", 0))
@@ -1184,6 +1838,7 @@ func to_dict() -> Dictionary:
 		"summons": summons.duplicate(true),
 		"explosion_beats": explosion_beats.duplicate(true),
 		"death_spins": death_spins.duplicate(true),
+		"stances": stances.duplicate(true),
 	}
 
 
@@ -1195,4 +1850,7 @@ static func from_dict(data: Dictionary) -> EnemyAI:
 	ai.explosion_beats = (data.get("explosion_beats", {}) as Dictionary).duplicate(true)
 	# Pre-wave-2b saves lack "death_spins": no live sequence, matching a fresh sim.
 	ai.death_spins = (data.get("death_spins", {}) as Dictionary).duplicate(true)
+	# Pre-wave-3a saves lack "stances": no stance read yet — the view reports
+	# "unknown" until the next decide, matching a fresh sim.
+	ai.stances = (data.get("stances", {}) as Dictionary).duplicate(true)
 	return ai

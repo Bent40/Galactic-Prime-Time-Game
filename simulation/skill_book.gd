@@ -44,6 +44,14 @@ extends RefCounted
 ##     cooldown"). Cost model RULED; the skill's effect (die manipulation) stays
 ##     UNIMPLEMENTED content — do not encode a stance prime when it lands (R25).
 ##   - slip_through   (skills.json id 21) -> CHAIN  (must follow Pounce immediately)
+##   - intercept (G6-approved 2026-07-23) + iron_stance (its Gemstone MUTATION
+##     result with brace, data/skill_mutations.json — R27): NOT implemented,
+##     content pass. Iron Stance's ruled effect (stance: attacks on adjacent
+##     allies retarget to you + persistent Crush/Burn reduction) needs a
+##     retarget-guard archetype in ActionResolver before an honest encode —
+##     until then both are DATA-ONLY grants (from_spec accepts any {key, level}
+##     row). The merge machinery (simulation/skill_forge.gd + skill_keywords.gd)
+##     validates on keys+levels and never requires a SkillBook entry.
 
 const KNOWN_KEYS: Array[String] = [
 	"strong_strike", "overhead_slam", "brace", "feint", "pressure_strike", "dance",

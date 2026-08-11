@@ -10,7 +10,7 @@ func _game() -> Node:
 func test_dal_counts_match_validator() -> void:
 	var dal: Dal = Dal.new()
 	assert_eq(dal.races().size(), 2, "races")
-	assert_eq(dal.enemies().size(), 3, "enemies")
+	assert_eq(dal.enemies().size(), 4, "enemies (wave 3c adds the war hound)")
 	assert_eq(dal.conditions().size(), 9, "conditions")
 	assert_eq(dal.skills().size(), 43, "skills")
 	assert_eq(dal.skill_thresholds().size(), 78, "thresholds")

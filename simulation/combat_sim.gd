@@ -28,6 +28,55 @@ extends RefCounted
 ##   {"type": "prime", "actor", "key"}                          arm a PREP-CHANNEL prime (R3)
 ##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
+##   {"type": "set_arena", "arena": {config}}                  OPT-IN arena (KAN-5 wave 3d)
+##       Bounds/walls/objects/doors per simulation/arena.gd's config shape.
+##       Absent arena = today's unbounded behavior, with a byte-identical
+##       to_dict() (the "arena" key is only present once set — the legacy
+##       compat pin). Issued by GameController._stage_encounter BEFORE the
+##       add_combatant batch when the encounter def carries an "arena" block;
+##       rejected when an arena is already set, the config is invalid,
+##       walls/objects/doors fall outside the bounds or on each other, or an
+##       already-staged combatant would be left on a blocked/door hex.
+##   {"type": "door", "actor", "key", "set": "open"|"closed"}  KAN-5 wave 4b (R29)
+##       Flips an authored door. The actor must be alive/ready and ADJACENT
+##       (distance exactly 1) to the door hex — standing ON an open door
+##       cannot close it under itself. Costs the FREE-ACTION SLOT (R3, the
+##       inventory-interaction family: one free action per combatant per
+##       tick, shared with The Bit / the free move / first inventory use /
+##       0-cost reactions; v1 deliberately grants NO Moment-cost fallback, so
+##       one door interaction per tick is the cap). Closing onto a hex with a
+##       live body in the doorway rejects (door_blocked_by_body). Enemies
+##       never issue it in v1 — the AI never decides doors (no enemy_ai
+##       code path exists for it; a closed door honestly walls enemies off).
+##       Emits door_changed {actor, key, position, state}.
+##   {"type": "stealth", "actor", "set"?: "hide"|"reveal"}    R20 (KAN-5 wave 4c)
+##       The v1 binary stealth model (rules-addendum R20 — its own phasing
+##       note authorizes this slice; the IMPLEMENTED marker there carries the
+##       full mapping + every downscope). STRICTLY OPT-IN: default = everyone
+##       detected; the "stealthed" key serializes only while true, so a
+##       stealth-free fight is byte-identical to the pre-stealth engine.
+##       HIDE (default): the actor must be alive/ready, un-grappled (physical
+##       contact IS detection — R9 links reject in_grapple) and currently
+##       UNSEEN by every living hostile that can act (Stealth.sees — 2× Mind
+##       range + hex-line LOS through walls/closed doors; rejected
+##       in_enemy_sight naming the observer). Costs the FREE-ACTION SLOT (R3,
+##       the door/bit family — UNPRICED by R20, documented v1 choice; no
+##       Moment-cost fallback). Emits stealth_entered.
+##       REVEAL: voluntarily drops concealment — free (abandoning a state is
+##       not an act), emits stealth_broken reason "revealed_self".
+##       While stealthed: EnemyAI._opponents excludes the actor (the mob
+##       honestly loses the target — no search/last-known-position behavior,
+##       R20's investigate rides the downscoped hearing model); hostile
+##       declares/reactions/grapples at it reject target_stealthed; an aimed
+##       hostile windup collapses if it hides mid-windup (R2). Committed AREA
+##       shapes (cones, charge lanes, blasts) still hit its BODY by hex —
+##       physicality over information — and damage alone never breaks stealth,
+##       but the Shock-T1 Shout it may trigger does (R13 noise seed).
+##       Stealth BREAKS automatically (the per-command _stealth_checks sweep,
+##       zero rng — R20 authors no roll): "seen" (any hostile gains range+LOS
+##       — either side moving, a door opening...), "shout" (Shock T1), or
+##       "downed" (death/removal). stealth_broken carries the reason (+
+##       observer when seen).
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -42,6 +91,10 @@ var hype: HypeEngine
 var tags: TagEngine
 var evidence: EvidenceEngine
 var ai: EnemyAI
+## OPT-IN arena (KAN-5 wave 3d): null = unbounded legacy (the overwhelming
+## default — harnesses and pre-arena saves). Set via the set_arena command,
+## serialized under "arena" ONLY when present (byte-identical legacy dicts).
+var arena: Arena = null
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -122,6 +175,12 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _bit(cmd)
 		"ai_decide":
 			events = _ai_decide(cmd)
+		"set_arena":
+			events = _set_arena(cmd)
+		"door":
+			events = _door(cmd)
+		"stealth":
+			events = _stealth(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -145,6 +204,11 @@ func _post(events: Array[Dictionary]) -> void:
 	ids.sort()
 	for id: Variant in ids:
 		events.append_array(ExposureEngine.refresh(combatants[id], clock.tick))
+	# R20 (wave 4c): the stealth sweep — every command re-checks every stealthed
+	# combatant (sight / shout / downed) BEFORE the broadcast plane ingests, so
+	# hype/tags/evidence see stealth_broken too. No-op (no events, no rng, no
+	# state) while nobody is stealthed — the legacy compat pin.
+	events.append_array(_stealth_checks(events))
 	events.append_array(hype.ingest(events))
 	# Tag detection runs AFTER hype so Scene Stealer sees hype_goal_completed /
 	# hype_camera_call_started. Its tag_* outputs are system events (no
@@ -196,6 +260,21 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "missing_id"}]
 	if combatants.has(id):
 		return [{"type": "command_rejected", "reason": "duplicate_id", "combatant": id}]
+	# KAN-5 staging honesty: with an arena set, a spawn must land inside the
+	# bounds and off walls/objects (rejected at add time — GameController
+	# stages the arena BEFORE the add batch so every spawn is checked).
+	if arena != null:
+		var pos_raw: Array = spec.get("position", [0, 0])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not arena.in_bounds(pos):
+			return [{"type": "command_rejected", "reason": "staging_out_of_bounds", "combatant": id, "position": [pos.x, pos.y]}]
+		# Wave 4b (R29): a doorway is never a spawn hex, open OR closed —
+		# authored staging must keep doors workable (checked before the wall
+		# gate so a closed door reports the door-specific reason too).
+		if arena.door_index_at(pos) >= 0:
+			return [{"type": "command_rejected", "reason": "staging_on_door_hex", "combatant": id, "position": [pos.x, pos.y]}]
+		if arena.is_wall(pos) or arena.object_index_at(pos) >= 0:
+			return [{"type": "command_rejected", "reason": "staging_blocked_hex", "combatant": id, "position": [pos.x, pos.y]}]
 	var c := CombatantState.from_spec(spec, static_data)
 	c.next_action_tick = clock.tick
 	combatants[id] = c
@@ -527,6 +606,204 @@ func _prime(cmd: Dictionary) -> Array[Dictionary]:
 	return [{"type": "prime_armed", "actor": actor.id, "key": key}]
 
 
+## KAN-5 (wave 3d; doors wave 4b) — the OPT-IN arena command. Validates the
+## authored config (simulation/arena.gd shape), then that walls/objects/doors
+## sit inside the bounds and off each other, then that every ALREADY-STAGED
+## combatant remains on a legal non-door hex (staging order puts set_arena
+## before the add batch, so this guard matters only for late/manual sets). On
+## success the arena is wired into the EnemyAI + ActionResolver movement/lane
+## paths and serialized under "arena" (hash-covered). Rejections mutate nothing.
+func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
+	if arena != null:
+		return [{"type": "command_rejected", "reason": "arena_already_set"}]
+	var parsed: Arena = Arena.from_config(cmd.get("arena", {}))
+	if parsed == null:
+		return [{"type": "command_rejected", "reason": "invalid_arena"}]
+	for wall: Vector2i in parsed.sorted_walls():
+		if not parsed.in_bounds(wall):
+			return [{"type": "command_rejected", "reason": "arena_wall_out_of_bounds", "hex": [wall.x, wall.y]}]
+	var object_hexes: Dictionary = {}
+	for obj: Dictionary in parsed.objects:
+		var pos_raw: Array = obj.get("position", [])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not parsed.in_bounds(pos) or parsed.is_wall(pos) or object_hexes.has(pos):
+			return [{"type": "command_rejected", "reason": "arena_object_misplaced", "hex": [pos.x, pos.y]}]
+		object_hexes[pos] = true
+	# Wave 4b (R29) door placement: in bounds, off authored walls (the walls
+	# dict directly — is_wall would see the door's own closed state), off
+	# objects, one door per hex. Key shape/uniqueness gated by from_config.
+	var door_hexes: Dictionary = {}
+	for door: Dictionary in parsed.doors:
+		var door_pos_raw: Array = door.get("position", [])
+		var door_pos := Vector2i(int(door_pos_raw[0]), int(door_pos_raw[1]))
+		if not parsed.in_bounds(door_pos) or parsed.walls.has(door_pos) \
+				or object_hexes.has(door_pos) or door_hexes.has(door_pos):
+			return [{"type": "command_rejected", "reason": "arena_door_misplaced", "hex": [door_pos.x, door_pos.y]}]
+		door_hexes[door_pos] = true
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not parsed.in_bounds(c.position) or parsed.is_wall(c.position) \
+				or parsed.object_index_at(c.position) >= 0 \
+				or parsed.door_index_at(c.position) >= 0:
+			return [{"type": "command_rejected", "reason": "combatant_outside_arena",
+				"combatant": c.id, "position": [c.position.x, c.position.y]}]
+	arena = parsed
+	ai.arena = arena
+	resolver.arena = arena
+	var summary: Dictionary = arena.view()
+	var arena_event: Dictionary = {
+		"type": "arena_set",
+		"bounds": summary["bounds"],
+		"walls": summary["walls"],
+		"objects": summary["objects"],
+	}
+	# Wave 4b compat pin: "doors" rides the event only when authored.
+	if summary.has("doors"):
+		arena_event["doors"] = summary["doors"]
+	return [arena_event]
+
+
+## KAN-5 wave 4b (rules-addendum R29) — the door command: an adjacent, alive/
+## ready combatant flips an authored door for its FREE-ACTION SLOT (R3, the
+## inventory-interaction family — the slot IS the cost; v1 grants no
+## Moment-cost fallback, so a second door interaction the same tick rejects
+## free_action_used like any second free action). The state flip is the ONLY
+## mutation: a closed door then blocks through Arena.is_wall (movement, dash
+## lanes, bounces — one code path), an open one blocks nothing. Closing needs
+## the doorway clear of live bodies. Enemies never issue it in v1 (the AI
+## never decides doors — documented, no enemy_ai path). Rejections mutate
+## nothing; door_changed carries the flip.
+func _door(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if arena == null:
+		return [{"type": "command_rejected", "reason": "no_arena", "actor": actor.id}]
+	var key := String(cmd.get("key", ""))
+	var idx: int = arena.door_index_for(key)
+	if idx < 0:
+		return [{"type": "command_rejected", "reason": "unknown_door", "actor": actor.id, "key": key}]
+	var to_state := String(cmd.get("set", ""))
+	if to_state != "open" and to_state != "closed":
+		return [{"type": "command_rejected", "reason": "unknown_door_state", "actor": actor.id, "set": to_state}]
+	var door: Dictionary = arena.doors[idx]
+	var pos_raw: Array = door.get("position", [])
+	var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+	if CombatantState.hex_distance(actor.position, pos) != 1:
+		return [{"type": "command_rejected", "reason": "door_not_adjacent", "actor": actor.id, "key": key}]
+	if String(door.get("state", "")) == to_state:
+		return [{"type": "command_rejected", "reason": "door_already_" + to_state, "actor": actor.id, "key": key}]
+	if to_state == "closed":
+		var ids: Array = combatants.keys()
+		ids.sort()
+		for id: Variant in ids:
+			var body: CombatantState = combatants[id]
+			if body.alive and not body.removed_from_play and body.position == pos:
+				return [{"type": "command_rejected", "reason": "door_blocked_by_body",
+					"actor": actor.id, "key": key, "by": body.id}]
+	# R3 free-action economy: one free action per tick — checked LAST so a
+	# rejection for a bad ask never wastes the slot; the flip consumes it.
+	if actor.free_action_used:
+		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+	actor.free_action_used = true
+	door["state"] = to_state
+	return [{
+		"type": "door_changed",
+		"actor": actor.id,
+		"key": key,
+		"position": [pos.x, pos.y],
+		"state": to_state,
+	}]
+
+
+## R20 (KAN-5 wave 4c) — the stealth command (contract in the class header;
+## design + downscopes in the rules-addendum R20 IMPLEMENTED marker). HIDE
+## gates in rejection-priority order (actor gates → state gates → the sight
+## gate → the free-action slot LAST, so a rejected ask never wastes the slot —
+## the door precedent); REVEAL is free. Rejections mutate nothing.
+func _stealth(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	var to_state := String(cmd.get("set", "hide"))
+	if to_state != "hide" and to_state != "reveal":
+		return [{"type": "command_rejected", "reason": "unknown_stealth_state", "actor": actor.id, "set": to_state}]
+	if to_state == "reveal":
+		if not actor.stealthed:
+			return [{"type": "command_rejected", "reason": "not_stealthed", "actor": actor.id}]
+		actor.stealthed = false
+		return [{"type": "stealth_broken", "combatant": actor.id, "reason": "revealed_self"}]
+	if actor.stealthed:
+		return [{"type": "command_rejected", "reason": "already_stealthed", "actor": actor.id}]
+	# R9 links are physical contact — the R20 binary ("if you are seen, you are
+	# not stealthed") cannot be entered while an enemy literally holds you (and
+	# holding someone means they know exactly where you are).
+	if actor.grappling != "" or actor.grappled_by != "":
+		return [{"type": "command_rejected", "reason": "in_grapple", "actor": actor.id}]
+	var observer: String = Stealth.first_observer_seeing(combatants, actor, arena, clock.tick)
+	if observer != "":
+		return [{"type": "command_rejected", "reason": "in_enemy_sight", "actor": actor.id, "observer": observer}]
+	# R3 free-action economy: checked LAST so a rejected ask never wastes the
+	# slot; the hide consumes it (one free action per tick — the door family).
+	if actor.free_action_used:
+		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+	actor.free_action_used = true
+	actor.stealthed = true
+	return [{"type": "stealth_entered", "actor": actor.id}]
+
+
+## R20 (wave 4c) — the per-command stealth sweep (called from _post): breaks
+## every stealthed combatant that is now DOWNED (death/removal — a body is not
+## hidden), SHOUTED (Shock T1, the R13 "breaks stealth" noise seed — the
+## shock_shout events of THIS command's batch), or SEEN (the binary sight
+## check — any living hostile that can act with range + LOS; both sides'
+## movement, door flips, an observer recovering... all funnel through here
+## because _post runs after every command). Deterministic and rng-FREE — R20
+## authors no detection roll, so the sweep never touches either rng stream;
+## with nobody stealthed it is a pure no-op (the legacy byte-compat pin).
+## Breaking one stealth never changes another's visibility (a stealthed body
+## blocks no sight line), so a single pass is complete.
+func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var shouters: Dictionary = {}
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "shock_shout":
+			shouters[String(event.get("combatant", ""))] = true
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not c.stealthed:
+			continue
+		if not c.alive or c.removed_from_play:
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "downed"})
+			continue
+		if shouters.has(c.id):
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "shout"})
+			continue
+		var observer: String = Stealth.first_observer_seeing(combatants, c, arena, clock.tick)
+		if observer != "":
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "seen", "observer": observer})
+	return out
+
+
 # ------------------------------------------------------------------ enemy AI (R11 #15)
 
 ## AI-controlled combatants ready for an ai_decide this tick (sorted) — the
@@ -567,7 +844,7 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 	if actor.windup_pending:
 		return [{"type": "command_rejected", "reason": "winding_up", "actor": actor.id}]
 	var decision: Dictionary = ai.decide(actor)
-	var events: Array[Dictionary] = [{
+	var decision_event: Dictionary = {
 		"type": "ai_decision",
 		"actor": actor.id,
 		"tier": String(decision.get("tier", "")),
@@ -576,17 +853,55 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 		"target": String(decision.get("target", "")),
 		"moves": decision.has("move_to"),
 		"reason": String(decision.get("reason", "")),
-	}]
+	}
+	# Additive (wave 2d): a cone decision surfaces its chosen arc direction —
+	# the phase-5 tracking aim is spectator-visible, not buried in the shape.
+	if decision.has("aim"):
+		decision_event["aim"] = decision["aim"]
+	var events: Array[Dictionary] = [decision_event]
 	if decision.has("move_to"):
 		var to: Vector2i = decision["move_to"]
-		events.append_array(resolver.move(actor.id, to))
+		var move_events: Array[Dictionary] = resolver.move(actor.id, to)
+		events.append_array(move_events)
+		# KAN-5 wave 4d herding: a cut-off reposition announces the funnel only
+		# once the step REALLY resolved (the pack_synergy honesty pattern — a
+		# rejected move emits nothing and the decision leaves no residue).
+		if decision.has("herding"):
+			for event: Dictionary in move_events:
+				if String(event.get("type", "")) == "moved":
+					var herd: Dictionary = decision["herding"]
+					events.append({
+						"type": "pack_herding", "herder": actor.id,
+						"quarry": String(herd.get("quarry", "")),
+						"cutoff_hex": (herd.get("cutoff", []) as Array).duplicate(),
+					})
+					break
 	match String(decision.get("choice", "wait")):
 		# grab/chew/spin are the death-spin beats (wave 2b) — each a REAL
 		# cost-1 declare through the resolver (grab = the R9 grapple kind;
 		# chew/spin = marker-carrying attacks), so validation, feints, shock
 		# and the Forced-Action machinery all apply like any other action.
 		"attack", "heal", "grab", "chew", "spin":
-			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
+			var declared: Array[Dictionary] = resolver.declare(actor.id, decision.get("action", {}))
+			events.append_array(declared)
+			# R15 pack synergy (wave 3a): the linked pair announces itself only
+			# once the second strike is REALLY scheduled — a rejected declare
+			# emits nothing (the partner's residual combo_id resolves solo,
+			# byte-identical to an unlinked strike).
+			if decision.has("pack_link"):
+				var scheduled: bool = false
+				for event: Dictionary in declared:
+					if String(event.get("type", "")) == "action_declared":
+						scheduled = true
+				if scheduled:
+					var link: Dictionary = decision["pack_link"]
+					events.append({
+						"type": "pack_synergy",
+						"combo_id": String(link.get("combo_id", "")),
+						"members": [String(link.get("partner", "")), actor.id],
+						"target": String(link.get("target", "")),
+						"part": String(link.get("part", "")),
+					})
 		"stand":
 			# Skill-feel pass: a prone boss spends its Moment standing back up —
 			# the SAME cost-1 stand action players use (declared through the
@@ -651,6 +966,8 @@ func _ai_summon(actor: CombatantState, summon: Dictionary) -> Array[Dictionary]:
 
 ## Nearest unoccupied hex around `center`, deterministic: growing rings, fixed
 ## axial scan order inside each ring. `claimed` holds hexes taken this batch.
+## KAN-5: with an arena set, blocked hexes (out-of-bounds/walls/trash cans)
+## are never candidates — summons place on legal ground only.
 func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 	var occupied: Dictionary = claimed.duplicate()
 	var ids: Array = combatants.keys()
@@ -665,6 +982,8 @@ func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 				var candidate := center + Vector2i(dq, dr)
 				if CombatantState.hex_distance(center, candidate) != radius:
 					continue
+				if arena != null and arena.blocks_movement(candidate):
+					continue
 				if not occupied.has(candidate):
 					return candidate
 	return center  # arena saturated — stack on the summoner rather than crash
@@ -673,13 +992,19 @@ func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 # ------------------------------------------------------------------ snapshot
 
 func _snapshot_entry(c: CombatantState) -> Dictionary:
-	return {
+	var entry: Dictionary = {
 		"position": [c.position.x, c.position.y],
 		"alive": c.alive and not c.removed_from_play,
 		"exposed": c.exposed_cache,
 		"helpless": c.is_helpless(clock.tick),
 		"overwhelmed": bool(c.statuses.get("overwhelmed", false)),
 	}
+	# R20 compat pin (wave 4c, the combatant-dict pattern): the key exists ONLY
+	# while stealthed — legacy snapshots (serialized under "tick_snapshot")
+	# stay byte-identical. Windup re-checks read it (target_stealthed, R2).
+	if c.stealthed:
+		entry["stealthed"] = true
+	return entry
 
 
 func _rebuild_snapshot() -> void:
@@ -698,7 +1023,7 @@ func to_dict() -> Dictionary:
 	ids.sort()
 	for id: Variant in ids:
 		combatant_dicts[String(id)] = (combatants[id] as CombatantState).to_dict()
-	return {
+	var out: Dictionary = {
 		"rng_seed": rng_seed,
 		"rng_state": rng.state,
 		"clock": clock.to_dict(),
@@ -710,6 +1035,11 @@ func to_dict() -> Dictionary:
 		"evidence": evidence.to_dict(),
 		"ai": ai.to_dict(),
 	}
+	# KAN-5 compat pin: the "arena" key exists ONLY once an arena is set — a
+	# no-arena sim serializes byte-identically to the pre-arena engine.
+	if arena != null:
+		out["arena"] = arena.to_dict()
+	return out
 
 
 static func from_dict(data: Dictionary) -> CombatSim:
@@ -747,6 +1077,12 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.hype.tags = sim.tags
 	# Re-wire the evidence ledger's live refs (the clock instance was replaced).
 	sim.evidence.wire(sim.combatants, sim.clock)
+	# KAN-5: pre-arena saves lack "arena" — null keeps the unbounded legacy
+	# behavior, matching a fresh sim. Wired AFTER ai/resolver were replaced.
+	if data.has("arena"):
+		sim.arena = Arena.from_dict(data.get("arena", {}))
+		sim.ai.arena = sim.arena
+		sim.resolver.arena = sim.arena
 	return sim
 
 

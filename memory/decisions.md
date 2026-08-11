@@ -45,3 +45,13 @@
   core never depicted); Abrahamic holding-company lore approved; cosmic horror + internet
   folklore researched but `ship_status: deferred`; historical figures excluded; 24-god MVP
   roster target. Full record: `docs/design/mythology-research-spec.md` + decision-log #10.
+- **The 2026-07-23/25 rulings batch (owner):** explosion valves REAL, knockout = Helpless
+  2 Clocks (#27); dodge thresholds ask Reflexes + 1d4 fallback, per-stat upgradeable
+  threshold dice (#28/R22); the Antagonism engine — weighted, personal, earned targeting
+  (#29/R23); feint countered by Mind reads (#30/R24); engine-first mandate, owner-led
+  front rework, provisional run defaults join-as-is/decline-final (#31); Tactical Roll =
+  declared-hex dodge + AoE-center (R25/G1 table canon); death_spin + phase upgrades real
+  (R11 #19–#20). Full records: `docs/gdd/decision-log.md` #27–31 + addendum R22–R25.
+- **TTRPG side (owner, char-sheet repo):** rulebook v0.92 is the canonical rules master
+  (folds the digital batch in — §14 = R22); skills passover G1–G8 ruled; campaign DB
+  migrations executed 2026-07-25.

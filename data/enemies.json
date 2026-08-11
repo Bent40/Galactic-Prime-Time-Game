@@ -25,6 +25,11 @@
       "Affliction": 0,
       "Psychic": 0
     },
+    "personality": {
+      "pack_hunter": true,
+      "pack": "roach",
+      "note": "R15 pack synergy (wave 3a): roaches hunt as a brood — when two ready roaches' own R23 antagonism draws AGREE on a victim this tick, the second links its bite to the first (shared combo_id -> one merged Force through one Robustness gate; pairs only in v1). Opportunistic, never scripted: the draws stay intact. Elites/bosses are NOT pack hunters. All numbers PLACEHOLDER (R14)."
+    },
     "abilities": [
       {
         "key": "bite",
@@ -270,7 +275,8 @@
       "arena_hexes": [
         41,
         60
-      ]
+      ],
+      "arena_hexes_note": "KAN-5 wave 3d: the 41x60 room is REAL — authored as the incinedile_den encounter's 'arena' block in data/demo_run.json (the engine reads encounter arena blocks; this trait stays the per-enemy design record the den mirrors)"
     },
     "abilities": [
       {
@@ -284,7 +290,7 @@
             "amount": 1
           }
         ],
-        "note": "R14 tuning 2026-07-20: burn 2->1. Force = 1 + floor(phys 6/2)=4; vs a fresh contestant torso (5 HP, Robustness floor(phys/2)) it nets 3 (phys 2) / 2 (phys 5) \u2014 a chip+burn that needs 2 hits to fell a torso, never a one-shot. trash cans explode at Burn 5 (3 spaces, 2 Burn). Decision #31 (2026-08-10): 'cone 10' is a REAL 120-degree arc now (hex_geometry cone, size 10) \u2014 aimed at the fixed-order direction catching the most opponents; leaving the arc mid-windup dodges the sweep for that target"
+        "note": "R14 tuning 2026-07-20: burn 2->1. Force = 1 + floor(phys 6/2)=4; vs a fresh contestant torso (5 HP, Robustness floor(phys/2)) it nets 3 (phys 2) / 2 (phys 5) \u2014 a chip+burn that needs 2 hits to fell a torso, never a one-shot. trash cans explode at Burn 5 (3 spaces, 2 Burn). Decision #31 (2026-08-10): 'cone 10' is a REAL 120-degree arc now (hex_geometry cone, size 10) \u2014 aimed at the fixed-order direction catching the most opponents; leaving the arc mid-windup dodges the sweep for that target. Wave 2d (R11 #20): 'flamethrower tracks closest target' (phase 5) shifts the AIM to the nearest opponent (toward selection only — shape, size and the crowd gate unchanged). Wave 3d (KAN-5 arenas, R28): 'flamethrower pops trash cans instantly' (phase 3) is REAL when the encounter stages an arena with cans — a burn cone's arc accumulates its burn on swept cans, 5 explodes (3 spaces, 2 Burn, environment damage — no killer), phase 3+ pops on the first touch; no arena = no cans = the old behavior, byte-identical"
       },
       {
         "key": "dash",
@@ -304,7 +310,7 @@
           "threshold": 7,
           "counter_at": 9
         },
-        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) \u2014 no longer the from-full-to-0 one-shot the 3-amount dash was. R22 (owner 2026-07-23): moment_cost 1->2 \u2014 the dash is a WINDUP telegraph now (declared one tick, resolves two later; the HUD's declared-action bars / view_schedule show it coming), and the 'dodge' block is the REAL reflexes_counters ladder: Reflexes >= 7 auto-dodge + 1-hex sidestep (first free HEX_NEIGHBORS hex that increases distance; sidestep rides ANY successful dodge); Reflexes >= 9 also counterattacks (v1 counter shape: the dodger's first plain damage ability, else a basic unarmed strike crushed 1 \u2014 Force = 1 + floor(physique/2) \u2014 at the dasher's torso-line part, R14-gated, not itself dodgeable, rng-free); below 7 the 1d4 fallback (Reflexes 2 + d4 max 6 < 7 cannot dodge \u2014 intended). range PLACEHOLDER (R14). Decision #31 (2026-08-10): 'line' is a REAL charge lane now (hex_geometry line_extended, range-bounded) \u2014 the AI dashes only at a lane-reachable pick, the boss runs the lane to adjacent-before the target (bodies stop the charge short; stopped out of reach = honest miss), leaving the lane mid-windup dodges it, and the sidestep displaces the dodger OFF the lane (first free fixed-order neighbor not on it \u2014 matching R22's authored 'off the charge line'). Wave 2b (2026-08-10): 'knock aside' is REAL \u2014 a target the charge CONNECTS with (not dodged, not stopped-short; a robustness-blocked 0 still connected) is displaced to the first free fixed-order neighbor OFF the dash lane (the involuntary sibling of the R22 sidestep) and knocked PRONE; no free off-lane neighbor = prone only (knocked_aside event). The charge itself keeps the wave-2a rule: it stops adjacent-before the target's SNAPSHOT hex, so post-shove the boss may stand adjacent to a now-empty hex (documented interaction)"
+        "note": "R14 tuning 2026-07-20: crushed 3->2. Force = 2 + floor(phys 6/2)=5; vs a fresh 5-HP torso it nets 4 (phys 2, 5->1) / 3 (phys 5) \u2014 no longer the from-full-to-0 one-shot the 3-amount dash was. R22 (owner 2026-07-23): moment_cost 1->2 \u2014 the dash is a WINDUP telegraph now (declared one tick, resolves two later; the HUD's declared-action bars / view_schedule show it coming), and the 'dodge' block is the REAL reflexes_counters ladder: Reflexes >= 7 auto-dodge + 1-hex sidestep (first free HEX_NEIGHBORS hex that increases distance; sidestep rides ANY successful dodge); Reflexes >= 9 also counterattacks (v1 counter shape: the dodger's first plain damage ability, else a basic unarmed strike crushed 1 \u2014 Force = 1 + floor(physique/2) \u2014 at the dasher's torso-line part, R14-gated, not itself dodgeable, rng-free); below 7 the 1d4 fallback (Reflexes 2 + d4 max 6 < 7 cannot dodge \u2014 intended). range PLACEHOLDER (R14). Decision #31 (2026-08-10): 'line' is a REAL charge lane now (hex_geometry line_extended, range-bounded) \u2014 the AI dashes only at a lane-reachable pick, the boss runs the lane to adjacent-before the target (bodies stop the charge short; stopped out of reach = honest miss), leaving the lane mid-windup dodges it, and the sidestep displaces the dodger OFF the lane (first free fixed-order neighbor not on it \u2014 matching R22's authored 'off the charge line'). Wave 2b (2026-08-10): 'knock aside' is REAL \u2014 a target the charge CONNECTS with (not dodged, not stopped-short; a robustness-blocked 0 still connected) is displaced to the first free fixed-order neighbor OFF the dash lane (the involuntary sibling of the R22 sidestep) and knocked PRONE; no free off-lane neighbor = prone only (knocked_aside event). The charge itself keeps the wave-2a rule: it stops adjacent-before the target's SNAPSHOT hex, so post-shove the boss may stand adjacent to a now-empty hex (documented interaction). Wave 2d (R11 #20): 'dash can change direction mid-run' (phase 4+) is REAL — the lane may bend ONCE (two chained segments, total length <= range, declared bend point, all lane rules on the bent corridor; the R22 sidestep leaves the dodger's SEGMENT). Wave 3d (KAN-5 arenas, R28): 'dash bounces between walls up to 2 bounces' (phase 3) is REAL when the encounter stages an arena — a lane that hits a wall/bounds REFLECTS (the edge mirror: v' = v - (v.n)n in cube coords, i.e. swap the two cube axes the blocked step spans; up to 2 bounces, total length still <= range, all lane rules on every reflected segment, a third wall ends the lane, cans never bounce — the charge smashes through them); without an arena there are no walls and no bounces, byte-identical to before"
       },
       {
         "key": "death_spin",
@@ -315,7 +321,7 @@
           "chew: 2 crushed to both arms",
           "spin and kill"
         ],
-        "note": "Wave 2b (2026-08-10): the 3-beat sequence is REAL (R11 #19). PACING: grab cost 1 -> chew cost 1 -> spin cost 1 — the moment_cost 3 spans the whole sequence, one Moment per beat, each a real resolver declare. DECIDE ORDER: valve > stand > active-sequence continuation > cone > GRAB > dash — the grab is the boss's punish on a target that stays ADJACENT (range 1, no step-then-grab) while it is free to act. GRAB HAND: the flamethrower is the LEFT hand (left_hand_disable_removes_flamethrower), so the grab uses the first usable non-flamethrower hand (right_hand); that hand disabled = no grab. The grab is an adjacent instant — no dodge (R2); it initiates a real R9 grapple. RELEASE: any SINGLE recorded hit (merged combined hit counts as one, R15/NQ2 seam) netting >= 5 on the boss mid-sequence forces the release; the R9 escape also aborts (1 Moment needs Physique >= 6, else 2 Moments — too slow past the chew, intended). CHEW: 2 crushed to every arm part, normal R14 gate + conditions per arm. SPIN-KILL: an honest R14 hit, crushed amount 8 PLACEHOLDER (Force 8+3=11 fells a fresh 5-HP torso through the gate, never a bypass), then the victim is FLUNG 3 hexes down the spin lane (or until a body), prone on landing if it survives. Valve entry, boss prone/helpless, and victim death all abort. Phase upgrades 'death spin grab range +1' / 'death spin costs 2 moments' stay DATA-ONLY until wave 2d."
+        "note": "Wave 2b (2026-08-10): the 3-beat sequence is REAL (R11 #19). PACING: grab cost 1 -> chew cost 1 -> spin cost 1 — the moment_cost 3 spans the whole sequence, one Moment per beat, each a real resolver declare. DECIDE ORDER: valve > stand > active-sequence continuation > cone > GRAB > dash — the grab is the boss's punish on a target that stays ADJACENT (range 1, no step-then-grab) while it is free to act. GRAB HAND: the flamethrower is the LEFT hand (left_hand_disable_removes_flamethrower), so the grab uses the first usable non-flamethrower hand (right_hand); that hand disabled = no grab. The grab is an adjacent instant — no dodge (R2); it initiates a real R9 grapple. RELEASE: any SINGLE recorded hit (merged combined hit counts as one, R15/NQ2 seam) netting >= 5 on the boss mid-sequence forces the release; the R9 escape also aborts (1 Moment needs Physique >= 6, else 2 Moments — too slow past the chew, intended). CHEW: 2 crushed to every arm part, normal R14 gate + conditions per arm. SPIN-KILL: an honest R14 hit, crushed amount 8 PLACEHOLDER (Force 8+3=11 fells a fresh 5-HP torso through the gate, never a bypass), then the victim is FLUNG 3 hexes down the spin lane (or until a body), prone on landing if it survives. Valve entry, boss prone/helpless, and victim death all abort. Wave 2d (2026-08-10, R11 #20): the phase upgrades are REAL — 'death spin grab range +1' (phase 3+) widens the grab to range 2 with a 1-hex drag-adjacent (a body on the pull hex fails the grab honestly); 'death spin costs 2 moments' (phase 5) merges chew+spin into ONE beat — grab then chew+spin, 2 Moments total, one less counterplay Moment (PROVISIONAL model)."
       }
     ],
     "phases": [
@@ -342,7 +348,9 @@
             "radius": 5,
             "escape_moments": 2,
             "result": "instant knockout",
-            "telegraph": "visible steam 1 Moment before"
+            "telegraph": "visible steam 1 Moment before",
+            "undodgable": true,
+            "undodgable_note": "R26 (owner 2026-07-25, decision #32): the valve blast is undodgable - immune to every dodge-shaped escape including the R25 blast-Moment Tactical Roll; running out of the radius during the escape window remains the counterplay"
           },
           "after": "network retreats deeper - breach threshold resets"
         },
@@ -375,7 +383,8 @@
           "explosion": {
             "radius": 7,
             "escape_moments": 2,
-            "result": "instant knockout"
+            "result": "instant knockout",
+            "undodgable": true
           },
           "upgrades": [
             "network fully exposed",
@@ -410,7 +419,8 @@
           "explosion": {
             "radius": 19,
             "escape_moments": 5,
-            "result": "instant kill"
+            "result": "instant kill",
+            "undodgable": true
           },
           "note": "RULED canon (owner 2026-07-14, NQ3): 6 phases - fight, explosion, fight, explosion, fight, large explosion"
         },
@@ -429,5 +439,96 @@
         "count": 1
       }
     ]
+  },
+  {
+    "id": 4,
+    "key": "war_hound",
+    "name": "War Hound",
+    "description": "Mid-tier kennel beast — a broad-chested hunting hound the show releases for its chase segments. Ported from the campaign's authored war hounds (compendium §4.6: the hound pack of Sasha's Floor-1 maze — the chasers that corner the quarry and funnel it where the hunt wants it; the same hounds recontextualize as war dogs in the Nikita material, so the stat block doubles into that content, per the campaign-residuals roster). review-5 catalogues NO conflicting source on the hounds (NQ1–NQ4 do not touch them). WHOLE ENTRY PROVISIONAL (owner review): the compendium authors the hounds' BEHAVIOR, not numbers — every number here is PLACEHOLDER (R14) — and the tutorial-floor staging as a kennel pair is this port's framing, not compendium text. CATEGORY NOTE: §2.14 has only Mob/Elite/Boss/Super Boss; a hound does not die to one meaningful blow (not a Mob) and carries no phases/win-condition machinery (not a Boss) — Elite is the ladder's mid tier.",
+    "category": "Elite",
+    "size": "Medium",
+    "body_parts": [
+      {
+        "key": "head",
+        "name": "Head",
+        "hp": 2,
+        "lethal": true
+      },
+      {
+        "key": "torso",
+        "name": "Torso",
+        "hp": 4,
+        "lethal": true
+      },
+      {
+        "key": "front_left_leg",
+        "name": "Front Left Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "front_right_leg",
+        "name": "Front Right Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "hind_left_leg",
+        "name": "Hind Left Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "hind_right_leg",
+        "name": "Hind Right Leg",
+        "hp": 2,
+        "lethal": false
+      }
+    ],
+    "stat_block": {
+      "physique": 3,
+      "reflexes": 4,
+      "mind": 1,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 0,
+      "Psychic": 0
+    },
+    "personality": {
+      "proximity_bias": 2.0,
+      "grudge_weight": 1.0,
+      "mock_sensitive": false,
+      "low_hp_bias": 3.0,
+      "decay": 1.0,
+      "pack_hunter": true,
+      "pack": "war_hound",
+      "herder": true,
+      "note": "R23 (Antagonism): DIM — Mind 1, mock_sensitive false (a dog does not parse insults; feints build no grudge, and the R24 read is impossible: Mind 1 + d4 max 5 under any authored feint threshold). A PACK ANIMAL, never a loner — pack_hunter + family 'war_hound' (R15 wave-3a linking; pairs cap). HERDER (wave 4d, R11 #21 — the corner_the_prey signature made REAL): `herder: true` is THE engine-read gate for the maze funnel — a pack of >= 2 herders sharing this `pack` family splits chase/cut-off roles: the closest hound chases, every other hound that cannot reach the quarry this Moment repositions onto the quarry's nearest OPEN door instead (no open door = normal chase; a hound herds only prey it can SEE — Mind 1 = sight 2, R20 — so the funnel is close-quarters). The corner_the_prey ability entry below stays the authored FLAVOR RECORD; the personality is what the engine reads (enemy_ai.gd _herd_cutoff). Blood-scent: low_hp_bias 3.0 — the pack pulls down the wounded first (the brood-tender's authored 3.0, same persona lever). Strongly proximity-driven (inverse-square chaser); grudge 1:1 with decay 1.0 — a struck hound rounds on its striker and does not forget mid-fight. TIER NOTE: first pack-hunting ELITE — the roach mob note's 'Elites/bosses are NOT pack hunters' recorded the wave-3a roster (brood-tender/Incine-Dile), not an engine rule; R15 linking is personality-gated and category-free (enemy_ai.gd _link_pack_strike). Animal quadruped morphology per the R21 parts research (4-leg attrition layout; torso 4 sits between the cat 3 and human 5 precedents). All numbers PLACEHOLDER (R14)."
+    },
+    "abilities": [
+      {
+        "key": "rending_bite",
+        "name": "Rending Bite",
+        "moment_cost": 1,
+        "range": 1,
+        "damage": [
+          {
+            "type": "bleeding",
+            "amount": 1
+          }
+        ],
+        "note": "R14 balance math (vs fresh contestant torsos, no one-shots per the balance bar): Force = 1 + floor(phys 3/2) = 2. A phys-2 contestant's Robustness floor(2/2)=1 -> net 1 + bleeding T1; a phys-3's Robustness 1 -> net 1; a phys-5 tank's Robustness 2 -> Force 2 NOT > 2, the gate BLOCKS — a LONE hound cannot wound a braced tank. The R15 pack pair (merged Force 2+2=4 through ONE Robustness gate) nets 3 (phys 2) / 2 (phys 5): the pack opens what no lone hound can, and even the merged pair never one-shots a fresh 5-HP torso (max net 3 < 5). The real threat is attrition — every landed bite rides bleeding, and untreated wounds persist across the run's encounter hand-offs (R11 canon)."
+      },
+      {
+        "key": "corner_the_prey",
+        "name": "Corner the Prey",
+        "moment_cost": 1,
+        "effect": "herd the quarry toward the waiting pack",
+        "note": "FLAVOR RECORD — the signature is REAL since wave 4d (R11 #21; the wave-3c port's data-only downscope is retired): the compendium's SIGNATURE hound behavior is the maze funnel (§4.6 — the pack corners the quarry and herds it to a chosen door; 'she picks where to run; the demon keeps cornering her'). THE ENGINE READS THE PERSONALITY GATE, NOT THIS ENTRY: `personality.herder: true` (+ the shared `pack` family) drives the chase/cut-off role split in enemy_ai.gd (_herd_cutoff — closest hound chases, the others deny the quarry's nearest open door; pack_herding event); this ability entry stays the authored design record of the behavior, and effect-only abilities remain AI-skipped by the strike lookup as ever (the brood-tender's drag_back precedent, R11 #16). The rest of the shipped signature: R23 personality (inverse-square chase + blood-scent low_hp_bias) + R15 pack-linked bites — the pack converges on the weakest and pulls them down together."
+      }
+    ],
+    "reward_table": []
   }
 ]
