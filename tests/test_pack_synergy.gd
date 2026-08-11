@@ -4,7 +4,9 @@ extends SimTestBase
 ##
 ## PACK SYNERGY contract pinned here (simulation/enemy_ai.gd _link_pack_strike):
 ##   * personality-gated (pack_hunter + shared non-empty pack family — the
-##     explicit key, authored on roach_dog; elites/bosses are NOT pack hunters);
+##     explicit key, authored on roach_dog and — wave 3c — the war_hound elite
+##     pair (tests/test_second_enemy.gd); the brood-tender/Incine-Dile are NOT
+##     pack hunters — the gate is personality, never category);
 ##   * OPPORTUNISTIC: each pack hunter's own R23 draw picks its victim; only
 ##     AGREEING draws link (no draw-forcing, ZERO extra rng — twin-proven);
 ##   * the second decide sees the first's pending declare (clock.queue) and

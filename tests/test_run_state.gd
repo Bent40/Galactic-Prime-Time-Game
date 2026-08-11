@@ -1,37 +1,46 @@
 extends SimTestBase
 ## KAN-4 — the RUN engine (decision-log #31, engine only): RunState + the
 ## GameController run wiring, driven headlessly over the canonical authored
-## data/demo_run.json (encounter 1 = the brood skirmish where the party meets
-## Sasha, staged as a party-side ally; encounter 2 = the Incine-Dile den).
+## data/demo_run.json (wave 3c, THREE encounters: encounter 1 = the brood
+## skirmish where the party meets Sasha, staged as a party-side ally;
+## encounter 2 = the KENNEL — the war-hound pair, the second authored enemy;
+## encounter 3 = the Incine-Dile den finale).
 ##
 ## What these tests pin:
 ##   * the demo-run DATA contract (specs verbatim from the loadout files — the
-##     drift gate; recruit_offer maps to the staged ally id);
-##   * full 2-encounter determinism: same run seed + same run+combat command log
+##     drift gate; recruit_offer maps to the staged ally id; the kennel mid
+##     room fields the war_hound pair; the finale stays the boss);
+##   * full 3-encounter determinism: same run seed + same run+combat command log
 ##     twice -> identical final run hash, AND a bare RunState replaying the
 ##     controller's run-command log alone (no sims) lands on the same hash —
 ##     run state is a pure function of (run seed, ordered run-command log);
-##   * the carry policy: wounded torso numbers and conditions survive the
-##     encounter hand-off; Shock (R13), primes/stance (R3), breach and the
-##     Clock reset with the new combat; the B9 spent Camera Call stack stays
-##     spent for the run; treating a carried wound resolves the condition but
-##     never regenerates HP (Q29/B11);
+##   * the carry policy ACROSS BOTH HAND-OFFS: wounded torso numbers and
+##     conditions survive encounter 1 -> 2 AND 2 -> 3 (the end-of-kennel
+##     capture stages VERBATIM into the finale); Shock (R13), primes/stance
+##     (R3), breach and the Clock reset with each new combat; the B9 spent
+##     Camera Call stack stays spent for the run; treating a carried wound
+##     resolves the condition but never regenerates HP (Q29/B11);
 ##   * recruitment beats: accept -> roster 3 with the recruit's encounter-1
-##     damage present in encounter 2 (PROVISIONAL #31 as-is default); decline ->
-##     STORY-DRIVEN (decision #32, supersedes #31's global decline-final): the
-##     recruit's authored on_decline decides — gone_for_run bars any re-offer
-##     (the #31 behavior), may_reoffer lets a LATER encounter's recruit_offer
-##     open a FRESH beat (Sasha's authored story; declining again re-honors
-##     the data) — encounter 2 staged without her either way;
+##     damage present in the LATER encounters (PROVISIONAL #31 as-is default);
+##     decline -> STORY-DRIVEN (decision #32, supersedes #31's global
+##     decline-final): the recruit's authored on_decline decides —
+##     gone_for_run bars any re-offer (the #31 behavior), may_reoffer lets a
+##     LATER encounter's recruit_offer open a FRESH beat (Sasha's authored
+##     story; declining again re-honors the data) — encounter 2 staged
+##     without her either way;
 ##   * hype chains (decision #32, supersedes the per-encounter hype reset):
 ##     chained encounters open at floor(retention% x the previous ending
 ##     meter), laddered 40/60/80 then 100% — exact floor math pinned on a
-##     synthetic run, the live HypeEngine splice pinned through the
-##     controller, the chain index pinned through serialization;
-##   * save/restore BETWEEN encounters and MID-encounter-2 (serialized state
-##     only) -> identical continuations;
-##   * run outcomes: win both -> WIN; party wipe in encounter 1 -> LOSS and
-##     encounter 2 never starts; early extraction -> ABANDONED (PROVISIONAL).
+##     synthetic run, and the LIVE ladder pinned through the controller over
+##     the authored run: the kennel OPENS at floor(40% x encounter 1's ending
+##     meter), the finale at floor(60% x the kennel's ending meter); the
+##     chain index pinned through serialization;
+##   * save/restore BETWEEN encounters and MID-encounter-2 (the kennel fight,
+##     serialized state only — the new enemy rides CombatSim serialization)
+##     -> identical continuations;
+##   * run outcomes: win all three -> WIN; party wipe in encounter 1 -> LOSS
+##     and the later encounters never start; early extraction -> ABANDONED
+##     (PROVISIONAL).
 ##
 ## Fights are REAL command streams (declares + ai_decide via run_enemy_turn +
 ## advance_tick through the controller funnel) in the compact scripted style the
@@ -129,7 +138,63 @@ func _treat_carried_wounds(gc: Node) -> void:
 			gc.apply_command({"type": "treat", "target": id, "part": "torso", "condition": "crushed", "mode": "resolve"})
 
 
-## Encounter 2 fight: breach the surface with one heavy strike (net 10+2-3 = 9
+## Kennel staging (wave 3c, the enc-1 staged-strike idiom): two hound bites at
+## tick 0 with the REAL rending_bite numbers, for DETERMINISTIC hand-off pins:
+##   war_hound_1 -> imani torso: Force 1 + floor(3/2) = 2 vs Robustness
+##     floor(5/2) = 2 -> NOT > -> BLOCKED (attack_no_wound): the tank shrugs a
+##     lone hound (the authored bite-note math, live).
+##   war_hound_2 -> sasha torso: Force 2 vs Robustness 1 -> net 1: her carried
+##     torso 3 -> 2 + bleeding T1 (the wound she carries into the finale).
+## Guarded — the decline path has no sasha (her bite is skipped).
+func _stage_hound_bites(gc: Node) -> void:
+	_declare(gc, "war_hound_1", attack_action("bleeding", 1, "imani", "torso"))
+	if gc.sim.combatants.has("sasha"):
+		_declare(gc, "war_hound_2", attack_action("bleeding", 1, "sasha", "torso"))
+
+
+## The kennel fight body (guarded, lockstep like the enc-1 drive): imani puts
+## down hound 1 as soon as she is ready; sasha holds one Moment so hound 2 gets
+## ONE LIVE ai_decide through the run funnel (run_enemy_turn — the real elite
+## policy acts inside the run) before she puts it down at tick 1.
+func _fight_hounds(gc: Node, max_ticks: int) -> void:
+	for _i: int in range(max_ticks):
+		if bool(gc.combat_status().get("over", false)):
+			return
+		var tick: int = gc.sim.clock.tick
+		var pairs: Array = [["imani", "war_hound_1"], ["sasha", "war_hound_2"]]
+		for pair: Variant in pairs:
+			var attacker: CombatantState = gc.sim.combatants.get(String((pair as Array)[0]))
+			var target: CombatantState = gc.sim.combatants.get(String((pair as Array)[1]))
+			if attacker == null or target == null or not target.alive:
+				continue
+			if attacker.id == "sasha" and tick < 1:
+				continue  # hound 2 gets its one live decide before she strikes
+			if not attacker.can_act(tick) or tick < attacker.next_action_tick or attacker.windup_pending:
+				continue
+			if CombatantState.hex_distance(attacker.position, target.position) > 2:
+				continue
+			_declare(gc, attacker.id, attack_action("crushed", 9, target.id, "torso", {"attack_range": 2}))
+		gc.run_enemy_turn()
+		gc.apply_command({"type": "advance_tick"})
+
+
+## The finale's treatment beat: resolve every bleeding the kennel left (the
+## staged bite + wherever hound 2's live decide landed) so bleed advancement
+## does not add Forced-Action noise to the boss drive. Guarded off live state.
+func _treat_hound_wounds(gc: Node) -> void:
+	for id: String in ["imani", "dario", "sasha"]:
+		var c: CombatantState = gc.sim.combatants.get(id)
+		if c == null:
+			continue
+		var part_keys: Array = c.parts.keys()
+		part_keys.sort()
+		for part_key: Variant in part_keys:
+			if c.condition_tier(String(part_key), "bleeding") > 0:
+				gc.apply_command({"type": "treat", "target": id, "part": String(part_key),
+					"condition": "bleeding", "mode": "resolve"})
+
+
+## Finale fight: breach the surface with one heavy strike (net 10+2-3 = 9
 ## >= 7, dodge-retried — the REAL template keeps its R22 dodge), then put the
 ## exposed network down. Fully guarded off live state; the boss fights back
 ## through the live enemy-turn path every tick.
@@ -151,11 +216,23 @@ func _fight_boss(gc: Node, max_ticks: int) -> void:
 
 
 ## The accept-path continuation from the between-encounters checkpoint (after
-## the recruit joined): encounter 2 to the end of the run. Shared by the live
-## drive and both restore tests so continuations are command-identical.
+## the recruit joined): the kennel, then the finale, to the end of the run.
+## Shared by the live drive and both restore tests so continuations are
+## command-identical.
 func _finish_from_between(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc)
+	_stage_hound_bites(gc)
+	_fight_hounds(gc, MAX_FIGHT_TICKS)
+	gc.apply_run_command({"type": "end_encounter"})
+	_finish_finale(gc)
+
+
+## The finale (encounter 3) from the post-kennel between checkpoint, to the
+## end of the run — shared so every continuation is command-identical.
+func _finish_finale(gc: Node) -> void:
+	gc.apply_run_command({"type": "begin_encounter"})
+	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "end_run"})
@@ -183,7 +260,7 @@ func test_demo_run_data_contract() -> void:
 		"demo_run.json is marked PROVISIONAL in _meta.note")
 	var def: Dictionary = demo_run_def()
 	assert_eq((def.get("party", []) as Array).size(), 2, "the demo party is the two slice contestants")
-	assert_eq((def.get("encounters", []) as Array).size(), 2, "the canonical run is 2 encounters")
+	assert_eq((def.get("encounters", []) as Array).size(), 3, "the canonical run is 3 encounters (wave 3c)")
 
 	# Party specs verbatim from demo_loadouts.json via the documented loadout-id
 	# rule (combat id = loadout key's first '_'-token).
@@ -261,9 +338,17 @@ func test_demo_run_data_contract() -> void:
 			assert_true(enemy_keys.has(String((row as Dictionary).get("enemy_key", ""))),
 				"%s: enemy_key '%s' is a real template" % [String((enc as Dictionary).get("key", "?")),
 					String((row as Dictionary).get("enemy_key", ""))])
+	# Wave 3c: the mid room is the KENNEL — the second authored enemy, staged
+	# as the pair its data authors (the deeper template pins live in
+	# tests/test_second_enemy.gd) — and the finale stays the boss.
 	var enc2: Dictionary = (def.get("encounters", []) as Array)[1]
-	assert_eq(String(((enc2.get("enemies", []) as Array)[0] as Dictionary).get("enemy_key", "")), "incinedile",
-		"encounter 2 is the Incine-Dile fight")
+	assert_eq(String(enc2.get("key", "")), "kennel_gauntlet", "encounter 2 is the kennel mid room")
+	var hound_row: Dictionary = (enc2.get("enemies", []) as Array)[0]
+	assert_eq(String(hound_row.get("enemy_key", "")), "war_hound", "the mid room fields the war hound")
+	assert_eq(int(hound_row.get("count", 0)), 2, "staged as the R15 pack PAIR")
+	var enc3: Dictionary = (def.get("encounters", []) as Array)[2]
+	assert_eq(String(((enc3.get("enemies", []) as Array)[0] as Dictionary).get("enemy_key", "")), "incinedile",
+		"the finale is the Incine-Dile fight")
 
 
 # --------------------------------------------- (1) full-run determinism + purity
@@ -271,8 +356,8 @@ func test_demo_run_data_contract() -> void:
 func test_full_run_deterministic_and_replayable_from_run_log() -> void:
 	var gc_a: Node = _controller()
 	var first: Dictionary = _drive_full_run(gc_a)
-	assert_eq(String(first["outcome"]), "WIN", "the demo run resolves WIN (both encounters cleared)")
-	assert_eq(gc_a.run.records.size(), 2, "two encounter records on the run")
+	assert_eq(String(first["outcome"]), "WIN", "the demo run resolves WIN (all three encounters cleared)")
+	assert_eq(gc_a.run.records.size(), 3, "three encounter records on the run")
 	for record: Dictionary in gc_a.run.records:
 		assert_eq(String(record.get("outcome", "")), "WIN", "encounter %d recorded WIN" % int(record.get("index", -1)))
 	assert_eq(gc_a.run.roster.size(), 3, "the roster grew to 3 (accept path)")
@@ -317,22 +402,21 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 	assert_eq(gc.run.roster.size(), 3, "roster is 3 after the accept")
 
 	gc.apply_run_command({"type": "begin_encounter"})
-	# --- PERSISTS: wounds + conditions (no field HP regen — Q29/B11) ----------
+	# --- PERSISTS into the KENNEL: wounds + conditions (no field HP regen) ----
 	var imani: CombatantState = gc.sim.combatants["imani"]
 	var sasha: CombatantState = gc.sim.combatants["sasha"]
 	var dario: CombatantState = gc.sim.combatants["dario"]
-	var boss: CombatantState = gc.sim.combatants["boss"]
 	assert_eq(int(imani.parts["torso"]["hp"]), 3, "imani's wounded torso number survived the hand-off (5-max, 3 left)")
 	assert_eq(int(imani.parts["torso"]["base_max_hp"]), 5, "the torso MAX did not drift in the hand-off")
 	assert_eq(imani.condition_tier("torso", "crushed"), 1, "imani's crushed T1 rode across the encounters")
 	assert_eq(int(sasha.parts["torso"]["hp"]), 3, "the RECRUIT's encounter-1 damage is present in encounter 2 (#31 as-is)")
 	assert_eq(sasha.condition_tier("torso", "crushed"), 1, "the recruit's condition carried too")
+	assert_true(gc.sim.combatants.has("war_hound_1") and gc.sim.combatants.has("war_hound_2"),
+		"the kennel stages the war-hound pair from the def")
 	# --- RESETS: per-combat state dies with the encounter ---------------------
 	assert_eq(dario.shock, 0, "Shock reset fully at combat end (R13)")
 	assert_true(dario.armed_primes.is_empty(), "primes reset with the new combat (R3)")
 	assert_eq(dario.stance, "", "stance reset with the new combat")
-	assert_false(boss.breached, "breach state does NOT persist — the new fight starts surface-immune")
-	assert_true(bool(boss.parts["network"]["hidden"]), "the network starts hidden again (per-combat discovery)")
 	assert_eq(gc.sim.clock.tick, 0, "the new encounter runs its own fresh Clock")
 	assert_eq(imani.next_action_tick, 0, "scheduling reset with the new Clock")
 	# --- B9: the spent Camera Call stack stays spent for the RUN --------------
@@ -359,6 +443,48 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 		{"type": "treat", "target": "imani", "part": "torso", "condition": "crushed", "mode": "resolve"})
 	assert_event(treated, "condition_resolved", "the carried crushed wound is treatable in the next fight")
 	assert_eq(int(imani.parts["torso"]["hp"]), 3, "treatment resolves conditions but NEVER regenerates HP (Q29/B11)")
+	# --- the SECOND hand-off (wave 3c): kennel wounds ride into the finale ----
+	gc.apply_command({"type": "treat", "target": "sasha", "part": "torso", "condition": "crushed", "mode": "resolve"})
+	_stage_hound_bites(gc)
+	# The staged tick-0 bites are deterministic hand math (no live AI yet):
+	# a lone hound's Force 2 is blocked by the tank; sasha takes net 1.
+	var staged: Array[Dictionary] = gc.apply_command({"type": "advance_tick"})
+	var blocked: Dictionary = assert_event(staged, "attack_no_wound", "the tank Robustness-blocks the lone bite")
+	assert_eq(String(blocked.get("combatant", "")), "imani", "imani shrugs the lone hound (Force 2 vs Robustness 2)")
+	assert_eq(int(imani.parts["torso"]["hp"]), 3, "imani's torso number is untouched by the blocked bite")
+	assert_eq(int(sasha.parts["torso"]["hp"]), 2, "sasha's carried torso 3 took the staged net-1 bite (-> 2)")
+	assert_true(sasha.condition_tier("torso", "bleeding") >= 1, "the bite's bleeding rider landed on her")
+	_fight_hounds(gc, MAX_FIGHT_TICKS)
+	assert_eq(String(gc.combat_status().get("outcome", "")), "WIN", "the kennel falls")
+	# Capture the EXACT post-kennel wounds (the live hound decide may have added
+	# to them — captured, not assumed), then verify the finale stages them
+	# VERBATIM: the run's wounds-persist policy holds across BOTH hand-offs.
+	var post_kennel: Dictionary = {}
+	for id: String in ["imani", "dario", "sasha"]:
+		var member: CombatantState = gc.sim.combatants[id]
+		var hp_by_part: Dictionary = {}
+		var member_part_keys: Array = member.parts.keys()
+		member_part_keys.sort()
+		for part_key: Variant in member_part_keys:
+			hp_by_part[String(part_key)] = int((member.parts[part_key] as Dictionary).get("hp", 0))
+		post_kennel[id] = hp_by_part
+	gc.apply_run_command({"type": "end_encounter"})
+	gc.apply_run_command({"type": "begin_encounter"})
+	for id: String in ["imani", "dario", "sasha"]:
+		var member: CombatantState = gc.sim.combatants[id]
+		for part_key: Variant in (post_kennel[id] as Dictionary):
+			assert_eq(int((member.parts[part_key] as Dictionary).get("hp", -1)),
+				int((post_kennel[id] as Dictionary)[part_key]),
+				"%s/%s: the kennel wound number stages VERBATIM into the finale" % [id, String(part_key)])
+	assert_true((gc.sim.combatants["sasha"] as CombatantState).condition_tier("torso", "bleeding") >= 1,
+		"sasha's untreated bleeding rode the second hand-off too (B11)")
+	# The finale's boss starts its own fresh discovery (per-combat state).
+	var boss: CombatantState = gc.sim.combatants["boss"]
+	assert_false(boss.breached, "breach state does NOT persist — the finale starts surface-immune")
+	assert_true(bool(boss.parts["network"]["hidden"]), "the network starts hidden (per-combat discovery)")
+	assert_eq(gc.sim.clock.tick, 0, "the finale runs its own fresh Clock")
+	assert_eq(int((gc.view_run().get("encounter", {}) as Dictionary).get("active_index", -1)), 2,
+		"the finale is the active encounter")
 	gc.free()
 
 
@@ -387,7 +513,7 @@ func test_decline_in_the_demo_run_honors_sashas_may_reoffer_story() -> void:
 		"no beat is open between encounters — a re-offer needs a later encounter's recruit_offer")
 	gc.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc.sim.combatants.has("sasha"), "encounter 2 is staged WITHOUT the declined recruit")
-	assert_eq(gc.sim.combatants.size(), 3, "imani + dario + the boss on the table")
+	assert_eq(gc.sim.combatants.size(), 4, "imani + dario + the kennel pair on the table")
 	var run_view: Dictionary = gc.view_run()
 	assert_eq((run_view.get("roster", []) as Array).size(), 2, "view_run's roster stays the founding pair")
 	gc.free()
@@ -447,6 +573,9 @@ func test_save_restore_between_encounters_identical_continuation() -> void:
 # ------------------------------------- (6) save/restore MID-encounter-2
 
 func test_save_restore_mid_encounter_two_identical_continuation() -> void:
+	# Mid-KENNEL (wave 3c): the save lands one tick into the hound fight —
+	# hound 1 down, hound 2 alive — so the SECOND AUTHORED ENEMY itself rides
+	# CombatSim serialization mid-fight.
 	var gc_live: Node = _controller()
 	_start_demo_run(gc_live)
 	_drive_encounter_one(gc_live)
@@ -455,27 +584,33 @@ func test_save_restore_mid_encounter_two_identical_continuation() -> void:
 	gc_live.apply_run_command({"type": "accept_recruit"})
 	gc_live.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc_live)
-	_fight_boss(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
+	_stage_hound_bites(gc_live)
+	_fight_hounds(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
 	assert_false(bool(gc_live.combat_status().get("over", false)), "precondition: the fight is NOT over at the save")
+	assert_true((gc_live.sim.combatants["war_hound_2"] as CombatantState).alive,
+		"precondition: a live war hound is mid-fight at the save")
 	var run_snapshot: Dictionary = gc_live.run.to_dict()
 	var sim_snapshot: Dictionary = gc_live.sim.to_dict()
-	_fight_boss(gc_live, MAX_FIGHT_TICKS)
+	_fight_hounds(gc_live, MAX_FIGHT_TICKS)
 	gc_live.apply_run_command({"type": "end_encounter"})
-	gc_live.apply_run_command({"type": "end_run"})
+	_finish_finale(gc_live)
 	var live_run_hash: String = gc_live.run.state_hash()
 	var live_sim_hash: String = gc_live.sim.state_hash()
 	assert_eq(String(gc_live.run.outcome), "WIN", "precondition: the live continuation wins the run")
 	# Restore run + mid-fight sim into a fresh controller; the recruited member
-	# must be mid-fight with her carried state, and the identical guarded
-	# continuation must land on identical hashes.
+	# must be mid-fight with her carried state, the hound with its wave-3c
+	# template state, and the identical guarded continuation must land on
+	# identical hashes.
 	var gc_restored: Node = _controller()
 	gc_restored.restore_run(run_snapshot, sim_snapshot, load_static_data())
 	assert_true(gc_restored.sim.combatants.has("sasha"), "the recruited member is in the restored mid-fight sim")
-	assert_eq(int((gc_restored.sim.combatants["sasha"] as CombatantState).parts["torso"]["hp"]), 3,
-		"her carried encounter-1 wound is in the restored fight")
-	_fight_boss(gc_restored, MAX_FIGHT_TICKS)
+	assert_eq(int((gc_restored.sim.combatants["sasha"] as CombatantState).parts["torso"]["hp"]), 2,
+		"her carried encounter-1 wound + the staged kennel bite are in the restored fight")
+	assert_true((gc_restored.sim.combatants["war_hound_2"] as CombatantState).alive,
+		"the live war hound is in the restored fight")
+	_fight_hounds(gc_restored, MAX_FIGHT_TICKS)
 	gc_restored.apply_run_command({"type": "end_encounter"})
-	gc_restored.apply_run_command({"type": "end_run"})
+	_finish_finale(gc_restored)
 	assert_eq(gc_restored.run.state_hash(), live_run_hash,
 		"mid-encounter-2 save/restore -> identical final run hash")
 	assert_eq(gc_restored.sim.state_hash(), live_sim_hash,
@@ -520,7 +655,7 @@ func test_run_command_gating_and_abandon() -> void:
 	# ABANDONED outcome, not a WIN.
 	var ended: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
 	assert_eq(String(assert_event(ended, "run_ended", "end_run closes the run").get("outcome", "")), "ABANDONED",
-		"1 of 2 encounters cleared -> ABANDONED (PROVISIONAL)")
+		"1 of 3 encounters cleared -> ABANDONED (PROVISIONAL)")
 	var again: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
 	assert_eq(String(first_event(again, "run_command_rejected").get("reason", "")), "run_already_ended",
 		"a finished run rejects further run commands")
@@ -613,9 +748,10 @@ func test_hype_chain_survives_save_restore_between_encounters() -> void:
 
 
 func test_chained_encounter_opens_with_retained_meter_in_the_live_sim() -> void:
-	# Decision #32 end to end through the controller: encounter 2 of the demo
-	# run OPENS with floor(40% x encounter 1's recorded ending meter) on the
-	# LIVE HypeEngine, band consistent with the engine's own floors.
+	# Decision #32 end to end through the controller — the FULLY LIVE ladder
+	# over the authored 3-encounter run (wave 3c): the kennel OPENS with
+	# floor(40% x encounter 1's recorded ending meter) on the LIVE HypeEngine,
+	# and the finale with floor(60% x the kennel's recorded ending meter).
 	var gc: Node = _controller()
 	_start_demo_run(gc)
 	_drive_encounter_one(gc)
@@ -638,6 +774,21 @@ func test_chained_encounter_opens_with_retained_meter_in_the_live_sim() -> void:
 	var chain_view: Dictionary = gc.view_run().get("hype_chain", {})
 	assert_eq(int(chain_view.get("index", -1)), 1, "view_run exposes the chain link count")
 	assert_eq(int(chain_view.get("hype_start", -1)), expected, "view_run exposes the retained opening meter")
+	# Link 2 (the finale) opens at 60% of the KENNEL's ending meter.
+	_treat_carried_wounds(gc)
+	_stage_hound_bites(gc)
+	_fight_hounds(gc, MAX_FIGHT_TICKS)
+	gc.apply_run_command({"type": "end_encounter"})
+	var kennel_ending: int = int((gc.run.records[1] as Dictionary).get("hype_meter", -1))
+	assert_true(kennel_ending > 0, "honesty precondition: the kennel fight actually generated hype (got %d)" % kennel_ending)
+	var expected_finale: int = int(floor(kennel_ending * 60 / 100.0))
+	var finale_started: Array[Dictionary] = gc.apply_run_command({"type": "begin_encounter"})
+	assert_eq(int(assert_event(finale_started, "run_encounter_started", "the finale starts").get("hype_start", -1)),
+		expected_finale, "the finale opens at floor(60% x the kennel's ending meter)")
+	assert_eq(int(gc.sim.hype.meter), expected_finale, "the finale's LIVE HypeEngine opens retained")
+	var finale_chain: Dictionary = gc.view_run().get("hype_chain", {})
+	assert_eq(int(finale_chain.get("index", -1)), 2, "the chain is two links deep at the finale")
+	assert_eq(int(finale_chain.get("hype_start", -1)), expected_finale, "view_run carries the finale's retained meter")
 	gc.free()
 
 
