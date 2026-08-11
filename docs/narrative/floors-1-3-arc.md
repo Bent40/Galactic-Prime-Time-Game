@@ -119,10 +119,10 @@ Under **Q-39** the Loong is the **descendant** of the dragon the plague demon ki
 
 | | Who | Role |
 |---|---|---|
-| **The plague demon** | The buried god | F1–F3 floor-runner. Bankrupt, mute, indebted. ⟨needs a name — **Q-42**⟩ |
+| **Cinnabrus** | The buried god | F1–F3 floor-runner. Bankrupt, mute, indebted. A President who commanded legions and now commands one queen |
 | **Nullrot** | Its champion | Carries the dragon-blood knowledge to the Loong. Existing content; the review flagged its motive as an open hole — **now filled** |
 | **The Loong** | Dragon descendant | Living claimant; walking cure |
-| **The opposing god** | The schemer | Sent champions to suppress the demon. ⟨needs identity + motive — **Q-43**⟩ |
+| **Beelzebub** | The scavenger who won | Sent champions, took the domain and the title. Now sits on the 24-god roster — available to bid on the party |
 | **The demons** | Its abandoned followers | Vying to revive it. Q-28: NPCs and enemies, never playable unless changed into one |
 
 **On the opposing god's motive** ⟨proposal⟩: it held **a wager**. Suppressing the demon was a
@@ -213,11 +213,11 @@ a rank, legions, a beast-shape, a seal, and one line of power that turns out to 
 
 | | Name | Root | Why |
 |---|---|---|---|
-| **1 ★** | **Cinabrus** | *cinnabar* — the mercury ore used for centuries as both poison and cure | Encodes the whole tragedy in the name: **the medicine that kills**. Stands on its own, doesn't borrow its rival's |
+| **1 ★** | **Cinnabrus** | *cinnabar* — the mercury ore used for centuries as both poison and cure | Encodes the whole tragedy in the name: **the medicine that kills**. Stands on its own, doesn't borrow its rival's |
 | 2 | **Vermalch** | *vermis* (worm) + *malus* | Anchored on **Sabnock**, 43rd spirit, who *"afflicteth men with wounds and sores rotten and full of worms."* Blunt, rotten, physical |
 | 3 | **Marbelloth** | built off **Marbas** (§10) | Makes the rivalry legible in the name — he reads as a scion or imitator of the incumbent, which is exactly what he was. Costs him his independence |
 
-**Recommend Cinabrus.**
+**Recommend Cinnabrus.**
 
 **Form (Goetic template):** *a President, once commanding legions, now none.* Appears as a
 crowned figure whose crown is sores. Its seal is still cut into the palace foundations —
@@ -225,69 +225,181 @@ the queen laid the city out to match it.
 
 ---
 
-## 10. Draft — the opposition (Q-43)
+## 10. The opposition — BEELZEBUB (Q-48 RULED)
 
-> Owner's direction: *"Draft in opposition to the first draft. Use real goetic myth to find
-> the rivals."*
+> Owner's ruling: *"Marbas is kinda weak as opposition. I want a known god of plague to have
+> taken from him. Beelzebub or the likes. Basically an originally weaker god took advantage
+> of the situation to go for the kill."*
 
-**The rival is real Goetia, and the fit is almost embarrassing.**
+**Beelzebub, and the fit is already half-written in the corpus.**
 
-### MARBAS — the 5th spirit of the Ars Goetia
+### Why the weaker god won
 
-A **President**, 36 legions, appears as a great lion. His canonical line:
+The name carries the demotion. **Ba'al Zebul** — *"the Prince,"* *"Lord of the Heavenly
+Dwelling"* — was mocked down into **Ba'al Zebub, Lord of the Flies.** A god reduced to
+carrion duty. The corpus entry already reads him this way:
 
-> ***"He causeth diseases and cureth them."***
+> *"Old money gone rancid: a demoted god who still throws around a fortune that smells of
+> decay, buzzing with a retinue that eats what it touches."* — `entities.jsonl`, influence
+> **1**, recognition **4**
 
-**He is the incumbent in precisely this market, and he runs both halves of it.**
+**Then Cinnabrus made corpses on a continental scale.**
 
-**Why he acted — an economic motive, not a moral one:**
+```
+   Beelzebub, before:   a demoted fly-lord. Scavenger. Nobody's first call.
+                             │
+   Cinnabrus's plague kills a whole congregation, then a whole region.
+                             │
+                             ▼
+   The flies arrive AFTER the corpses — and there have never been so many.
+   The god they reduced to carrion suddenly owns the largest food supply
+   in the world. He feeds. He grows.
+                             │
+                             ▼
+   Then he kills the one who made the feast, and TAKES THE DOMAIN.
+```
 
-1. **Cinabrus was an amateur flooding his market.** An upstart who only knows how to *cause*
-   is a competitor.
-2. **Then the amateur killed the customers.** A plague that does not stop does not create
-   demand — it removes the people who would have paid for the cure. Cinabrus was not just
-   competition; he was **destroying the addressable market.**
-3. So Marbas **held the wager and sent champions** — Q-06's mechanism used in backstory,
-   and exactly the "tip the dealer" play canon already describes.
+**His demotion is exactly what made him strong** — being the god of what's left over is
+worthless until someone leaves an entire civilisation over. He didn't out-fight Cinnabrus.
+He waited, ate, and finished a god who had already destroyed himself.
 
-**And here is why he is a live antagonist for F1–F3, not backstory:**
+**And he took the title.** *"Prince of Demons"* sits in his `epithets_traditional` today.
+That is Cinnabrus's rank, worn by the scavenger who buried him.
 
-> **Marbas can cure the crystallization. He simply won't.**
->
-> A dragon's-blood cure is *permanent* — and a permanent cure ends the disease business
-> forever. It would bankrupt him **exactly the way permanent immunity would**. So the one
-> being in the world who could end the suffering has the strongest possible reason to
-> ensure nobody else does.
+### He is already mechanically opposed to this arc
 
-That gives the set's question — *"will you cure what's corrupted, and at what cost?"* — an
-opponent who has already answered it, in the negative, for profit, and is still doing very
-well out of it.
+His authored `patron_block` needs no changes at all:
 
-**Depiction:** Goetic spirits are grimoire figures, not objects of living worship —
-`risk: low`, same tier as the corpus's Asmodeus. **No living-religion carve-out needed.**
+| Beelzebub's existing terms | What it means here |
+|---|---|
+| **Taboo: "cleanse or cure a condition you inflicted (waste the rot)"** | He **forbids curing.** The set's question is *"will you cure what's corrupted"* — his patronage is a standing vote against the floor's whole moral |
+| Favor: *"win by attrition — let poison or infection do the finishing work"* | He pays you to let the disease work |
+| `blessing_style`: *"boons are contagions"* | His generosity **is** the plague |
+| Influence 1, recognition 4 | Famous, barely worshipped — a name everyone knows and almost nobody prays to. **A god living on reputation and other people's decay** |
 
-> **Corpus gap flagged:** only **one** entity in `data/mythology/entities.jsonl` is tagged
-> `pantheon: goetia` (Asmodeus). Q-28 made demon gods a whole tier of the cosmology, so the
-> goetic cast needs building out — **Marbas, Buer** (10th, *"healeth all distempers"* — a
-> natural third party) **and Sabnock** are the three this arc alone requires.
+### The complication that makes him better than a distant villain
+
+**Beelzebub is one of the 24 patron gods on the live roster.** He is not backstory — he is
+**available to bid on the party.**
+
+> The god who buried the god you are trying to revive can offer you patronage, mid-arc,
+> with terms that forbid you from curing anything. Accepting makes the F1–F3 question
+> almost unanswerable; refusing costs you a major patron in front of the table.
+
+**Marbas** (5th spirit, *"causeth diseases and cureth them"*) demotes cleanly to a **third
+party** — the licensed incumbent who lost market share to both of them and would happily see
+either one buried. Worth authoring, not worth the antagonist slot.
 
 ---
 
-## 11. Open
+## 11. The hunger (Q-50 RULED)
+
+> **Demons hunger for human flesh. They are cursed with it by Cinnabrus's disease** — unstable
+> ever since, and they must consume humans to hold together. Humans work because demons and
+> humans are *"very similar in idea, but serve different divinities."* Demihumans and other
+> worship-bearing humanoids serve too; **humans are simply plentiful.**
+>
+> **The entire capital is a harvesting farm for humans, until the hunger can be soothed.**
+
+### 11.1 ⟨INFERRED⟩ The hunger is unrouted reverence
+
+The owner's phrase — *similar in idea, but serving different divinities* — points at
+something the economy already defines. Under Q-14, what makes a being count is that it
+**can revere**. Humans and demons are the same *kind* of thing: reverence-bearing. They
+just point it elsewhere.
+
+```
+   NORMAL:   demon ──reveres──▶ its god ──stability flows back down──▶ demon
+                                  │
+   CINNABRUS BURIED AND MUTE:  the channel is severed
+                                  │
+                                  ▼
+   THE HUNGER:  demons take reverence-capacity DIRECTLY,
+                by eating the beings that carry it.
+```
+
+**So the hunger is self-medication for a broken vassalage.** That explains, with no extra
+rules, why **reviving Cinnabrus soothes it** (the channel reopens) and why **dragon's blood
+soothes it** (it was his cure, aimed at the same wound). ⟨Confirm — **Q-53**⟩
+
+### 11.2 The capital is a farm
+
+This is what the arc's setting actually is. F3 is not a city with a dark secret; it is a
+**two-century human harvest with a palace on top**, run by the last follower of a buried god
+so that her people can hold together until she can revive him.
+
+- Q-46: only **she and her followers know.** The population is livestock that believes
+  itself a citizenry.
+- She is not a villain in her own account. She is a **regent keeping her people alive until
+  the cure** — which is the same sentence the party will use about themselves before the
+  arc ends.
+- The set's question — *"will you cure what's corrupted, and at what cost?"* — is being
+  answered by someone else, at scale, in the room, and the cost is on a menu.
+
+**Reading of "does curing end demons as a threat?"** — it ends them as *farmers*, not as
+demons. A fed demon is still a demon; it simply stops needing to eat you. ⟨**Q-54**⟩
+
+---
+
+## 12. The chain (Q-52 RULED)
+
+> **Saving the queen does not transfer her to you. Saving Cinnabrus transfers both.**
+
+This is Q-14's vassalage running exactly as written — you don't recruit a follower, you
+**acquire the god she is bound to, and she comes with him**:
+
+```
+   revive CINNABRUS ──▶ he is bound to you
+                              │
+                    everything bound under HIM flows up
+                              │
+              ┌───────────────┴───────────────┐
+        the Queen                    any demons who re-attach
+        (his last follower)          once their god can receive again
+```
+
+| | **Revive** | **Ransack** |
+|---|---|---|
+| Cost | Reverence you cannot get back (Q-22) | None up front |
+| Gain | **A god as your vassal**, his queen, and his returning legions — potentially the largest single divinity transfer available in the campaign | His power, immediately |
+| The hunger | **Soothed** — the channel reopens; the farm can stop | Continues forever |
+| The capital | Can stop harvesting | Keeps harvesting, and now hates you |
+| Demons | Yours | **All of them your enemies** — you destroyed their only route back to stability |
+
+**The ransack path is not merely "the evil option."** It condemns every demon in the world
+to permanent instability and keeps a city farming its own population indefinitely — and the
+player who takes it may never learn that, if they never took the Medium route.
+
+### Q-49 — the queen has no target
+
+She is still **gathering the pieces**. She wants revenge and does not know on whom — she
+believes mortals or champions did it, and has never traced the hand behind them.
+
+> **The hidden quest is the name.** Handing her *"Beelzebub"* means handing a grieving,
+> city-owning demon queen a target who is a **currently seated patron god at the table.**
+> That is not a lore reveal; it is an act with consequences, and the party chooses whether
+> to commit it.
+
+---
+
+## 13. Open
 
 | # | Question | Rec |
 |---|---|---|
-| **Q-47** | Name: **Cinabrus**, Vermalch, or Marbelloth? (§9) | **Cinabrus** |
-| **Q-48** | Confirm **Marbas** as the opposition (§10) | Yes |
-| **Q-49** | Does the **queen** know Marbas buried her god, or does she think it was mortals? | She doesn't know — it is the Medium route's late reveal |
-| **Q-50** | What is **the hunger**, exactly — and does curing it end demons as a threat, or only as *victims*? | Only as victims; a fed demon is still a demon |
-| **Q-51** | Should **Marbas, Buer and Sabnock** be authored into the corpus now? (§10) | Yes — the arc needs them and the goetic tier is nearly empty |
-| **Q-52** | Does the queen count as a **Follower of Cinabrus** *and* a potential follower of the party? Q-25 allows spared enemies to revere you | If yes, "saving" her is a **transfer of divinity** — and the god notices |
+| **Q-53** | Confirm the hunger = **unrouted reverence** (§11.1) | Yes — it explains both cures for free |
+| **Q-54** | Curing the hunger ends demons as **farmers**, not as demons — correct? | Yes |
+| **Q-55** | Does **Beelzebub actually bid on the party** during F1–F3? (§10) | Yes — it is the arc's sharpest single scene |
+| **Q-56** | Does the queen have a **name**? | Draft on request |
+| **Q-57** | If the party gives her Beelzebub's name, can she **act** on it in-campaign, or is it a seed for a later floor-set? | Seed — a demon queen moving on a roster god is a floors-4–9 event |
+| **Q-58** | Is **Nullrot** loyal to Cinnabrus, or to the queen? | To Cinnabrus — which puts it at odds with her when their methods diverge |
 
-### Settled this round
+### Settled
 
 **Q-41** the core is **the tongue** · **Q-44** crystallization is a **mutation** of the
-original plague after 170 years underground — which is why the dragon-blood cure Cinabrus
-devised is only *nearly* right, and why the Loong's blood alone may not be enough ·
-**Q-45** the Medium route is the first follower's story · **Q-46** only the queen and her
-followers know.
+original plague after 170 years underground — which is why Cinnabrus's dragon-blood cure is
+only *nearly* right · **Q-45** the Medium route is the first follower's story · **Q-46**
+only the queen and her followers know · **Q-47** the name is **Cinnabrus** · **Q-48**
+**Beelzebub** is the opposition · **Q-49** she has no target yet · **Q-50** the hunger is a
+curse from Cinnabrus's disease and the capital is a farm · **Q-51** full goetic
+investigation commissioned — all 72 spirits of the Ars Goetia being authored into the
+corpus · **Q-52** the chain runs through Cinnabrus, not the queen.
