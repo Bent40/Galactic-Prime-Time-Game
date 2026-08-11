@@ -5,9 +5,18 @@
 
 ## Done
 
-- **Suite: 511 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+- **Suite: 570 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
   gate (seeds · import · suite · slice smoke · balance WIN); branch
-  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep at `9af6d09`.
+  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep at `927fd0e`.
+- **Wave 4 — KAN-5 proper (2026-08-11):** deterministic A* pathfinding
+  (`pathing.gd` — concave-wall stranding retired, open-space greedy byte-compat);
+  doors + the room GRAPH (R29 — exploration beats, choose_exit, DAG v1, the demo
+  run's first real branch: Kennel vs Service Corridor); stealth/detection/cover
+  per R20 as ruled (`stealth.gd` — sight 2xMind PROVISIONAL, LOS through
+  walls/closed doors, Shout breaks stealth, AI never acts on hidden targets;
+  facing cones/hearing/disguise downscoped where R20's own phasing deferred
+  them); the war-hound maze funnel REAL (R11 #21 — closest herder chases,
+  others cut off the nearest open door, never skipping a kill).
 - **Wave 3 — the whole unblocked backlog (2026-07-25):** pack synergy (R15 enemy
   combos, personality-gated opportunistic linking — two blocked roach bites merge
   into a wound) + serialized readable ai_stance (the aura_reading substrate);

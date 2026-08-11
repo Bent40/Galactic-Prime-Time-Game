@@ -27,10 +27,11 @@ directly to `main` — fetch + merge origin/main before pushing.
 ### ▶️ Backlog status (wave 3 DONE 2026-07-25 — all four landed at `9af6d09`)
 - ~~Pack synergy + AI stances~~ · ~~keyword tree + mutations~~ · ~~second enemy
   (war hound) + 3-encounter run~~ · ~~KAN-5 arenas (bounces + can pops real)~~.
-- **Still open, KAN-5 proper:** rooms/dungeon FLOW beyond single-combat arenas
-  (corridors/doors/the hound maze-funnel), real AI pathfinding (greedy step
-  strands on concave walls — honest limitation), stealth/detection/cover (R20),
-  owner-authored room layouts (all wall/can positions PLACEHOLDER).
+- ~~KAN-5 proper~~ **wave 4 DONE 2026-08-11 at `927fd0e`**: pathfinding, doors +
+  room graph (R29), stealth/detection/cover (R20), the maze funnel (R11 #21).
+  Still open there: R20's own deferred phases (facing cones, hearing/alert,
+  disguise), objects beyond trash cans, owner-authored room layouts (all
+  wall/can/door positions PLACEHOLDER).
 - **Content pass:** the ~37 unimplemented skills (incl. aura_reading on the new
   stance substrate, Intercept, Iron Stance's retarget-guard archetype).
 - **KAN-7 (parked — needs owner pricing):** threshold-dice upgrade economy,
