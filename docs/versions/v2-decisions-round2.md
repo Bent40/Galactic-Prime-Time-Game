@@ -674,6 +674,139 @@ on. **→ Q-24.**
 
 ---
 
+## Part 9 — Round 6: the ledger closes, and the final batch
+
+**Rulings:** Q-23 … Q-26, 2026-08-10. **The divinity economy is now fully specified.**
+
+| # | Ruling |
+|---|---|
+| **Q-23** | A village is **one named entry carrying a weight** — the name is the ledger row, the divinity is its value |
+| **Q-24** | **Yes** — Goals convert named Followers; at reverence thresholds a god notices and becomes a Patron. **Closes D-09** |
+| **Q-25** | **Yes** — a defeated enemy or NPC can become your follower |
+| **Q-26** | **Yes** — Viewers stay abstract billions; Followers are named |
+
+### 9.1 Q-25 gives v2 something v1 never had: a reason to spare people
+
+v1's audience economy rewards spectacle, and spectacle rewards violence. **Q-25 puts a
+counterweight in the same currency**: a beaten enemy who reveres you is a permanent ledger
+row; a dead one is a one-off spectacle spike.
+
+That is not a soft rule bolted on — it is the divinity economy doing it. **Mercy is now the
+greedy play in exactly the situations where v1 made cruelty the greedy play**, which is the
+sharpest possible expression of the spine (*"how much can we break your essence down in the
+name of entertainment?"*) — because now the show is *paying you to stay whole*, and you
+still have to choose.
+
+It also makes §21's non-lethal rules and the Forced-Action failure path economically live
+rather than merely available.
+
+### 9.2 The complete divinity economy
+
+```
+    SPECTACLE ──▶ Viewers        mass, anonymous, decays when boring
+                     │            (the hype meter — unchanged from v1)
+                     │
+    STORY EVENTS ──▶ Followers   NAMED beings · one entry, one weight
+       (Goals,          │        villages, people, gods, spared enemies
+        mercy,          │        ═ YOUR DIVINITY
+        rescue)         │
+                        ├──▶ cut flows up to your PATRON
+                        │     (Q-04 negotiated — literally whose name
+                        │      the crowd says; Q-22 earned, never gifted)
+                        │
+                        ▼
+              at thresholds, a GOD NOTICES ──▶ Patron
+                        │
+    SPEND ◀─────────────┴─────────────▶ HOLD
+  advancement                      leverage — break the contract
+  (divinity shop)                  only if you out-hold your patron
+                                   (Q-05); and at the end, your
+                                   standing in the pantheon you
+                                   joined or created (Q-12)
+```
+
+**Every rung is now ruled.** No placeholders remain in the economy's *shape* — only its
+numbers, which are tuning.
+
+### 9.3 D-13 answers itself — the house has no name
+
+D-13 asked us to name the house / the fallen god running the table. **Q-14 and Q-18 make
+the answer structural rather than a naming exercise.**
+
+Canon: the games are run by **gods who went bankrupt** (`cosmic-casino-canon.md` §4).
+Q-14: divinity *is* reverence. Q-18: followers must be **named**.
+
+> **Therefore a bankrupt god is, by the rules as written, a god nobody names any more.**
+> The house cannot have a name — losing it is what bankruptcy *is*. It is addressed only by
+> function: **the House. The Dealer. Management.**
+
+That is mechanically true rather than merely atmospheric, it lands the deadpan-corporate
+register canon asks for, and it gives §17.5 its noun without inventing a deity. It also
+quietly explains why the house wants the games so badly: **it is trying to be named again.**
+
+**→ Confirm (D-13).** If you'd rather it have a name recoverable late in the campaign, that
+works too — and would be a strong Floor-10 reveal.
+
+---
+
+## Part 10 — The final batch
+
+Everything still open, grouped by what it needs from you.
+
+### A. Closed by your own rulings — confirm only
+
+| # | Question | Closed by |
+|---|---|---|
+| **D-07** | Does the Follower tier survive? | **Q-18 / Q-26** — it survives as the divinity engine |
+| **D-09** | Does a Goal still convert a Patron? | **Q-24** — Goals convert Followers; gods notice at thresholds |
+| **D-17** | What do contestants believe about the audience? | **D-01 + Frame-C** — champions know, civilians learn |
+| **D-08** | Is a patron's tip a Directive or a separate channel? | **Q-13** — the gift is the carrot, the condition is the Directive |
+| **D-13** | Name the house | **§9.3** — it has no name; bankruptcy is namelessness |
+
+### B. Need a decision from you
+
+| # | Question | Recommendation |
+|---|---|---|
+| **D-10** | On a Camera Call, what doubles? | **The reverence swing — both ways.** Camera Call is the moment the crowd decides what you are, so it should double what you stand to gain *and* lose. Double-edged fits "spectacle over safety" and now has a currency to bite with |
+| **D-11** | Tags: 12 crowd domains, or the shipped 26 god jurisdictions? | **Both — split by plane, per Frame-C.** Tags carry crowd-appetite domains (broadcast); epithets carry god jurisdictions (wager). Uses the existing data as-is, no reconciliation needed |
+| **D-12** | Where do demons live in v2's cosmology? | **The house's court.** Blocks the entire Medium route and the brand contract until ruled |
+| **D-19** | Legendary / Mythic / Godly — keep or free the words? | **Keep "Godly"** (now literally true); **free "Mythic"** from at least one of its four ladders before Legendary affixes and epithet grades ship |
+| **D-23** | Tags: does **84** or **100** stand? | **100** — the data has been back at 100 since the rulebook-description port; the 84-pruning never landed. Cheaper to bless reality than re-prune |
+| **D-27** | Firearms in v2 — confirm | **Yes.** The chain is strong (VIP table = human pop culture; §12.7 already fuses guns with myth) but **no v2 doc names guns anywhere**, so it stays an inference until you say it |
+| **D-25** | §2.3's Command/Persuade/Intimidate contradict R18 | **A v1 bug.** v1 is frozen for *setting*, not for errata — but it's your table, so your call whether I fix it in v1, v2-only, or leave it |
+
+### C. Recommend yes — batch-approve and I'll apply
+
+| # | Item | Recommendation |
+|---|---|---|
+| **D-14** | The **anti-prime** as the curse chassis | Adopt — zero new machinery, unblocks every `trial_table` |
+| **D-15** | Super Boss ladder | Bosses **Shrine → Temple → Pantheon**; supers **Legend → Age-Ender → The House** |
+| **D-16** | The mycelium theme | Keep it; drop only the Corporation's *ownership* of it |
+| **D-18** | The Advanced Fabricator's god | A bankrupt smith-god — also fills the materials corpus's flagged gap |
+| **D-20** | The Nikita adjacency separation rule | Adopt — it is D-03's mitigation |
+
+### D. Housekeeping — I can just do these
+
+| # | Item |
+|---|---|
+| **D-21** | Record D-V2 as superseding `setting-rebrand-options.md:155-156` |
+| **D-22** | Close the four "ruled twice, still listed OPEN" items (Momus · title · timer · Forsaken trigger) |
+| **D-24** | Mark `setting-rebrand-options.md:38` SUPERSEDED |
+| **D-26** | Write the Phase-4 three-way divergence guard that was never written |
+| **D-28** | Fix the `'Corporate'` SQL enum at `001_initial_schema.sql:212` |
+| **D-29** | Archive rather than migrate the `messages` collection |
+| **D-30** | Record the contestant/champion register split |
+
+### E. Slice-local flavour — batch-approve or ignore
+
+Farm → augury pen · Wizard's Tower → the Sanctum · the Goldsmith's "cage" · a HOUSE lane in
+the Box Namer · three coupon renames · Med Bay comp-or-marker · rename §17.1 "Exposure" (the
+word is taken twice) · map top box tiers onto the relic taxonomy · re-home Nine Lives and
+Unkillable now both are epithets · split Skill Tomes into God/Follower Relics · enemy
+disposition template- or encounter-level · rename the four TV-coded skills.
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there
