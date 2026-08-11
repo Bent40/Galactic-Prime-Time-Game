@@ -447,13 +447,27 @@ The ruling creates **two buried things**, not one:
 This costs nothing to author — both spirits now exist in the corpus with those exact lines
 — and it converts F2 from "the travelling floor" into a floor with a puzzle and an author.
 
-**The irony to decide (Q-60):** does the queen know she built over the **tongue** rather
-than the body? Either reading is strong:
+**Q-60 RULED — (a): she does not know.** She believes she found the grave. She built a
+capital over a **tongue**, and has prayed at it for a century without ever learning what
+is actually down there.
 
-| | Reading | Effect |
-|---|---|---|
-| **a** | She doesn't know | She has been praying at the wrong half for a century — devastating, and it makes the party's arrival the first competent thing to happen |
-| **b** | She knows exactly | She is guarding the only piece that matters, and the capital is a vault, not a shrine — colder, more capable, more dangerous |
+**Q-61 RULED — the decoy graves are canon.** Beelzebub hired the relocation and the
+forgery; Bifrons's *"seeming Candles"* still burn out there. F2 is a search through a lie.
+
+**Q-62 RULED — he can hear. He cannot speak.**
+
+Put those three together and the arc's cruelty resolves into one image:
+
+> He hears through whatever piece of him is nearest. **The queen has been praying directly
+> onto his tongue for a hundred years.** He has heard every word — every plan, every
+> failure, every anniversary of a search she was always going to lose because the desert
+> was seeded against her — and he has not been able to say one syllable back.
+>
+> She does not know he is listening. She does not know what she is kneeling on.
+
+That is what the party interrupts. **Q-41's tongue, Q-60's ignorance and Q-62's one-way
+seal were three separate rulings; together they are the scene the whole set is built to
+reach.**
 
 ### 13.4 Beelzebub can still move it
 
