@@ -898,6 +898,24 @@ cones) hit if the new hex is still within their range/pattern."**
   `invalid_destination` plus the mirrored movement gates (`grappled` / `winding_up` /
   `prone`).
 
+## R26 — Undodgable attacks: declared, announced, honest (owner, 2026-07-25)
+
+Some attacks are **specifically undodgable** — a data-driven flag on the ability or
+effect, never a hardcoded case:
+
+- An undodgable attack is immune to EVERY dodge-shaped escape: the R22 threshold
+  dodge, the R25 Tactical Roll / AoE-center rule, and any authored dodge block.
+  **Movement is not a dodge** — leaving an area/range before resolution still works
+  where the shape allows it (R2 windup re-checks unchanged).
+- **Transparency is the rule's other half (owner's words: "declared on attack
+  windup so the player knows and doesnt die due to a misunderstanding"):** the flag
+  must ride the windup/telegraph event, `view_schedule`, and `preview_action` —
+  loudly. An undodgable attack the player couldn't see coming is a bug, not a
+  feature.
+- **The valve blast IS undodgable** (first application — supersedes R25's
+  valve-counter consequence): a blast-Moment Tactical Roll no longer escapes the
+  KO; running out of the radius during the escape window remains the counterplay.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.
