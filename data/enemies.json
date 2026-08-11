@@ -438,5 +438,95 @@
         "count": 1
       }
     ]
+  },
+  {
+    "id": 4,
+    "key": "war_hound",
+    "name": "War Hound",
+    "description": "Mid-tier kennel beast — a broad-chested hunting hound the show releases for its chase segments. Ported from the campaign's authored war hounds (compendium §4.6: the hound pack of Sasha's Floor-1 maze — the chasers that corner the quarry and funnel it where the hunt wants it; the same hounds recontextualize as war dogs in the Nikita material, so the stat block doubles into that content, per the campaign-residuals roster). review-5 catalogues NO conflicting source on the hounds (NQ1–NQ4 do not touch them). WHOLE ENTRY PROVISIONAL (owner review): the compendium authors the hounds' BEHAVIOR, not numbers — every number here is PLACEHOLDER (R14) — and the tutorial-floor staging as a kennel pair is this port's framing, not compendium text. CATEGORY NOTE: §2.14 has only Mob/Elite/Boss/Super Boss; a hound does not die to one meaningful blow (not a Mob) and carries no phases/win-condition machinery (not a Boss) — Elite is the ladder's mid tier.",
+    "category": "Elite",
+    "size": "Medium",
+    "body_parts": [
+      {
+        "key": "head",
+        "name": "Head",
+        "hp": 2,
+        "lethal": true
+      },
+      {
+        "key": "torso",
+        "name": "Torso",
+        "hp": 4,
+        "lethal": true
+      },
+      {
+        "key": "front_left_leg",
+        "name": "Front Left Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "front_right_leg",
+        "name": "Front Right Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "hind_left_leg",
+        "name": "Hind Left Leg",
+        "hp": 2,
+        "lethal": false
+      },
+      {
+        "key": "hind_right_leg",
+        "name": "Hind Right Leg",
+        "hp": 2,
+        "lethal": false
+      }
+    ],
+    "stat_block": {
+      "physique": 3,
+      "reflexes": 4,
+      "mind": 1,
+      "charm": 0
+    },
+    "resistances": {
+      "Physical": 0,
+      "Affliction": 0,
+      "Psychic": 0
+    },
+    "personality": {
+      "proximity_bias": 2.0,
+      "grudge_weight": 1.0,
+      "mock_sensitive": false,
+      "low_hp_bias": 3.0,
+      "decay": 1.0,
+      "pack_hunter": true,
+      "pack": "war_hound",
+      "note": "R23 (Antagonism): DIM — Mind 1, mock_sensitive false (a dog does not parse insults; feints build no grudge, and the R24 read is impossible: Mind 1 + d4 max 5 under any authored feint threshold). A PACK ANIMAL, never a loner — pack_hunter + family 'war_hound' (R15 wave-3a linking; pairs cap). Blood-scent: low_hp_bias 3.0 — the pack pulls down the wounded first (the brood-tender's authored 3.0, same persona lever). Strongly proximity-driven (inverse-square chaser); grudge 1:1 with decay 1.0 — a struck hound rounds on its striker and does not forget mid-fight. TIER NOTE: first pack-hunting ELITE — the roach mob note's 'Elites/bosses are NOT pack hunters' recorded the wave-3a roster (brood-tender/Incine-Dile), not an engine rule; R15 linking is personality-gated and category-free (enemy_ai.gd _link_pack_strike). Animal quadruped morphology per the R21 parts research (4-leg attrition layout; torso 4 sits between the cat 3 and human 5 precedents). All numbers PLACEHOLDER (R14)."
+    },
+    "abilities": [
+      {
+        "key": "rending_bite",
+        "name": "Rending Bite",
+        "moment_cost": 1,
+        "range": 1,
+        "damage": [
+          {
+            "type": "bleeding",
+            "amount": 1
+          }
+        ],
+        "note": "R14 balance math (vs fresh contestant torsos, no one-shots per the balance bar): Force = 1 + floor(phys 3/2) = 2. A phys-2 contestant's Robustness floor(2/2)=1 -> net 1 + bleeding T1; a phys-3's Robustness 1 -> net 1; a phys-5 tank's Robustness 2 -> Force 2 NOT > 2, the gate BLOCKS — a LONE hound cannot wound a braced tank. The R15 pack pair (merged Force 2+2=4 through ONE Robustness gate) nets 3 (phys 2) / 2 (phys 5): the pack opens what no lone hound can, and even the merged pair never one-shots a fresh 5-HP torso (max net 3 < 5). The real threat is attrition — every landed bite rides bleeding, and untreated wounds persist across the run's encounter hand-offs (R11 canon)."
+      },
+      {
+        "key": "corner_the_prey",
+        "name": "Corner the Prey",
+        "moment_cost": 1,
+        "effect": "herd the quarry toward the waiting pack",
+        "note": "DATA-ONLY (deliberate downscope, no new resolver features this story): the compendium's SIGNATURE hound behavior is the maze funnel (§4.6 — the pack corners the quarry and herds it to a chosen door; 'she picks where to run; the demon keeps cornering her'). That needs herding/zone-control AI and exploration-layer geometry that do not exist yet (KAN-5 arena scope). Effect-only abilities are AI-skipped by design (the brood-tender's drag_back precedent, R11 #16), so this entry stays visible in data and executes nothing. The shipped honest subset of the signature: R23 personality (inverse-square chase + blood-scent low_hp_bias) + R15 pack-linked bites — the pack converges on the weakest and pulls them down together."
+      }
+    ],
+    "reward_table": []
   }
 ]
