@@ -246,8 +246,11 @@ func _has_status(c: CombatantState, status: String) -> bool:
 ##                 conditions: [ids that would ride the hit],
 ##                 dodge_possible: bool, dodge_threshold: int,
 ##                 dodge_reflexes: int, dodge_die: int,
-##                 dodge_outcome: "" | "ineligible" | "auto_dodge" | "roll_needed" | "impossible",
+##                 dodge_outcome: "" | "ineligible" | "auto_dodge" | "roll_needed" | "impossible" | "undodgable",
 ##                 dodge_roll_needed: int (0 unless roll_needed),
+##                 undodgable: bool — R26 (additive): the action's data-driven
+##                 undodgable flag; when true the dodge uncertainty collapses
+##                 honestly (dodge_possible false, outcome "undodgable"),
 ##                 read_possible: bool, read_threshold: int,
 ##                 read_mind: int, read_die: int,
 ##                 read_outcome: "" | "ineligible" | "auto_read" | "roll_needed" | "impossible",
@@ -341,14 +344,21 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 	var threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
 	if threshold <= 0:
 		threshold = int((action.get("dodge", {}) as Dictionary).get("threshold", 0))
-	var dodge_eligible: bool = threshold > 0 and target.alive and not target.removed_from_play \
+	# R26 (additive): an undodgable action's dodge uncertainty is NOT uncertain
+	# — the flag is reported and dodge_possible collapses to false, exactly
+	# matching _strike_round's skip (transparency is the rule's other half).
+	var undodgable: bool = bool(action.get("undodgable", false))
+	var dodge_eligible: bool = threshold > 0 and not undodgable \
+		and target.alive and not target.removed_from_play \
 		and not target.is_helpless(clock.tick) and not target.exposed_cache \
 		and not bool(target.statuses.get("prone", false))
 	var dodge_reflexes: int = target.trait_total("reflexes")
 	var dodge_die: int = target.threshold_die("reflexes")
 	var dodge_outcome: String = ""
 	var dodge_roll_needed: int = 0
-	if threshold > 0:
+	if undodgable:
+		dodge_outcome = "undodgable"
+	elif threshold > 0:
 		if not dodge_eligible:
 			dodge_outcome = "ineligible"
 		elif dodge_reflexes >= threshold:
@@ -397,6 +407,7 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 		"dodge_die": dodge_die,
 		"dodge_outcome": dodge_outcome,
 		"dodge_roll_needed": dodge_roll_needed,
+		"undodgable": undodgable,
 		"read_possible": read_eligible and read_outcome != "impossible",
 		"read_threshold": read_threshold,
 		"read_mind": read_mind,
@@ -1897,8 +1908,14 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# dodge's rider and cannot be dodged in v1 (deterministic, rng-free). R15:
 	# EACH merged member runs its own dodge here, at the same point in the AI
 	# stream as un-merged play; a dodged member's Force drops out of the merged
-	# sum.
-	if not bool(action.get("counter", false)):
+	# sum. R26 (owner 2026-07-25, decision #32): an action carrying the
+	# data-driven "undodgable" flag skips EVERY dodge-shaped escape — the boss
+	# threshold dodge AND the authored dodge/counters ladder — consuming ZERO
+	# rng (a skipped check never touches the salted stream, so the ai_rng state
+	# is byte-identical to a fight where the check never existed). Movement/
+	# windup re-checks (leaving the arc/lane/radius) are elsewhere and stay the
+	# honest counterplay.
+	if not bool(action.get("counter", false)) and not bool(action.get("undodgable", false)):
 		var boss_threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
 		var ability_dodge: Dictionary = action.get("dodge", {})
 		var dodge: Dictionary = {}

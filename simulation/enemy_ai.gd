@@ -273,15 +273,20 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictionary) -> Dictionary:
 	var radius: int = int(explosion.get("radius", 0))
 	var escape: int = maxi(0, int(explosion.get("escape_moments", 0)))
+	# R26: the authored undodgable flag rides both beat choices so the telegraph
+	# can announce it and the blast can honor it — data-driven, never hardcoded.
+	var undodgable: bool = bool(explosion.get("undodgable", false))
 	var beat: Dictionary = explosion_beats.get(actor.id, {})
 	if beat.is_empty():
 		return {
 			"choice": "telegraph", "tier": "boss", "phase": phase,
 			"radius": radius, "moments_until_blast": escape + 1,
+			"undodgable": undodgable,
 		}
 	if clock.tick <= int(beat.get("telegraph_tick", 0)) + escape:
 		return _wait("boss", "explosion_building")
-	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius}
+	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius,
+			"undodgable": undodgable}
 
 
 # ------------------------------------------------------------ death spin (wave 2b)
@@ -1047,6 +1052,10 @@ func _attack_action(ability: Dictionary, targets: Array[Dictionary]) -> Dictiona
 	# action so the resolver can run the target-side dodge at the strike round.
 	if ability.has("dodge"):
 		action["dodge"] = (ability.get("dodge", {}) as Dictionary).duplicate(true)
+	# R26: an ability-authored undodgable flag rides the action — the resolver
+	# skips every dodge-shaped escape for it (data-driven, never a boss special).
+	if bool(ability.get("undodgable", false)):
+		action["undodgable"] = true
 	# Wave 2b: the dash's authored "knock aside" effect rides the action — the
 	# resolver applies it to a CONNECTED (not dodged, not stopped-short) target
 	# after the charge's strike round.
@@ -1297,6 +1306,10 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 		"phase": int(decision.get("phase", 0)),
 		"radius": int(decision.get("radius", 0)),
 		"moments_until_blast": int(decision.get("moments_until_blast", 0)),
+		# R26 transparency (additive): an undodgable blast is declared on the
+		# windup so nobody dies to a misunderstanding — the flag rides the
+		# telegraph loudly, straight off the authored explosion block.
+		"undodgable": bool(decision.get("undodgable", false)),
 	}]
 	return events
 
@@ -1313,16 +1326,24 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 ## the boss's own hex, and rolling onto an occupied hex is impossible — so in
 ## practice a well-timed roller ALWAYS escapes the valve KO (flagged for the
 ## owner in R25; the center check stays live for future area attacks with
-## unoccupied centers). Then the canonical retreat applies when this valve
-## resets the breach, and the machine advances into the next phase — the boss
-## resumes normal fight behavior next Moment.
+## unoccupied centers). R26 (owner 2026-07-25, decision #32) SUPERSEDES that
+## consequence for the VALVE: the authored explosion block carries
+## "undodgable": true, and an undodgable AREA attack skips the roller-escape
+## check entirely — a blast-Moment Tactical Roll no longer escapes the KO;
+## leaving the radius during the escape window (movement, not a dodge) remains
+## the counterplay. The center machinery stays live for authored DODGABLE
+## areas. Then the canonical retreat applies when this valve resets the
+## breach, and the machine advances into the next phase — the boss resumes
+## normal fight behavior next Moment.
 func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: ConditionEngine) -> Array[Dictionary]:
 	var phase: int = int(decision.get("phase", current_phase(actor.id)))
 	var radius: int = int(decision.get("radius", 0))
+	var undodgable: bool = bool(decision.get("undodgable", false))
 	var events: Array[Dictionary] = [{
 		"type": "explosion_blast",
 		"combatant": actor.id, "phase": phase, "radius": radius,
 		"position": [actor.position.x, actor.position.y],
+		"undodgable": undodgable,
 	}]
 	# The blast shape is the shared HexGeometry primitive (decision #31);
 	# membership is identical to the old direct distance <= radius check.
@@ -1336,8 +1357,11 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 		if not area.has(other.position):
 			continue
 		# G1 AoE-center rule (R25): a rolling target is missed by an AREA attack
-		# entirely — unless the destination hex IS the area's center.
-		if other.rolled_this_window and other.position != actor.position:
+		# entirely — unless the destination hex IS the area's center. R26: an
+		# UNDODGABLE area skips the roller escape outright (the roll is a
+		# dodge-shaped escape; movement out of the radius already happened or
+		# didn't) — no rng lives on this path either way.
+		if not undodgable and other.rolled_this_window and other.position != actor.position:
 			events.append({
 				"type": "blast_missed_roller",
 				"combatant": other.id, "by": actor.id,

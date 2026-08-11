@@ -334,6 +334,10 @@ def main() -> int:
                     fail("enemies.json", f"{k}/{ak}: heal.amount must be int >= 1")
                 if h.get("target") not in (None, "self"):
                     fail("enemies.json", f"{k}/{ak}: heal.target {h.get('target')!r} unsupported (AI v1: self only)")
+            # R26 undodgable flag (owner 2026-07-25, decision #32): data-driven,
+            # additive — when present it must be a bool.
+            if "undodgable" in a and not isinstance(a["undodgable"], bool):
+                fail("enemies.json", f"{k}/{ak}: undodgable must be a bool (R26)")
             # R22 ability dodge block (the Dash counters ladder): threshold asks the
             # target's Reflexes; counter_at (optional) gates the counterattack rider.
             if "dodge" in a:
@@ -365,6 +369,11 @@ def main() -> int:
                     fail("enemies.json", f"{k}: explosion phase {p.get('phase_number')} needs hp_at_or_below int >= 0")
                 else:
                     explosion_thresholds.append(t)
+                # R26 undodgable flag (owner 2026-07-25, decision #32): data-driven,
+                # additive — when present on an explosion block it must be a bool.
+                ex = p["behavior"]["explosion"]
+                if isinstance(ex, dict) and "undodgable" in ex and not isinstance(ex["undodgable"], bool):
+                    fail("enemies.json", f"{k}: explosion phase {p.get('phase_number')} undodgable must be a bool (R26)")
             elif "hp_at_or_below" in p:
                 fail("enemies.json", f"{k}: phase {p.get('phase_number')} has hp_at_or_below but no explosion (fight bands derive from the previous threshold)")
         if explosion_thresholds != sorted(explosion_thresholds, reverse=True) or \

@@ -1592,11 +1592,20 @@ func _broadcast_announce(e: Dictionary) -> String:
 		"explosion_telegraph":
 			# The decision-#27 counterplay cue — echoes the slice harness's line
 			# verbatim (radius + Moments straight off the event, never invented).
-			return "STEAM SCREAMS from the vents — blast in %d Moments, radius %d. RUN." % [
+			# R26 transparency: an undodgable blast SAYS SO on the windup — the
+			# marker rides the flag on the event, loudly, so nobody banks on a
+			# roll that cannot save them (running out of the radius still can).
+			var telegraph := "STEAM SCREAMS from the vents — blast in %d Moments, radius %d. RUN." % [
 				int(e.get("moments_until_blast", 0)), int(e.get("radius", 0))]
+			if bool(e.get("undodgable", false)):
+				telegraph += " UNDODGABLE — no dodge escapes this; distance is the only cover."
+			return telegraph
 		"explosion_blast":
-			return "THE VALVE BLOWS — a radius-%d eruption tears through the arena!" % \
+			var blast_line := "THE VALVE BLOWS — a radius-%d eruption tears through the arena!" % \
 				int(e.get("radius", 0))
+			if bool(e.get("undodgable", false)):
+				blast_line += " (UNDODGABLE)"
+			return blast_line
 		"explosion_knockout":
 			# Per-victim: Helpless for 2 Clocks (owner ruling #27 — no damage).
 			return "%s is OUT COLD — helpless for 2 Clocks" % \

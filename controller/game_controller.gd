@@ -415,6 +415,9 @@ func view_clock() -> Dictionary:
 ##   resolve_tick:  the tick the entry resolves on
 ##   windup:        window > 0 (a committed multi-Moment declare/resolve gap)
 ##   combo_id:      present only on R15 combined-action members
+##   undodgable:    present (true) only when the declared action carries the
+##                  R26 data-driven flag — declared loudly so the schedule
+##                  never hides that no dodge-shaped escape exists (additive)
 func view_schedule() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if sim == null:
@@ -439,6 +442,8 @@ func view_schedule() -> Array[Dictionary]:
 		}
 		if action.has("combo_id"):
 			row["combo_id"] = String(action.get("combo_id", ""))
+		if bool(action.get("undodgable", false)):
+			row["undodgable"] = true
 		out.append(row)
 	return out
 

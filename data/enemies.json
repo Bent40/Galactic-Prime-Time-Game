@@ -342,7 +342,9 @@
             "radius": 5,
             "escape_moments": 2,
             "result": "instant knockout",
-            "telegraph": "visible steam 1 Moment before"
+            "telegraph": "visible steam 1 Moment before",
+            "undodgable": true,
+            "undodgable_note": "R26 (owner 2026-07-25, decision #32): the valve blast is undodgable - immune to every dodge-shaped escape including the R25 blast-Moment Tactical Roll; running out of the radius during the escape window remains the counterplay"
           },
           "after": "network retreats deeper - breach threshold resets"
         },
@@ -375,7 +377,8 @@
           "explosion": {
             "radius": 7,
             "escape_moments": 2,
-            "result": "instant knockout"
+            "result": "instant knockout",
+            "undodgable": true
           },
           "upgrades": [
             "network fully exposed",
@@ -410,7 +413,8 @@
           "explosion": {
             "radius": 19,
             "escape_moments": 5,
-            "result": "instant kill"
+            "result": "instant kill",
+            "undodgable": true
           },
           "note": "RULED canon (owner 2026-07-14, NQ3): 6 phases - fight, explosion, fight, explosion, fight, large explosion"
         },
