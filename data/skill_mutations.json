@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "note": "Gemstone mutation RECIPES (G6 owner ruling 2026-07-23 round 3, char-sheet repo rulebook/skills-passover.md; book gpt-system-v0.92.md §4.5). A mutation merges compatible parent skills at the Skill Gemstone into a new skill: parents must be owned at >= min_level and pairwise share a NARROW keyword per the G3 rule (data/skill_keywords.json), BOTH parents are CONSUMED, and the result arrives at the recipe level. simulation/skill_forge.gd is the engine (validate_mutation / apply_mutation — pure, all-violations-at-once). COST: the compendium's Modification Center prices a Skill Gemstone use at 1 Bronze ('disassemble/consume/merge') — that is ECONOMY, deliberately unpriced in this engine; KAN-7 progression owns pricing. Recipes validate against skill KEYS + LEVELS only — SkillBook implementation is NOT required (CombatantState.from_spec accepts any {key, level} grant row), so a roster can own the result as data before its content pass.",
+    "schema": "mutation: { key (unique recipe id), name (display), parents: [{key, min_level}] (>= 2 distinct skill keys), result: {key, level} (not a parent key), note (provenance + economy), compatibility_override? (bool — authored GM override for a recipe whose parents do NOT share a narrow keyword; the G3 broad-only GM-call tier made explicit. No shipped recipe needs it: Intercept x Brace share the narrow keyword 'bracing') }"
+  },
+  "mutations": [
+    {
+      "key": "iron_stance",
+      "name": "Iron Stance",
+      "parents": [
+        {"key": "intercept", "min_level": 5},
+        {"key": "brace", "min_level": 3}
+      ],
+      "result": {"key": "iron_stance", "level": 1},
+      "note": "THE first authored Gemstone mutation and the book §4.5 canonical example (G6 round 3, owner 2026-07-23): Intercept Lv 5 + Brace Lv 3 — compatible through 'bracing' — merge into Iron Stance; the mobile bodyguard consumes the self-brace and becomes the rooted bulwark. Both parents consumed; the mutation arrives at level 1. Effect (table canon, seeded template): stance — while you hold your ground, attacks on adjacent allies retarget to you, plus persistent Crush/Burn reduction. DATA-ONLY in the sim today (R27): the retarget-guard archetype is an ActionResolver content pass; neither parent Intercept nor result Iron Stance is in SkillBook.KNOWN_KEYS yet."
+    }
+  ]
+}

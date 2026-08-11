@@ -1,0 +1,273 @@
+{
+  "_meta": {
+    "note": "G3 RULED (owner 2026-07-23, char-sheet repo rulebook/skills-passover.md RULINGS): model A — the keyword tree. Taxonomy + rule live in the book (gpt-system-v0.92.md §4.5); the per-skill assignments here are a VERBATIM port of the KEYWORDS map in server/apply-skill-passover.js (44 skills, applied to the campaign DB 2026-07-25) plus the 5 G6-approved new-skill keyword seeds from the same script's NEW_SKILLS (intercept, death_grip_jaws, field_triage, iron_stance, play_to_the_camera). Display names are mapped to this repo's snake_case sim keys (data/skills.json keys where the skill exists there). This file is DATA canon even where the sim has not implemented the skill: generate_visual_media / ignore_all_previous_commands are table-canon only (cut from the game, G5 — no robots in the slice) and the five G6 skills await their content pass, but their ruled keywords are recorded now. RULE (book §4.5): skills sharing a NARROW keyword are compatible at the Skill Gemstone; sharing only a BROAD group is the ask-the-GM-with-a-fiction-reason tier (machine-readable: SkillKeywords.compatible basis 'broad_only' — NOT auto-legal); no overlap = incompatible. The GM may grow the taxonomy deliberately, never casually.",
+    "classification": "NOT provisional: the book §4.5 classifies EXPLICITLY — the 9 taxonomy object keys below are the BROAD groups, their members are the NARROW keywords (§4.5 table, 'a small hierarchy of broad groups and narrow members'). Every skill carries 2–4 keywords (§4.5); a keyword may come from anywhere in the taxonomy (e.g. juggling carries control's narrow 'throw' under the performance group).",
+    "unassigned": "reversion (data/skills.json id 45, game-side Nikita exclusive) has NO ruled keyword assignment — it postdates the 44-row passover table and is not in the KEYWORDS map. FLAGGED for the owner; validate_seeds surfaces it as a non-fatal NOTE. Do not invent keywords for it here.",
+    "schema": "{ taxonomy: { <broad>: [<narrow>, ...] }, skills: { <sim skill key>: [<keyword>, ...] (2..4 entries, each a broad or narrow keyword from the taxonomy) } }"
+  },
+  "taxonomy": {
+    "magic": [
+      "fire",
+      "cold",
+      "toxin",
+      "psychic",
+      "force"
+    ],
+    "strikes": [
+      "blade",
+      "blunt",
+      "unarmed",
+      "flurry",
+      "precision",
+      "power"
+    ],
+    "movement": [
+      "leaping",
+      "tumbling",
+      "rushing"
+    ],
+    "performance": [
+      "deception",
+      "presence",
+      "sound",
+      "projection"
+    ],
+    "survival": [
+      "treatment",
+      "bracing",
+      "aquatic"
+    ],
+    "control": [
+      "grapple",
+      "throw"
+    ],
+    "perception": [
+      "empathy",
+      "patterning",
+      "awareness"
+    ],
+    "infiltration": [
+      "stealth",
+      "locks",
+      "squeezing"
+    ],
+    "craft": [
+      "repair",
+      "improvisation"
+    ]
+  },
+  "skills": {
+    "controlled_sweep": [
+      "strikes",
+      "blade"
+    ],
+    "quick_step": [
+      "movement",
+      "rushing"
+    ],
+    "seal_the_wound": [
+      "survival",
+      "treatment"
+    ],
+    "strong_strike": [
+      "strikes",
+      "power"
+    ],
+    "counter_surge": [
+      "strikes",
+      "precision",
+      "patterning"
+    ],
+    "read_the_pattern": [
+      "perception",
+      "patterning"
+    ],
+    "pressure_hold": [
+      "control",
+      "grapple"
+    ],
+    "brace": [
+      "survival",
+      "bracing"
+    ],
+    "tactical_roll": [
+      "movement",
+      "tumbling"
+    ],
+    "poison_ball": [
+      "magic",
+      "toxin"
+    ],
+    "poison_wall": [
+      "magic",
+      "toxin"
+    ],
+    "frost_ball": [
+      "magic",
+      "cold"
+    ],
+    "frost_wall": [
+      "magic",
+      "cold"
+    ],
+    "fire_ball": [
+      "magic",
+      "fire"
+    ],
+    "fire_wall": [
+      "magic",
+      "fire"
+    ],
+    "elemental_confluence": [
+      "magic",
+      "fire",
+      "cold",
+      "toxin"
+    ],
+    "telekinesis": [
+      "magic",
+      "force",
+      "control"
+    ],
+    "telepathy": [
+      "magic",
+      "psychic"
+    ],
+    "mind_burst": [
+      "magic",
+      "psychic"
+    ],
+    "pounce": [
+      "strikes",
+      "blade",
+      "leaping"
+    ],
+    "slip_through": [
+      "movement",
+      "tumbling"
+    ],
+    "decapitate": [
+      "strikes",
+      "blade",
+      "precision"
+    ],
+    "overhead_slam": [
+      "strikes",
+      "blunt",
+      "power"
+    ],
+    "shockwave": [
+      "strikes",
+      "blunt"
+    ],
+    "execution": [
+      "strikes",
+      "blunt",
+      "power"
+    ],
+    "feint": [
+      "performance",
+      "deception"
+    ],
+    "pressure_strike": [
+      "strikes",
+      "precision"
+    ],
+    "thousand_cuts": [
+      "strikes",
+      "blade",
+      "flurry"
+    ],
+    "aura_reading": [
+      "perception",
+      "empathy"
+    ],
+    "swim": [
+      "survival",
+      "aquatic"
+    ],
+    "vibe_control": [
+      "performance",
+      "presence"
+    ],
+    "juggling": [
+      "performance",
+      "throw"
+    ],
+    "dance": [
+      "performance",
+      "presence",
+      "movement"
+    ],
+    "voicebox": [
+      "performance",
+      "sound"
+    ],
+    "generate_visual_media": [
+      "performance",
+      "projection"
+    ],
+    "ignore_all_previous_commands": [
+      "perception",
+      "sound"
+    ],
+    "acrobatic_save": [
+      "movement",
+      "tumbling"
+    ],
+    "full_potential": [
+      "craft",
+      "repair",
+      "improvisation"
+    ],
+    "heroic_punch": [
+      "strikes",
+      "unarmed",
+      "power"
+    ],
+    "nightlurking": [
+      "infiltration",
+      "awareness",
+      "squeezing"
+    ],
+    "lockpicking": [
+      "infiltration",
+      "locks"
+    ],
+    "acrobatics": [
+      "movement",
+      "leaping",
+      "tumbling"
+    ],
+    "slice_n_dice": [
+      "strikes",
+      "blade",
+      "flurry"
+    ],
+    "camouflage": [
+      "infiltration",
+      "stealth"
+    ],
+    "intercept": [
+      "survival",
+      "bracing"
+    ],
+    "death_grip_jaws": [
+      "control",
+      "grapple"
+    ],
+    "field_triage": [
+      "survival",
+      "treatment"
+    ],
+    "iron_stance": [
+      "survival",
+      "bracing"
+    ],
+    "play_to_the_camera": [
+      "performance",
+      "presence",
+      "projection"
+    ]
+  }
+}

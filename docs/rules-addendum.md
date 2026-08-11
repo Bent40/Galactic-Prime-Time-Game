@@ -916,6 +916,52 @@ effect, never a hardcoded case:
   valve-counter consequence): a blast-Moment Tactical Roll no longer escapes the
   KO; running out of the radius during the escape window remains the counterplay.
 
+## R27 — The G3 keyword tree + Gemstone mutations (owner G3/G6, 2026-07-23)
+
+**SETTLED (ruled — G3 round 2 + G6 round 3, char-sheet repo
+`rulebook/skills-passover.md` RULINGS; book `gpt-system-v0.92.md` §4.5).** The
+Gemstone compatibility system is **model A: the keyword tree**, adopted as data +
+machinery in this repo:
+
+- **Data:** `data/skill_keywords.json` — the book §4.5 taxonomy (9 BROAD groups,
+  31 NARROW members — the book classifies EXPLICITLY, nothing provisional about
+  the split) + the ruled per-skill assignments, a VERBATIM port of the char-sheet
+  repo's `server/apply-skill-passover.js` KEYWORDS map (44 skills) plus the 5
+  G6-approved new-skill seeds (intercept, death_grip_jaws, field_triage,
+  iron_stance, play_to_the_camera). This is DATA canon even where the sim has not
+  implemented the skill. `reversion` has NO ruled assignment (postdates the
+  44-row table) — flagged, not invented; `validate_seeds` surfaces it as a NOTE.
+- **The rule** (`simulation/skill_keywords.gd`): share ≥ 1 NARROW keyword =
+  compatible (`basis: "narrow_shared"`, auto-legal). Sharing only a BROAD group =
+  the ruled **GM-call tier** — machine-READABLE (`basis: "broad_only"`), never
+  machine-LEGAL: the engine rejects it unless a recipe carries an explicit
+  authored `compatibility_override` (the recorded GM fiat). No overlap =
+  incompatible (`basis: "none"`). Deterministic, symmetric, data-driven.
+- **Mutations** (`simulation/skill_forge.gd` + `data/skill_mutations.json`):
+  recipes are authored data `{key, name, parents: [{key, min_level}], result:
+  {key, level}, note}`. `validate_mutation` returns EVERY violation at once
+  (missing parent / underleveled / incompatible parents / result already owned /
+  malformed recipe); `apply_mutation` is a PURE function on the from_spec-shaped
+  skills array — **both parents CONSUMED**, result granted at the recipe level.
+  Recipes validate against skill KEYS + LEVELS only: a roster may own an
+  unimplemented skill as data (`CombatantState.from_spec` has no KNOWN_KEYS
+  gate), which is load-bearing — neither parent Intercept nor any mutation
+  result needs a SkillBook entry to be granted.
+- **The canonical example (G6 round 3):** **Intercept Lv 5 + Brace Lv 3 →
+  Iron Stance Lv 1, both parents consumed** — compatible through the shared
+  NARROW keyword `bracing` in the ported data (exactly as the book records:
+  "compatible through *bracing*"), so the shipped recipe carries no override.
+  Iron Stance itself stays **DATA-ONLY** in the sim: its ruled effect (stance —
+  attacks on adjacent allies retarget to you, persistent Crush/Burn reduction)
+  needs a retarget-guard archetype in ActionResolver before an honest encode;
+  seeding it into `data/skills.json` rides the same content pass.
+- **Economy is deferred to KAN-7:** the compendium's Modification Center prices
+  a Skill Gemstone use at **1 Bronze** ("disassemble/consume/merge") — recorded
+  in the data note, deliberately unpriced in the engine. When/how a merge is
+  OFFERED (Lounge flow, player consent — §4.5 "never automatic") is
+  progression/UI scope; the engine here only answers "is this merge legal, and
+  what does the roster look like after."
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

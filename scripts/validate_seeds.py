@@ -202,6 +202,20 @@ def check_loadouts(name: str, loadouts: list, race_ids: set, patron_ids: set,
                        "slice-contestants §RULED item 9)")
 
 
+def _skill_book_known_keys():
+    """The IMPLEMENTED skill keys, parsed from simulation/skill_book.gd's
+    KNOWN_KEYS array (no drifting mirror constant — the source file is the
+    authority). Returns None when the array cannot be found."""
+    import re
+    p = ROOT / "simulation" / "skill_book.gd"
+    if not p.is_file():
+        return None
+    m = re.search(r"const KNOWN_KEYS[^=]*=\s*\[(.*?)\]", p.read_text(encoding="utf-8"), re.S)
+    if not m:
+        return None
+    return re.findall(r'"([^"]+)"', m.group(1))
+
+
 def check_body_parts(name: str, owner: str, parts, *, need_lethal: bool) -> None:
     if not isinstance(parts, list) or not parts:
         fail(name, f"{owner}: body_parts must be a non-empty list")
@@ -565,6 +579,153 @@ def main() -> int:
         if not (0 <= s.get("default_cap", -1) <= 10):
             fail("skills.json", f"{k}: default_cap outside 0..10 (schema CHECK)")
 
+    # ---- Wave 3b: G3 keyword tree + Gemstone mutation recipes ----------------
+    # skill_keywords.json — the RULED per-skill Gemstone keywords (G3, owner
+    # 2026-07-23; book §4.5 taxonomy; verbatim port of the char-sheet repo's
+    # apply-skill-passover.js KEYWORDS map + G6 new-skill seeds). Validate if
+    # present. Consumed by simulation/skill_keywords.gd / skill_forge.gd.
+    kw_doc = None
+    kw_skills: dict = {}
+    if (DATA / "skill_keywords.json").is_file():
+        kw_doc = load("skill_keywords.json")
+        if not isinstance(kw_doc, dict) or not isinstance(kw_doc.get("taxonomy"), dict) \
+                or not isinstance(kw_doc.get("skills"), dict):
+            fail("skill_keywords.json", "top level must be an object with 'taxonomy' "
+                                        "and 'skills' objects")
+            kw_doc = None
+        else:
+            if not isinstance(kw_doc.get("_meta"), dict):
+                fail("skill_keywords.json", "_meta object required (G3 provenance)")
+            taxonomy = kw_doc["taxonomy"]
+            broad = set()
+            narrow = set()
+            for b, ns in taxonomy.items():
+                if not isinstance(b, str) or not b:
+                    fail("skill_keywords.json", f"broad group {b!r} must be a non-empty string")
+                    continue
+                broad.add(b)
+                if not isinstance(ns, list) or not ns \
+                        or not all(isinstance(n, str) and n for n in ns):
+                    fail("skill_keywords.json", f"{b}: narrow members must be a non-empty "
+                                                "list of non-empty strings")
+                    continue
+                for n in ns:
+                    if n in narrow:
+                        fail("skill_keywords.json", f"narrow keyword {n!r} appears in two "
+                                                    "broad groups — classification must be unambiguous")
+                    narrow.add(n)
+            overlap = broad & narrow
+            if overlap:
+                fail("skill_keywords.json", f"keywords {sorted(overlap)} are both broad and "
+                                            "narrow — the §4.5 hierarchy keeps them disjoint")
+            vocab = broad | narrow
+            kw_skills = kw_doc["skills"]
+            for sk, kws in kw_skills.items():
+                if not isinstance(sk, str) or not sk:
+                    fail("skill_keywords.json", f"skill key {sk!r} must be a non-empty string")
+                    continue
+                if not isinstance(kws, list) or not (2 <= len(kws) <= 4):
+                    fail("skill_keywords.json", f"{sk}: must carry 2..4 keywords "
+                                                f"(book §4.5), got {kws!r}")
+                    continue
+                if len(set(kws)) != len(kws):
+                    fail("skill_keywords.json", f"{sk}: duplicate keywords in {kws}")
+                for kw in kws:
+                    if not isinstance(kw, str) or not kw:
+                        fail("skill_keywords.json", f"{sk}: empty/non-string keyword")
+                    elif kw not in vocab:
+                        fail("skill_keywords.json", f"{sk}: keyword {kw!r} is not in the "
+                                                    "§4.5 taxonomy (broad or narrow)")
+            # Every IMPLEMENTED sim skill needs its ruled keywords. The list of
+            # implemented keys is parsed from simulation/skill_book.gd
+            # KNOWN_KEYS (no drifting mirror).
+            known = _skill_book_known_keys()
+            if known is None:
+                fail("skill_keywords.json", "cannot parse KNOWN_KEYS from "
+                                            "simulation/skill_book.gd (check moved/renamed?)")
+            else:
+                for k in known:
+                    if k not in kw_skills:
+                        fail("skill_keywords.json", f"implemented skill {k!r} "
+                                                    "(SkillBook.KNOWN_KEYS) has no keyword entry")
+            # Non-fatal: catalog skills still awaiting a ruled assignment
+            # (today: reversion — postdates the 44-row passover table).
+            for s in skills:
+                if s.get("key") not in kw_skills:
+                    notes.append(f"NOTE skill_keywords.json: {s.get('key')!r} (skills.json) "
+                                 "has no ruled keyword assignment — awaiting owner")
+
+    # skill_mutations.json — authored Gemstone mutation recipes (G6; engine:
+    # simulation/skill_forge.gd). Validate if present; cross-checks the G3
+    # narrow-shared rule against skill_keywords.json.
+    mutations: list = []
+    if (DATA / "skill_mutations.json").is_file():
+        mu = load("skill_mutations.json")
+        if not isinstance(mu, dict) or not isinstance(mu.get("mutations"), list):
+            fail("skill_mutations.json", "top level must be an object with a 'mutations' list")
+        else:
+            if not isinstance(mu.get("_meta"), dict):
+                fail("skill_mutations.json", "_meta object required (G6 provenance + economy note)")
+            mutations = [m for m in mu["mutations"] if isinstance(m, dict)]
+            if len(mutations) != len(mu["mutations"]):
+                fail("skill_mutations.json", "every mutation must be an object")
+            check_unique("skill_mutations.json", mutations, "key")
+            for m in mutations:
+                k = m.get("key", "?")
+                for f_ in ("key", "name", "note"):
+                    if not isinstance(m.get(f_), str) or not m.get(f_):
+                        fail("skill_mutations.json", f"{k}: {f_} must be a non-empty string")
+                parents = m.get("parents")
+                pkeys: list = []
+                if not isinstance(parents, list) or len(parents) < 2:
+                    fail("skill_mutations.json", f"{k}: parents must be a list of >= 2 rows")
+                else:
+                    for p in parents:
+                        if not isinstance(p, dict) or not isinstance(p.get("key"), str) \
+                                or not p.get("key") or not isinstance(p.get("min_level"), int) \
+                                or p["min_level"] < 1:
+                            fail("skill_mutations.json", f"{k}: parent {p!r} must be "
+                                                         "{key: str, min_level: int >= 1}")
+                            continue
+                        if p["key"] in pkeys:
+                            fail("skill_mutations.json", f"{k}: duplicate parent {p['key']!r}")
+                        pkeys.append(p["key"])
+                res = m.get("result")
+                if not isinstance(res, dict) or not isinstance(res.get("key"), str) \
+                        or not res.get("key") or not isinstance(res.get("level"), int) \
+                        or res["level"] < 1:
+                    fail("skill_mutations.json", f"{k}: result must be {{key: str, level: int >= 1}}")
+                elif res["key"] in pkeys:
+                    fail("skill_mutations.json", f"{k}: result {res['key']!r} is also a parent")
+                if "compatibility_override" in m:
+                    if not isinstance(m["compatibility_override"], bool):
+                        fail("skill_mutations.json", f"{k}: compatibility_override must be a bool")
+                    elif m["compatibility_override"]:
+                        # An override is LEGAL but loud — it is the authored
+                        # record of a GM call past the G3 narrow rule.
+                        notes.append(f"NOTE skill_mutations.json: {k} carries "
+                                     "compatibility_override — parents cleared by GM "
+                                     "fiat, not the narrow-keyword rule (G3)")
+                if kw_doc is not None:
+                    for ref in pkeys + ([res["key"]] if isinstance(res, dict)
+                                        and isinstance(res.get("key"), str) else []):
+                        if ref not in kw_skills:
+                            fail("skill_mutations.json", f"{k}: {ref!r} has no "
+                                                         "skill_keywords.json entry")
+                    # G3: parents pairwise share a NARROW keyword, unless the
+                    # recipe carries the explicit authored override.
+                    if not m.get("compatibility_override", False):
+                        narrows = {n for ns in kw_doc["taxonomy"].values() for n in ns}
+                        for i in range(len(pkeys)):
+                            for j in range(i + 1, len(pkeys)):
+                                a, b = pkeys[i], pkeys[j]
+                                shared = set(kw_skills.get(a, [])) & set(kw_skills.get(b, [])) & narrows
+                                if not shared:
+                                    fail("skill_mutations.json",
+                                         f"{k}: parents {a!r} x {b!r} share no NARROW "
+                                         "keyword (G3 — broad-only is the GM-call tier; "
+                                         "needs an authored compatibility_override)")
+
     # skill_thresholds
     check_unique("skill_thresholds.json", thresholds, "id")
     seen_pairs = set()
@@ -712,13 +873,14 @@ def main() -> int:
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
     n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons,
-                             goals, loadouts, recruits, roster, te_rows))
+                             goals, loadouts, recruits, roster, te_rows, kw_skills, mutations))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
           f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals, "
           f"{len(te_rows)} slice tags, {len(loadouts)} demo loadouts, "
           f"{len(recruits)} recruit loadouts, {len(roster)} roster patrons, "
-          f"{dcmap_pairs} domain->condition affinities — {n} rows checked).")
+          f"{dcmap_pairs} domain->condition affinities, {len(kw_skills)} skill keyword "
+          f"entries, {len(mutations)} mutation recipes — {n} rows checked).")
     return 0
 
 
