@@ -19,11 +19,37 @@ extends RefCounted
 ##   goal_rng pattern) — and only on the ROLLED fallback: an auto or an
 ##   impossible check consumes nothing — so none of the draws ever perturb the
 ##   action RNG's Forced-Action sequence.
-## - All state (ai_rng.state, boss phases, summon counts, explosion beats) is
-##   serialized in CombatSim.to_dict() under "ai" and covered by state_hash.
+## - All state (ai_rng.state, boss phases, summon counts, explosion beats,
+##   stances) is serialized in CombatSim.to_dict() under "ai" and covered by
+##   state_hash.
 ## - No to-hit rolls: proposed attacks auto-succeed like player attacks; the
 ##   Forced Action d6 remains the failure path. The dodge threshold is an
 ##   authored ENEMY ability (R2's explicit-miss pattern), not a universal rule.
+##
+## PACK SYNERGY (R15 enemy combos — wave 3a, closing the R11 "still open" item):
+## personality-gated (pack_hunter + a shared pack family) and OPPORTUNISTIC —
+## each pack hunter's own R23 antagonism draw picks its victim exactly as
+## before; only when a second ready pack hunter's draw AGREES with a packmate's
+## already-declared strike this tick does the second LINK its strike (shared
+## combo_id -> the EXISTING R15 merged-force path sums their Forces through one
+## Robustness gate). Pairs only in v1. See _link_pack_strike for the contract.
+##
+## AI STANCE SUBSTRATE (wave 3a — the readable layer `aura_reading` needs;
+## skills-audit: "reveals the target's current AI stance"; the SKILL itself
+## still rides the content pass). Every decide writes the actor's stance from
+## the decision it just made — serialized, hash-covered, exposed additively on
+## view_combatants (AI rows only; "unknown" before the first decide). THE TABLE
+## (documented contract — every decide choice maps):
+##   attack / grab / chew / spin   -> "aggressive"  (committing violence)
+##   move                          -> "hunting"     (closing on prey)
+##   heal / wait / stand           -> "defensive"   (recovering / holding back)
+##   summon / telegraph / blast    -> "building"    (mustering the brood /
+##                                                   charging the valve beat)
+## ONE documented exception: a "wait" whose reason is "explosion_building"
+## reads "building" — the venting boss is still charging its blast; the stance
+## reads INTENT, not idleness. Unknown/future choices default to "defensive"
+## (the wait bucket) until mapped. The audit's fuller emotion ladder
+## ("fleeing"/"desperate") awaits behaviors that exist — v1 AI never flees.
 ##
 ## All numbers PLACEHOLDER (R14) pending the numbers rework, unless marked canon.
 
@@ -81,6 +107,15 @@ const UPGRADE_EFFECTS: Dictionary = {
 	"flamethrower tracks closest target": "cone_track_closest",
 }
 
+## Wave 3a — the stance TABLE (see the header contract): decide choice -> the
+## serialized ai_stance the substrate exposes for `aura_reading`.
+const STANCE_FOR_CHOICE: Dictionary = {
+	"attack": "aggressive", "grab": "aggressive", "chew": "aggressive", "spin": "aggressive",
+	"move": "hunting",
+	"heal": "defensive", "wait": "defensive", "stand": "defensive",
+	"summon": "building", "telegraph": "building", "blast": "building",
+}
+
 ## Wired refs (never serialized — re-wired by CombatSim, like ConditionEngine).
 var combatants: Dictionary = {}
 var clock: Clock
@@ -101,6 +136,12 @@ var explosion_beats: Dictionary = {}
 ## valve entry, victim/boss down), so a mid-sequence save restores the exact
 ## continuation. Serialized + hash-covered under "ai".
 var death_spins: Dictionary = {}
+## Wave 3a — the AI stance substrate: combatant id -> stance string, written by
+## decide() from the decision it just made (STANCE_FOR_CHOICE + the documented
+## explosion_building exception). Serialized + hash-covered under "ai";
+## view_combatants exposes it additively ("unknown" before the first decide).
+## Entries persist for downed combatants (their last read stays inspectable).
+var stances: Dictionary = {}
 
 
 ## Fresh-sim wiring: refs + deterministic salted RNG seed. from_dict restores
@@ -130,8 +171,22 @@ static func is_ai_controlled(c: CombatantState) -> bool:
 ##    "ability": String?, "target": String?, "move_to": Vector2i?,
 ##    "action": Dictionary? (resolver.declare payload),
 ##    "summon": Dictionary? ({enemy_key, count, ability, cost}),
-##    "reason": String? (wait only)}
+##    "reason": String? (wait only),
+##    "pack_link": Dictionary? (R15 pack synergy, wave 3a — set when this
+##    attack LINKED to a packmate's pending strike; see _link_pack_strike)}
 func decide(actor: CombatantState) -> Dictionary:
+	var decision: Dictionary = _dispatch_decide(actor)
+	# R15 pack synergy (wave 3a): links AFTER the tier policy ran, so the
+	# actor's own antagonism draw already happened — linking consumes ZERO rng.
+	_link_pack_strike(actor, decision)
+	# Wave 3a stance substrate: the decision just made IS the readable intent.
+	stances[actor.id] = stance_for_decision(decision)
+	return decision
+
+
+## The per-tier decision policy (unchanged decide flow — decide() wraps it with
+## the wave-3a pack-link pass + stance write).
+func _dispatch_decide(actor: CombatantState) -> Dictionary:
 	match actor.category:
 		"Boss", "Super Boss":
 			return _decide_boss(actor)
@@ -139,6 +194,105 @@ func decide(actor: CombatantState) -> Dictionary:
 			return _decide_elite(actor)
 		_:
 			return _decide_mob(actor)
+
+
+## Wave 3a — the stance a decision maps to (the header's documented table).
+## Pure and static so tests/views can assert the full contract directly.
+static func stance_for_decision(decision: Dictionary) -> String:
+	var choice := String(decision.get("choice", "wait"))
+	if choice == "wait" and String(decision.get("reason", "")) == "explosion_building":
+		return "building"  # the venting boss is still charging its blast
+	return String(STANCE_FOR_CHOICE.get(choice, "defensive"))
+
+
+# ------------------------------------------------------ pack synergy (R15, wave 3a)
+
+## R15 pack synergy — enemy combos through the EXISTING merged-force machinery
+## (rules-addendum R15 "Enemy pack-combos become possible by the same
+## mechanism"; wave 3a moves it to REAL for pairs). The DESIGN (documented):
+## packs converge PROBABILISTICALLY via proximity/grudge — each pack hunter's
+## own R23 weighted draw picks its victim exactly as before (no draw-forcing,
+## zero extra rng) — and only when the draws AGREE on the victim do the strikes
+## merge. The synergy is opportunistic, never scripted.
+##
+## FAMILY (documented choice — the explicit personality key, NOT an
+## id/enemy_key prefix): personality.pack names the family ("roach") and
+## personality.pack_hunter gates the behavior. Two mobs link iff BOTH are pack
+## hunters AND share the same non-empty pack. Authored on the roach mob
+## template (data/enemies.json); incinedile/little_brother_roach (boss/elite)
+## are NOT pack hunters — the brood swarms, the big ones fight alone.
+##
+## LINK MECHANISM (deterministic from sorted state — no coordination oracle,
+## no extra rng): the driver feeds ai_decide per enemy sequentially, so the
+## SECOND decide can SEE the first's declared strike in the pending schedule
+## (clock.queue — append order IS seq order, deterministic). The first eligible
+## entry wins: resolves THIS tick, another actor, a ready packmate of the same
+## family, kind "attack", single target equal to this actor's own pick, not
+## already linked. Linking writes the shared combo_id ("pack:<tick>:<seq of
+## first>" — deterministic) onto BOTH actions (the pending entry's action is
+## serialized with the queue, so a mid-tick save restores the link) and the
+## second ADOPTS the first's part — part agreement is what merging requires
+## (one gate at one target+part, the player-side combined_action contract).
+## The R15 merge path then sums their Forces through ONE Robustness gate,
+## untouched — nothing forked. A declare rejected AFTER linking leaves the
+## partner's combo_id as residue: harmless — the pre-scan drops groups of one
+## and the solo path is byte-identical.
+##
+## CAP (v1): PAIRS only — an already-linked entry (combo_id present) is never
+## eligible, so a third packmate whose draw lands on the same victim attacks
+## solo. PLACEHOLDER R14 for wider packs: triples+ wait on the numbers rework
+## (summed Force scales fast against flat Robustness).
+func _link_pack_strike(actor: CombatantState, decision: Dictionary) -> void:
+	if String(decision.get("choice", "")) != "attack":
+		return
+	if not actor.personality_pack_hunter():
+		return
+	var family: String = actor.personality_pack()
+	if family == "":
+		return
+	var action: Dictionary = decision.get("action", {})
+	if String(action.get("kind", "")) != "attack" or action.has("combo_id"):
+		return
+	if int(action.get("cost", 1)) > 1:
+		return  # only a same-tick instant can merge with an entry resolving NOW
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return
+	var victim_id := String((targets[0] as Dictionary).get("id", ""))
+	var victim: CombatantState = combatants.get(victim_id)
+	if victim == null:
+		return
+	for entry: Dictionary in clock.queue:  # append order == seq order (deterministic)
+		if int(entry["tick"]) != clock.tick or String(entry["actor"]) == actor.id:
+			continue
+		var partner: CombatantState = combatants.get(String(entry["actor"]))
+		if partner == null or not is_ai_controlled(partner):
+			continue
+		if not partner.personality_pack_hunter() or partner.personality_pack() != family:
+			continue
+		var partner_action: Dictionary = entry["action"]
+		if String(partner_action.get("kind", "")) != "attack" or partner_action.has("combo_id"):
+			continue
+		if partner_action.has("death_spin_beat"):
+			continue  # sequences never pack-link (belt-and-braces; bosses aren't pack hunters)
+		var partner_targets: Array = partner_action.get("targets", [])
+		if partner_targets.size() != 1:
+			continue
+		var pt: Dictionary = partner_targets[0]
+		if String(pt.get("id", "")) != victim_id:
+			continue  # the draws DISAGREED — no link, both strike solo
+		var part := String(pt.get("part", ""))
+		if not _attackable_parts(victim).has(part):
+			continue  # part agreement must be legal for the joiner too
+		var combo_id := "pack:%d:%d" % [clock.tick, int(entry["seq"])]
+		partner_action["combo_id"] = combo_id  # the LIVE pending entry — rides the queue's serialization
+		action["combo_id"] = combo_id
+		action["targets"] = [{"id": victim_id, "part": part}]
+		decision["pack_link"] = {
+			"partner": String(entry["actor"]), "combo_id": combo_id,
+			"target": victim_id, "part": part,
+		}
+		return
 
 
 ## MOB: bite the antagonism-weighted target (R23 — closer much likelier,
@@ -1433,6 +1587,7 @@ func to_dict() -> Dictionary:
 		"summons": summons.duplicate(true),
 		"explosion_beats": explosion_beats.duplicate(true),
 		"death_spins": death_spins.duplicate(true),
+		"stances": stances.duplicate(true),
 	}
 
 
@@ -1444,4 +1599,7 @@ static func from_dict(data: Dictionary) -> EnemyAI:
 	ai.explosion_beats = (data.get("explosion_beats", {}) as Dictionary).duplicate(true)
 	# Pre-wave-2b saves lack "death_spins": no live sequence, matching a fresh sim.
 	ai.death_spins = (data.get("death_spins", {}) as Dictionary).duplicate(true)
+	# Pre-wave-3a saves lack "stances": no stance read yet — the view reports
+	# "unknown" until the next decide, matching a fresh sim.
+	ai.stances = (data.get("stances", {}) as Dictionary).duplicate(true)
 	return ai

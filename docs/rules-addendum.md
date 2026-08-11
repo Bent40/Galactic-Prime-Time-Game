@@ -481,9 +481,18 @@ Not yet implemented (scoped to later epics, hooks in place): poison spread topol
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
-phase-2 transition beat; still open there: drag_back (forced movement),
-pack synergy (R15 enemy combos), and AI stances for `aura_reading` (skills-audit
-dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL per
+phase-2 transition beat; still open there: drag_back (forced movement) only —
+pack synergy (R15 enemy combos) and the AI stances for `aura_reading` moved to REAL per
+wave 3a (2026-08-11): personality-gated (`pack_hunter` + a shared `pack` family, authored
+on the roach mob) opportunistic pair-linking through the EXISTING R15 merged-force path
+(each pack hunter's own R23 draw picks; draws agreeing on the victim link the second
+strike to the first's pending declare — zero extra rng, pairs only, `pack_synergy` event),
+and every AI combatant now carries a serialized, hash-covered `ai_stance` written at
+decide time (aggressive / hunting / defensive / building — table in
+`simulation/enemy_ai.gd`'s header), exposed additively on `view_combatants` (AI rows).
+The `aura_reading` SKILL itself remains unimplemented — it rides the content pass; the
+stance substrate is the readable layer the audit said it needs.
+Explosion choreography and the Dash Reflexes-counters moved to REAL per
 R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
 decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
 arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
@@ -599,7 +608,9 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
   Coordination risk is drama, never a veto.
 - **Spectacle:** combined actions earn a hype bonus (the crowd loves choreography) —
   PLACEHOLDER weight in the hype engine.
-- Enemy pack-combos become possible by the same mechanism (Mob synergy) — not v1.
+- Enemy pack-combos become possible by the same mechanism (Mob synergy) — SHIPPED for
+  pairs per wave 3a (2026-08-11): see the R11 tail — personality-gated opportunistic
+  linking through this section's merged-force path, untouched.
 
 ## R16 — Races: Earth-life only; background-granted skills (owner, 2026-07-16)
 
