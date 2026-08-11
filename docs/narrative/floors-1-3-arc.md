@@ -382,13 +382,100 @@ believes mortals or champions did it, and has never traced the hand behind them.
 
 ---
 
-## 13. Open
+## 13. The tongue was not lost. It was confiscated. (RULED)
+
+> **Beelzebub killed Cinnabrus, cut out his tongue, and buried it away — separately.**
+
+This is the arc's central act, and it is not a murder. **It is a foreclosure.**
+
+### 13.1 Why silencing him was the real kill
+
+Under Q-14, divinity is **named reverence** — and naming is a transaction that runs both
+ways. A god who cannot speak:
+
+- cannot **answer** a prayer, so worship stops paying,
+- cannot **ask** for help, from a follower or from the house,
+- cannot **negotiate** its own debt (Q-29),
+- and cannot **rebuild a congregation**, ever.
+
+> Beelzebub did not merely take the domain and the title. **He made certain the previous
+> owner could never re-enter the market.** For a god whose entire economy is being named
+> and answering to it, taking the tongue is taking the business — permanently, and without
+> having to keep winning.
+
+That is the most casino act in the arc: not beating a rival, but **removing his ability to
+ever place another bet.**
+
+### 13.2 What it does to the queen
+
+She has prayed for **170 years to a god who physically cannot answer.**
+
+Her reverence is real, so his ledger holds at 1 — but it can never *grow*, because growth
+requires a god who can respond. She is not failing. **She is doing the only correct thing,
+into a hole, forever**, and she has no way to know why it isn't working.
+
+> When the party recovers the tongue, the first thing Cinnabrus does is **answer her** —
+> after two centuries. Whatever the party decides afterwards, that beat is the arc's
+> emotional payload, and it is free: it falls directly out of Q-33's communication gate.
+
+### 13.3 ⟨PROPOSAL⟩ Two graves, and why the search took a century
+
+The ruling creates **two buried things**, not one:
+
+| | What | Where |
+|---|---|---|
+| **The body** | Cinnabrus himself — inert, mute, present | Where he fell |
+| **The tongue** | The myth-source (Q-41). The thing that makes him a god again | **Carried away and buried elsewhere** |
+
+**Recommended placement**, which fits the routes already ruled:
+
+- **F1 (forest)** — the kill site and the body. The Easy route reaches him first, and finds
+  a god who cannot say a word.
+- **F3 (capital)** — **the tongue**, under the palace. The queen searched a hundred years,
+  found *something*, and built a city on top of it.
+- **F2 (desert)** — the hundred-year search, and the reason it took a hundred years:
+
+> **The new corpus supplies the mechanism.** Beelzebub had no need to dig anything himself.
+> **Bifrons (§46)** *"changeth dead bodies, and putteth them in another place; also he
+> lighteth seeming Candles upon the graves of the dead"* — **seeming** candles. False
+> lights, on false graves. And **Bune (§26)** *"changeth the Place of the Dead."*
+>
+> **The desert is full of decoy graves.** Every one of them lit. F2 is not a search across
+> an empty waste — it is a search through a forgery, and the demons have been failing it
+> for a century because someone hired a professional.
+
+This costs nothing to author — both spirits now exist in the corpus with those exact lines
+— and it converts F2 from "the travelling floor" into a floor with a puzzle and an author.
+
+**The irony to decide (Q-60):** does the queen know she built over the **tongue** rather
+than the body? Either reading is strong:
+
+| | Reading | Effect |
+|---|---|---|
+| **a** | She doesn't know | She has been praying at the wrong half for a century — devastating, and it makes the party's arrival the first competent thing to happen |
+| **b** | She knows exactly | She is guarding the only piece that matters, and the capital is a vault, not a shrine — colder, more capable, more dangerous |
+
+### 13.4 Beelzebub can still move it
+
+He is a **seated roster god** (§10), he knows where the tongue is, and he has already
+demonstrated the willingness to hire the relocation done. **If the party gets close, he can
+have it moved again** — or offer them patronage on terms that keep them away from it.
+
+That gives F1–F3 live opposition rather than a historical villain, and it gives the party a
+clock they can feel: **the longer they take, the more likely the piece walks.**
+
+---
+
+## 14. Open
 
 | # | Question | Rec |
 |---|---|---|
 | **Q-53** | Confirm the hunger = **unrouted reverence** (§11.1) | Yes — it explains both cures for free |
 | **Q-54** | Curing the hunger ends demons as **farmers**, not as demons — correct? | Yes |
-| **Q-55** | Does **Beelzebub actually bid on the party** during F1–F3? (§10) | Yes — it is the arc's sharpest single scene |
+| **Q-55** | Does **Beelzebub actually bid on the party** during F1–F3? (§10, §13.4) | Yes — it is the arc's sharpest single scene, and §13.4 gives it a motive |
+| **Q-60** | Does the queen know she built over the **tongue** rather than the body? (§13.3) | Either works; (a) is more tragic, (b) is more dangerous |
+| **Q-61** | Adopt the **decoy-graves** explanation for the hundred-year search — Bifrons's *"seeming Candles"* and Bune's grave-moving, hired by Beelzebub? (§13.3) | Yes — free, and it gives F2 an author |
+| **Q-62** | Can Cinnabrus **hear** without speaking, or is he sealed both ways? | Hear only — it is what makes the queen's two centuries land |
 | **Q-56** | Does the queen have a **name**? | Draft on request |
 | **Q-57** | If the party gives her Beelzebub's name, can she **act** on it in-campaign, or is it a seed for a later floor-set? | Seed — a demon queen moving on a roster god is a floors-4–9 event |
 | **Q-58** | Is **Nullrot** loyal to Cinnabrus, or to the queen? | To Cinnabrus — which puts it at odds with her when their methods diverge |
@@ -399,7 +486,8 @@ believes mortals or champions did it, and has never traced the hand behind them.
 original plague after 170 years underground — which is why Cinnabrus's dragon-blood cure is
 only *nearly* right · **Q-45** the Medium route is the first follower's story · **Q-46**
 only the queen and her followers know · **Q-47** the name is **Cinnabrus** · **Q-48**
-**Beelzebub** is the opposition · **Q-49** she has no target yet · **Q-50** the hunger is a
+**Beelzebub** is the opposition, who killed Cinnabrus, **cut out his tongue and buried it
+away separately** (§13) · **Q-49** she has no target yet · **Q-50** the hunger is a
 curse from Cinnabrus's disease and the capital is a farm · **Q-51** full goetic
 investigation commissioned — all 72 spirits of the Ars Goetia being authored into the
 corpus · **Q-52** the chain runs through Cinnabrus, not the queen.
