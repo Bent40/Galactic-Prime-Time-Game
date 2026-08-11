@@ -335,7 +335,9 @@ overturning one is a code change, not a rewrite.
 16. **Policy tiers v1 (all numbers PLACEHOLDER, R14):** MOB — nearest target
     (ties: lowest total HP, then id), torso-line part pick (`part_bias`
     honored), free-move up to 3 toward the target (greedy hex steps, fixed
-    neighbor order, occupied hexes skipped, only strictly-improving steps),
+    neighbor order, occupied hexes skipped, only strictly-improving steps;
+    wave 4a upgrades this walk to real A* pathfinding when an arena has
+    walls — no-arena movement stays this exact greedy rule, see R28),
     attack when in reach — move-then-attack can share a tick (free + scheduled,
     R3); a grappled mob bites its grappler. ELITE — summon once per combat when
     it has a summon ability (brood spawns on the nearest free hexes,
@@ -998,8 +1000,19 @@ encounter block mirrors.
   an arena is set; trash cans block like an OCCUPIED hex until destroyed
   (occupied-hex logic composes with walls — both block). Per path: free +
   scheduled **moves** reject (`out_of_bounds`/`hex_blocked`); **AI steps**
-  skip blocked candidates (greedy, not pathfinding — a wall the greedy rule
-  cannot detour around honestly strands the walker); **tactical rolls**
+  are PATHFOUND (wave 4a, 2026-08-11 — `simulation/pathing.gd` retires the
+  wave-3d "greedy step strands on concave walls" limitation): with any
+  authored wall (or explicit-hex-set bounds, which can be concave) the
+  walker plans a deterministic A* route around walls/bounds/cans/bodies —
+  concave traps are navigated across successive decides, allowance
+  permitting — and a goal PROVEN unreachable (sealed room) yields no step,
+  so the AI waits honestly instead of thrashing at the wall. Bounded: a
+  4096 node-expansion cap; hitting it falls back to the legacy greedy walk
+  honestly (never hangs, never fakes a path). Without an arena, or in a
+  wall-less rect arena, the walker IS the legacy greedy step, byte-identical
+  (no-arena space is infinite, and straight-line greedy is provably optimal
+  in the open — the tie-break/cap contract and the convexity argument live
+  in `simulation/pathing.gd`'s header); **tactical rolls**
   reject; **feint/pressure repositions** into a blocked hex hold position;
   **sidesteps** skip blocked candidates (no legal hex = dodge still negates,
   no displacement); **knock-asides** skip blocked candidates (no legal hex =
@@ -1070,13 +1083,14 @@ encounter block mirrors.
   `trash_can_burned` / `trash_can_exploded` / `trash_can_smashed`; state
   additively exposed via `view_arena()` (bounds/walls/objects + live burn).
 - **Still OPEN for KAN-5 proper:** rooms/dungeon FLOW beyond single-combat
-  arenas (corridors, doors, multi-room exploration, the maze funnel), real
-  pathfinding for AI movement (the greedy step stays greedy), stealth/
-  detection/cover (R20 remains open), environment objects beyond the trash
-  can, and owner-authored room layouts (every authored wall/can position is
-  PLACEHOLDER — the owner redesigns rooms with the front).
+  arenas (corridors, doors, multi-room exploration, the maze funnel — real
+  AI pathfinding itself landed in wave 4a, see the AI-steps bullet above),
+  stealth/detection/cover (R20 remains open), environment objects beyond the
+  trash can, and owner-authored room layouts (every authored wall/can
+  position is PLACEHOLDER — the owner redesigns rooms with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in
-  `tests/test_phase_upgrades.gd`).
+  `tests/test_phase_upgrades.gd`); the wave-4a pathfinding contract is
+  pinned in `tests/test_pathing.gd`.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
