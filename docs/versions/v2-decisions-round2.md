@@ -807,6 +807,122 @@ disposition template- or encounter-level · rename the four TV-coded skills.
 
 ---
 
+## Part 11 — Round 7: demons, and who runs each floor
+
+### 11.1 D-12 RULED — demons are a race that reveres demon gods
+
+> *"Demons are a potential race. They can revere demon gods (the 72 demons of Solomon, for
+> example)."*
+
+**None of the three options I offered — this is better than all of them.** Demons don't need
+a *home* in the cosmology; they slot straight into the structure Q-14 already built:
+
+```
+  the 72 goetic spirits  ──  demon GODS (patron-tier, wagering)
+            ▲
+            │ reverence = their divinity
+            │
+      demons ── a RACE, and their followers
+```
+
+**Three things this gets for free:**
+
+1. **"Demonic nobility" was always literally true.** The Ars Goetia's 72 spirits carry noble
+   ranks in the source — **King, Duke, Prince, Marquis, President, Earl, Knight**. The
+   existing demonic-nobility fiction and the brand contract need no reinterpretation at all;
+   they were Goetic-shaped from the start.
+2. **It settles [`research/D`](research/D-combat-skills-enemies.md)'s D-37** (*"do demons get
+   re-parented to the extracted goetic roster, or stay an original species?"*) — **re-parented.**
+3. **The Medium route unblocks.** The demonic brand contract is a contract with a goetic
+   power — an unauthorised second patronage, exactly as
+   [`research/G`](research/G-story-encounters.md) predicted, now with a named source roster.
+
+**One check needed:** "potential race" — playable, enemy, or both? R16 currently rules the
+playable roster **Earth-life-only**, which demons are not. **→ Q-28.**
+
+### 11.2 The table is run by a succession of gods, not one house
+
+> *"The tutorial floor is 1 god, then every 3 floors are 1 god, then the last FFA floor is
+> not a god, but the remains of Earth — the world from where everyone came."*
+
+```
+   Tutorial   ──  1 bankrupt god
+   Floors 1–3 ──  1 bankrupt god
+   Floors 4–6 ──  1 bankrupt god     ◀── D-V1's build target
+   Floors 7–9 ──  1 bankrupt god     ◀── D-V1's build target
+   Floor 10   ──  NO god. The remains of Earth.
+```
+
+**This matches canon better than a single house did.** `cosmic-casino-canon.md` §4 says the
+games are run by *"fallen gods — gods who went **bankrupt**"* — **plural**, and never
+reconciled to a single runner. It also gives every floor-set a built-in author: the set's
+question (`story-canon.md:68`) is now *that god's* question, which is a free, structural
+answer to "who is asking?" across floors 4–9.
+
+**Refines §9.3.** The **House** (the institution) stays nameless; the **floor-runners** are
+individual bankrupt gods. A bankrupt god has a name — it is just that nobody says it.
+
+### 11.3 ⚠️ INFERENCE — naming a floor-god may be a player lever
+
+**Mine, not yours. → Q-29.**
+
+Q-14: divinity = named reverence. §11.2: each floor is run by a god who went bankrupt —
+i.e. who lost their reverence.
+
+> **Then speaking a floor-god's name with reverence *pays them*.** A contestant can choose to
+> restore, withhold, or bargain with a floor-runner's divinity — and the floor-runner has an
+> obvious motive for running the games at all: **being watched is income; being named is
+> recovery.**
+
+If you take it, every floor-set gains a native moral question in the same currency as
+everything else, and it costs no new machinery.
+
+### 11.4 Floor 10 on the remains of Earth
+
+The strongest structural beat in the design so far, for three reasons:
+
+1. **You compete *on* the thing you are competing *for*.** The winner authors Earth's next
+   250 years — and the FFA is fought on Earth's corpse.
+2. **It closes D-01's "no home to return to" honestly.** You don't go home; you face what's
+   left of it, and then decide what it becomes.
+3. **It completes the reset loop.** Floor 10 is Earth at its lowest; the winner's respawn and
+   authorship (Q-07, Q-09) is what rebuilds it. The apocalypse and the restoration are the
+   same event seen from either side of the finale.
+
+Removing the god from the last floor also lands the fiction's own logic — **at the end there
+is no house, no patron, no audience between you and the world.** Just what you did.
+
+### 11.5 ⚠️ Conflict with a ruled item — the floor count
+
+**§11.2 adds a tutorial floor. The ruled frame has no room for one.**
+
+> **RULED (owner, 2026-08-04, ID-0.29):** *"**10 floors** — three sets of three story
+> floors, then Floor 10: a free-for-all between everyone left."*
+> — `item-drafting-materials.md:10-11`, `gpt-system-v1.0.md:759`
+
+Tutorial + 3×3 + FFA = **11**. Three ways to reconcile — **→ Q-27**:
+
+| | Reading | Cost |
+|---|---|---|
+| **a** | **Tutorial is Floor 0** — pre-campaign, outside the count. 10 floors stands | Cleanest. ID-0.29 survives untouched |
+| **b** | **Tutorial *is* Floor 1**, and floors 1–3 share one god (the tutorial god) | No new floor; sets stay 1–3 / 4–6 / 7–9 |
+| **c** | **The campaign is 11 floors** | Amends ID-0.29, which the item-drafting damage spread is calibrated against |
+
+**Recommend (a)** — it preserves a ruling the item and material tiers are already tuned to,
+and a Floor 0 tutorial is the natural home for the civilian's "what *is* this" beat anyway.
+
+### 11.6 New questions
+
+| # | Question | Rec |
+|---|---|---|
+| **Q-27** | **Floor count** — tutorial as Floor 0, as Floor 1, or an 11th floor? (§11.5) | **Floor 0** — preserves ID-0.29 |
+| **Q-28** | **Demons: playable, enemy, or both?** Does this override R16's Earth-life-only roster? | Both — with demon PCs gated behind a story unlock |
+| **Q-29** | **Is naming/revering a floor-god a player lever?** (§11.3) | Yes — free moral question per floor-set |
+| **Q-30** | **Does the remains of Earth have agency at Floor 10, or is it purely the arena?** | Arena that *reacts* — no voice, no deals |
+| **Q-31** | **Are the four floor-gods drawn from the 24-god roster, or are bankrupt gods a separate cast?** | Separate — the roster gods are *wagering*, the floor-runners are *broke* |
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there
