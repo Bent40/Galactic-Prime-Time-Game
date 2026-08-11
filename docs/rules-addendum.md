@@ -479,6 +479,39 @@ overturning one is a code change, not a rewrite.
     Tests: tests/test_phase_upgrades.gd (+ the flipped pin in
     tests/test_death_spin.gd; the wave-3d arena-gated mechanics in
     tests/test_arena.gd).
+21. **The war-hound maze funnel is REAL (KAN-5 wave 4d, 2026-08-11 —
+    `corner_the_prey` flips from the wave-3c DATA-ONLY note to the shipped
+    §4.6 signature: the pack corners the quarry and cuts off its escape).**
+    Personality-gated — `herder: true` + the shared `pack` family on the
+    war_hound personality is THE engine-read gate (data-driven, no species
+    check; the corner_the_prey ability entry stays the authored FLAVOR
+    RECORD, still skipped by the strike lookup like drag_back, #16) — and
+    layered ON TOP of the unchanged strike-or-close flow: only a decide that
+    could NOT strike its quarry this Moment (the plain-move / no-step exits)
+    may be rewritten, so **a herder never skips a kill it can make** —
+    herding is positioning, never pacifism. **The contract (v1, all
+    deterministic, ZERO new rng — the actor's own R23 draw picks the quarry,
+    one draw as ever):** among the living able-to-act herders of the actor's
+    team+family, the CLOSEST to the quarry chases (hex distance; ties keep
+    the earliest sorted id); every OTHER herder repositions onto the
+    quarry's nearest ESCAPE — **the v1 escape rule: the OPEN door nearest
+    the quarry** (ties keep the earliest authored door); no arena / no open
+    door / no legal step → fall back to the normal chase (widest-gap
+    inference is future work). The cut-off routes via `Pathing.next_steps`
+    (stop_range 0 — standing ON the open door denies it); a herder already
+    ON the hex HOLDS its post (`wait`, reason `holding_cutoff`, stance
+    "hunting" via the second documented stance exception) until the quarry
+    comes into reach. **R20 honesty: a herder herds only prey it can SEE**
+    (`Stealth.sees` — the war hound's Mind 1 = sight 2, so the funnel is
+    close-quarters: blocked corridors, bodies in the way; a stealthed quarry
+    never reaches herding at all). A decided cut-off move emits
+    `pack_herding {herder, quarry, cutoff_hex}` once the step really
+    resolves (the pack_synergy honesty pattern). **No new serialized
+    state** — roles and cut-off hexes re-derive from sorted state every
+    decide; the AI dict keeps its exact wave-3a key set. The kennel arena
+    authors the funnel's stage (the kennel-run fence + open gate,
+    PROVISIONAL — R29). Tests: tests/test_herding.gd (+ the flipped
+    data-contract pin in tests/test_second_enemy.gd).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
@@ -504,7 +537,9 @@ wave 2b (2026-08-10, #19); the phase upgrades moved to REAL per wave 2d (2026-08
 (2026-08-11, KAN-5 arenas: OPT-IN bounds/walls/objects, R28 — no arena = the
 unbounded legacy combat, byte-identical; rooms/dungeon FLOW shipped wave 4b
 (R29) and stealth/detection R20 shipped its v1 binary-sight slice wave 4c —
-see the R20 IMPLEMENTED marker for what remains downscoped).
+see the R20 IMPLEMENTED marker for what remains downscoped); the war-hound
+maze funnel (`corner_the_prey` herding) moved to REAL per wave 4d
+(2026-08-11, #21 — the KAN-5 capstone).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -1158,15 +1193,19 @@ encounter block mirrors.
   ~~stealth/detection/cover (R20, wave 4c)~~ SHIPPED wave 4c — the v1
   binary-sight slice (`simulation/stealth.gd` + the `stealth` command; the
   R20 IMPLEMENTED marker lists what stays downscoped: cones/facing, hearing
-  beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever).
-  Remaining: the hound maze-funnel herding (`corner_the_prey`, wave 4d),
-  environment objects beyond the trash can, and owner-authored room layouts
-  (every authored wall/can/door position is PLACEHOLDER — the owner
-  redesigns rooms with the front).
+  beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever);
+  ~~the hound maze-funnel herding (`corner_the_prey`, wave 4d)~~ SHIPPED
+  wave 4d — the herder chase/cut-off role split, R11 #21 (the KAN-5
+  capstone: `pack_herding`, the kennel gate, tests/test_herding.gd).
+  Remaining: hearing/facing per R20's own phasing (the investigate/ALERTED
+  reactions a fuller funnel would lean on), environment objects beyond the
+  trash can, and owner-authored room layouts (every authored wall/can/door
+  position is PLACEHOLDER — the owner redesigns rooms with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in
   `tests/test_phase_upgrades.gd`); the wave-4a pathfinding contract is
   pinned in `tests/test_pathing.gd`; the wave-4c stealth contract in
-  `tests/test_stealth.gd`.
+  `tests/test_stealth.gd`; the wave-4d herding contract in
+  `tests/test_herding.gd`.
 
 ## R29 — Doors & dungeon flow: the room graph (KAN-5 wave 4b, 2026-08-11 — PROVISIONAL)
 
@@ -1225,9 +1264,12 @@ an exits-less encounter list behave (and serialize) byte-identically to wave
 - **The authored demo branch** (`data/demo_run.json`): Brood Landing →
   choice of the Kennel Gauntlet (hound pair) or the Service Corridor (light
   roach reuse) → the Incine-Dile den (terminal; its arena authors the closed
-  service hatch + the open kennel gate — the §4.6 maze-funnel texture as
-  DATA, no herding AI). **Every door/exit position and label is PLACEHOLDER
-  (R14) — owner-authored maps still pending.**
+  service hatch + the open kennel gate — ~~the §4.6 maze-funnel texture as
+  DATA, no herding AI~~ **the maze funnel is REAL since wave 4d (R11 #21)**:
+  the kennel arena now also authors the kennel-run fence + the OPEN
+  kennel_run_gate, the escape the second hound's cut-off posts on).
+  **Every door/exit position and label is PLACEHOLDER (R14) —
+  owner-authored maps still pending.**
   Tests: `tests/test_doors.gd` + `tests/test_dungeon_flow.gd` (+ the updated
   run-engine pins in `tests/test_run_state.gd` / `tests/test_run_persistence.gd`).
 

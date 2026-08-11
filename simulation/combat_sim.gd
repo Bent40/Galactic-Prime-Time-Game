@@ -861,7 +861,21 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = [decision_event]
 	if decision.has("move_to"):
 		var to: Vector2i = decision["move_to"]
-		events.append_array(resolver.move(actor.id, to))
+		var move_events: Array[Dictionary] = resolver.move(actor.id, to)
+		events.append_array(move_events)
+		# KAN-5 wave 4d herding: a cut-off reposition announces the funnel only
+		# once the step REALLY resolved (the pack_synergy honesty pattern — a
+		# rejected move emits nothing and the decision leaves no residue).
+		if decision.has("herding"):
+			for event: Dictionary in move_events:
+				if String(event.get("type", "")) == "moved":
+					var herd: Dictionary = decision["herding"]
+					events.append({
+						"type": "pack_herding", "herder": actor.id,
+						"quarry": String(herd.get("quarry", "")),
+						"cutoff_hex": (herd.get("cutoff", []) as Array).duplicate(),
+					})
+					break
 	match String(decision.get("choice", "wait")):
 		# grab/chew/spin are the death-spin beats (wave 2b) — each a REAL
 		# cost-1 declare through the resolver (grab = the R9 grapple kind;

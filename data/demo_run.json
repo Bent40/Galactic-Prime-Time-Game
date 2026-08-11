@@ -116,8 +116,12 @@
           }
         ],
         "arena": {
-          "_note": "KAN-5 wave 3d PROVISIONAL: a tighter kennel (11x11 axial rect centered on the staging origin, q/r in [-5, 5]). No walls, no objects. The owner will redesign rooms with the front.",
-          "bounds": { "width": 11, "height": 11 }
+          "_note": "KAN-5 wave 3d PROVISIONAL: a tighter kennel (11x11 axial rect centered on the staging origin, q/r in [-5, 5]). WAVE 4d TOUCH-UP (PROVISIONAL like everything here — the owner redesigns rooms with the front): the kennel-run fence (a west-side wall line with ONE gap) + the OPEN kennel-run gate in that gap — the obvious escape back up the run, and exactly what the second hound's corner_the_prey cut-off denies (R11 #21: the herder pack chases prey toward the gate and posts a hound ON it). Fence and gate sit clear of every staged spawn (q >= 0) and of the scripted fight around the origin, so the drive's staging is untouched; they exist so the funnel is REAL in the authored room, not only in tests.",
+          "bounds": { "width": 11, "height": 11 },
+          "walls": [[-4, -2], [-4, -1], [-4, 1], [-4, 2]],
+          "doors": [
+            { "key": "kennel_run_gate", "position": [-4, 0], "state": "open" }
+          ]
         }
       },
       {
