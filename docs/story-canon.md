@@ -65,6 +65,7 @@ emotional. You are harder to influence because there is less of you to reach.
 **Structure — the campaign is built of questions:**
 - Floors do **not** end at 6 — design *paused* there. The goal reaches much further,
   potentially **floor 20**.
+ **↳ SUPERSEDED 2026-08-04 by ID-0.29:** the campaign is **10 floors** — three sets of three story floors, then Floor 10 as a free-for-all. Floor 0 is the tutorial, outside the count (Q-27).
 - **Each SET of floors asks one question** that determines who you are, staged in the most
   entertaining way possible. Examples of the question shape: *will you do what's necessary
   or what's right? · safety or justice? · power for yourself or power for many?* — each

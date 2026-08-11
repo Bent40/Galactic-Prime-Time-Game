@@ -23,7 +23,8 @@ favor from a host realm's subjects — this cycle, humanity's. The world drops i
 **Cosmic Casino's** games at many tables at once; ours is a **VIP table** the gods built
 from what fascinated them most about us: **reality television**. Contestants fight
 through a broadcast dungeon while divinities wager on whether they break — and the
-player, an **OC contestant**, is climbing a ~20-floor show where every floor-set stages
+player, an **OC contestant**, is climbing a **10-floor** show (⟨was ~20; superseded by
+ID-0.29⟩) where every floor-set stages
 one moral question, every answer closes doors and opens others, and the finale is not an
 escape but a **verdict**.
 
@@ -58,7 +59,7 @@ permanently losable). Structure: **question architecture** (canon), not acts.
   F1–F3 carry the corruption question; the Dissolution-songs encounter and the demonic
   brand contract sit in this arc (Medium-route forks + brand-breach rules: queued
   walkthrough, story-canon "open threads").
-- **Floors 7–~20: paused by design** (canon) — each future set gets its question staged
+- **Floors 7–9: paused by design** (canon; ⟨was 7–~20, superseded by ID-0.29 — 10 floors⟩) — each future set gets its question staged
   "in the most entertaining way possible." Question shapes ruled: *necessary vs right ·
   safety vs justice · power for yourself vs power for many.*
 - **Finale: the verdict** — the show names what person you were and what **ruler**
@@ -241,7 +242,7 @@ keeper triangle: she reads his state; both of him protects her; the player manag
 war) · house ↔ everyone (the camera).
 
 ### Timeline
-Quarter-millennial cycle → this special → season floors 1–~20 with time skips → verdict
+Quarter-millennial cycle → this special → season floors 1–9 with time skips → Floor 10 FFA → verdict
 → 250 years of shaped history (the next cycle's mythology).
 
 ### References and Inspirations

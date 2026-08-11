@@ -1,7 +1,7 @@
 # Product Direction — Decision Record
 
 **Date:** 2026-07-13 · **Status:** DECIDED (owner-confirmed) · Refines the recommendations in
-[docs/review/review-4-verdict.md](review/review-4-verdict.md) §2–§5 where they differ.
+[docs/review/review-4-verdict.md](../review/review-4-verdict.md) §2–§5 where they differ.
 
 ## Decisions
 
