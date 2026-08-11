@@ -34,9 +34,11 @@ signal command_rejected(event: Dictionary)
 signal combat_ended(event: Dictionary)
 ## RUN-level events (KAN-4, decision #31): every event the RunState reducer
 ## returns from apply_run_command flows here — run_started, run_encounter_started,
-## run_encounter_ended, run_recruit_available/offered/joined/declined, run_ended,
-## run_command_rejected. Separate from sim_event on purpose: run events are not
-## sim events, and combat listeners keep their exact current traffic.
+## run_encounter_ended, run_recruit_available/offered/joined/declined,
+## run_exploration_beat / run_exit_chosen (KAN-5 wave 4b room graph — R29),
+## run_ended, run_command_rejected. Separate from sim_event on purpose: run
+## events are not sim events, and combat listeners keep their exact current
+## traffic.
 signal run_event(event: Dictionary)
 
 ## event type -> typed signal name (generic sim_event fires for every event).

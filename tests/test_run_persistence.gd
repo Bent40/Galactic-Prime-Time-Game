@@ -169,23 +169,26 @@ func _finish_from_between(gc: Node) -> void:
 	_finish_finale(gc)
 
 
-## The finale (encounter 3) from the post-kennel between checkpoint.
+## The finale (the den, room index 3) from the post-kennel checkpoint (the
+## kennel's single exit auto-advanced). Wave 4b: the den is TERMINAL —
+## clearing it auto-finishes the run WIN, so there is no end_run.
 func _finish_finale(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
-	gc.apply_run_command({"type": "end_run"})
 
 
 ## Drives the accept path up to the between-encounters checkpoint (encounter 1
-## fought, offer accepted — the recruit is on the roster, no fight live).
+## fought, offer accepted, branch A chosen through wave 4b's exploration beat
+## — the recruit is on the roster, no fight live, phase "between").
 func _drive_to_between(gc: Node) -> void:
 	_start_demo_run(gc)
 	_drive_encounter_one(gc)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	gc.apply_run_command({"type": "accept_recruit"})
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 
 
 ## The on-disk path for a slot (the test_dal_saves staging idiom — tests live
@@ -371,10 +374,15 @@ func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 	# beats themselves are pinned in test_run_state.gd's synthetic runs).
 	assert_true(gc_loaded.run.declined.is_empty(),
 		"a may_reoffer decline leaves no gone-mark, load or no load (#32)")
+	# Wave 4b: the decline resolved into the exploration beat, and the SAVE
+	# landed mid-beat — the restored run is still mid-beat, so the re-ask
+	# rejects on the phase (only a later encounter's recruit_offer re-offers).
+	assert_eq(String(gc_loaded.run.phase), "exploration", "the restored run is still mid-exploration-beat")
 	var reoffer: Array[Dictionary] = gc_loaded.apply_run_command(
 		{"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
-	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_such_offer",
-		"no beat is open between encounters — only a later encounter's recruit_offer re-offers")
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_offer_beat_here",
+		"no offer beat is open mid-exploration — only a later encounter's recruit_offer re-offers")
+	gc_loaded.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc_loaded.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc_loaded.sim.combatants.has("sasha"), "encounter 2 stages WITHOUT the declined recruit")
 	gc.free()

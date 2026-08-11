@@ -1,10 +1,14 @@
 extends SimTestBase
 ## KAN-4 — the RUN engine (decision-log #31, engine only): RunState + the
 ## GameController run wiring, driven headlessly over the canonical authored
-## data/demo_run.json (wave 3c, THREE encounters: encounter 1 = the brood
-## skirmish where the party meets Sasha, staged as a party-side ally;
-## encounter 2 = the KENNEL — the war-hound pair, the second authored enemy;
-## encounter 3 = the Incine-Dile den finale).
+## data/demo_run.json (wave 4b: a FOUR-room branch map — Brood Landing ->
+## choice of the Kennel Gauntlet or the Service Corridor -> the den. These
+## tests drive BRANCH A, the kennel — command-compatible with the old wave-3c
+## linear drive plus one choose_exit; the graph itself is pinned in
+## tests/test_dungeon_flow.gd. Room 1 = the brood skirmish where the party
+## meets Sasha, staged as a party-side ally; the kennel = the war-hound pair,
+## the second authored enemy; the den = the Incine-Dile finale, now the
+## TERMINAL room — clearing it auto-finishes the run WIN).
 ##
 ## What these tests pin:
 ##   * the demo-run DATA contract (specs verbatim from the loadout files — the
@@ -215,11 +219,13 @@ func _fight_boss(gc: Node, max_ticks: int) -> void:
 		gc.apply_command({"type": "advance_tick"})
 
 
-## The accept-path continuation from the between-encounters checkpoint (after
-## the recruit joined): the kennel, then the finale, to the end of the run.
-## Shared by the live drive and both restore tests so continuations are
-## command-identical.
+## The accept-path continuation from the post-accept checkpoint (wave 4b: the
+## accept resolves into the EXPLORATION beat — brood_landing branches two
+## ways — so the continuation first picks branch A, the kennel): the kennel,
+## then the finale, to the end of the run. Shared by the live drive and both
+## restore tests so continuations are command-identical.
 func _finish_from_between(gc: Node) -> void:
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc)
 	_stage_hound_bites(gc)
@@ -228,14 +234,15 @@ func _finish_from_between(gc: Node) -> void:
 	_finish_finale(gc)
 
 
-## The finale (encounter 3) from the post-kennel between checkpoint, to the
-## end of the run — shared so every continuation is command-identical.
+## The finale (the den, room index 3) from the post-kennel checkpoint (the
+## kennel's single exit AUTO-advanced — no beat), to the end of the run —
+## shared so every continuation is command-identical. Wave 4b: the den is the
+## TERMINAL room, so clearing it auto-finishes the run WIN (no end_run).
 func _finish_finale(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
 	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
-	gc.apply_run_command({"type": "end_run"})
 
 
 ## The full accept-path demo run, end to end. Returns the final run hash +
@@ -260,7 +267,8 @@ func test_demo_run_data_contract() -> void:
 		"demo_run.json is marked PROVISIONAL in _meta.note")
 	var def: Dictionary = demo_run_def()
 	assert_eq((def.get("party", []) as Array).size(), 2, "the demo party is the two slice contestants")
-	assert_eq((def.get("encounters", []) as Array).size(), 3, "the canonical run is 3 encounters (wave 3c)")
+	assert_eq((def.get("encounters", []) as Array).size(), 4,
+		"the canonical run is 4 rooms (wave 4b branch map; graph pins live in test_dungeon_flow.gd)")
 
 	# Party specs verbatim from demo_loadouts.json via the documented loadout-id
 	# rule (combat id = loadout key's first '_'-token).
@@ -346,7 +354,13 @@ func test_demo_run_data_contract() -> void:
 	var hound_row: Dictionary = (enc2.get("enemies", []) as Array)[0]
 	assert_eq(String(hound_row.get("enemy_key", "")), "war_hound", "the mid room fields the war hound")
 	assert_eq(int(hound_row.get("count", 0)), 2, "staged as the R15 pack PAIR")
-	var enc3: Dictionary = (def.get("encounters", []) as Array)[2]
+	# Wave 4b: index 2 is the branch-B corridor (roach reuse), the den moved
+	# to index 3 (the graph pins live in test_dungeon_flow.gd).
+	var enc_corridor: Dictionary = (def.get("encounters", []) as Array)[2]
+	assert_eq(String(enc_corridor.get("key", "")), "service_corridor", "index 2 is the service corridor")
+	assert_eq(String(((enc_corridor.get("enemies", []) as Array)[0] as Dictionary).get("enemy_key", "")),
+		"roach_dog", "the soft route reuses the roach mob template")
+	var enc3: Dictionary = (def.get("encounters", []) as Array)[3]
 	assert_eq(String(((enc3.get("enemies", []) as Array)[0] as Dictionary).get("enemy_key", "")), "incinedile",
 		"the finale is the Incine-Dile fight")
 
@@ -399,8 +413,10 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	var joined: Array[Dictionary] = gc.apply_run_command({"type": "accept_recruit"})
 	assert_event(joined, "run_recruit_joined", "accept_recruit joins the roster")
+	assert_event(joined, "run_exploration_beat", "wave 4b: resolving the offer opens the branch beat")
 	assert_eq(gc.run.roster.size(), 3, "roster is 3 after the accept")
 
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
 	# --- PERSISTS into the KENNEL: wounds + conditions (no field HP regen) ----
 	var imani: CombatantState = gc.sim.combatants["imani"]
@@ -483,8 +499,8 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 	assert_false(boss.breached, "breach state does NOT persist — the finale starts surface-immune")
 	assert_true(bool(boss.parts["network"]["hidden"]), "the network starts hidden (per-combat discovery)")
 	assert_eq(gc.sim.clock.tick, 0, "the finale runs its own fresh Clock")
-	assert_eq(int((gc.view_run().get("encounter", {}) as Dictionary).get("active_index", -1)), 2,
-		"the finale is the active encounter")
+	assert_eq(int((gc.view_run().get("encounter", {}) as Dictionary).get("active_index", -1)), 3,
+		"the finale (the den, room index 3 on the wave-4b map) is the active encounter")
 	gc.free()
 
 
@@ -506,11 +522,13 @@ func test_decline_in_the_demo_run_honors_sashas_may_reoffer_story() -> void:
 		.get("on_decline", "")), "may_reoffer", "the event reports Sasha's authored story policy")
 	assert_true(gc.run.declined.is_empty(), "a may_reoffer decline leaves no gone-for-run mark (#32)")
 	assert_eq(gc.run.roster.size(), 2, "the roster stays 2")
-	# The beat is SPENT — nothing is available to re-ask between encounters
-	# (only a later encounter's recruit_offer could open a fresh beat).
+	# The beat is SPENT — nothing is available to re-ask (the decline resolved
+	# into wave 4b's exploration beat, so the re-ask rejects on the phase;
+	# only a later encounter's recruit_offer could open a fresh offer beat).
 	var reoffer: Array[Dictionary] = gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
-	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_such_offer",
-		"no beat is open between encounters — a re-offer needs a later encounter's recruit_offer")
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_offer_beat_here",
+		"no offer beat is open mid-exploration — a re-offer needs a later encounter's recruit_offer")
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc.sim.combatants.has("sasha"), "encounter 2 is staged WITHOUT the declined recruit")
 	assert_eq(gc.sim.combatants.size(), 4, "imani + dario + the kennel pair on the table")
@@ -552,8 +570,10 @@ func test_save_restore_between_encounters_identical_continuation() -> void:
 	gc_live.apply_run_command({"type": "end_encounter"})
 	gc_live.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	gc_live.apply_run_command({"type": "accept_recruit"})
-	# The between-encounters checkpoint: run state ONLY (no sim is live-relevant
-	# between fights — the next one is re-derived from run state).
+	# The between-fights checkpoint: run state ONLY (no sim is live-relevant
+	# between fights — the next one is re-derived from run state). Wave 4b:
+	# the accept resolved into the exploration beat, so this checkpoint is
+	# mid-beat (the dedicated mid-beat pins live in test_dungeon_flow.gd).
 	var checkpoint: Dictionary = gc_live.run.to_dict()
 	_finish_from_between(gc_live)
 	var live_hash: String = gc_live.run.state_hash()
@@ -582,6 +602,7 @@ func test_save_restore_mid_encounter_two_identical_continuation() -> void:
 	gc_live.apply_run_command({"type": "end_encounter"})
 	gc_live.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	gc_live.apply_run_command({"type": "accept_recruit"})
+	gc_live.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc_live.apply_run_command({"type": "begin_encounter"})
 	_treat_carried_wounds(gc_live)
 	_stage_hound_bites(gc_live)
@@ -651,11 +672,17 @@ func test_run_command_gating_and_abandon() -> void:
 	assert_eq(String(first_event(begin_in_offer, "run_command_rejected").get("reason", "")), "offer_pending",
 		"begin_encounter rejects while the offer beat is open")
 	gc.apply_run_command({"type": "decline_recruit"})
-	# Early extraction (PROVISIONAL): ending the run with encounters left is an
-	# ABANDONED outcome, not a WIN.
+	# Wave 4b: the resolved offer opened the branch's exploration beat — the
+	# beat is unmissable, so end_run rejects until an exit is chosen.
+	var mid_beat: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
+	assert_eq(String(first_event(mid_beat, "run_command_rejected").get("reason", "")), "exit_unchosen",
+		"end_run rejects mid-exploration-beat (unmissable, like the offer beat)")
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
+	# Early extraction (PROVISIONAL): ending the run with rooms left is an
+	# ABANDONED outcome, not a WIN (a GRAPH run only ever WINs via a terminal).
 	var ended: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
 	assert_eq(String(assert_event(ended, "run_ended", "end_run closes the run").get("outcome", "")), "ABANDONED",
-		"1 of 3 encounters cleared -> ABANDONED (PROVISIONAL)")
+		"1 room cleared, extraction before the den -> ABANDONED (PROVISIONAL)")
 	var again: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
 	assert_eq(String(first_event(again, "run_command_rejected").get("reason", "")), "run_already_ended",
 		"a finished run rejects further run commands")
@@ -761,6 +788,9 @@ func test_chained_encounter_opens_with_retained_meter_in_the_live_sim() -> void:
 	var expected: int = int(floor(ending * 40 / 100.0))
 	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	gc.apply_run_command({"type": "accept_recruit"})
+	# Wave 4b: the branch beat sits between the fights — and the chain math
+	# must come through it UNCHANGED (choosing an exit is back-to-back).
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	var started: Array[Dictionary] = gc.apply_run_command({"type": "begin_encounter"})
 	assert_eq(int(assert_event(started, "run_encounter_started", "encounter 2 starts").get("hype_start", -1)),
 		expected, "the run event announces the retained meter")
@@ -906,6 +936,7 @@ func test_epithets_surface_on_the_run_views() -> void:
 			sasha_row = row
 	assert_true(String(sasha_row.get("name", "")).contains("Little shadow"),
 		"the view_run roster row carries the renamed epithet")
+	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
 	var combatant_row: Dictionary = {}
 	for row: Variant in gc.view_combatants():

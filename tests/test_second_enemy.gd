@@ -133,7 +133,7 @@ func test_war_hound_data_contract() -> void:
 	# The demo run stages it as the mid room, as a PAIR (the pack it is).
 	var run_def: Dictionary = (SimTestBase.load_json("res://data/demo_run.json") as Dictionary).get("run", {})
 	var encounters: Array = run_def.get("encounters", [])
-	assert_eq(encounters.size(), 3, "the demo run is 3 encounters (wave 3c)")
+	assert_eq(encounters.size(), 4, "the demo run is 4 rooms (wave 4b branch map)")
 	var kennel: Dictionary = encounters[1]
 	assert_eq(String(kennel.get("key", "")), "kennel_gauntlet", "the mid room is the kennel")
 	var row: Dictionary = (kennel.get("enemies", []) as Array)[0]

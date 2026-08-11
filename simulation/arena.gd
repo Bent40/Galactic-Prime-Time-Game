@@ -19,7 +19,9 @@ extends RefCounted
 ##   {"bounds": {"width": W, "height": H, "origin"?: [q0, r0]}   axial rect
 ##             | {"hexes": [[q, r], ...]},                        explicit set
 ##    "walls":   [[q, r], ...],                                   blocked hexes
-##    "objects": [{"key": "trash_can", "position": [q, r], "burn"?: int}, ...]}
+##    "objects": [{"key": "trash_can", "position": [q, r], "burn"?: int}, ...],
+##    "doors":   [{"key": String (unique), "position": [q, r],
+##                 "state": "open"|"closed"}, ...]}               KAN-5 wave 4b
 ## The axial rect covers q0 <= q < q0+W, r0 <= r < r0+H (an axial
 ## parallelogram — PROVISIONAL room shape; the owner redesigns rooms with the
 ## front). Default origin centers it: [-floor(W/2), -floor(H/2)], so the
@@ -35,6 +37,16 @@ extends RefCounted
 ##     (blocks_movement = blocks_lane + object) — same paths as above, EXCEPT
 ##     the dash lane: a charge smashes THROUGH a can (destroying it), so cans
 ##     never end a lane and NEVER cause a bounce (bounces are walls only).
+##   * DOORS (KAN-5 wave 4b, rules-addendum R29): a CLOSED door blocks EXACTLY
+##     like a wall, and it does so THROUGH is_wall() — the one query every
+##     consumer already reads (movement, dash lanes incl. the phase-3 bounce,
+##     LOS when it exists, staging) — so doors need ZERO consumer edits. An
+##     OPEN door blocks nothing (standing in a doorway is legal; SPAWNING on
+##     one is not — CombatSim staging rejects any door hex). Doors flip via
+##     the sim's `door` command (free-action slot, R3); enemies never issue
+##     it in v1 (the AI never decides doors — a closed door honestly walls an
+##     enemy off). Authored-WALL-only checks (set_arena placement validation,
+##     view/serialization) read the `walls` dict directly, never is_wall.
 ##
 ## TRASH CANS (canon off the authored flamethrower note: "trash cans explode
 ## at Burn 5 (3 spaces, 2 Burn)"): a can in a resolved burn-cone's arc
@@ -104,6 +116,10 @@ var walls: Dictionary = {}
 ## Environment objects, in authored order (deterministic iteration order —
 ## the array IS command-stream state): [{"key", "position": [q, r], "burn": int}].
 var objects: Array[Dictionary] = []
+## Doors (KAN-5 wave 4b), in authored order (the array IS command-stream
+## state — `state` is the only mutable field, flipped by the door command):
+## [{"key": String, "position": [q, r], "state": "open"|"closed"}].
+var doors: Array[Dictionary] = []
 
 
 ## Parses the authored config block. Returns null when the shape is invalid
@@ -156,6 +172,26 @@ static func from_config(cfg_variant: Variant) -> Arena:
 			"position": [(pos as Vector2i).x, (pos as Vector2i).y],
 			"burn": maxi(0, int(obj.get("burn", 0))),
 		})
+	# Doors (wave 4b): shape gates here (key non-empty + unique, position a
+	# hex pair, state one of the two authored values); PLACEMENT gates
+	# (bounds/walls/objects/duplicate hexes) live in CombatSim._set_arena.
+	var door_keys: Dictionary = {}
+	for entry: Variant in cfg.get("doors", []) as Array:
+		if not (entry is Dictionary):
+			return null
+		var door: Dictionary = entry
+		var door_pos: Variant = _parse_hex(door.get("position"))
+		var door_key := String(door.get("key", ""))
+		var state := String(door.get("state", ""))
+		if door_pos == null or door_key == "" or door_keys.has(door_key) \
+				or (state != "open" and state != "closed"):
+			return null
+		door_keys[door_key] = true
+		arena.doors.append({
+			"key": door_key,
+			"position": [(door_pos as Vector2i).x, (door_pos as Vector2i).y],
+			"state": state,
+		})
 	return arena
 
 
@@ -174,8 +210,37 @@ func in_bounds(hex: Vector2i) -> bool:
 		and hex.y >= rect_origin.y and hex.y < rect_origin.y + rect_size.y
 
 
+## Wall-like solid blocking: authored walls + CLOSED doors (KAN-5 wave 4b).
+## A closed door blocks EXACTLY like a wall through this ONE query, so every
+## existing consumer — movement, dash lanes (a phase-3+ dash BOUNCES off a
+## closed door like any wall), staging, LOS when it exists — inherits doors
+## with zero edits; an OPEN door blocks nothing. Authored-wall-only checks
+## (set_arena placement validation, view/serialization) read `walls` directly.
 func is_wall(hex: Vector2i) -> bool:
-	return walls.has(hex)
+	return walls.has(hex) or is_closed_door(hex)
+
+
+## True when `hex` carries a door whose state is "closed".
+func is_closed_door(hex: Vector2i) -> bool:
+	var idx: int = door_index_at(hex)
+	return idx >= 0 and String(doors[idx].get("state", "")) == "closed"
+
+
+## Index into `doors` of the door on `hex` (any state), -1 when none.
+func door_index_at(hex: Vector2i) -> int:
+	for i: int in range(doors.size()):
+		var pos: Array = doors[i].get("position", [])
+		if pos.size() == 2 and Vector2i(int(pos[0]), int(pos[1])) == hex:
+			return i
+	return -1
+
+
+## Index into `doors` of the door named `key`, -1 when unknown.
+func door_index_for(key: String) -> int:
+	for i: int in range(doors.size()):
+		if String(doors[i].get("key", "")) == key:
+			return i
+	return -1
 
 
 ## LANE blocking (dash geometry): walls + out-of-bounds only — a charge
@@ -289,7 +354,19 @@ func view() -> Dictionary:
 			"origin": [rect_origin.x, rect_origin.y],
 			"width": rect_size.x, "height": rect_size.y,
 		}
-	return {"bounds": bounds, "walls": wall_rows, "objects": object_rows}
+	var out: Dictionary = {"bounds": bounds, "walls": wall_rows, "objects": object_rows}
+	# Wave 4b compat pin: the "doors" key appears ONLY on a door-carrying
+	# arena — pre-door arena views keep their exact shape.
+	if not doors.is_empty():
+		var door_rows: Array = []
+		for door: Dictionary in doors:
+			door_rows.append({
+				"key": String(door.get("key", "")),
+				"position": (door.get("position", []) as Array).duplicate(),
+				"state": String(door.get("state", "")),
+			})
+		out["doors"] = door_rows
+	return out
 
 
 func _sorted_bound_hexes() -> Array[Vector2i]:
@@ -317,6 +394,10 @@ func to_dict() -> Dictionary:
 		wall_rows.append([hex.x, hex.y])
 	out["walls"] = wall_rows
 	out["objects"] = objects.duplicate(true)
+	# Wave 4b compat pin: "doors" serializes ONLY when authored — a door-less
+	# arena's to_dict (and every hash over it) is byte-identical to wave 3d.
+	if not doors.is_empty():
+		out["doors"] = doors.duplicate(true)
 	return out
 
 
@@ -339,4 +420,6 @@ static func from_dict(data: Dictionary) -> Arena:
 			arena.walls[wall] = true
 	for entry: Variant in data.get("objects", []) as Array:
 		arena.objects.append((entry as Dictionary).duplicate(true))
+	for entry: Variant in data.get("doors", []) as Array:
+		arena.doors.append((entry as Dictionary).duplicate(true))
 	return arena

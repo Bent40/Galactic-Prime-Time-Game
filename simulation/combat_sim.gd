@@ -29,14 +29,26 @@ extends RefCounted
 ##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
 ##   {"type": "set_arena", "arena": {config}}                  OPT-IN arena (KAN-5 wave 3d)
-##       Bounds/walls/objects per simulation/arena.gd's config shape. Absent
-##       arena = today's unbounded behavior, with a byte-identical to_dict()
-##       (the "arena" key is only present once set — the legacy compat pin).
-##       Issued by GameController._stage_encounter BEFORE the add_combatant
-##       batch when the encounter def carries an "arena" block; rejected when
-##       an arena is already set, the config is invalid, walls/objects fall
-##       outside the bounds, or an already-staged combatant would be left on
-##       a blocked hex.
+##       Bounds/walls/objects/doors per simulation/arena.gd's config shape.
+##       Absent arena = today's unbounded behavior, with a byte-identical
+##       to_dict() (the "arena" key is only present once set — the legacy
+##       compat pin). Issued by GameController._stage_encounter BEFORE the
+##       add_combatant batch when the encounter def carries an "arena" block;
+##       rejected when an arena is already set, the config is invalid,
+##       walls/objects/doors fall outside the bounds or on each other, or an
+##       already-staged combatant would be left on a blocked/door hex.
+##   {"type": "door", "actor", "key", "set": "open"|"closed"}  KAN-5 wave 4b (R29)
+##       Flips an authored door. The actor must be alive/ready and ADJACENT
+##       (distance exactly 1) to the door hex — standing ON an open door
+##       cannot close it under itself. Costs the FREE-ACTION SLOT (R3, the
+##       inventory-interaction family: one free action per combatant per
+##       tick, shared with The Bit / the free move / first inventory use /
+##       0-cost reactions; v1 deliberately grants NO Moment-cost fallback, so
+##       one door interaction per tick is the cap). Closing onto a hex with a
+##       live body in the doorway rejects (door_blocked_by_body). Enemies
+##       never issue it in v1 — the AI never decides doors (no enemy_ai
+##       code path exists for it; a closed door honestly walls enemies off).
+##       Emits door_changed {actor, key, position, state}.
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -137,6 +149,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _ai_decide(cmd)
 		"set_arena":
 			events = _set_arena(cmd)
+		"door":
+			events = _door(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -219,6 +233,11 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
 		if not arena.in_bounds(pos):
 			return [{"type": "command_rejected", "reason": "staging_out_of_bounds", "combatant": id, "position": [pos.x, pos.y]}]
+		# Wave 4b (R29): a doorway is never a spawn hex, open OR closed —
+		# authored staging must keep doors workable (checked before the wall
+		# gate so a closed door reports the door-specific reason too).
+		if arena.door_index_at(pos) >= 0:
+			return [{"type": "command_rejected", "reason": "staging_on_door_hex", "combatant": id, "position": [pos.x, pos.y]}]
 		if arena.is_wall(pos) or arena.object_index_at(pos) >= 0:
 			return [{"type": "command_rejected", "reason": "staging_blocked_hex", "combatant": id, "position": [pos.x, pos.y]}]
 	var c := CombatantState.from_spec(spec, static_data)
@@ -552,13 +571,13 @@ func _prime(cmd: Dictionary) -> Array[Dictionary]:
 	return [{"type": "prime_armed", "actor": actor.id, "key": key}]
 
 
-## KAN-5 (wave 3d) — the OPT-IN arena command. Validates the authored config
-## (simulation/arena.gd shape), then that walls/objects sit inside the bounds
-## and off each other, then that every ALREADY-STAGED combatant remains on a
-## legal hex (staging order puts set_arena before the add batch, so this guard
-## matters only for late/manual sets). On success the arena is wired into the
-## EnemyAI + ActionResolver movement/lane paths and serialized under "arena"
-## (hash-covered). Rejections mutate nothing.
+## KAN-5 (wave 3d; doors wave 4b) — the OPT-IN arena command. Validates the
+## authored config (simulation/arena.gd shape), then that walls/objects/doors
+## sit inside the bounds and off each other, then that every ALREADY-STAGED
+## combatant remains on a legal non-door hex (staging order puts set_arena
+## before the add batch, so this guard matters only for late/manual sets). On
+## success the arena is wired into the EnemyAI + ActionResolver movement/lane
+## paths and serialized under "arena" (hash-covered). Rejections mutate nothing.
 func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
 	if arena != null:
 		return [{"type": "command_rejected", "reason": "arena_already_set"}]
@@ -575,23 +594,98 @@ func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
 		if not parsed.in_bounds(pos) or parsed.is_wall(pos) or object_hexes.has(pos):
 			return [{"type": "command_rejected", "reason": "arena_object_misplaced", "hex": [pos.x, pos.y]}]
 		object_hexes[pos] = true
+	# Wave 4b (R29) door placement: in bounds, off authored walls (the walls
+	# dict directly — is_wall would see the door's own closed state), off
+	# objects, one door per hex. Key shape/uniqueness gated by from_config.
+	var door_hexes: Dictionary = {}
+	for door: Dictionary in parsed.doors:
+		var door_pos_raw: Array = door.get("position", [])
+		var door_pos := Vector2i(int(door_pos_raw[0]), int(door_pos_raw[1]))
+		if not parsed.in_bounds(door_pos) or parsed.walls.has(door_pos) \
+				or object_hexes.has(door_pos) or door_hexes.has(door_pos):
+			return [{"type": "command_rejected", "reason": "arena_door_misplaced", "hex": [door_pos.x, door_pos.y]}]
+		door_hexes[door_pos] = true
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
 		var c: CombatantState = combatants[id]
 		if not parsed.in_bounds(c.position) or parsed.is_wall(c.position) \
-				or parsed.object_index_at(c.position) >= 0:
+				or parsed.object_index_at(c.position) >= 0 \
+				or parsed.door_index_at(c.position) >= 0:
 			return [{"type": "command_rejected", "reason": "combatant_outside_arena",
 				"combatant": c.id, "position": [c.position.x, c.position.y]}]
 	arena = parsed
 	ai.arena = arena
 	resolver.arena = arena
 	var summary: Dictionary = arena.view()
-	return [{
+	var arena_event: Dictionary = {
 		"type": "arena_set",
 		"bounds": summary["bounds"],
 		"walls": summary["walls"],
 		"objects": summary["objects"],
+	}
+	# Wave 4b compat pin: "doors" rides the event only when authored.
+	if summary.has("doors"):
+		arena_event["doors"] = summary["doors"]
+	return [arena_event]
+
+
+## KAN-5 wave 4b (rules-addendum R29) — the door command: an adjacent, alive/
+## ready combatant flips an authored door for its FREE-ACTION SLOT (R3, the
+## inventory-interaction family — the slot IS the cost; v1 grants no
+## Moment-cost fallback, so a second door interaction the same tick rejects
+## free_action_used like any second free action). The state flip is the ONLY
+## mutation: a closed door then blocks through Arena.is_wall (movement, dash
+## lanes, bounces — one code path), an open one blocks nothing. Closing needs
+## the doorway clear of live bodies. Enemies never issue it in v1 (the AI
+## never decides doors — documented, no enemy_ai path). Rejections mutate
+## nothing; door_changed carries the flip.
+func _door(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if arena == null:
+		return [{"type": "command_rejected", "reason": "no_arena", "actor": actor.id}]
+	var key := String(cmd.get("key", ""))
+	var idx: int = arena.door_index_for(key)
+	if idx < 0:
+		return [{"type": "command_rejected", "reason": "unknown_door", "actor": actor.id, "key": key}]
+	var to_state := String(cmd.get("set", ""))
+	if to_state != "open" and to_state != "closed":
+		return [{"type": "command_rejected", "reason": "unknown_door_state", "actor": actor.id, "set": to_state}]
+	var door: Dictionary = arena.doors[idx]
+	var pos_raw: Array = door.get("position", [])
+	var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+	if CombatantState.hex_distance(actor.position, pos) != 1:
+		return [{"type": "command_rejected", "reason": "door_not_adjacent", "actor": actor.id, "key": key}]
+	if String(door.get("state", "")) == to_state:
+		return [{"type": "command_rejected", "reason": "door_already_" + to_state, "actor": actor.id, "key": key}]
+	if to_state == "closed":
+		var ids: Array = combatants.keys()
+		ids.sort()
+		for id: Variant in ids:
+			var body: CombatantState = combatants[id]
+			if body.alive and not body.removed_from_play and body.position == pos:
+				return [{"type": "command_rejected", "reason": "door_blocked_by_body",
+					"actor": actor.id, "key": key, "by": body.id}]
+	# R3 free-action economy: one free action per tick — checked LAST so a
+	# rejection for a bad ask never wastes the slot; the flip consumes it.
+	if actor.free_action_used:
+		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+	actor.free_action_used = true
+	door["state"] = to_state
+	return [{
+		"type": "door_changed",
+		"actor": actor.id,
+		"key": key,
+		"position": [pos.x, pos.y],
+		"state": to_state,
 	}]
 
 
