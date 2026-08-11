@@ -17,8 +17,10 @@ extends SimTestBase
 ##  * "flamethrower tracks closest target" (phase 5) — the cone AIMS at the
 ##    nearest opponent instead of the biggest crowd (toward selection only).
 ##  * "dash bounces between walls up to 2 bounces" / "flamethrower pops trash
-##    cans instantly" — DATA-ONLY no-ops (no walls / no trash-can entities
-##    until KAN-5), pinned inert here.
+##    cans instantly" — REAL since wave 3d (KAN-5 arenas), but ARENA-GATED:
+##    they map to effects (dash_wall_bounce / cans_pop_instantly) yet stay
+##    behaviorally inert WITHOUT an arena — no walls, no cans, byte-identical
+##    fights (the flipped inert pin below; mechanics in tests/test_arena.gd).
 
 
 func add_boss(sim: CombatSim, id: String = "boss", overrides: Dictionary = {}) -> Array[Dictionary]:
@@ -90,11 +92,16 @@ func test_reader_maps_authored_strings_and_accumulates_by_phase() -> void:
 	assert_eq(authored.get(5, []), ["flamethrower tracks closest target", "death spin costs 2 moments"],
 		"phase-5 authored upgrade strings pinned")
 	# The reader: effects activate AT their authored phase and ACCUMULATE.
+	# Wave 3d: the phase-3 set now includes the two arena-gated effects — they
+	# report ACTIVE here (the reader is arena-blind) and gate on the arena at
+	# the mechanics layer (tests/test_arena.gd).
 	var expected: Dictionary = {
 		1: [], 2: [],
-		3: ["grab_range_plus_1"],
-		4: ["grab_range_plus_1", "network_stays_exposed", "dash_bend"],
-		5: ["grab_range_plus_1", "network_stays_exposed", "dash_bend",
+		3: ["grab_range_plus_1", "dash_wall_bounce", "cans_pop_instantly"],
+		4: ["grab_range_plus_1", "dash_wall_bounce", "cans_pop_instantly",
+			"network_stays_exposed", "dash_bend"],
+		5: ["grab_range_plus_1", "dash_wall_bounce", "cans_pop_instantly",
+			"network_stays_exposed", "dash_bend",
 			"cone_track_closest", "spin_two_moments"],
 	}
 	for phase: int in [1, 2, 3, 4, 5]:
@@ -109,11 +116,13 @@ func test_reader_maps_authored_strings_and_accumulates_by_phase() -> void:
 			"phase %d grab range" % phase)
 
 
-func test_unknown_and_data_only_strings_are_inert_no_ops() -> void:
-	# The two deliberately DATA-ONLY strings (walls and trash cans do not exist
-	# until KAN-5) map to no effect — the exact-set assertions above already
-	# prove they contribute nothing at 3/5. An arbitrary unknown string is the
-	# same no-op: visible in data, never reported, nothing executes.
+func test_unknown_strings_stay_inert_and_arena_upgrades_gate_on_the_arena() -> void:
+	# An arbitrary unknown string is still a DATA-ONLY no-op: visible in data,
+	# never reported, nothing executes. The two formerly-inert strings now MAP
+	# (wave 3d un-inerted them) — but WITHOUT an arena they stay behaviorally
+	# inert: no walls -> no bounces (a bounce-marked declare rejects), no cans
+	# -> nothing pops, and the sim serializes with the exact legacy shape (no
+	# "arena" key), so a no-arena fight is byte-identical to pre-arena play.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "vic", {"team": "party", "position": [1, 0]})
 	add_boss(sim, "boss", {"boss_traits": traits_without_dodge(), "phases": [
@@ -126,12 +135,22 @@ func test_unknown_and_data_only_strings_are_inert_no_ops() -> void:
 	var active: Dictionary = sim.ai.upgrades_active(boss_state(sim))
 	var keys: Array = active.keys()
 	keys.sort()
-	assert_eq(keys, ["grab_range_plus_1"],
-		"unknown + data-only strings report nothing; mapped strings still parse")
-	assert_false(EnemyAI.UPGRADE_EFFECTS.has("dash bounces between walls up to 2 bounces"),
-		"wall bounces stay unmapped (no walls until KAN-5 arenas)")
-	assert_false(EnemyAI.UPGRADE_EFFECTS.has("flamethrower pops trash cans instantly"),
-		"trash cans stay unmapped (no environment entities until KAN-5)")
+	assert_eq(keys, ["dash_wall_bounce", "grab_range_plus_1"],
+		"unknown strings report nothing; mapped strings (bounce included) parse")
+	assert_true(EnemyAI.UPGRADE_EFFECTS.has("dash bounces between walls up to 2 bounces"),
+		"wall bounces are mapped now (KAN-5 arenas, wave 3d)")
+	assert_true(EnemyAI.UPGRADE_EFFECTS.has("flamethrower pops trash cans instantly"),
+		"the trash-can pop is mapped now (KAN-5 arenas, wave 3d)")
+	# The ARENA gate is what keeps a no-arena fight identical to before: even
+	# with dash_wall_bounce active, a bounce-marked lane rejects without walls.
+	assert_rejected(declare(sim, "boss", {
+		"kind": "attack", "key": "dash", "cost": 2,
+		"damage": {"type": "crushed", "amount": 2}, "attack_range": 6,
+		"targets": [{"id": "vic", "part": "torso"}],
+		"area_shape": {"kind": "line", "lane": [[0, 0], [1, 0]], "bounces": [[1, 0]]},
+	}), "bounce_not_available", "no arena = no walls = no bounces (the inert continuation)")
+	assert_false(sim.to_dict().has("arena"),
+		"and the no-arena sim keeps the legacy serialized shape")
 
 
 # ---------------------------------------------------- grab range +1 (phase 3+)

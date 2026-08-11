@@ -19,6 +19,10 @@ var combatants: Dictionary = {}
 var cond: ConditionEngine
 var rng: RandomNumberGenerator
 var ai: EnemyAI
+## KAN-5 (wave 3d): the sim's OPT-IN arena, wired by CombatSim at set_arena /
+## from_dict (serialized on CombatSim, never here). null = unbounded legacy —
+## every arena check in the movement/lane paths below is guarded on it.
+var arena: Arena = null
 
 ## R15 merged-force groups for the CURRENT resolve_due batch ONLY (never across
 ## commands — built by _prescan_merge_groups, flushed + cleared before resolve_due
@@ -545,6 +549,23 @@ func _validate_attack(actor: CombatantState, action: Dictionary) -> Array[Dictio
 	if String(declared_shape.get("kind", "")) == "line" and declared_shape.has("bend") \
 			and not ai.has_upgrade(actor, "dash_bend"):
 		return _reject("bend_not_available", {"actor": actor.id})
+	# Wave 3d (KAN-5) — the wall-bounce gates, mirroring the bend gate: a lane
+	# carrying bounce markers needs an arena (no walls, no bounces) AND the
+	# phase-3 "dash bounces between walls up to 2 bounces" upgrade; the marker
+	# count is capped at the authored 2. With an arena set, every declared
+	# lane hex must be legal ground (walls/bounds are never charged through —
+	# bounces reflect BEFORE the wall, so an honest lane never contains one).
+	if String(declared_shape.get("kind", "")) == "line":
+		var bounce_marks: Array = declared_shape.get("bounces", [])
+		if not bounce_marks.is_empty():
+			if arena == null or not ai.has_upgrade(actor, "dash_wall_bounce"):
+				return _reject("bounce_not_available", {"actor": actor.id})
+			if bounce_marks.size() > Arena.MAX_DASH_BOUNCES:
+				return _reject("too_many_bounces", {"actor": actor.id, "bounces": bounce_marks.size()})
+		if arena != null:
+			for lane_hex: Vector2i in _shape_lane(declared_shape):
+				if arena.blocks_lane(lane_hex):
+					return _reject("lane_blocked", {"actor": actor.id, "hex": [lane_hex.x, lane_hex.y]})
 	var item: Dictionary = {}
 	var item_key := String(action.get("item", ""))
 	if item_key != "":
@@ -621,9 +642,12 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 
 
 ## Is the range-2 grab's drag destination (EnemyAI.grab_pull_hex) occupied by
-## a living, in-play combatant other than the grabbing pair? Live state.
+## a living, in-play combatant other than the grabbing pair — or, with an
+## arena set (KAN-5), a wall/out-of-bounds/trash-can hex? Live state.
 func _pull_hex_blocked(actor: CombatantState, target: CombatantState) -> bool:
 	var pull: Vector2i = EnemyAI.grab_pull_hex(actor.position, target.position)
+	if arena != null and arena.blocks_movement(pull):
+		return true
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -739,6 +763,15 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	var spaces: int = CombatantState.hex_distance(actor.position, to)
 	if spaces <= 0:
 		return _reject("no_move", {"actor": actor_id})
+	# KAN-5 movement honesty: with an arena set, a move's destination must be
+	# inside the bounds and off walls/trash cans (a can blocks its hex like an
+	# occupied body until destroyed). Combatant occupancy stays unchecked at
+	# move — the pre-arena model, unchanged.
+	if arena != null:
+		if not arena.in_bounds(to):
+			return _reject("out_of_bounds", {"actor": actor_id, "to": [to.x, to.y]})
+		if arena.is_wall(to) or arena.object_index_at(to) >= 0:
+			return _reject("hex_blocked", {"actor": actor_id, "to": [to.x, to.y]})
 	var prone: bool = bool(actor.statuses.get("prone", false))
 	var slowed: bool = bool(actor.statuses.get("slowed", false))
 	var allowance: int = 1 if (prone or slowed) else 3
@@ -817,6 +850,14 @@ func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dic
 	var roll_range: int = int(spec.get("roll_range", 2))
 	if spaces > roll_range:
 		return _reject("roll_out_of_range", {"actor": actor.id, "range": roll_range, "spaces": spaces})
+	# KAN-5: a roll destination obeys the arena like any movement — in bounds,
+	# off walls and off trash cans (the occupied-hex check below already ran
+	# for bodies; walls/cans compose with it).
+	if arena != null:
+		if not arena.in_bounds(to):
+			return _reject("out_of_bounds", {"actor": actor.id, "to": [to.x, to.y]})
+		if arena.is_wall(to) or arena.object_index_at(to) >= 0:
+			return _reject("hex_blocked", {"actor": actor.id, "to": [to.x, to.y]})
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -1410,7 +1451,10 @@ func _free_reposition(actor: CombatantState, action: Dictionary, max_spaces: int
 		var rt: Array = action["reposition_to"]
 		var to := Vector2i(int(rt[0]), int(rt[1]))
 		var dist: int = CombatantState.hex_distance(actor.position, to)
-		if dist >= 1 and dist <= max_spaces:
+		# KAN-5: a reposition into a wall/bounds/can is no reposition — the
+		# actor holds position (the unmoved event below), the skill still lands.
+		if dist >= 1 and dist <= max_spaces \
+				and (arena == null or not arena.blocks_movement(to)):
 			actor.position = to
 			return [{"type": event_type, "actor": actor.id, "to": [to.x, to.y], "spaces": dist, "free": true}]
 	# TODO: deterministic free step toward/around the target when no reposition_to
@@ -1576,6 +1620,9 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 		# advances/finishes off the empty-targets exit too.
 		if not whiffed:
 			events.append_array(_apply_death_spin_beat(actor, action))
+			# Wave 3d: a really-resolved burn cone washes its arc even with no
+			# combatant targets — trash cans in it still catch (a Whiff negates).
+			events.append_array(_ignite_cans_in_cone(actor, action, snapshot, damage, amount))
 		events.append({
 			"type": "action_resolved", "actor": actor.id, "kind": kind,
 			"key": String(action.get("key", String(action.get("item", "")))),
@@ -1611,6 +1658,10 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 			var knock_target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
 			if knock_target != null and _hit_landed(events, knock_target.id):
 				events.append_array(_dash_knock_aside(knock_target, actor, HexGeometry.to_set(_shape_lane(shape))))
+	# Wave 3d (KAN-5): a resolved burn cone's flame also washes over the arc's
+	# trash cans — after the combatant rounds (people first, environment
+	# second), through the accumulate-or-pop model (_ignite_cans_in_cone).
+	events.append_array(_ignite_cans_in_cone(actor, action, snapshot, damage, amount))
 	# Wave 2b: a really-resolved chew/spin beat advances/finishes the sequence.
 	events.append_array(_apply_death_spin_beat(actor, action))
 	events.append({
@@ -1783,7 +1834,27 @@ func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: D
 		}
 		if shape.has("bend"):
 			charged["bend"] = (shape.get("bend", []) as Array).duplicate()
+		# Wave 3d: the committed wall-bounce points ride the charge event
+		# (like the bend) — the ricochet is spectator-visible.
+		if shape.has("bounces"):
+			charged["bounces"] = (shape.get("bounces", []) as Array).duplicate(true)
 		out_events.append(charged)
+		# Wave 3d: a charge SMASHES straight through trash cans — every can on
+		# the corridor the dasher actually traversed is destroyed (no bounce
+		# off cans, no explosion: a smash is not a burn touch). Re-queried per
+		# hex because each removal reindexes the object store.
+		if arena != null:
+			for k: int in range(1, final_idx + 1):
+				var can_idx: int = arena.object_index_at(lane[k])
+				if can_idx >= 0:
+					var can: Dictionary = arena.objects[can_idx]
+					arena.objects.remove_at(can_idx)
+					out_events.append({
+						"type": "trash_can_smashed",
+						"key": String(can.get("key", "")),
+						"position": (can.get("position", []) as Array).duplicate(),
+						"by": actor.id,
+					})
 	if final_idx < stop_idx:
 		out_events.append({
 			"type": "dash_stopped_short", "actor": actor.id, "target": target.id,
@@ -2079,6 +2150,11 @@ func _dash_sidestep(dodger: CombatantState, dasher: CombatantState, lane_set: Di
 		var candidate: Vector2i = from + neighbor
 		if occupied.has(candidate):
 			continue
+		# KAN-5: a sidestep never lands on a wall/out-of-bounds/can hex; with
+		# every candidate blocked the dodge still negates, no displacement
+		# (the same no-qualifying-hex rule as before).
+		if arena != null and arena.blocks_movement(candidate):
+			continue
 		if lane_set.is_empty():
 			if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
 				continue
@@ -2147,6 +2223,11 @@ func _dash_knock_aside(target: CombatantState, dasher: CombatantState, lane_set:
 		var candidate: Vector2i = from + neighbor
 		if occupied.has(candidate) or lane_set.has(candidate):
 			continue
+		# KAN-5: a shove into a wall/bounds/can stops short — with no legal
+		# off-lane neighbor the target stays put and is STILL knocked prone
+		# (the pre-arena no-free-neighbor rule, walls composed in).
+		if arena != null and arena.blocks_movement(candidate):
+			continue
 		to = candidate
 		displaced = true
 		break
@@ -2161,6 +2242,142 @@ func _dash_knock_aside(target: CombatantState, dasher: CombatantState, lane_set:
 		events.append({"type": "knocked_prone", "combatant": target.id,
 			"source": dasher.id, "skill": "dash"})
 		events.append_array(_end_dance(target, "knocked_prone"))
+	return events
+
+
+# ------------------------------------------------------ trash cans (wave 3d, KAN-5)
+
+## A resolved BURN cone washes its committed arc over the arena's trash cans
+## (canon off the authored flamethrower note: "trash cans explode at Burn 5
+## (3 spaces, 2 Burn)"). Model (documented):
+##  * arc = the declared area_shape (toward + size) from the actor's SNAPSHOT
+##    hex — the same authority the windup re-check uses.
+##  * each can in the arc ACCUMULATES the cone's per-round burn amount (post
+##    R10 halving — the weakened flame is the weakened flame); at burn >=
+##    Arena.TRASH_CAN_EXPLODE_AT it explodes. Accumulation is independent of
+##    whether the combatant rounds landed — the flame washes the ground
+##    regardless; only a Whiff negates the sweep (callers gate).
+##  * phase-3 "flamethrower pops trash cans instantly" (cans_pop_instantly,
+##    the ATTACKER's upgrade): a swept can explodes on the FIRST touch, no
+##    accumulation — even a halved-to-0 flame still pops it (a touch is a
+##    touch).
+## Store-order iteration (the object array is command-stream state) keeps it
+## deterministic; consumes ZERO rng on every path.
+func _ignite_cans_in_cone(actor: CombatantState, action: Dictionary, snapshot: Dictionary, damage: Dictionary, amount: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if arena == null or arena.objects.is_empty():
+		return events
+	var shape: Dictionary = action.get("area_shape", {})
+	if String(shape.get("kind", "")) != "cone":
+		return events
+	if ConditionEngine.normalize_condition_id(String(damage.get("type", ""))) != "burn":
+		return events
+	var toward_raw: Array = shape.get("toward", [])
+	var size: int = int(shape.get("size", 0))
+	if toward_raw.size() != 2 or size <= 0:
+		return events
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var origin := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(origin, origin + dir, size))
+	var instant: bool = ai.has_upgrade(actor, "cans_pop_instantly")
+	var explode_queue: Array[Dictionary] = []
+	for obj: Dictionary in arena.objects:
+		var pos_raw: Array = obj.get("position", [])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not arc.has(pos):
+			continue
+		if instant:
+			explode_queue.append({"position": pos, "instant": true})
+			continue
+		if amount <= 0:
+			continue  # a 0-burn wash accumulates nothing (and pops nothing)
+		obj["burn"] = int(obj.get("burn", 0)) + amount
+		events.append({
+			"type": "trash_can_burned",
+			"key": String(obj.get("key", "")),
+			"position": [pos.x, pos.y],
+			"added": amount, "burn": int(obj["burn"]),
+			"by": actor.id,
+		})
+		if int(obj["burn"]) >= Arena.TRASH_CAN_EXPLODE_AT:
+			explode_queue.append({"position": pos, "instant": false})
+	events.append_array(_explode_cans(explode_queue, actor.id))
+	return events
+
+
+## Explodes queued trash cans, cascades included, deterministically (queue
+## order = ignition order; chained cans append in store order). Per canon
+## ("3 spaces, 2 Burn"): blast = HexGeometry.blast(can, 3), burn 2 to every
+## living combatant in it through the NORMAL damage path (_strike_round) with
+## attacker NONE — environment damage, no killer (takedown-v2 unauthored-death
+## honesty). Collateral is never threshold-dodged (R22 valve precedent): the
+## synthetic action carries the R26 undodgable flag, so every dodge-shaped
+## escape is skipped with ZERO rng; the R25 AoE-center rule still applies (a
+## live roller is missed unless standing on the can's own hex — the center).
+## The boss's fire-heal hook applies normally (a can blast HEALS the
+## Incinedile's flesh — mycelium parts with fire_harms still burn). The blast
+## is also a burn TOUCH on other cans in radius (+2, chaining at 5; the
+## instant-pop upgrade never chains — it belongs to the flamethrower). An
+## exploded can is REMOVED: its hex unblocks and further queue hits no-op.
+func _explode_cans(queue: Array[Dictionary], by: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var pending: Array[Dictionary] = queue.duplicate()
+	while not pending.is_empty():
+		var entry: Dictionary = pending.pop_front()
+		var pos: Vector2i = entry["position"]
+		var idx: int = arena.object_index_at(pos)
+		if idx < 0:
+			continue  # already destroyed (double-queued / chained twice)
+		var can: Dictionary = arena.objects[idx]
+		arena.objects.remove_at(idx)
+		events.append({
+			"type": "trash_can_exploded",
+			"key": String(can.get("key", "")),
+			"position": [pos.x, pos.y],
+			"radius": Arena.TRASH_CAN_BLAST_RADIUS,
+			"damage": Arena.TRASH_CAN_BLAST_BURN,
+			"burn": int(can.get("burn", 0)),
+			"instant": bool(entry.get("instant", false)),
+			"by": by,
+		})
+		var area: Dictionary = HexGeometry.to_set(HexGeometry.blast(pos, Arena.TRASH_CAN_BLAST_RADIUS))
+		var ids: Array = combatants.keys()
+		ids.sort()
+		for id: Variant in ids:
+			var other: CombatantState = combatants[id]
+			if not other.alive or other.removed_from_play or not area.has(other.position):
+				continue
+			if other.rolled_this_window and other.position != pos:
+				events.append({
+					"type": "blast_missed_roller",
+					"combatant": other.id, "by": "environment",
+					"at": [other.position.x, other.position.y],
+					"center": [pos.x, pos.y],
+				})
+				continue
+			var part_key: String = ai.torso_line_part(other)
+			if part_key == "":
+				continue
+			events.append_array(_strike_round(other, part_key, "burn",
+				Arena.TRASH_CAN_BLAST_BURN,
+				{"kind": "attack", "key": "trash_can_explosion", "undodgable": true}, null))
+		for obj: Dictionary in arena.objects:
+			var opos_raw: Array = obj.get("position", [])
+			var opos := Vector2i(int(opos_raw[0]), int(opos_raw[1]))
+			if not area.has(opos):
+				continue
+			obj["burn"] = int(obj.get("burn", 0)) + Arena.TRASH_CAN_BLAST_BURN
+			events.append({
+				"type": "trash_can_burned",
+				"key": String(obj.get("key", "")),
+				"position": [opos.x, opos.y],
+				"added": Arena.TRASH_CAN_BLAST_BURN, "burn": int(obj["burn"]),
+				"by": "environment",
+			})
+			if int(obj["burn"]) >= Arena.TRASH_CAN_EXPLODE_AT:
+				pending.append({"position": opos, "instant": false})
 	return events
 
 
@@ -2266,6 +2483,11 @@ func _death_spin_fling_target(boss: CombatantState, victim: CombatantState) -> D
 	var final_idx: int = start_idx
 	for k: int in range(start_idx + 1, mini(lane.size(), start_idx + 1 + EnemyAI.SPIN_FLING_HEXES)):
 		if occupied.has(lane[k]):
+			break
+		# KAN-5: a fling into a wall/bounds/can stops short — the victim drops
+		# on the last free hex of the spin lane (still prone where the spin
+		# rule says prone; the wall just shortens the flight).
+		if arena != null and arena.blocks_movement(lane[k]):
 			break
 		final_idx = k
 	return {"to": lane[final_idx], "hexes": final_idx - start_idx}

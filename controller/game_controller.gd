@@ -405,6 +405,24 @@ func view_encounter() -> Dictionary:
 	}
 
 
+## Read-only ARENA probe (KAN-5 wave 3d — ADDITIVE, spectator contract): the
+## OPT-IN arena's bounds, walls and environment objects as plain sorted
+## primitives, so a renderer can draw the room and its props without touching
+## simulation classes. {} before start_combat AND for every no-arena combat
+## (the unbounded legacy default — the harnesses, all pre-arena saves), so
+## existing consumers see nothing new unless an encounter authors an arena.
+##   bounds:  {"kind": "rect", "origin": [q, r], "width", "height"}
+##            | {"kind": "hexes", "hexes": [[q, r], ...] sorted}
+##   walls:   [[q, r], ...] sorted
+##   objects: [{"key", "position": [q, r], "burn"}, ...] in store order —
+##            a destroyed can simply disappears from the list (its hex
+##            unblocks); "burn" is the live accumulation toward the pop at 5.
+func view_arena() -> Dictionary:
+	if sim == null or sim.arena == null:
+		return {}
+	return sim.arena.view()
+
+
 func view_clock() -> Dictionary:
 	if sim == null:
 		return {}
@@ -1087,6 +1105,12 @@ func _end_encounter_payload() -> Dictionary:
 ## from there.
 func _stage_encounter(staging: Dictionary) -> void:
 	start_combat(int(staging.get("sim_seed", 0)), _run_static_data)
+	# KAN-5 (wave 3d): the encounter's authored arena stages FIRST, so every
+	# spawn below is validated against its bounds/walls (staging rejection).
+	# {} = no arena block on the def = the unbounded legacy combat.
+	var arena_cfg: Dictionary = staging.get("arena", {})
+	if not arena_cfg.is_empty():
+		apply_command({"type": "set_arena", "arena": arena_cfg})
 	for spec: Dictionary in staging.get("adds", []) as Array:
 		apply_command({"type": "add_combatant", "combatant": spec})
 	var carried: Dictionary = staging.get("carried", {})

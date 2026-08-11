@@ -466,8 +466,8 @@ overturning one is a code change, not a rewrite.
     | authored string (phase) | effect | model |
     |---|---|---|
     | "death spin grab range +1" (3) | `grab_range_plus_1` | grab reach 2; a range-2 grab DRAGS the victim adjacent first — a 1-hex pull to the boss-adjacent hex of the boss→victim line (fixed line tie rule); a living body on the pull hex blocks it and the grab fails honestly (`pull_blocked` — the AI never decides one, a hand-built command rejects/invalidates). The drag rides the `death_spin_grab` event (`dragged`/`dragged_from`/`dragged_to`). Plain R9 grapples stay range 1. |
-    | "dash bounces between walls up to 2 bounces" (3) | — | **DATA-ONLY**: there are NO walls — geometry is unbounded (`arena_hexes` unread); bounces arrive with the KAN-5 arenas. Pinned inert. |
-    | "flamethrower pops trash cans instantly" (3) | — | **DATA-ONLY**: trash cans are not sim entities (environment objects are KAN-5). Pinned inert. |
+    | "dash bounces between walls up to 2 bounces" (3) | `dash_wall_bounce` | ~~DATA-ONLY~~ **REAL since wave 3d (KAN-5 arenas)** — ARENA-GATED: with an arena set, a dash lane that hits a wall/bounds REFLECTS (up to 2 bounces; the edge-mirror model + all lane rules in **R28**); without an arena there are no walls and no bounces — the inert pin flipped to assert exactly that continuation. |
+    | "flamethrower pops trash cans instantly" (3) | `cans_pop_instantly` | ~~DATA-ONLY~~ **REAL since wave 3d (KAN-5 arenas)** — ARENA-GATED: a burn cone's arc accumulates its burn on swept trash cans (5 explodes: 3 spaces, 2 Burn, environment attribution); with this upgrade the FIRST touch pops the can (no accumulation). Full model in **R28**; no arena = no cans = the old behavior. |
     | "network fully exposed" (4) | `network_stays_exposed` | from the phase-4 valve on the network NEVER re-hides. For the seeded boss this was already emergent (`breach_resets_after_phase: 2` gates the retreat to Valve I); the upgrade guard makes the string canon — a later valve's retreat is suppressed outright. Pinned by a full valve-II drive test. |
     | "dash can change direction mid-run" (4) | `dash_bend` | the charge lane may bend ONCE: two chained `line_extended` segments, total length ≤ the dash's range; the declare's `area_shape` carries the composite lane + the bend hex (phase-gated at the command surface — `bend_not_available` below phase 4). AI bend pick is deterministic and rng-free: tried only when no straight lane exists; candidates by segment-1 length ascending, then blast's (q, r) order; first legal composite (no self-intersection, intermediate hexes unoccupied) wins. ALL wave-2a/2b lane rules apply to the BENT lane (occupation stop on either segment, `left_lane` windup dodge, knock-aside off the FULL lane); the R22 sidestep steps off whichever SEGMENT the dodger stood on (the bend hex belongs to both; segment-2 checks first). `dash_charged` carries the bend. |
     | "flamethrower tracks closest target" (5) | `cone_track_closest` | the cone's `toward` selection AIMS at the NEAREST opponent (min hex distance, ties keep the earlier sorted-id candidate) instead of maximize-targets — the authored text says TRACKS, i.e. it hunts YOU. Among the arcs containing the quarry, most swept targets wins (ties keep the earlier fixed-order direction). ONLY the aim shifts: shape, size and the ≥ 2-target decide gate are unchanged — a lone quarry is not a crowd, so the boss falls through to the (upgraded-reach) grab instead. The chosen aim rides the `ai_decision` event (`aim`). PROVISIONAL. |
@@ -475,7 +475,8 @@ overturning one is a code change, not a rewrite.
     Every effect activates exactly AT its authored phase and is OFF below it;
     serialization round-trips mid-phase-5 sequence with no new state.
     Tests: tests/test_phase_upgrades.gd (+ the flipped pin in
-    tests/test_death_spin.gd).
+    tests/test_death_spin.gd; the wave-3d arena-gated mechanics in
+    tests/test_arena.gd).
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
@@ -494,10 +495,13 @@ The `aura_reading` SKILL itself remains unimplemented — it rides the content p
 stance substrate is the readable layer the audit said it needs.
 Explosion choreography and the Dash Reflexes-counters moved to REAL per
 R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
-decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
-arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
+decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note);
+death_spin + the dash knock-aside moved to REAL per
 wave 2b (2026-08-10, #19); the phase upgrades moved to REAL per wave 2d (2026-08-10,
-#20 — only wall bounces + trash cans stay data-only, both blocked on KAN-5 arenas).
+#20); wall bounces + trash cans — the last two — moved to REAL per wave 3d
+(2026-08-11, KAN-5 arenas: OPT-IN bounds/walls/objects, R28 — no arena = the
+unbounded legacy combat, byte-identical; rooms/dungeon FLOW and stealth/
+detection R20 stay open).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -972,6 +976,107 @@ machinery in this repo:
   OFFERED (Lounge flow, player consent — §4.5 "never automatic") is
   progression/UI scope; the engine here only answers "is this merge legal, and
   what does the roster look like after."
+
+## R28 — Arenas: bounds, walls, environment objects (KAN-5 wave 3d, 2026-08-11 — PROVISIONAL)
+
+**The arena is STRICTLY OPT-IN.** A combat carries an arena only when staged
+with one (`set_arena` — issued by the controller from the encounter def's
+`arena` block; defs LIVE on the encounter in `data/demo_run.json`, documented
+in `simulation/arena.gd`). **Absent arena = the unbounded legacy combat,
+byte-identical**: no behavior changes, and `to_dict()` carries no `arena` key,
+so every pre-arena save/hash/harness is untouched (pinned; the CI harnesses
+stage no arena and byte-diff clean). `data/enemies.json`'s `arena_hexes`
+(`[41, 60]` on the incinedile) stays the per-enemy design record the den's
+encounter block mirrors.
+
+- **Model** (`simulation/arena.gd`, serialized on CombatSim under `arena`,
+  hash-covered): `bounds` (axial rect `width`×`height` with an optional
+  `origin`, default centered — an axial parallelogram, PROVISIONAL room shape —
+  or an explicit hex set), `walls` (blocked hex set, authored), `objects`
+  (trash cans: `{key, position, burn}`).
+- **Movement honesty** — bounds+walls block EVERY position-changing path when
+  an arena is set; trash cans block like an OCCUPIED hex until destroyed
+  (occupied-hex logic composes with walls — both block). Per path: free +
+  scheduled **moves** reject (`out_of_bounds`/`hex_blocked`); **AI steps**
+  skip blocked candidates (greedy, not pathfinding — a wall the greedy rule
+  cannot detour around honestly strands the walker); **tactical rolls**
+  reject; **feint/pressure repositions** into a blocked hex hold position;
+  **sidesteps** skip blocked candidates (no legal hex = dodge still negates,
+  no displacement); **knock-asides** skip blocked candidates (no legal hex =
+  no displacement, target stays and is STILL knocked prone); **flings** stop
+  on the last free lane hex before a blocked one (still prone on landing);
+  **grab drags** fail on a blocked pull hex (`pull_blocked`); **summons**
+  place on legal ground only; **staging** rejects a spawn on a blocked hex
+  (`staging_out_of_bounds`/`staging_blocked_hex`), and `set_arena` itself
+  rejects walls/objects out of bounds or any already-staged combatant left
+  illegal.
+- **Dash wall bounces** (un-inerts the phase-3 "dash bounces between walls up
+  to 2 bounces" — `dash_wall_bounce`): with an arena set and the upgrade
+  active, a dash lane that hits a wall/bounds REFLECTS, up to 2 bounces;
+  without the upgrade (or past the budget) the lane ENDS at the wall. **The
+  reflection model** (authority: `Arena.bounced_lane`; verbatim from its
+  header): the lane walks hex-by-hex along its current ray direction v (an
+  INTEGER cube vector); when the next hex W is a wall/out-of-bounds, the
+  incoming unit step n = W − P (always axial — consecutive lane hexes are
+  adjacent) names the blocked EDGE, and the ray mirrors across that edge's
+  plane: **v' = v − (v·n)n** (cube; n·n = 2) — the n-component reverses, the
+  tangential component is preserved; equivalently a SWAP of the two cube axes
+  n mixes. Integer in, integer out, hex norm preserved. A head-on hit
+  reflects straight back (a ricochet may legally revisit hexes; the
+  chosen-bend no-hairpin rule does not apply to forced bounces). Total lane
+  length stays ≤ the dash's range ACROSS ALL SEGMENTS. ASCII (the arena.gd
+  example — the (1,1)-diagonal ray, wall W at (2,1), range 6):
+
+  ```
+        q ->                          lane (in order):
+    r=0   O  1  .          O=(0,0)    (0,0) (1,0) (1,1)   incoming E,SE,...
+    r=1    4  2  W         1=(1,0)    -- step E into W=(2,1): BOUNCE at 2 --
+    r=2   .  5  .  .       2=(1,1)*   v=(3,-6,3) n=E=(1,-1,0) v.n=9
+    r=3    6  .  .         4=(0,1)    v'=v-9n=(-6,3,3)  (cube x<->y swap)
+                           5=(-1,2)   (0,1) (-1,2) (-2,2) (-3,3) outgoing
+                           6=(-2,2)   W,SW,... — the mirror image of the
+                           7=(-3,3)   incoming diagonal across the N-S edge
+  ```
+
+  ALL lane rules apply to the full reflected lane: occupation stops the
+  charge on any segment, leaving the corridor mid-windup dodges it
+  (`left_lane`), the R22 sidestep steps off the whole bounced lane (bounces
+  never split the sidestep exclusion — only a chosen bend does), knock-aside
+  shoves off it. **Bounce vs bend composition:** a bounce is FORCED by walls,
+  a bend (phase 4) is CHOSEN — one lane may carry both (validated: ≤ 1 bend +
+  ≤ 2 bounces; each marker phase-gated: `bounce_not_available` /
+  `too_many_bounces` / `lane_blocked` for a lane containing a wall hex). The
+  AI planner never composes them itself: it tries the straight/direct ray
+  (with forced bounces), then a fixed-order bank-shot aim search (6 axial + 6
+  diagonal directions — coarse by design, PROVISIONAL), then the chosen-bend
+  search on wall-free corridors. Cans never bounce or end a lane — **a
+  charge SMASHES through a trash can**, destroying it (`trash_can_smashed`,
+  no explosion — a smash is not a burn touch).
+- **Trash cans** (un-inerts the phase-3 "flamethrower pops trash cans
+  instantly" — `cans_pop_instantly`); canon off the authored flamethrower
+  note "trash cans explode at Burn 5 (3 spaces, 2 Burn)": a can in a resolved
+  BURN cone's arc accumulates the cone's per-round burn amount (independent
+  of whether the combatant rounds landed; a Whiff negates the sweep); at
+  burn ≥ 5 it EXPLODES — `HexGeometry.blast` radius 3, burn 2 to every
+  living combatant in it **through the normal damage/condition paths with NO
+  attacker** (environment: no killer on a death — takedown-v2 honesty; no
+  grudge; the boss's fire-heal hook applies, so the Incinedile is HEALED by
+  its own props). Collateral is never threshold-dodged (R22 valve precedent
+  — implemented via the R26 undodgable skip, ZERO rng); the R25 AoE-center
+  roller-miss still applies. The blast is a burn TOUCH (+2) on other cans in
+  radius (cascades; the instant pop never chains — it belongs to the
+  flamethrower). With the upgrade active the FIRST cone touch pops the can
+  (no accumulation). A destroyed can's hex unblocks. Events:
+  `trash_can_burned` / `trash_can_exploded` / `trash_can_smashed`; state
+  additively exposed via `view_arena()` (bounds/walls/objects + live burn).
+- **Still OPEN for KAN-5 proper:** rooms/dungeon FLOW beyond single-combat
+  arenas (corridors, doors, multi-room exploration, the maze funnel), real
+  pathfinding for AI movement (the greedy step stays greedy), stealth/
+  detection/cover (R20 remains open), environment objects beyond the trash
+  can, and owner-authored room layouts (every authored wall/can position is
+  PLACEHOLDER — the owner redesigns rooms with the front).
+  Tests: `tests/test_arena.gd` (+ the flipped pins in
+  `tests/test_phase_upgrades.gd`).
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

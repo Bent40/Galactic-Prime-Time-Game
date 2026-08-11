@@ -876,6 +876,120 @@ def main() -> int:
             if missing_domains:
                 fail("domain_condition_map.json", f"missing domain entries: {sorted(missing_domains)}")
 
+    # ---- KAN-5 wave 3d: demo_run encounter ARENA blocks ---------------------
+    # Additive: validated only when data/demo_run.json exists. Mirrors the
+    # engine's set_arena/staging gates (simulation/arena.gd + combat_sim.gd):
+    # bounds shape sane, walls in bounds, objects (trash cans) in bounds and
+    # off walls, and NO wall/object on any staged spawn hex.
+    arena_count = 0
+    if (DATA / "demo_run.json").is_file():
+        dr = load("demo_run.json")
+        run = dr.get("run", {}) if isinstance(dr, dict) else {}
+        party_specs = run.get("party", []) if isinstance(run, dict) else []
+
+        def _hex(pair):
+            if isinstance(pair, list) and len(pair) == 2 \
+                    and all(isinstance(v, int) for v in pair):
+                return (pair[0], pair[1])
+            return None
+
+        for ei, enc in enumerate(run.get("encounters", []) or []):
+            if not isinstance(enc, dict) or "arena" not in enc:
+                continue
+            arena_count += 1
+            where = f"encounters[{ei}] ({enc.get('key', '?')}) arena"
+            arena = enc.get("arena")
+            if not isinstance(arena, dict):
+                fail("demo_run.json", f"{where}: must be an object")
+                continue
+            bounds = arena.get("bounds")
+            in_bounds = None
+            if isinstance(bounds, dict) and isinstance(bounds.get("hexes"), list):
+                hex_set = set()
+                for pair in bounds["hexes"]:
+                    h = _hex(pair)
+                    if h is None:
+                        fail("demo_run.json", f"{where}: bad bounds hex {pair!r}")
+                    else:
+                        hex_set.add(h)
+                if not hex_set:
+                    fail("demo_run.json", f"{where}: empty explicit bounds")
+                in_bounds = lambda h, s=hex_set: h in s
+            elif isinstance(bounds, dict):
+                w, hgt = bounds.get("width"), bounds.get("height")
+                if not (isinstance(w, int) and isinstance(hgt, int) and w >= 1 and hgt >= 1):
+                    fail("demo_run.json", f"{where}: rect bounds need int width/height >= 1")
+                    continue
+                origin = _hex(bounds.get("origin")) if "origin" in bounds \
+                    else (-(w // 2), -(hgt // 2))
+                if origin is None:
+                    fail("demo_run.json", f"{where}: bad bounds origin")
+                    continue
+                in_bounds = lambda h, o=origin, w=w, hg=hgt: \
+                    o[0] <= h[0] < o[0] + w and o[1] <= h[1] < o[1] + hg
+            else:
+                fail("demo_run.json", f"{where}: bounds object required")
+                continue
+            walls = set()
+            for pair in arena.get("walls", []) or []:
+                h = _hex(pair)
+                if h is None:
+                    fail("demo_run.json", f"{where}: bad wall hex {pair!r}")
+                    continue
+                if not in_bounds(h):
+                    fail("demo_run.json", f"{where}: wall {list(h)} outside the bounds")
+                walls.add(h)
+            objects = set()
+            for obj in arena.get("objects", []) or []:
+                if not isinstance(obj, dict) or not obj.get("key"):
+                    fail("demo_run.json", f"{where}: object needs a non-empty key")
+                    continue
+                h = _hex(obj.get("position"))
+                if h is None:
+                    fail("demo_run.json", f"{where}: object {obj.get('key')!r} bad position")
+                    continue
+                if not in_bounds(h):
+                    fail("demo_run.json", f"{where}: object at {list(h)} outside the bounds")
+                if h in walls:
+                    fail("demo_run.json", f"{where}: object at {list(h)} sits on a wall")
+                if h in objects:
+                    fail("demo_run.json", f"{where}: two objects share hex {list(h)}")
+                objects.add(h)
+                burn = obj.get("burn", 0)
+                if not isinstance(burn, int) or burn < 0:
+                    fail("demo_run.json", f"{where}: object burn must be int >= 0")
+            # Spawn hexes: enemies (position/positions), staged allies, and the
+            # party (encounter 0 uses the party specs' own positions; later
+            # encounters restage via party_positions).
+            spawns = []
+            for row in enc.get("enemies", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                pos_list = row.get("positions") or ([row.get("position")] if row.get("position") else [])
+                for pair in pos_list:
+                    spawns.append((row.get("enemy_key", "?"), _hex(pair)))
+            for ally in enc.get("allies", []) or []:
+                spec = ally.get("spec", {}) if isinstance(ally, dict) else {}
+                spawns.append((spec.get("id", "ally"), _hex(spec.get("position", [0, 0]))))
+            pp = enc.get("party_positions")
+            if isinstance(pp, dict):
+                for pid, pair in pp.items():
+                    spawns.append((pid, _hex(pair)))
+            elif ei == 0:
+                for spec in party_specs:
+                    if isinstance(spec, dict):
+                        spawns.append((spec.get("id", "?"), _hex(spec.get("position", [0, 0]))))
+            for sid, h in spawns:
+                if h is None:
+                    fail("demo_run.json", f"{where}: spawn {sid!r} has a bad position")
+                    continue
+                if not in_bounds(h):
+                    fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} outside the bounds")
+                if h in walls:
+                    fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on a wall")
+                if h in objects:
+                    fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on an object")
+
     if notes:
         print("\n".join(notes))
     if failures:
@@ -890,7 +1004,8 @@ def main() -> int:
           f"{len(te_rows)} slice tags, {len(loadouts)} demo loadouts, "
           f"{len(recruits)} recruit loadouts, {len(roster)} roster patrons, "
           f"{dcmap_pairs} domain->condition affinities, {len(kw_skills)} skill keyword "
-          f"entries, {len(mutations)} mutation recipes — {n} rows checked).")
+          f"entries, {len(mutations)} mutation recipes, {arena_count} encounter arenas "
+          f"— {n} rows checked).")
     return 0
 
 
