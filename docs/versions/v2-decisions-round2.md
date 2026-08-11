@@ -1081,6 +1081,117 @@ place keeps the shared spine honest.
 
 ---
 
+## Part 13 — Round 9: Charm widened, myth-sources, and strings
+
+### 13.1 D-25 ✅ RULED — and the fix inverts
+
+> *"v1 errata — but arguably, people listen better to someone who is attractive. Attractive
+> can also mean having a nicer voice, a more striking look, better facial expressions and
+> control of your face and body language. It's just not some cosmic attraction."*
+
+**This turns the fix upside down, in the cheap direction.** I proposed moving Command and
+Persuade *off* Charm. The owner's clarification says the mappings were right and **the
+definition was too narrow**.
+
+| | What I proposed | What was ruled |
+|---|---|---|
+| Change | §2.3's action table — move Persuade/Command to Mind | **§2.1's definition** — widen Charm |
+| Refunds owed | Yes, to 5 live PCs (`audits/skills-audit.md:98`) | **None** — no stat moves |
+| Result | Two books diverge, or a live campaign gets re-pointed | One wording fix, both versions |
+
+**Applied to both canons:**
+
+- `gpt-system-v1.0.md` §2.1 — Charm is now **presence**: *"how compelling you are to look at
+  and to listen to — striking looks, bearing, voice, facial control, body language.
+  Presentation used as an instrument… not a cosmic pull."* It now **states the §2.3 link
+  inline** (*"People do listen better to someone who commands a room, which is why Command,
+  Persuade and Intimidate key off it"*), so the contradiction cannot silently return.
+- `rules-addendum.md` R18 — widened to match, with the errata's reasoning recorded.
+
+**Shared-spine fix — it holds for v1 and v2 alike.** Everything downstream (Camera Call
+stacks at Charm/20, the speech-scoring Charm term) stays coherent; R18 already implied Charm
+belonged in speech scoring, which is why the narrow wording was the odd one out.
+
+### 13.2 Q-32 ✅ **Burn.** A failed double-or-nothing costs earned reverence
+
+Named followers walk away. Reverence is losable (Buddhist doctrine, `research/mythology/buddhist.md:9`),
+Followers already decay in v1's own §17.1, and a bet that can only cost *unbanked* winnings
+isn't a bet. **A failed Camera Call now removes rows from your ledger** — people who
+believed in you, by name, no longer do.
+
+### 13.3 Q-33 ✅ — the debt is visible, but only after you find the god's myth-source
+
+> *"Yes, but they must find the source of the god's myth. A sword, a temple, something
+> hidden away in the floor — and when they find it, that's when communications and
+> understanding of the god's situation can be established."*
+
+**This is the best structural device in the design after Floor 10.** The loop:
+
+```
+   Floor contains a hidden MYTH-SOURCE  (a sword, a temple, a relic)
+                    │
+        party finds it ──▶ communication opens
+                    │      the god becomes legible
+                    │      its DEBT becomes a visible number
+                    ▼
+        pray (pay reverence you cannot get back)  ──▶ save it
+        or walk away                              ──▶ condemn it
+                    │
+   never found ──▶ the floor-god stays mute. The floor plays normal.
+                  You never learn there was anyone to save.
+```
+
+**Why it works so well:**
+
+1. **It explains bankruptcy mechanically.** Under Q-14 reverence needs a *locus* — a name
+   attached to a thing. A god whose myth-source is buried has nothing for anyone to revere.
+   **Finding the relic is the precondition for being named again**, so the device and the
+   economy are the same idea.
+2. **It makes the god-saving content optional and earned.** A party that doesn't explore
+   never meets the floor's author. That is a real reward for exploration rather than a
+   collectible.
+3. **It extends the architecture's own doctrine.** The rule is *"bosses need discoverable win
+   conditions, never raw damage races"* (`CLAUDE.md`). Now **floors have discoverable
+   characters** — the same principle one level up.
+4. **It gives floors 4–9 their authoring template.** Each set needs: a bankrupt god, its
+   hidden myth-source, its debt, and the question it is asking. That is a repeatable content
+   recipe, which is exactly what six floors of greenfield needed.
+
+### 13.4 Q-34 ✅ — puppeteering replaces the mycelium
+
+> *"Instead of mycelium, we can have the floor 0 god's power be puppeteering. The party can
+> find strings in the boss."*
+
+**Mechanically this is a drop-in.** The Incinedile's play-tested structure — a network that
+*is* a body part, breach paths, sever points, 6 phases — maps onto **strings** one-for-one.
+Nothing tuned is lost; only the fiction changes.
+
+**Thematically it is a large upgrade, and not just for this boss.** Puppeteering is what the
+entire premise *is*: gods move contestants, patrons pull on their champions, the house works
+the whole floor. **A tutorial whose lesson is "there are strings on things, and you can find
+them and cut them"** teaches the game's central literacy on Floor 0 and foreshadows every
+patron contract that follows. The mycelium never did that — it was set dressing.
+
+It also lands Floor 0's god cleanly: the tutorial's host is a puppeteer, so the tutorial boss
+is *its puppet*, which is why it has strings at all.
+
+**Records to re-author (v2 only — v1 keeps the mycelium):** the Incinedile · Mycelium Core ·
+Mycelium-Threaded Hide · the "Mycelius Chrom Production Co" shopkeep. 3 records + 1 NPC, as
+costed in [`research/E`](research/E-data-audit.md).
+
+**→ Q-35: is the Incinedile the Floor-0 boss?** The re-theme assumes so. If it sits on Floor
+1 instead, the puppeteer's reach extends one floor further and that should be deliberate.
+
+### 13.5 Outstanding
+
+| # | Question | Rec |
+|---|---|---|
+| **Q-35** | Is the Incinedile the **Floor-0** boss? (§13.4) | — |
+| **Q-36** | Do the **renames** for the three mycelium records need owner wording, or shall I draft them? | I draft, you veto |
+| **Q-37** | `narrative-design.md:89` still calls the casino *"a famine of attention"* — residual **Option-E** flavour, which was REJECTED (the gods are not starving) | Fix the line |
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there

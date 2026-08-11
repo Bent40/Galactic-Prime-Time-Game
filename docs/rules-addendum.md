@@ -593,12 +593,27 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
 
 ## R18 — Charm semantics (owner clarification, 2026-07-16)
 
-**Charm is NOT charisma.** It measures **how PRESENTABLE you are — objectively
-aesthetic as compared to others.** The camera-facing stat: photogenics, striking looks,
-visual impressiveness. Warmth, likability, and parasocial pull live in the AUDIENCE
-systems (tags, hype, crowd reads), never in the Charm number. Existing formulas stay
-coherent under this reading (Charm /20 → Camera Call stacks: the camera seeks the
-aesthetic; speech scoring's Charm term: presentability shapes how words land).
+**Charm is NOT charisma.** It measures **PRESENCE — how compelling you are to look at
+and to listen to**, as compared to others: striking looks, bearing, voice, facial
+control, body language. Presentation used as an instrument. Warmth, likability, and
+parasocial pull live in the AUDIENCE systems (tags, hype, crowd reads), never in the
+Charm number. Existing formulas stay coherent under this reading (Charm /20 → Camera
+Call stacks: the camera seeks the aesthetic; speech scoring's Charm term: presence
+shapes how words land).
+
+**↳ WIDENED 2026-08-10 (owner, D-25).** The original wording — *"objectively aesthetic",
+"photogenics, striking looks, visual impressiveness"* — was **too narrow**, and it put
+this ruling in direct contradiction with book §2.3, which keys **Command**, **Persuade**
+and **Intimidate** to Charm. Under a purely visual reading those mappings are
+incoherent (*you talk people around by being photogenic*). The owner's clarification:
+Charm covers **voice, facial expression and body-language control** as well as looks —
+*"it's just not some cosmic attraction."*
+
+**Therefore the errata is to the DEFINITION, not the action table.** §2.3's mappings are
+correct as written and **do not change** — so **no skill-point refunds are owed**
+(`audits/skills-audit.md:98` would have applied only if a stat had moved). Book §2.1 has
+been updated to match and now states the §2.3 link inline, so the contradiction cannot
+silently return. This is a **shared-spine fix — it holds for v1 and v2 alike.**
 
 ## R17 — Run types & death (owner, 2026-07-16)
 
