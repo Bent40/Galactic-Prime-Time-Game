@@ -9,6 +9,21 @@ themed on human pop culture). **Read this first, then `docs/DIRECTION.md`** — 
 committed product direction and supersedes older assumptions in the PDFs where they
 conflict.
 
+## ⚠️ v2 tabletop material lives in the TTRPG repo
+
+**Moved 2026-08-11 — see `docs/versions-MOVED.md`.** D-06 ruled v2 is *"a new edition of the
+game book so I can run the game to a group"*, so its tabletop material sits beside the
+tabletop rulebook: **`Galactic-Prime-Time/v2/`** (fork spec · decision record · floor arcs ·
+consistency guard · research).
+
+**The rule: content lives where it is consumed.** This repo keeps what the *sim* consumes —
+`data/mythology/`, `data/patron_roster.json`, the seed data, the architecture and GDD, and
+the setting canon under `docs/` (canonical here; `validate_seeds.py` and
+`generate_patron_roster.py` depend on the corpus). The TTRPG repo carries a
+**provenance-stamped snapshot** of the shared canon in `v2/canon/`, refreshed by
+`Galactic-Prime-Time/v2/sync-canon.sh`. **If the snapshot and this repo disagree, this repo
+is right.**
+
 ## Orient yourself (any new session, in this order)
 
 1. **`docs/DIRECTION.md`** — DECIDED direction: shared-world ladder (Stage 0 command-stream
