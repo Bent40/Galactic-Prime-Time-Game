@@ -631,6 +631,25 @@ func _preview_display(title: String, route_line: String, probe: Dictionary, arch
 		if bool(r.get("dodge_possible", false)):
 			lines.append({"text": "   ⚠ %s may dodge — threshold %d+" % [tgt, int(r.get("dodge_threshold", 0))],
 				"color": UI.col(UI.GOLD)})
+		# R24 feint READ-RISK — the Mind counter shown honestly, mirroring the
+		# dodge-uncertainty line: outcome class + numbers straight off the
+		# probe's additive read_* keys (never invented, never rolled).
+		match String(r.get("read_outcome", "")):
+			"auto_read":
+				lines.append({"text": "   ✕ %s WILL read this — Mind %d ≥ threshold %d" % [
+					tgt, int(r.get("read_mind", 0)), int(r.get("read_threshold", 0))],
+					"color": UI.col(UI.DANGER)})
+			"roll_needed":
+				lines.append({"text": "   ⚠ %s reads on %d+ on d%d (Mind %d vs threshold %d)" % [
+					tgt, int(r.get("read_roll_needed", 0)), int(r.get("read_die", 0)),
+					int(r.get("read_mind", 0)), int(r.get("read_threshold", 0))],
+					"color": UI.col(UI.GOLD)})
+			"impossible":
+				lines.append({"text": "   ✓ %s is too dim to read it — Mind %d, max %d < threshold %d" % [
+					tgt, int(r.get("read_mind", 0)),
+					int(r.get("read_mind", 0)) + int(r.get("read_die", 0)),
+					int(r.get("read_threshold", 0))],
+					"color": UI.col(UI.SUCCESS)})
 	if probe.has("merged"):
 		var mg: Dictionary = probe.get("merged", {})
 		lines.append({"text": "Σ MERGED FORCE %d vs ROBUSTNESS %d → NET %d (one linked hit)"
@@ -1083,6 +1102,10 @@ func _bind_inspector() -> void:
 		# flags as one badge row, aggregated over VISIBLE parts only — the
 		# known-anatomy masking above also masks a hidden part's conditions.
 		"status_badges": _status_badges(c),
+		# ATTENTION section (R23 grudge ledger): who this AI combatant has
+		# learned to hate, off the view's additive antagonism map — see
+		# _attention_rows. [] (contestants / empty ledger) omits the section.
+		"attention_rows": _attention_rows(c),
 		"armed_line": armed_line,
 		"parts": parts,
 		"foot_line": "" if ally else "RESISTANCES · not in the view API yet — placeholder line",
@@ -1465,6 +1488,43 @@ func _status_badges(c: Dictionary) -> Array:
 	return out
 
 
+## R23 grudge ledger — the inspector's ATTENTION rows for one combatant view
+## row (broadcast voice: who an AI creature has learned to hate is WATCHABLE
+## behavior, not hidden info — it names opponents already on the board and
+## reveals nothing about anatomy). One row per opponent on the additive
+## `antagonism` view map ({} for contestants), grudge DESCENDING with id
+## ascending on ties — deterministic; share normalized to the max score, the
+## exact float kept as secondary text. [] for an empty/absent map — the
+## section is omitted entirely, no noise.
+func _attention_rows(c: Dictionary) -> Array:
+	var antag: Variant = c.get("antagonism", {})
+	if not (antag is Dictionary):
+		return []
+	var entries: Array = []
+	var ids: Array = (antag as Dictionary).keys()
+	ids.sort()
+	for oid in ids:
+		var score := float((antag as Dictionary)[oid])
+		if score > 0.0:
+			entries.append({"id": String(oid), "score": score})
+	if entries.is_empty():
+		return []
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if float(a["score"]) != float(b["score"]):
+			return float(a["score"]) > float(b["score"])
+		return String(a["id"]) < String(b["id"]))
+	var top := float((entries[0] as Dictionary)["score"])
+	var rows: Array = []
+	for ed in entries:
+		var e: Dictionary = ed
+		rows.append({
+			"name": _display_name_for(String(e["id"])),
+			"share": float(e["score"]) / top,
+			"score_text": "%.1f" % float(e["score"]),
+		})
+	return rows
+
+
 ## Arena pip map: id -> ordered Colors, one per badge (same order as the badge
 ## row, so a card's "BLD 2" and the token's first pip are the same red).
 func _status_pips() -> Dictionary:
@@ -1499,8 +1559,12 @@ func _momus(text: String) -> void:
 
 
 ## Broadcast-voice announce for the PAYOFF events the skill-feel pass surfaces
-## loudly (feint fallout / feint read / knockdown / standing back up). "" for
-## every other event type — the generic _event_line handles those.
+## loudly (feint fallout / feint read / knockdown / standing back up), plus the
+## decision-#27 pressure-valve beat (telegraph / blast / per-victim knockout /
+## breach reset — `explosion_building` is an ai_decision wait REASON, not an
+## event, so the hold window stays quiet by design). "" for every other event
+## type — the generic _event_line handles those. Every announce here rides the
+## _pending_announce priority: it outranks the generic END TURN / flavor lines.
 func _broadcast_announce(e: Dictionary) -> String:
 	match String(e.get("type", "")):
 		"feint_read":
@@ -1525,6 +1589,20 @@ func _broadcast_announce(e: Dictionary) -> String:
 		"stood_up":
 			return "%s spends the whole Moment hauling itself back upright" % \
 				_display_name_for(String(e.get("combatant", "")))
+		"explosion_telegraph":
+			# The decision-#27 counterplay cue — echoes the slice harness's line
+			# verbatim (radius + Moments straight off the event, never invented).
+			return "STEAM SCREAMS from the vents — blast in %d Moments, radius %d. RUN." % [
+				int(e.get("moments_until_blast", 0)), int(e.get("radius", 0))]
+		"explosion_blast":
+			return "THE VALVE BLOWS — a radius-%d eruption tears through the arena!" % \
+				int(e.get("radius", 0))
+		"explosion_knockout":
+			# Per-victim: Helpless for 2 Clocks (owner ruling #27 — no damage).
+			return "%s is OUT COLD — helpless for 2 Clocks" % \
+				_display_name_for(String(e.get("combatant", "")))
+		"breach_reset":
+			return "The network RETREATS deeper — the breach seals; the wounds remain"
 	return ""
 
 

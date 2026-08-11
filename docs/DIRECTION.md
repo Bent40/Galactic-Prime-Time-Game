@@ -192,10 +192,16 @@ staged-feasible**, with these binding constraints:
   myth recreation; fixed cores + jitter; buy-out notice-of-replacement; abandonment =
   extraction or neglect; affection-gated cross-party blessings/curses; refusal = plain
   patron-less run; Forsaken = hardcore opt-in offered randomly from run 2+, manual after
-  a first win ⟨prov.⟩, never mid-run). Design sketch: `design/patron-gods.md` (builds in
+  a first win ⟨prov.⟩ **— CONFIRMED (owner 2026-07-16; `gdd/decision-log.md:31-32`)**,
+  never mid-run). Design sketch: `design/patron-gods.md` (builds in
   KAN-7).
-- Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
-  title, the timer (see `setting-rebrand-options.md` open decisions).
+- ~~Still open from the frame swap: TTRPG-table re-skin?, Momus shared vs sibling host,
+  title, the timer~~ **ALL RULED — no longer open (D-22 reconciliation, 2026-08-10):**
+  **Momus = shared host** (`setting-rebrand-options.md:157`) · **title "Galactic Prime
+  Time" kept for now** (`:158-159`) · **the timer = a *season* mechanic, not cosmology —
+  Option E REJECTED, the gods are NOT starving** (`:160-164`) · **TTRPG-table re-skin —
+  SUPERSEDED 2026-08-10 by D-V2: v1 is FROZEN and does NOT re-skin; the casino stays
+  video-game-only** (`versions/v2-decisions-round2.md`; `ttrpg-update-plan.md:5-9`).
 
 ## Source-of-truth precedence
 

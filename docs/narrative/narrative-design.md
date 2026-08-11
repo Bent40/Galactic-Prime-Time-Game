@@ -1,6 +1,7 @@
 ---
 title: 'Narrative Design Document'
-project: 'Galactic Prime Time ⟨working title — OPEN⟩'
+project: 'Galactic Prime Time ⟨working title — OPEN → RULED 2026-07-16: kept for now;
+  see ../setting-rebrand-options.md:158-159⟩'
 date: '2026-07-16'
 author: 'owner (consolidated from owner rulings by the drafting agent)'
 version: '1.0-draft'
@@ -86,10 +87,19 @@ sheet the player writes by playing. Player-OC death consequence: **OPEN** (Ascen
 default until ruled).
 
 ### Antagonists
-- **The framework itself** — the casino has no motive; it's a famine of attention with a
-  house style. The true antagonist is the *question* each floor asks.
+- **The framework itself** — the casino has no motive; it's an appetite with a house
+  style, and a ledger that quietly ruins its own. The true antagonist is the *question*
+  each floor asks.
+  **↳ Corrected 2026-08-10 (Q-37):** this line previously read *"a famine of attention"* —
+  residual Option-E flavour, which was **REJECTED** on 2026-07-16. The gods are **not**
+  starving; ruin is **self-inflicted status-loss** from debaucherous spending
+  (`../setting-rebrand-options.md:160-164`). Each floor-set's runner is a bankrupt god
+  working off a debt to the house (Q-29).
 - **The fallen god running the table** (forgotten religion, "anything goes" license) —
-  the house voice; host identity **OPEN** (Momus shared with the novel vs a sibling).
+  the house voice; host identity ~~**OPEN** (Momus shared with the novel vs a sibling)~~
+  **RULED 2026-07-16: MOMUS, shared host** (`../setting-rebrand-options.md:157`;
+  `../gdd/decision-log.md:39`) — this doc already states the ruling below under *Voice and
+  Characterization*; the OPEN here was a self-contradiction, now reconciled (D-22).
 - **Patron gods as pressure** — a displeased patron's abandonment modes (extraction:
   "trials to max out on you even if you break" / total neglect) make your own sponsor a
   narrative threat without a contract exit. Buy-outs make success itself destabilizing.
@@ -193,7 +203,8 @@ imperatives, wrong decade's vocabulary, "comrade." Host: **Momus, shared with th
 ## Narrative Delivery
 
 - **No cutscene layer in v1 ⟨PROPOSED⟩** — the broadcast frame delivers: announcer VO
-  (flagship want, host OPEN), System messages, world manifestations, sudden quests.
+  (flagship want, ~~host OPEN~~ **host RULED 2026-07-16: Momus, shared** —
+  `../setting-rebrand-options.md:157`), System messages, world manifestations, sudden quests.
 - **In-game storytelling:** the two information planes are the delivery architecture —
   spectators get dramatic irony, contestants get the world (canon; DIRECTION §director).
 - **Optional content:** route-exclusive encounters, recruitment side-arcs, myth-template
@@ -239,7 +250,18 @@ Owner canon docs (story-canon, cosmic-casino-canon, patron-gods, characters/, co
 Hunger — take/not-take table in `../brief/brief.md`).
 
 ### OPEN items carried (owner)
-Title · host (Momus vs sibling) · timer (season mechanic vs starving-pantheon cosmology)
-· player-OC death consequence · production cast · convergence-matrix content · Medium
-route forks + brand-breach rules · Nikita's two key scenes · finale staging · TTRPG
-table re-skin.
+~~Title~~ · ~~host (Momus vs sibling)~~ · ~~timer (season mechanic vs starving-pantheon
+cosmology)~~ · player-OC death consequence · production cast · convergence-matrix content ·
+Medium route forks + brand-breach rules · Nikita's two key scenes · finale staging ·
+~~TTRPG table re-skin~~.
+
+**The struck items above are CLOSED (D-22 reconciliation, 2026-08-10)** — they were ruled
+on 2026-07-16 but kept generating false open-signals here:
+
+- **Title** — RULED: keep "Galactic Prime Time" for now (`../setting-rebrand-options.md:158-159`).
+- **Host** — RULED: **Momus, shared** with the novel (`:157`; `../gdd/decision-log.md:39`).
+- **Timer** — RULED: Option E **REJECTED**, the gods are **NOT** starving; the timer is a
+  *season* mechanic, not cosmology (`:160-164`).
+- **TTRPG table re-skin** — **SUPERSEDED 2026-08-10 by D-V2: v1 is FROZEN and does NOT
+  re-skin**; the Cosmic Casino stays video-game-only
+  (`../versions/v2-decisions-round2.md`; `../ttrpg-update-plan.md:5-9`).

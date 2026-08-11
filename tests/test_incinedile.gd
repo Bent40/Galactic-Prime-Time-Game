@@ -82,6 +82,21 @@ func test_boss_dashes_a_lone_target() -> void:
 	assert_no_event(resolved, "combatant_died", "the tuned dash no longer one-shots a fresh 5-HP torso")
 	assert_eq(int((sim.combatants["h"] as CombatantState).parts["torso"]["hp"]), 1, "the 5-HP torso survives the dash at 1 HP")
 	assert_event(resolved, "condition_applied", "the landed dash seeds crushed T1 (a survivor, not a corpse)")
+	# Decision #31: the dash is a real CHARGE now — the boss runs its committed
+	# lane (0,0)->(3,0) and ends on the hex adjacent-before the target.
+	var charged: Dictionary = assert_event(resolved, "dash_charged", "the charge moves the boss along the lane")
+	assert_eq(charged.get("to", []), [2, 0], "the boss ends adjacent-before the target")
+	assert_eq(boss_state(sim).position, Vector2i(2, 0), "position actually moved by the charge")
+	# Wave 2b: the authored "knock aside" is real — the CONNECTED target is
+	# shoved to the first free fixed-order neighbor OFF the lane ((4,0)/(2,0)
+	# are lane hexes; (3,0)+NE = (4,-1) is the first fit) and knocked PRONE.
+	# The 2a stop rule above is unchanged: the boss keeps the snapshot-adjacent
+	# hex, now adjacent to the emptied hex (documented interaction).
+	var knocked: Dictionary = assert_event(resolved, "knocked_aside", "a connected dash knocks aside")
+	assert_eq(knocked.get("to", []), [4, -1], "displaced off the committed lane (first-fit neighbor)")
+	assert_eq((sim.combatants["h"] as CombatantState).position, Vector2i(4, -1), "the shove is real")
+	assert_true(bool((sim.combatants["h"] as CombatantState).statuses.get("prone", false)),
+		"and the target is knocked PRONE (the 'aside' cost)")
 
 
 func test_boss_flamethrowers_a_crowd_and_is_exposed_during_windup() -> void:

@@ -32,7 +32,7 @@ The design is ruled (rules-addendum R3/R13/R14, decision-log #20–22); this is 
 - Remaining **37 skills' mechanics**; **CI** (pin Godot, run tests/seeds/import/smoke);
   **KAN-4 party** (real OC creation → recruitment → replace the Imani/Dario fixtures + the
   Charm-30 hack with a proper granted-stacks field).
-- R11 #14 takedown attribution v2 (task #13); I-11 priming impl folds into S2.1 above.
+- ~~R11 #14 takedown attribution v2 (task #13)~~ DONE 2026-07-25; I-11 priming impl folds into S2.1 above.
 
 ### ⏸️ Owner decision queue (none blocks the work above)
 - LICENSE: substitute your legal name/entity as the copyright holder.

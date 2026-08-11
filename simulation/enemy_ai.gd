@@ -35,6 +35,25 @@ const AI_CATEGORIES: Array[String] = ["Mob", "Elite", "Boss", "Super Boss"]
 const HEAL_LETHAL_PART_RATIO: float = 0.5
 ## Boss cone sweep wants at least this many targets in reach. PLACEHOLDER (R14).
 const CONE_MIN_TARGETS: int = 2
+## Death Spin (wave 2b, decision #31 — the authored 3-beat sequence is REAL):
+## GRAB reach in hexes. The authored "death spin grab range +1" phase upgrade
+## stays DATA-ONLY for wave 2d, so this is the flat rule for every phase.
+const GRAB_RANGE: int = 1
+## Beat-2 CHEW damage: "chew: 2 crushed to both arms" — canon off the authored
+## sequence line (data/enemies.json), delivered through the normal R14 gate.
+const CHEW_CRUSHED: int = 2
+## Beat-3 SPIN-KILL damage — PLACEHOLDER (R14). "spin and kill" is ruled an
+## honest R14 hit, never a bypass: Force = 8 + floor(boss phys 6/2) = 11 vs a
+## fresh contestant torso's Robustness ~1-2 fells a fresh 5-HP torso through
+## the gate for any plausible contestant physique; an armored monster could
+## genuinely survive it.
+const SPIN_KILL_AMOUNT: int = 8
+## Beat-3 fling distance in hexes (or until a body blocks). PLACEHOLDER (R14).
+const SPIN_FLING_HEXES: int = 3
+## "release if hit for 5" — canon off the authored sequence line: any SINGLE
+## recorded hit (R15/NQ2 seam — a merged combined hit counts as ONE) netting
+## this much on the boss mid-sequence forces the release and aborts the spin.
+const RELEASE_HIT_THRESHOLD: int = 5
 ## R3 free-move allowance the policy plans with (resolver enforces the real cap).
 const FREE_MOVE_SPACES: int = 3
 ## Axial hex neighbors in fixed order — deterministic movement tie-break.
@@ -55,6 +74,14 @@ var summons: Dictionary = {}     # combatant id -> total combatants summoned
 ## until the blast resolves (the pre-telegraph "entered the phase" state is the
 ## phase number itself), so a mid-beat save restores the countdown exactly.
 var explosion_beats: Dictionary = {}
+## Live death-spin sequences (wave 2b — same serialization pattern as
+## explosion_beats): combatant id -> {"beat": int (1 = grab landed, chew next;
+## 2 = chew landed, spin next), "victim": String, "part": String (the grabbing
+## hand), "started_tick": int}. An entry exists only from the grab's RESOLUTION
+## until the spin resolves or the sequence aborts (release-on-5, R9 escape,
+## valve entry, victim/boss down), so a mid-sequence save restores the exact
+## continuation. Serialized + hash-covered under "ai".
+var death_spins: Dictionary = {}
 
 
 ## Fresh-sim wiring: refs + deterministic salted RNG seed. from_dict restores
@@ -147,11 +174,22 @@ func _decide_elite(actor: CombatantState) -> Dictionary:
 	return _strike_or_close(actor, "elite", strike, opponents, true)
 
 
-## BOSS (Incinedile): cone sweep when the crowd is in reach, else the line
-## charge at the priority target (torso bias), else close distance. The ability
-## set is filtered to the current phase's behavior list. In an explosion phase
-## the beat machine takes over (decision #27): telegraph -> escape window ->
-## blast, then the machine advances and the boss fights the next Threshold.
+## BOSS (Incinedile) — DECIDE ORDER (wave 2b, documented policy):
+##   valve > stand (prone) > active death-spin continuation > cone sweep >
+##   death-spin GRAB > dash > close.
+## Rationale, top down: the explosion valve is canon-outranking (#27 precedent
+## — the telegraph -> blast beat is never delayed; entering it ABORTS a live
+## spin via death_spin_checks). A knocked-down boss rights itself. A boss with
+## its jaws already full FINISHES the sequence it started (committed — only the
+## valve outranks it). The cone stays the marquee crowd opener (>= 2 in arc).
+## The death-spin GRAB is the boss's PUNISH on a target that stays ADJACENT
+## while it is free to act — a grab-and-kill threat scarier than the dash, so
+## it sits above it; it fires only when a valid adjacent grab target exists AND
+## the grabbing hand is functional (no step-then-grab: reach is the authored
+## grab range, flat 1 — the "grab range +1" phase upgrade stays data-only,
+## wave 2d). The dash remains the reach tool, then close distance. The ability
+## set is filtered to the current phase's behavior list (which gates STARTING
+## a sequence; an in-flight one continues on its own state).
 func _decide_boss(actor: CombatantState) -> Dictionary:
 	var phase: int = current_phase(actor.id)
 	var behavior: Dictionary = _phase_entry(actor, phase).get("behavior", {})
@@ -165,23 +203,35 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	# (_first_cone_ability). The explosion valve above deliberately outranks it —
 	# the canon telegraph -> blast beat (decision #27) is never delayed by prone.
 	# Boss-only on purpose: mobs/elites keep their pre-existing prone behavior.
+	# (A live spin never reaches the prone branch: knocking the boss prone
+	# aborts the sequence in the death_spin_checks sweep before any decide.)
 	if bool(actor.statuses.get("prone", false)):
 		return {"choice": "stand", "tier": "boss"}
+	# Active death-spin sequence: the committed continuation (chew, then spin).
+	var spin_state: Dictionary = death_spins.get(actor.id, {})
+	if not spin_state.is_empty():
+		return _decide_spin_beat(actor, spin_state)
 	var allowed: Array = behavior.get("abilities", [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
 		return _wait("boss", "no_targets")
-	# Priority 1: cone sweep when enough targets stand inside it.
+	# Priority 1: cone sweep when enough targets stand inside the REAL arc
+	# (decision #31 — retires the R11 #16 range-only deferral): the aim is the
+	# fixed-order direction whose 120-degree HexGeometry.cone catches the most
+	# opponents; a cone "reaches" an opponent iff that best arc contains it.
 	var cone: Dictionary = _first_cone_ability(actor, allowed)
 	if not cone.is_empty():
-		var cone_range: int = _ability_range(cone)
-		var in_cone: Array[CombatantState] = []
-		for opponent: CombatantState in opponents:
-			if CombatantState.hex_distance(actor.position, opponent.position) <= cone_range:
-				in_cone.append(opponent)
+		var sweep: Dictionary = _best_cone_sweep(actor, cone, opponents)
+		var in_cone: Array[CombatantState] = sweep["targets"]
 		if in_cone.size() >= CONE_MIN_TARGETS:
-			return _cone_decision(actor, cone, in_cone)
-	# Priority 2: single-target strike (dash), torso bias; else close distance.
+			return _cone_decision(actor, cone, in_cone, sweep["toward"])
+	# Priority 2: death-spin GRAB — the adjacency punish (wave 2b). R23 pick
+	# over the ADJACENT candidates only (one ai_rng draw for >= 2 candidates,
+	# zero for a single one — the standard targeting RNG-cost rule).
+	var grab: Dictionary = _grab_decision(actor, allowed, opponents)
+	if not grab.is_empty():
+		return grab
+	# Priority 3: single-target strike (dash), torso bias; else close distance.
 	var strike: Dictionary = _first_strike_ability(actor, allowed)
 	if strike.is_empty():
 		return _wait("boss", "no_usable_ability")
@@ -208,19 +258,259 @@ func _decide_explosion_beat(actor: CombatantState, phase: int, explosion: Dictio
 	return {"choice": "blast", "tier": "boss", "phase": phase, "radius": radius}
 
 
+# ------------------------------------------------------------ death spin (wave 2b)
+
+## The GRAB opener, or {} when it does not apply. PACING MODEL (documented
+## decision): grab cost 1 -> chew cost 1 -> spin cost 1 — the honest read of
+## the authored "3-beat, moment_cost 3": the cost spans the SEQUENCE, one
+## Moment per beat, each beat a REAL scheduled action declared through the
+## resolver (so feints, shock stutter and the R9 grapple machinery all apply
+## normally). Fires only when: death_spin is in the phase's behavior list, the
+## boss is not already holding anyone, the grabbing hand is functional, and an
+## adjacent (GRAB_RANGE) R9-legal target exists. The victim pick is the R23
+## antagonism draw over the ADJACENT candidates.
+func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[CombatantState]) -> Dictionary:
+	var ability: Dictionary = _first_sequence_ability(actor, allowed)
+	if ability.is_empty() or actor.grappling != "":
+		return {}
+	var grab_hand: String = grab_hand_part(actor)
+	if grab_hand == "":
+		return {}
+	var adjacent: Array[CombatantState] = []
+	for opponent: CombatantState in opponents:
+		if CombatantState.hex_distance(actor.position, opponent.position) > GRAB_RANGE:
+			continue
+		if opponent.size_rank() - actor.size_rank() > 1:
+			continue  # R9: target no more than one size larger
+		adjacent.append(opponent)
+	if adjacent.is_empty():
+		return {}
+	var victim: CombatantState = pick_weighted_target(actor, adjacent)
+	return {
+		"choice": "grab", "tier": "boss",
+		"ability": String(ability.get("key", "")),
+		"target": victim.id,
+		"action": {
+			"kind": "grapple", "target": victim.id, "cost": 1,
+			"key": String(ability.get("key", "")),
+			"death_spin": true, "grab_part": grab_hand,
+		},
+	}
+
+
+## The committed continuation of a live sequence: beat 1 done -> CHEW ("2
+## crushed to both arms", one R14-gated round per arm part), beat 2 done ->
+## SPIN-KILL (one massive R14-gated hit at the victim's torso-line part; the
+## resolver's beat hook then flings the victim down the spin lane). Both are
+## cost-1 attack declares carrying the death_spin_beat marker — the resolver
+## re-verifies the grip at resolution (a same-tick release/escape makes the
+## beat close on air) and only a REALLY-resolved beat advances the state, so a
+## feinted/stuttered beat is retried, never skipped. The stale guard is
+## belt-and-braces: death_spin_checks aborts broken sequences after every
+## command, before any decide can see one.
+func _decide_spin_beat(actor: CombatantState, spin: Dictionary) -> Dictionary:
+	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
+	if victim == null or not victim.alive or victim.removed_from_play \
+			or victim.grappled_by != actor.id or actor.grappling != victim.id:
+		return _wait("boss", "death_spin_stale")
+	if int(spin.get("beat", 1)) == 1:
+		var arm_targets: Array[Dictionary] = []
+		var keys: Array = victim.parts.keys()
+		keys.sort()
+		for part_key: Variant in keys:
+			if String(part_key).contains("arm"):
+				arm_targets.append({"id": victim.id, "part": String(part_key)})
+		return {
+			"choice": "chew", "tier": "boss", "ability": "death_spin",
+			"target": victim.id,
+			"action": {
+				"kind": "attack", "key": "death_spin_chew", "cost": 1,
+				"damage": {"type": "crushed", "amount": CHEW_CRUSHED},
+				"attack_range": GRAB_RANGE,
+				"targets": arm_targets,
+				"rpm": maxi(1, arm_targets.size()),
+				"rounds": maxi(1, arm_targets.size()),
+				"death_spin_beat": "chew",
+			},
+		}
+	var part_key: String = torso_line_part(victim)
+	var targets: Array[Dictionary] = []
+	if part_key != "":
+		targets.append({"id": victim.id, "part": part_key})
+	return {
+		"choice": "spin", "tier": "boss", "ability": "death_spin",
+		"target": victim.id,
+		"action": {
+			"kind": "attack", "key": "death_spin_kill", "cost": 1,
+			"damage": {"type": "crushed", "amount": SPIN_KILL_AMOUNT},
+			"attack_range": GRAB_RANGE,
+			"targets": targets,
+			"death_spin_beat": "spin",
+		},
+	}
+
+
+## The hand the boss grabs with — DATA-HONEST ruling (documented decision):
+## the flamethrower is authored on the LEFT hand ("Left Hand (Flamethrower
+## Arm)"; trait left_hand_disable_removes_flamethrower), so the grab uses the
+## first USABLE hand/arm part in sorted key order that is NOT the flamethrower
+## hand (for the seeded Incinedile: right_hand). A boss without the authored
+## flamethrower trait may grab with any usable hand. "" = no functional grab
+## hand = no grab (the AI never decides it; the resolver rejects a hand-built
+## command the same way).
+func grab_hand_part(actor: CombatantState) -> String:
+	var flame_hand: String = ""
+	if bool(actor.boss_traits.get("left_hand_disable_removes_flamethrower", false)):
+		flame_hand = "left_hand"
+	var keys: Array = actor.parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		var key := String(part_key)
+		if not (key.contains("arm") or key.contains("hand")):
+			continue
+		if key == flame_hand:
+			continue
+		if actor.part_usable(key, clock.tick):
+			return key
+	return ""
+
+
+## First sequence-carrying ability (death_spin), filtered to the phase's
+## behavior list — the lookup the strike scan deliberately skips (sequences
+## are not plain strikes; wave 2b gives them their own decide path).
+func _first_sequence_ability(actor: CombatantState, allowed: Array) -> Dictionary:
+	for ability: Dictionary in actor.abilities:
+		if not allowed.is_empty() and not allowed.has(String(ability.get("key", ""))):
+			continue
+		if ability.has("sequence"):
+			return ability
+	return {}
+
+
+## Post-command sweep (run from CombatSim's breach/phase housekeeping, so it
+## fires after EVERY command): aborts any live death-spin whose preconditions
+## broke. Deterministic check order per sequence, first hit wins:
+##   boss dead/removed        -> "boss_out"
+##   boss prone or helpless   -> "boss_downed"
+##   boss in an explosion valve phase -> "explosion_valve" (the valve OUTRANKS
+##                               the spin, #27 precedent — venting opens the jaws)
+##   victim dead/removed      -> "victim_out" (covers death mid-chew)
+##   grapple no longer intact -> "grapple_ended" (R9 escape, forced release)
+## Aborting releases a still-intact hold (grapple_ended reason
+## "death_spin_aborted") and clears the sequence. Idempotent — a second sweep
+## in the same batch finds nothing to do.
+func death_spin_checks() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = death_spins.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var boss_id := String(id)
+		var spin: Dictionary = death_spins[boss_id]
+		var boss: CombatantState = combatants.get(boss_id)
+		var reason: String = ""
+		if boss == null or not boss.alive or boss.removed_from_play:
+			reason = "boss_out"
+		elif boss.is_helpless(clock.tick) or bool(boss.statuses.get("prone", false)):
+			reason = "boss_downed"
+		elif (_phase_entry(boss, current_phase(boss_id)).get("behavior", {}) as Dictionary).has("explosion"):
+			reason = "explosion_valve"
+		else:
+			var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
+			if victim == null or not victim.alive or victim.removed_from_play:
+				reason = "victim_out"
+			elif victim.grappled_by != boss_id or boss.grappling != victim.id:
+				reason = "grapple_ended"
+		if reason == "":
+			continue
+		events.append_array(_abort_death_spin(boss_id, spin, reason))
+	return events
+
+
+## Clears a sequence, releasing the hold when it is still intact. The
+## death_spin_aborted event carries the beat the sequence died on.
+func _abort_death_spin(boss_id: String, spin: Dictionary, reason: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	death_spins.erase(boss_id)
+	var victim_id := String(spin.get("victim", ""))
+	var boss: CombatantState = combatants.get(boss_id)
+	var victim: CombatantState = combatants.get(victim_id)
+	if boss != null and victim != null \
+			and boss.grappling == victim_id and victim.grappled_by == boss_id:
+		boss.grappling = ""
+		victim.grappled_by = ""
+		events.append({
+			"type": "grapple_ended", "grappler": boss_id, "target": victim_id,
+			"reason": "death_spin_aborted",
+		})
+	events.append({
+		"type": "death_spin_aborted", "combatant": boss_id, "victim": victim_id,
+		"beat": int(spin.get("beat", 1)), "reason": reason,
+	})
+	return events
+
+
+## The authored "release if hit for 5": called from the damage path at the
+## R15/NQ2 single-hit seam (after record_hit, so a merged combined hit counts
+## as ONE hit at its merged net). A qualifying hit on a boss mid-sequence
+## forces the release — the hold ends, the sequence clears, the spin never
+## comes. Rng-free, idempotent (the first qualifying hit erases the state).
+func check_death_spin_release(boss: CombatantState, hit: int) -> Array[Dictionary]:
+	if hit < RELEASE_HIT_THRESHOLD:
+		return []
+	var spin: Dictionary = death_spins.get(boss.id, {})
+	if spin.is_empty():
+		return []
+	var events: Array[Dictionary] = []
+	death_spins.erase(boss.id)
+	var victim_id := String(spin.get("victim", ""))
+	var victim: CombatantState = combatants.get(victim_id)
+	if victim != null and boss.grappling == victim_id and victim.grappled_by == boss.id:
+		boss.grappling = ""
+		victim.grappled_by = ""
+		events.append({
+			"type": "grapple_ended", "grappler": boss.id, "target": victim_id,
+			"reason": "forced_release",
+		})
+	events.append({
+		"type": "death_spin_released", "combatant": boss.id, "victim": victim_id,
+		"hit": hit, "threshold": RELEASE_HIT_THRESHOLD,
+		"beat": int(spin.get("beat", 1)),
+	})
+	return events
+
+
 ## Shared strike/close flow (R23): ONE antagonism-weighted pick over ALL
 ## opponents decides who this actor wants — then it strikes that target if in
 ## reach, else free-moves toward it (striking when the step closes the gap).
 ## The old "nearest fallback" is gone on purpose: the mob moves toward whoever
 ## it is antagonized by. Exactly one ai_rng draw when >= 2 candidates, zero
 ## for a single candidate (grapple lock included) — see pick_weighted_target.
+##
+## LINE abilities (the dash — decision #31, retiring the R11 #16 deferral):
+## "reach" is a LEGAL CHARGE LANE, not plain range — the target must sit on the
+## HexGeometry lane from the acting hex within the ability's range with every
+## lane hex before it unoccupied (the charge stops before the first occupied
+## hex, so a blocked lane could never connect). No lane from here: plan the
+## free step toward the pick (allowance rules unchanged) and dash only if the
+## post-step hex has one; else just move (or wait when no step exists) — the
+## picked target must be genuinely lane-reachable or the AI does not dash.
+## The declared action carries the committed lane (area_shape) for the
+## resolver's windup re-check + charge. All pure and rng-free.
 func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, opponents: Array[CombatantState], elite_pick: bool) -> Dictionary:
 	var reach: int = _ability_range(strike)
+	var is_line: bool = String(strike.get("area", "")) == "line"
 	var target: CombatantState = pick_weighted_target(actor, opponents)
 	if target == null:
 		return _wait(tier, "no_reachable_action")
 	var move_to: Variant = null
-	if CombatantState.hex_distance(actor.position, target.position) > reach:
+	if is_line:
+		if not _dash_lane_exists(actor, actor.position, target, reach):
+			move_to = _step_toward(actor, target.position, 1)
+			if move_to == null:
+				return _wait(tier, "no_reachable_action")
+			if not _dash_lane_exists(actor, move_to, target, reach):
+				return {"choice": "move", "tier": tier, "move_to": move_to}
+	elif CombatantState.hex_distance(actor.position, target.position) > reach:
 		move_to = _step_toward(actor, target.position, reach)
 		if move_to == null:
 			return _wait(tier, "no_reachable_action")
@@ -229,18 +519,71 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 	var part_key: String = _pick_part(target, strike, elite_pick)
 	if part_key == "":
 		return _wait(tier, "no_reachable_action")
+	var action: Dictionary = _attack_action(strike, [{"id": target.id, "part": part_key}])
+	if is_line:
+		# The committed charge corridor, from the hex the actor will act from
+		# (the free step resolves before the declare in _ai_decide).
+		var from: Vector2i = move_to if move_to != null else actor.position
+		var lane: Array = []
+		for hex: Vector2i in HexGeometry.line_extended(from, target.position, reach):
+			lane.append([hex.x, hex.y])
+		action["area_shape"] = {"kind": "line", "lane": lane}
 	var decision: Dictionary = {
 		"choice": "attack", "tier": tier,
 		"ability": String(strike.get("key", "")),
 		"target": target.id,
-		"action": _attack_action(strike, [{"id": target.id, "part": part_key}]),
+		"action": action,
 	}
 	if move_to != null:
 		decision["move_to"] = move_to
 	return decision
 
 
-func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[CombatantState]) -> Dictionary:
+## True when a legal dash lane exists from `from` to the target: the target
+## within `reach` (so it sits ON the from→target lane by construction) and
+## every lane hex strictly between unoccupied — the charge would genuinely
+## reach the hex adjacent-before the target. Pure, rng-free.
+func _dash_lane_exists(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> bool:
+	if from == target.position:
+		return false
+	if CombatantState.hex_distance(from, target.position) > reach:
+		return false
+	var occupied: Dictionary = _occupied_hexes(actor)
+	var lane: Array[Vector2i] = HexGeometry.line_extended(from, target.position, reach)
+	for k: int in range(1, lane.size()):
+		if lane[k] == target.position:
+			return true
+		if occupied.has(lane[k]):
+			return false
+	return false
+
+
+## The best cone aim (decision #31): try all six fixed-order directions and
+## keep the one whose HexGeometry.cone arc contains the most opponents —
+## strictly-more wins, so an exact tie keeps the EARLIER neighbor order entry.
+## Returns {"toward": Vector2i direction, "targets": in-arc opponents in the
+## candidates' given (sorted-id) order}. Pure and rng-free.
+func _best_cone_sweep(actor: CombatantState, cone: Dictionary, opponents: Array[CombatantState]) -> Dictionary:
+	var size: int = _ability_range(cone)
+	var best_dir: Vector2i = HEX_NEIGHBORS[0]
+	var best_targets: Array[CombatantState] = []
+	for dir: Vector2i in HEX_NEIGHBORS:
+		var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(actor.position, actor.position + dir, size))
+		var hit: Array[CombatantState] = []
+		for opponent: CombatantState in opponents:
+			if arc.has(opponent.position):
+				hit.append(opponent)
+		if hit.size() > best_targets.size():
+			best_dir = dir
+			best_targets = hit
+	return {"toward": best_dir, "targets": best_targets}
+
+
+## Builds the cone sweep declare: one round per swept target (v1 multi-target
+## model, unchanged) + the committed arc (area_shape) so the resolver's windup
+## re-check re-evaluates the CONE shape, not plain range (R2: leaving the arc
+## before resolution dodges it).
+func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[CombatantState], toward: Vector2i) -> Dictionary:
 	var targets: Array[Dictionary] = []
 	for opponent: CombatantState in in_cone:
 		var part_key: String = _pick_part(opponent, cone, false)
@@ -251,6 +594,7 @@ func _cone_decision(actor: CombatantState, cone: Dictionary, in_cone: Array[Comb
 	var action: Dictionary = _attack_action(cone, targets)
 	action["rpm"] = targets.size()  # one round per swept target (v1 cone model)
 	action["rounds"] = targets.size()
+	action["area_shape"] = {"kind": "cone", "toward": [toward.x, toward.y], "size": _ability_range(cone)}
 	return {
 		"choice": "attack", "tier": "boss",
 		"ability": String(cone.get("key", "")),
@@ -480,8 +824,11 @@ static func _is_cone(ability: Dictionary) -> bool:
 	return String(ability.get("area", "")).begins_with("cone")
 
 
-## Reach: explicit "range", else the cone's size ("cone 10"), else 1. The v1
-## cone model is range-only (true cone/line geometry is KAN-5 scope, R11 #16).
+## Reach MAGNITUDE: explicit "range", else the cone's size ("cone 10"), else 1.
+## For cone/line abilities this is the SHAPE SIZE fed to HexGeometry (the arc
+## size / lane length) — whether a target is actually reachable is decided by
+## the real shape (_best_cone_sweep / _dash_lane_exists, decision #31), no
+## longer by plain distance (the retired R11 #16 deferral).
 static func _ability_range(ability: Dictionary) -> int:
 	if ability.has("range"):
 		return maxi(1, int(ability.get("range", 1)))
@@ -513,6 +860,11 @@ func _attack_action(ability: Dictionary, targets: Array[Dictionary]) -> Dictiona
 	# action so the resolver can run the target-side dodge at the strike round.
 	if ability.has("dodge"):
 		action["dodge"] = (ability.get("dodge", {}) as Dictionary).duplicate(true)
+	# Wave 2b: the dash's authored "knock aside" effect rides the action — the
+	# resolver applies it to a CONNECTED (not dodged, not stopped-short) target
+	# after the charge's strike round.
+	if String(ability.get("effect", "")) == "knock aside":
+		action["knock_aside"] = true
 	return action
 
 
@@ -735,9 +1087,16 @@ func begin_explosion_telegraph(actor: CombatantState, decision: Dictionary) -> A
 ## Executes the "blast" choice: every OTHER living, in-play combatant within
 ## the hex radius is knocked out — Helpless for 2 Clocks (owner ruling,
 ## decision #27), no damage, no death. Friendly fire is ON (other enemies in
-## radius are caught; the boss itself is not) and the blast is never dodged
-## (collateral/environment, R22); an already-Helpless victim just has the
-## window extended (maxi). Then the canonical retreat applies when this valve
+## radius are caught; the boss itself is not) and the blast is never
+## threshold-dodged (collateral/environment, R22); an already-Helpless victim
+## just has the window extended (maxi). ONE exception — the G1 AoE-center rule
+## (rules-addendum R25): the blast is an AREA attack, so it MISSES a combatant
+## whose rolled_this_window marker is live (a Tactical Roll this Moment)
+## entirely, UNLESS the roller's hex is the area's CENTER. The blast centers on
+## the boss's own hex, and rolling onto an occupied hex is impossible — so in
+## practice a well-timed roller ALWAYS escapes the valve KO (flagged for the
+## owner in R25; the center check stays live for future area attacks with
+## unoccupied centers). Then the canonical retreat applies when this valve
 ## resets the breach, and the machine advances into the next phase — the boss
 ## resumes normal fight behavior next Moment.
 func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: ConditionEngine) -> Array[Dictionary]:
@@ -748,13 +1107,26 @@ func resolve_explosion_blast(actor: CombatantState, decision: Dictionary, cond: 
 		"combatant": actor.id, "phase": phase, "radius": radius,
 		"position": [actor.position.x, actor.position.y],
 	}]
+	# The blast shape is the shared HexGeometry primitive (decision #31);
+	# membership is identical to the old direct distance <= radius check.
+	var area: Dictionary = HexGeometry.to_set(HexGeometry.blast(actor.position, radius))
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
 		var other: CombatantState = combatants[id]
 		if other.id == actor.id or not other.alive or other.removed_from_play:
 			continue
-		if CombatantState.hex_distance(actor.position, other.position) > radius:
+		if not area.has(other.position):
+			continue
+		# G1 AoE-center rule (R25): a rolling target is missed by an AREA attack
+		# entirely — unless the destination hex IS the area's center.
+		if other.rolled_this_window and other.position != actor.position:
+			events.append({
+				"type": "blast_missed_roller",
+				"combatant": other.id, "by": actor.id,
+				"at": [other.position.x, other.position.y],
+				"center": [actor.position.x, actor.position.y],
+			})
 			continue
 		other.helpless_until_tick = maxi(other.helpless_until_tick, clock.tick + 2 * Clock.TICKS_PER_CLOCK)
 		events.append({
@@ -811,6 +1183,7 @@ func to_dict() -> Dictionary:
 		"boss_phase": boss_phase.duplicate(true),
 		"summons": summons.duplicate(true),
 		"explosion_beats": explosion_beats.duplicate(true),
+		"death_spins": death_spins.duplicate(true),
 	}
 
 
@@ -820,4 +1193,6 @@ static func from_dict(data: Dictionary) -> EnemyAI:
 	ai.boss_phase = (data.get("boss_phase", {}) as Dictionary).duplicate(true)
 	ai.summons = (data.get("summons", {}) as Dictionary).duplicate(true)
 	ai.explosion_beats = (data.get("explosion_beats", {}) as Dictionary).duplicate(true)
+	# Pre-wave-2b saves lack "death_spins": no live sequence, matching a fresh sim.
+	ai.death_spins = (data.get("death_spins", {}) as Dictionary).duplicate(true)
 	return ai

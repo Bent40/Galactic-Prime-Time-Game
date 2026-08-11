@@ -5,7 +5,7 @@ created: 2026-07-16
 updated: 2026-07-16
 ---
 
-# Game Brief: Galactic Prime Time ⟨working title — open decision⟩
+# Game Brief: Galactic Prime Time ⟨~~working title — open decision~~ RULED 2026-07-16: title kept for now — `../setting-rebrand-options.md:158-159`⟩
 
 ## Executive Summary
 
@@ -128,7 +128,8 @@ coherence + the owner's own IP world (novel-shared cosmology), not a technical m
 - **Art:** 2.5D — readable tactical sprites, two-posture character silhouettes
   (Nikita's stoop/square is the transformation VFX); broadcast UI framing (odds boards,
   lower-thirds) carries the theme cheaply. ⟨PROPOSED⟩
-- **Audio:** announcer VO is the flagship want (host voice pending the Momus decision);
+- **Audio:** announcer VO is the flagship want (~~host voice pending the Momus decision~~
+  **RULED 2026-07-16: Momus, shared host** — `../setting-rebrand-options.md:157`);
   crowd as diegetic ambience; UI stingers for tips/achievements. ⟨PROPOSED⟩
 
 ## Risks & Open Questions
@@ -140,10 +141,16 @@ coherence + the owner's own IP world (novel-shared cosmology), not a technical m
   2026-07-16)**: stays canon as design direction, out of MVP scope entirely.
 - **Technical risks:** co-op netcode at Stage 1.5 (mitigated by command-stream design);
   LLM director cost/safety at Stage 2+ (schema-bound commands, deterministic v1 first).
-- **Open owner decisions:** title (this working title is TV-frame); Momus vs sibling host;
-  does the live TTRPG table re-skin; the timer (season mechanic vs starving-pantheon
-  cosmology); R13 shock model confirm; R14 force-gate co-design; skills passover (priming
-  vocabulary).
+- **Open owner decisions:** ~~title (this working title is TV-frame)~~; ~~Momus vs sibling
+  host~~; ~~does the live TTRPG table re-skin~~; ~~the timer (season mechanic vs
+  starving-pantheon cosmology)~~; R13 shock model confirm; R14 force-gate co-design;
+  skills passover (priming vocabulary).
+- **CLOSED — the struck items above are ruled (D-22 reconciliation, 2026-08-10):** title
+  **kept for now** · host = **Momus, shared** · timer = **a *season* mechanic, not
+  cosmology — Option E REJECTED, the gods are NOT starving** (all three:
+  `../setting-rebrand-options.md:157-164`) · TTRPG table re-skin **SUPERSEDED 2026-08-10
+  by D-V2 — v1 is FROZEN and does NOT re-skin; the casino stays video-game-only**
+  (`../versions/v2-decisions-round2.md`; `../ttrpg-update-plan.md:5-9`).
 - **Assumptions to validate in the slice:** the Moment clock reads at a glance; Forced
   Actions feel like drama, not punishment; the hype meter changes player behavior.
 

@@ -14,6 +14,14 @@
    R14 force gate, skills passover, player-OC death consequence, Forsaken manual trigger
    — all carried as OPEN with owners. Player-OC death defaults to GDD v0.2's Ascension
    NG+ until ruled (recorded as the base, not a new decision).
+   **↳ Annotation (D-22 reconciliation, 2026-08-10) — this entry records the state at the
+   2026-07-16 GDD run only, and is no longer the live status:** title **kept for now** ·
+   **Momus = shared host** · timer = **a *season* mechanic, not cosmology (Option E
+   REJECTED)** — all three ruled the same day, see #8 below and
+   `../setting-rebrand-options.md:157-164` · **Forsaken manual trigger CONFIRMED** (#8
+   below) · **TTRPG re-skin SUPERSEDED 2026-08-10 by D-V2 — v1 is FROZEN and does NOT
+   re-skin; the casino stays video-game-only** (`../versions/v2-decisions-round2.md`;
+   `../ttrpg-update-plan.md:5-9`).
 5. **Owner note honored:** dual-prose brand presentation excluded from MVP scope (Out of
    Scope section) per approval note on the brief.
 6. **⟨PROPOSED⟩ items introduced by this draft** (each needs only a nod or an edit, none
@@ -36,8 +44,10 @@
    softcore respawn / hardcore permadeath / Forsaken hardcore** · episode beats ✓ ·
    found documents ✓ · arena-as-psyche floor-set 3+ ✓ · never-moralize principle ✓ ·
    myth catalog = real mythology graded ORV-style + Stage-2 player myths ✓ · title kept
-   for now · Momus shared host · TTRPG re-skins to casino · starving-pantheon REJECTED
-   (bankruptcy-by-debauchery lore instead). Pending explanation before ruling: dialogue
+   for now · Momus shared host · ~~TTRPG re-skins to casino~~ **SUPERSEDED 2026-08-10 by
+   D-V2 — v1 is FROZEN and does NOT re-skin; the casino stays video-game-only**
+   (`../versions/v2-decisions-round2.md`; `../ttrpg-update-plan.md:5-9`) ·
+   starving-pantheon REJECTED (bankruptcy-by-debauchery lore instead). Pending explanation before ruling: dialogue
    delivery (#14), production-cast-via-patrons (#20), Sasha/Nikita page details (#22).
 9. **Finalize degradations (honest):** input-reconciliation and discipline-pass
    subagents unavailable (container classifier outage) — both applied inline by the
@@ -342,3 +352,15 @@
     WIN are unchanged; a Mind-4 elite reads L3 on a 3+; Mind ≥ 7 auto-reads. Dumb
     bosses stay feintable by design — intelligence is the counter, which is the
     Antagonism personality system paying off.
+31. **Engine-first mandate; front rework is owner-led (owner 2026-07-25).** The owner
+    will rework the front completely and draft the mockups themselves ("Ill draft
+    mockups later so you can build them") — the KAN-4 mockup gate's SCREEN decisions
+    are therefore deferred to that pass, and engine work proceeds without waiting on
+    UI approval: run/recruitment engine, creation-spec engine, and the remaining
+    engine backlog land as sim/controller capability with driver-level tests, no new
+    scenes. Two mechanical defaults ship PROVISIONAL in the run engine (canon-leaning,
+    awaiting the owner's front pass): **recruits join AS-IS carrying their encounter
+    damage** (wounds-persist canon) and **a declined recruit is gone for the run**
+    (permanently-losable canon). The engine keeps trait sourcing agnostic (a creation
+    spec carries final traits; whether the front derives them from a background/epithet
+    track per R16 or direct allocation is presentation).

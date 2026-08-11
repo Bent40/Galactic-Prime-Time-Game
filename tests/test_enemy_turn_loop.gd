@@ -78,7 +78,9 @@ func test_boss_fights_back_through_advance_moment() -> void:
 	assert_true(decisions.size() >= 1, "the boss DECIDED at least once across the playout (%d)" % decisions.size())
 	var attacked := false
 	for d: Dictionary in decisions:
-		if String(d.get("choice", "")) == "attack":
+		# Wave 2b: an adjacent contestant is death-spin prey — grab/chew/spin
+		# are the boss choosing violence just as much as a plain attack.
+		if ["attack", "grab", "chew", "spin"].has(String(d.get("choice", ""))):
 			attacked = true
 	assert_true(attacked, "the boss chose to ATTACK the party, not just idle")
 

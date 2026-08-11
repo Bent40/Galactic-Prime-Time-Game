@@ -93,13 +93,18 @@ of the next Clock. Order of operations at each tick:
   feint→pressure_strike); **STANCE** (hold a declared stance that ends on triggers);
   **STACK** (consume N accumulated charges — the Camera-Call model); **STATE/POSITION**
   (target/self in a state or relative position: Exposed, downed, behind); **PREP/CHANNEL**
-  (spend a prep action to arm a one-shot prime). The two literal cooldown-texted defensive
+  (spend a prep action to arm a one-shot prime). ~~The two literal cooldown-texted defensive
   reactions (Tactical Roll, Acrobatic Save) are **STANCE-gated** — usable only while holding
-  a light-footed/defensive stance (no timers). Implementation this pass: build the 5 prime
-  predicates into the requirements gate, DELETE the dormant cooldown code, convert the
-  explicitly cooldown-texted skills (Tactical Roll, Acrobatic Save, the "-4 Moment cooldown"
-  threshold → CHAIN discount); per-skill prime tags for the other ~37 ride the R19 ladder
-  finalization. (Engine implementation PENDING — this records the design ruling.)
+  a light-footed/defensive stance (no timers).~~ **SUPERSEDED by G1 (owner, 2026-07-23,
+  skills-passover RULINGS; see R25): no stance, no charges, no cooldown — both skills'
+  cost is the MOVEMENT FORFEIT** ("you give up your movement for the Moment"). The prime
+  vocabulary itself is unchanged; these two simply no longer carry a prime. Implementation
+  this pass: build the 5 prime predicates into the requirements gate, DELETE the dormant
+  cooldown code, convert the explicitly cooldown-texted skills (Tactical Roll, Acrobatic
+  Save, the "-4 Moment cooldown" threshold → CHAIN discount — the first two now resolved
+  by R25's movement forfeit instead); per-skill prime tags for the other ~37 ride the R19
+  ladder finalization. (Tactical Roll's engine implementation landed with R25; Acrobatic
+  Save stays unimplemented content.)
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -293,10 +298,15 @@ overturning one is a code change, not a rewrite.
       uniformly) and the compendium's Solo Action template.
     - **RULED (owner 2026-07-18) — takedown = a kill YOU caused:** a friendly death
       completes the takedown goal ONLY IF a contestant dealt the killing blow (friendly
-      fire counts — "it's cinema"); the payout is credited to that killer. IMPLEMENTATION
-      PENDING — this needs kill-attribution + team-awareness in the hype engine (the
-      deferred attribution v2); until then the v1 code over-fires on ANY `combatant_died`,
-      a known tracked gap (task queued). Enemy deaths still complete it.
+      fire counts — "it's cinema"); the payout is credited to that killer. **IMPLEMENTED
+      (attribution v2, 2026-07-25, task #13):** `combatant_died` carries the killer;
+      wound sources are serialized so condition deaths attribute to the wound's author
+      (latest named attacker wins); the hype takedown gate is team-aware (enemy deaths
+      complete unconditionally, friendly deaths only on a contestant killing blow) and
+      the payout credits the killer's ledger row. Flagged interpretation calls: merged
+      kill single-credits the last connected member; self-kill counts per the literal
+      text; per-event BASE hype points remain v1 victim-credited (the recorded
+      boundary). Enemy deaths still complete it. Tests: test_takedown_attribution.gd.
     - **RULED (owner 2026-07-18) — same-batch completion ALLOWED:** a goal offered at a
       clock_reset CAN be completed by later events in that same batch — an insta-win off
       good preparation or luck is not punished. Current behavior is correct as-is; no
@@ -336,9 +346,28 @@ overturning one is a code change, not a rewrite.
     reach (ties: nearest, then id) and punishes exposure — head when targetable,
     else the lowest-HP part. BOSS — see #18. v1 ability model: `damage` +
     `range`/`area` = strike (first damage entry only), `summon`, `heal`;
-    `sequence`/`effect`-only abilities are skipped (death_spin, drag_back
-    deferred); "cone N"/"line" resolve as plain reach (true area geometry is
-    KAN-5 scope). Targets with no attackable part are skipped.
+    `sequence`/`effect`-only abilities are skipped by the STRIKE lookup
+    (~~death_spin, drag_back deferred~~ — death_spin now has its own decide
+    path, wave 2b #19; drag_back stays deferred); ~~"cone N"/"line" resolve as
+    plain reach (true area geometry is KAN-5 scope)~~ **RETIRED (decision #31, 2026-08-10): cone/line are REAL
+    shapes now** — `simulation/hex_geometry.gd` supplies the axial primitives
+    (`line`/`line_extended`/`cone`/`blast`; deterministic tie rules and the
+    120°-wedge cone model documented + ASCII-diagrammed in its header). The
+    flamethrower sweeps the arc whose fixed-order aim direction catches the
+    most opponents (a cone "reaches" an opponent iff the best arc contains
+    it); the windup re-check re-evaluates the ARC per target (leaving it
+    dodges the sweep for that target; an emptied sweep collapses). The dash is
+    an honest CHARGE along its committed `line_extended` lane: the AI dashes
+    only at a lane-reachable pick, the boss runs the lane to the hex
+    adjacent-before the target (bodies stop the charge BEFORE the first
+    occupied hex — stopped out of reach is an honest miss, not a collapse; an
+    interloper shields the declared target), leaving the lane mid-windup
+    dodges it, and the R22 sidestep now displaces the dodger OFF the lane
+    specifically (first free fixed-order neighbor not on it). The explosion
+    beat's radius rides the shared `blast` primitive, membership unchanged.
+    Geometry stays unbounded — `arena_hexes` is authored data the engine does
+    not read; bounds arrive with the KAN-5 arenas. Targets with no attackable
+    part are skipped.
 17. **Dodge Threshold — SUPERSEDED by R22 (owner 2026-07-23): thresholds now ask
     Reflexes with a 1d4 fallback; the flat d6 below is the retired v1 model.**
     (Original text kept for the record.) A combatant with
@@ -373,15 +402,63 @@ overturning one is a code change, not a rewrite.
     and the boss keeps fighting. Phase-6 death explosion stays data-only (the
     fight ends at network 0).** The phase-2 beat is the slice's win moment
     (review-4 §5, DIRECTION Stage 1).
+19. **Death Spin is REAL; dash knock-aside is REAL (wave 2b, decision #31,
+    2026-08-10 — retires the #16 "sequence abilities skipped" deferral for
+    death_spin).** The authored 3-beat sequence runs as a real state machine
+    (serialized like the explosion beats: `ai.death_spins`, hash-covered).
+    **Pacing (documented ruling):** grab cost 1 → chew cost 1 → spin cost 1 —
+    the authored `moment_cost 3` spans the WHOLE sequence, one Moment per
+    beat; each beat is a real cost-1 resolver declare (feints, shock stutter,
+    Forced Actions all apply; a denied beat is RETRIED, never skipped).
+    **Decide order (documented ruling):** valve > stand > active-sequence
+    continuation > cone > GRAB > dash > close — the grab is the boss's punish
+    on a target that stays ADJACENT (authored grab range 1; no step-then-grab)
+    while it is free to act; scarier than the dash, so it outranks it; the
+    victim pick is the R23 draw over the ADJACENT candidates only.
+    **Grab hand (data-honest ruling):** the flamethrower is authored on the
+    LEFT hand, so the grab uses the first usable NON-flamethrower hand
+    (right_hand); no usable non-flamethrower hand = no grab (AI never decides
+    it; a hand-built command rejects `grab_hand_disabled`). The grab initiates
+    a REAL R9 grapple (adjacent instant — the dodge model does not apply, R2).
+    **Beat 2 CHEW:** 2 crushed to every arm part through the normal R14 gate,
+    conditions per the normal path. **Beat 3 SPIN-KILL:** still honest R14 —
+    a crushed hit of amount 8 (PLACEHOLDER R14; Force 8+3=11 fells a fresh
+    5-HP torso through the gate, and an armored monster can genuinely survive
+    it), then the victim is FLUNG down the spin lane (the HexGeometry ray from
+    the boss through the victim, 3 hexes or until a body, prone on landing if
+    it survives; the kill attributes to the boss through the normal
+    `combatant_died.killer` path). **Counterplay chain (the design):** 2 full
+    Moments of warning (grab → chew) in which ANY single recorded hit netting
+    ≥ 5 on the boss (the R15/NQ2 single-hit seam — a merged combined hit
+    counts as ONE) forces the release, or the victim escapes via R9 (1 Moment
+    needs Physique ≥ 6, else 2 Moments — too slow past the chew, intended
+    texture); grappling also EXPOSES the boss (R9), so its own dodge is off
+    mid-sequence. Valve entry aborts the spin honestly (the valve outranks,
+    #27 precedent), as do boss prone/helpless and victim death; a mid-batch
+    release makes a same-tick chew/spin close on air (live grip re-check,
+    the `grapple_suffocate` "grip_lost" family). The "death spin grab range
+    +1" / "death spin costs 2 moments" phase upgrades stay DATA-ONLY (wave
+    2d). **Dash knock-aside:** the authored `"effect": "knock aside"` is
+    real — a target the charge CONNECTS with (not dodged, not stopped-short;
+    a robustness-blocked 0-net hit still connected) is displaced to the first
+    free fixed-order neighbor OFF the committed lane (the involuntary sibling
+    of the R22 sidestep) and knocked PRONE; no free off-lane neighbor = prone
+    only (`knocked_aside`). The wave-2a charge rule is unchanged: the boss
+    stops adjacent-before the target's SNAPSHOT hex, so after the shove it
+    may stand adjacent to a now-empty hex (documented interaction).
+    Tests: tests/test_death_spin.gd.
 
 Not yet implemented (scoped to later epics, hooks in place): poison spread topology,
 dissolution cause-tracking, Camera Call's Viewership/Follower/Patron counters (hype meter
 stands in — KAN-7), token economy, Lounge/session mechanics. Enemy AI v1 (R11 #15–#18)
 ships the mob/elite policies, the dodge-threshold ability and Incinedile Phase 1 + the
-phase-2 transition beat; still open there: death_spin/drag_back (forced movement),
-true cone/line geometry (KAN-5), pack synergy (R15 enemy combos), and AI stances for
-`aura_reading` (skills-audit dependency). Explosion choreography and the Dash
-Reflexes-counters moved to REAL per R22/R23 + decision #27 (2026-07-23).
+phase-2 transition beat; still open there: drag_back (forced movement),
+pack synergy (R15 enemy combos), and AI stances for `aura_reading` (skills-audit
+dependency). Explosion choreography and the Dash Reflexes-counters moved to REAL per
+R22/R23 + decision #27 (2026-07-23); true cone/line geometry moved to REAL per
+decision #31 (2026-08-10, `simulation/hex_geometry.gd` — see the #16 retirement note;
+arena BOUNDS remain KAN-5); death_spin + the dash knock-aside moved to REAL per
+wave 2b (2026-08-10, #19 — the death-spin phase upgrades stay data-only for wave 2d).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -516,12 +593,27 @@ Digital shape (mechanism per below; verbs/numbers ⟨PROPOSED⟩ pending the ski
 
 ## R18 — Charm semantics (owner clarification, 2026-07-16)
 
-**Charm is NOT charisma.** It measures **how PRESENTABLE you are — objectively
-aesthetic as compared to others.** The camera-facing stat: photogenics, striking looks,
-visual impressiveness. Warmth, likability, and parasocial pull live in the AUDIENCE
-systems (tags, hype, crowd reads), never in the Charm number. Existing formulas stay
-coherent under this reading (Charm /20 → Camera Call stacks: the camera seeks the
-aesthetic; speech scoring's Charm term: presentability shapes how words land).
+**Charm is NOT charisma.** It measures **PRESENCE — how compelling you are to look at
+and to listen to**, as compared to others: striking looks, bearing, voice, facial
+control, body language. Presentation used as an instrument. Warmth, likability, and
+parasocial pull live in the AUDIENCE systems (tags, hype, crowd reads), never in the
+Charm number. Existing formulas stay coherent under this reading (Charm /20 → Camera
+Call stacks: the camera seeks the aesthetic; speech scoring's Charm term: presence
+shapes how words land).
+
+**↳ WIDENED 2026-08-10 (owner, D-25).** The original wording — *"objectively aesthetic",
+"photogenics, striking looks, visual impressiveness"* — was **too narrow**, and it put
+this ruling in direct contradiction with book §2.3, which keys **Command**, **Persuade**
+and **Intimidate** to Charm. Under a purely visual reading those mappings are
+incoherent (*you talk people around by being photogenic*). The owner's clarification:
+Charm covers **voice, facial expression and body-language control** as well as looks —
+*"it's just not some cosmic attraction."*
+
+**Therefore the errata is to the DEFINITION, not the action table.** §2.3's mappings are
+correct as written and **do not change** — so **no skill-point refunds are owed**
+(`audits/skills-audit.md:98` would have applied only if a stat had moved). Book §2.1 has
+been updated to match and now states the §2.3 link inline, so the contradiction cannot
+silently return. This is a **shared-spine fix — it holds for v1 and v2 alike.**
 
 ## R17 — Run types & death (owner, 2026-07-16)
 
@@ -676,6 +768,11 @@ ability; boss dodging an aimed round):
 - Surfaced consequence: Reflexes 2 + d4 maxes at 6 < 7 — Imani **cannot** dodge the
   Dash until a die or stat upgrade; positioning and Brace are her counterplay. This is
   intended texture, recorded so it never reads as a bug.
+- **Tactical Roll is a DIFFERENT, positional dodge (R25)** — a roll is movement, so
+  where an ability authors an R22 threshold, that check still applies independently: a
+  roller whose destination is still inside the attack's pattern at resolution gets hit
+  through the pattern re-check AND still rolls its authored R22 dodge there, exactly as
+  any repositioned combatant would.
 
 ## R23 — The Antagonism engine (owner, 2026-07-23)
 
@@ -725,6 +822,66 @@ mobs read feints by Mind**, through the R22 threshold machinery unchanged:
   (max 5 < 7) — the slice fight and the full-cadence balance WIN are byte-identical;
   intelligence, not stats-frozen tuning, is the counter (rulebook v0.92 G4 stat
   freeze is respected).
+
+## R25 — Tactical Roll: the declared-hex dodge + the AoE-center rule (owner G1, 2026-07-23)
+
+The G1 ruling (char-sheet repo, `rulebook/skills-passover.md` RULINGS block) — SUPERSEDES
+the R3/S2.1 "STANCE-gated" line for both skills: **"Tactical Roll is a declared-hex dodge:
+you give up your movement for the Moment and declare the hex you roll to; the attack still
+resolves — if your hex is inside its range/area you get hit anyway. No charges, no stance,
+no cooldown. Acrobatic Save gets the same movement-forfeit cost in place of its cooldown."**
+And the round-2 refinement: **"AREA attacks (blasts/bursts) MISS a rolling target entirely
+unless the destination hex is the area's CENTER; single/multi-target attacks (arcs, lines,
+cones) hit if the new hex is still within their range/pattern."**
+
+- **Cost = exactly the movement allowance (design call).** The G1 text says "you give up
+  your movement" — nothing more — so the roll consumes the R3 movement allowance
+  (`moved_this_tick`) and ONLY that: rolling and moving are mutually exclusive in a tick
+  (roll after any move → rejected `movement_spent`; free move after a roll → rejected
+  `already_moved`), while the free-ACTION slot stays untouched — The Bit, the first
+  inventory use and 0-cost declares/reactions remain legal the same tick.
+- **The move happens IMMEDIATELY at declare** (it is a dodge, not a scheduled action; 0
+  Moments). Through the R2 tick-start-snapshot rules this IS the single/multi-target half
+  of the refinement with no new machinery: a windup resolving on a LATER tick re-checks
+  its cone arc / dash lane / plain range against the roller's new hex (still inside the
+  pattern → hit anyway; outside → the standard windup dodge/collapse). Rolling on an
+  attack's own resolution tick dodges nothing, and instants (cost ≤ 1) are never dodged
+  by movement — R2 unchanged.
+- **The AREA half rides a `rolled_this_window` marker** (serialized, hash-covered): set at
+  roll declare, cleared at the actor's next tick start — the honest minimal model: the
+  dodge window IS the roll's Moment ("give up your movement for the Moment"). An AREA
+  attack resolving that Moment misses the roller entirely unless the roller's hex is the
+  area's CENTER. Dodging the explosion blast therefore means rolling ON the blast Moment —
+  informed counterplay, since the telegraph broadcasts `moments_until_blast`.
+- **VALVE-COUNTER CONSEQUENCE (flagged for the owner).** The one real AREA attack today,
+  the explosion blast, centers on the boss's OWN hex — and rolling onto an occupied hex is
+  impossible — so a well-timed roller ALWAYS escapes the valve KO, from anywhere in the
+  radius, regardless of distance. Tactical Roll is a hard counter to explosion valves.
+  This is presumably the design (the declared-hex dodge is the skill's whole identity),
+  and the center-hex exception stays live in the engine for future area attacks with
+  unoccupied centers — but it deserves an explicit owner sign-off.
+- **Eligibility (mirrors movement, PROVISIONAL).** No roll while grappled (R9 movement
+  lock), winding up (R2 commit) or Prone (R3 prone-can-only-crawl + the R22 punish
+  window). Exposed does NOT block the roll: Exposed combatants may still move under R3,
+  and R22's Exposed gate governs the threshold dodge, not movement. Slowed/terrain
+  interactions are UN-RULED — no interaction implemented yet.
+- **R22 interaction:** Tactical Roll is a positional dodge, orthogonal to the R22
+  threshold dodge — a roll is movement, so where an ability authors an R22 threshold that
+  check still applies independently to a roller who ended up inside the pattern.
+- **Range ladder.** Base **2 hexes at L1 — PLACEHOLDER (R14)**; the book's effect text
+  says 1 and the digital base is a tuning call. Level scaling follows the seed ladder's
+  space increments (skills.json id 9 / the skills-audit's "levels upgrade spaces"):
+  L2 +1, L3 +1, L4 +2 → ranges 2/3/4/6. The "-2 Moment cooldown" riders on L3/L4 and the
+  cooldown-based L5/L6 threshold rows (char-sheet template ids 15–16) are DEAD per
+  G1/R3 — **data-only, not implemented**.
+- **Acrobatic Save:** its COST MODEL is ruled (the same movement forfeit, replacing its
+  cooldown), but the skill itself (die manipulation) is NOT implemented — recorded here
+  so the ruling isn't lost and nobody re-derives a stance prime for it.
+- Event vocabulary: `tactical_roll` (actor, from, to, spaces, range, level) on success;
+  `blast_missed_roller` when the AoE-center rule spares a roller; rejections
+  `movement_spent` / `no_move` / `roll_out_of_range` / `hex_occupied` /
+  `invalid_destination` plus the mirrored movement gates (`grappled` / `winding_up` /
+  `prone`).
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

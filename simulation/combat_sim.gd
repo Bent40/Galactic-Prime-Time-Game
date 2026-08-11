@@ -61,6 +61,7 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	resolver.setup(clock, combatants, cond, rng, ai)
 	hype = HypeEngine.new()
 	hype.setup(_goal_table(), sim_seed)
+	hype.wire(combatants)  # R11 #14 v2 team-awareness (live ref, like tags/evidence)
 	# Slice tags (I-13) — the second broadcast-plane consumer, wired after hype
 	# so its detectors also see hype outputs (Scene Stealer). HypeEngine reads
 	# held tags back through hype.tags for resonance.
@@ -180,6 +181,10 @@ func _breach_and_phase_checks() -> Array[Dictionary]:
 					part["hidden"] = false
 			events.append({"type": "breach_opened", "combatant": c.id})
 		events.append_array(ai.phase_events(c, cond))
+	# Death-spin abort sweep (wave 2b) — AFTER the phase machine so an entry
+	# into an explosion valve this very command aborts a live spin immediately
+	# (the valve outranks, #27 precedent). Idempotent like the latching flags.
+	events.append_array(ai.death_spin_checks())
 	return events
 
 
@@ -576,7 +581,11 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 		var to: Vector2i = decision["move_to"]
 		events.append_array(resolver.move(actor.id, to))
 	match String(decision.get("choice", "wait")):
-		"attack", "heal":
+		# grab/chew/spin are the death-spin beats (wave 2b) — each a REAL
+		# cost-1 declare through the resolver (grab = the R9 grapple kind;
+		# chew/spin = marker-carrying attacks), so validation, feints, shock
+		# and the Forced-Action machinery all apply like any other action.
+		"attack", "heal", "grab", "chew", "spin":
 			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
 		"stand":
 			# Skill-feel pass: a prone boss spends its Moment standing back up —
@@ -730,6 +739,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng, sim.ai)
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
 	sim.hype.set_goal_table(sim._goal_table())
+	sim.hype.wire(sim.combatants)  # R11 #14 v2 team-awareness ref
 	# Re-wire the tag engine (effect table is static data, never saved; the
 	# combatants ref is a live object) and reconnect hype's resonance lookup.
 	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))

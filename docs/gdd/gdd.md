@@ -8,7 +8,7 @@ updated: 2026-07-16
 supersedes: docs/archive/GPT_GDD_v02.pdf (kept as history; this document wins where they conflict)
 ---
 
-# Game Design Document — Galactic Prime Time ⟨working title — OPEN⟩
+# Game Design Document — Galactic Prime Time ⟨~~working title — OPEN~~ RULED 2026-07-16: title kept for now — `../setting-rebrand-options.md:158-159`⟩
 
 *Built on the APPROVED brief (`../brief/brief.md`). Precedence: DIRECTION.md >
 rules-addendum.md > this GDD > compendium > PDFs > rulebook docx — this GDD consolidates
@@ -273,8 +273,9 @@ priming; status effects = the condition clocks; party composition = no-cap recru
   spill-over; per-god affection ledgers); tips as schema-bound `patron_tip` commands;
   buy-outs (notice of replacement; current god's agreement shown); abandonment =
   extraction or neglect, never contract exit; **Forsaken** = god-initiated all-in
-  (hardcore opt-in; random offer from run 2+; manual after a first win ⟨PROVISIONAL⟩;
-  never mid-run); god stats = fixed cores + seeded jitter.
+  (hardcore opt-in; random offer from run 2+; manual after a first win ⟨PROVISIONAL⟩
+  **— CONFIRMED (owner 2026-07-16; `decision-log.md:31-32`)**; never mid-run); god stats
+  = fixed cores + seeded jitter.
 - **Hype ✅ (v1 live):** deterministic spectacle meter inside state_hash; event-weighted
   (kills 60, breaches 45, damage 4/HP, forced actions 12 …all PLACEHOLDER), banded
   (cold/warm/hot/on-fire), decays per Clock, per-contestant ledgers; emits
@@ -395,11 +396,18 @@ accessibility pass beyond baseline readability ⟨PROPOSED — a11y gate applies
 
 ## Assumptions, Dependencies & OPEN Items
 
-- **OPEN (owner):** title · Momus vs sibling host · TTRPG table re-skin · the timer
-  (season mechanic vs starving-pantheon cosmology) · R13 shock confirm · R14
+- **OPEN (owner):** ~~title~~ · ~~Momus vs sibling host~~ · ~~TTRPG table re-skin~~ ·
+  ~~the timer (season mechanic vs starving-pantheon cosmology)~~ · R13 shock confirm · R14
   force-vs-robustness gate co-design · skills effects/growth passover (priming
   vocabulary) · questionnaire batches (C/D/E/…) · player-OC death consequence ·
-  Forsaken manual-trigger ⟨PROVISIONAL⟩.
+  ~~Forsaken manual-trigger ⟨PROVISIONAL⟩~~.
+- **CLOSED — the struck items above are ruled (D-22 reconciliation, 2026-08-10):** title
+  **kept for now** · host = **Momus, shared** · timer = **a *season* mechanic, not
+  cosmology — Option E REJECTED, the gods are NOT starving** (all three:
+  `../setting-rebrand-options.md:157-164`) · Forsaken manual trigger **CONFIRMED**
+  (`decision-log.md:31-32`) · TTRPG table re-skin **SUPERSEDED 2026-08-10 by D-V2 — v1 is
+  FROZEN and does NOT re-skin; the casino stays video-game-only**
+  (`../versions/v2-decisions-round2.md`; `../ttrpg-update-plan.md:5-9`).
 - **[ASSUMPTION]** DCC-adaptation market timing (brief) — verify before public beats.
 - **Dependencies:** live campaign data stays canonical content source (never break the
   char-sheet app); Workflow repo in session scope for the toolset; Godot binary via

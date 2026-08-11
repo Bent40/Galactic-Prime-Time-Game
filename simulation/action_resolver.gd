@@ -73,6 +73,15 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	if prime_reason != "":
 		return _reject("prime_unmet", {"actor": actor_id, "prime": prime_reason})
 
+	# G1 Tactical Roll (rules-addendum R25): the declared_dodge archetype spends
+	# the actor's MOVEMENT for the Moment — not a Moment, not the free-action
+	# slot — and moves IMMEDIATELY at declare. Routed before the R3 slot caps
+	# because its economy is the movement allowance, not the action slots.
+	if kind == "skill":
+		var dodge_spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		if String(dodge_spec.get("archetype", "")) == "declared_dodge":
+			return _declare_tactical_roll(actor, action, dodge_spec)
+
 	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
 	var eff_cost: int = _effective_cost(actor, kind, action, uses_strained)
 
@@ -238,7 +247,18 @@ func _has_status(c: CombatantState, status: String) -> bool:
 ##                 dodge_possible: bool, dodge_threshold: int,
 ##                 dodge_reflexes: int, dodge_die: int,
 ##                 dodge_outcome: "" | "ineligible" | "auto_dodge" | "roll_needed" | "impossible",
-##                 dodge_roll_needed: int (0 unless roll_needed)}]
+##                 dodge_roll_needed: int (0 unless roll_needed),
+##                 read_possible: bool, read_threshold: int,
+##                 read_mind: int, read_die: int,
+##                 read_outcome: "" | "ineligible" | "auto_read" | "roll_needed" | "impossible",
+##                 read_roll_needed: int (0 unless roll_needed)}]
+##                The read_* keys are the R24 feint-read UNCERTAINTY (the Mind
+##                counter): computed from the SAME fields check_feint_read reads
+##                — the spec's read_threshold at the actor's level, the
+##                DEFENDER's Mind and mind threshold die — never rolled. A
+##                non-feint action (no read_threshold on its spec) carries
+##                outcome "" / threshold 0. Stats, never category: any target
+##                with a Mind previews honestly.
 ##   merged: {force, robustness, net} — only when the action carries a
 ##           "combo_members" combined-preview request (see below).
 ##
@@ -338,6 +358,30 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 			dodge_roll_needed = threshold - dodge_reflexes
 		else:
 			dodge_outcome = "impossible"
+	# Feint read UNCERTAINTY (R24) — the exact fields + ladder check_feint_read
+	# evaluates at resolve (threshold from the SkillBook spec at the actor's
+	# level; the DEFENDER's Mind + mind threshold die), NEVER rolled, no rng.
+	# Additive keys only; the eligibility gate mirrors check_feint_read's own
+	# (threshold > 0, target alive and in play — stats, never category).
+	var read_threshold: int = 0
+	if String(action.get("kind", "attack")) == "skill":
+		read_threshold = int(SkillBook.mechanics(String(action.get("key", "")),
+			int(action.get("level", 1))).get("read_threshold", 0))
+	var read_eligible: bool = read_threshold > 0 and target.alive and not target.removed_from_play
+	var read_mind: int = target.trait_total("mind")
+	var read_die: int = target.threshold_die("mind")
+	var read_outcome: String = ""
+	var read_roll_needed: int = 0
+	if read_threshold > 0:
+		if not read_eligible:
+			read_outcome = "ineligible"
+		elif read_mind >= read_threshold:
+			read_outcome = "auto_read"
+		elif read_mind + read_die >= read_threshold:
+			read_outcome = "roll_needed"
+			read_roll_needed = read_threshold - read_mind
+		else:
+			read_outcome = "impossible"
 	return {
 		"id": target_id,
 		"part": part_key,
@@ -353,6 +397,12 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 		"dodge_die": dodge_die,
 		"dodge_outcome": dodge_outcome,
 		"dodge_roll_needed": dodge_roll_needed,
+		"read_possible": read_eligible and read_outcome != "impossible",
+		"read_threshold": read_threshold,
+		"read_mind": read_mind,
+		"read_die": read_die,
+		"read_outcome": read_outcome,
+		"read_roll_needed": read_roll_needed,
 	}
 
 
@@ -522,6 +572,14 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 		return _reject("already_grappling", {"actor": actor.id})
 	if actor.usable_hands(clock.tick) < 1:
 		return _reject("no_free_hand", {"actor": actor.id})
+	# Wave 2b: a death-spin grab names its grabbing hand (the boss's
+	# non-flamethrower hand — EnemyAI.grab_hand_part). A disabled grab hand
+	# blocks the grab OUTRIGHT, even when the R9 "any free hand" gate above
+	# would pass on the other hand (the flamethrower arm cannot hold a victim).
+	if bool(action.get("death_spin", false)):
+		var grab_part := String(action.get("grab_part", ""))
+		if grab_part == "" or not actor.part_usable(grab_part, clock.tick):
+			return _reject("grab_hand_disabled", {"actor": actor.id, "part": grab_part})
 	# R9: target no more than one size larger.
 	if target.size_rank() - actor.size_rank() > 1:
 		return _reject("target_too_large", {"actor": actor.id, "target": target.id})
@@ -665,6 +723,68 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	var events: Array[Dictionary] = [{
 		"type": "action_declared", "actor": actor_id, "kind": "move", "cost": cost,
 		"resolve_tick": clock.tick + (cost if cost >= 2 else 0), "windup": window > 0,
+	}]
+	return events
+
+
+# ------------------------------------------------------------------ tactical roll (G1 / R25)
+
+## G1 (owner 2026-07-23; rules-addendum R25): Tactical Roll is a declared-hex
+## dodge — "you give up your movement for the Moment and declare the hex you
+## roll to; the attack still resolves". Semantics:
+##  * COST = exactly the movement allowance (design call, R25): the roll sets
+##    moved_this_tick — a free move after a roll rejects "already_moved", a roll
+##    after any move this tick rejects "movement_spent". It does NOT touch the
+##    free-action slot ("give up your movement", nothing more): The Bit, the
+##    first inventory use and 0-cost declares/reactions stay legal the same tick.
+##  * The move happens IMMEDIATELY at declare (it is a dodge): windup re-checks
+##    at later resolution ticks see the new hex through the R2 tick-start
+##    snapshot — the existing cone-arc / dash-lane / plain-range re-checks ARE
+##    the single/multi-target half of the G1 refinement, no new seam. Rolling on
+##    an attack's own resolution tick dodges nothing (R2 snapshot semantics;
+##    instants cost <= 1 are never dodged by movement).
+##  * The rolled_this_window marker (set here, cleared at the actor's next tick
+##    start) feeds the AoE-center rule: an AREA attack resolving this Moment
+##    misses the roller unless the destination is the area's CENTER
+##    (EnemyAI.resolve_explosion_blast).
+##  * Movement gates mirror move(): no roll while grappled (R9), winding up
+##    (R2 commit) or Prone (R3 prone-can-only-crawl + the R22 punish window).
+##    Exposed does NOT block the roll — Exposed combatants may still move (R3),
+##    and R22's Exposed gate governs the threshold dodge, not movement.
+func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if actor.grappled_by != "" or actor.grappling != "":
+		return _reject("grappled", {"actor": actor.id})
+	if actor.windup_pending:
+		return _reject("winding_up", {"actor": actor.id})
+	if bool(actor.statuses.get("prone", false)):
+		return _reject("prone", {"actor": actor.id})
+	if actor.moved_this_tick:
+		return _reject("movement_spent", {"actor": actor.id})
+	var to_raw: Array = action.get("to", [])
+	if to_raw.size() != 2:
+		return _reject("invalid_destination", {"actor": actor.id})
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	var spaces: int = CombatantState.hex_distance(actor.position, to)
+	if spaces <= 0:
+		return _reject("no_move", {"actor": actor.id})
+	var roll_range: int = int(spec.get("roll_range", 2))
+	if spaces > roll_range:
+		return _reject("roll_out_of_range", {"actor": actor.id, "range": roll_range, "spaces": spaces})
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id != actor.id and other.alive and not other.removed_from_play and other.position == to:
+			return _reject("hex_occupied", {"actor": actor.id, "by": other.id})
+	# --- all checks passed; mutate ---
+	actor.moved_this_tick = true
+	actor.rolled_this_window = true
+	var from: Vector2i = actor.position
+	actor.position = to
+	var events: Array[Dictionary] = [{
+		"type": "tactical_roll", "actor": actor.id,
+		"from": [from.x, from.y], "to": [to.x, to.y],
+		"spaces": spaces, "range": roll_range, "level": int(action.get("level", 1)),
 	}]
 	return events
 
@@ -926,11 +1046,20 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
-	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", String((connected[0] as Dictionary)["condition"]), clock.tick))
+	# R11 #14 v2: the merged hit is ONE blow; its author is the LAST member whose
+	# strike actually CONNECTED (the closing hit of the merged wound — a member
+	# who missed never authored it). Single credit, matching the ruling's
+	# singular "that killer" and the breach_risk closing-hitter convention.
+	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", String((connected[0] as Dictionary)["condition"]), clock.tick,
+			String((connected[connected.size() - 1] as Dictionary)["actor"])))
 	if target.dancing and reduced > 0:
 		events.append_array(_end_dance(target, "hit"))
 	# ONE recorded hit for the single-hit breach threshold (R15/NQ2).
 	target.record_hit(String(group["combo_id"]), reduced)
+	# Wave 2b: the merged hit is ONE hit for "release if hit for 5" too — the
+	# party's combined-action seam works on the grab exactly like the breach.
+	if reduced > 0:
+		events.append_array(ai.check_death_spin_release(target, reduced))
 	# R23: each connected member earns grudge for its OWN contribution — the one
 	# merged net hit is attributed per member proportionally to the Force it
 	# contributed (the same per-member Forces the merged gate was built from).
@@ -955,6 +1084,7 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 				"source": "attack",
 				"injection": bool(md["injection"]),
 				"poison_type": String(md["poison_type"]),
+				"attacker": String(md["actor"]),  # R11 #14 v2: each rider keeps its own author
 			}))
 	return events
 
@@ -1268,20 +1398,54 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	var acting_part: String = actor.acting_part(clock.tick)
 	var targets: Array = action.get("targets", [])
 
+	# Wave 2b death-spin beat gate: a chew/spin beat resolves only while the
+	# HOLD is still live (the LIVE grip re-check _resolve_grapple_suffocate
+	# uses — a same-tick release-on-5 or R9 escape that resolved earlier in the
+	# batch makes the jaws close on air: invalidated, no strike, no Tool roll).
+	if String(action.get("death_spin_beat", "")) != "" \
+			and _death_spin_beat_stale(actor, action):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "grip_lost"})
+		return events
+
 	# Windups re-check range & validity against the tick-start snapshot (R2).
+	# Decision #31: an area action re-checks its REAL SHAPE instead of plain
+	# range — the cone re-evaluates its committed arc per target (leaving the
+	# arc dodges the sweep for THAT target; an emptied sweep collapses), and
+	# the dash re-validates + walks its committed charge lane.
 	if is_windup:
-		var invalid_reason: String = _windup_invalid_reason(actor, action, item, snapshot)
+		var shape: Dictionary = action.get("area_shape", {})
+		var shape_kind := String(shape.get("kind", ""))
+		var original_first: String = ""
+		if not targets.is_empty():
+			original_first = String((targets[0] as Dictionary).get("id", ""))
+		var invalid_reason: String = _windup_invalid_reason(actor, action, item, snapshot, shape_kind)
+		if invalid_reason == "" and shape_kind == "cone":
+			events.append_array(_recheck_cone_targets(actor, action, snapshot, shape))
+			targets = action.get("targets", [])
+			if targets.is_empty():
+				invalid_reason = "left_area"  # every target escaped the arc
+		if invalid_reason == "" and shape_kind == "line":
+			var charge: Dictionary = _resolve_dash_charge(actor, action, snapshot, shape)
+			var charge_events: Array[Dictionary] = charge["events"]
+			events.append_array(charge_events)
+			invalid_reason = String(charge["invalid"])
+			if invalid_reason == "" and bool(charge["stopped_short"]):
+				# An honest MISS, not a collapse: the boss spent the Moment
+				# charging and was stopped out of reach — no strike, no Tool roll.
+				events.append({
+					"type": "action_resolved", "actor": actor.id, "kind": kind,
+					"key": String(action.get("key", String(action.get("item", "")))),
+					"result": "stopped_short", "halved": false, "rounds": 0,
+				})
+				return events
 		if invalid_reason != "":
 			events.append({"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": invalid_reason})
 			var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
 			events.append(ForcedAction.make_event(actor.id, collapse, "invalidated_windup"))
-			var missed_target: String = ""
-			if not targets.is_empty():
-				missed_target = String((targets[0] as Dictionary).get("id", ""))
 			# The original target escaped the effect entirely — a Collateral
 			# consequence must not hit them (they dodged), so exclude them.
 			forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {
-				"part": acting_part, "target": missed_target,
+				"part": acting_part, "target": original_first,
 			}})
 			return events
 
@@ -1332,6 +1496,11 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 			events.append_array(cond.heal_part(actor, heal_part, heal_amount))
 
 	if whiffed or targets.is_empty() or damage.is_empty():
+		# Wave 2b: an armless victim still gets chewed ON (no arm rounds to
+		# fire) and a spin with nothing attackable still flings — the beat
+		# advances/finishes off the empty-targets exit too.
+		if not whiffed:
+			events.append_array(_apply_death_spin_beat(actor, action))
 		events.append({
 			"type": "action_resolved", "actor": actor.id, "kind": kind,
 			"key": String(action.get("key", String(action.get("item", "")))),
@@ -1355,6 +1524,20 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 			continue
 		# R14: `actor` is the attacker — its Physique feeds Force.
 		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, amount, action, actor))
+	# Wave 2b: the dash's authored "knock aside" becomes real — a CONNECTED
+	# target (its strike round produced a damage_applied: not dodged, not
+	# surface-blocked, not fire-healed; a robustness-blocked 0 still connected
+	# — the charge's mass hit, even if no wound opened) is shoved off the lane
+	# and knocked prone. A dodged dash sidesteps instead (mutually exclusive:
+	# the dodge returns before damage_applied). Stopped-short never gets here.
+	if bool(action.get("knock_aside", false)) and not targets.is_empty():
+		var shape: Dictionary = action.get("area_shape", {})
+		if String(shape.get("kind", "")) == "line":
+			var knock_target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+			if knock_target != null and _hit_landed(events, knock_target.id):
+				events.append_array(_dash_knock_aside(knock_target, actor, HexGeometry.to_set(_shape_lane(shape))))
+	# Wave 2b: a really-resolved chew/spin beat advances/finishes the sequence.
+	events.append_array(_apply_death_spin_beat(actor, action))
 	events.append({
 		"type": "action_resolved", "actor": actor.id, "kind": kind,
 		"key": String(action.get("key", String(action.get("item", "")))),
@@ -1363,9 +1546,17 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	return events
 
 
-func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dictionary, snapshot: Dictionary) -> String:
+## Whole-action windup re-check (R2). Decision #31 splits area actions off:
+## `shape_kind` "cone" skips everything but the disarmed gate (the per-target
+## arc re-check in _recheck_cone_targets replaces the whole-action gate);
+## "line" keeps the target/head gates but skips the plain range check (the
+## committed lane in _resolve_dash_charge is the real geometry). "" (the
+## overwhelming default) is today's behavior, unchanged.
+func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dictionary, snapshot: Dictionary, shape_kind: String = "") -> String:
 	if not item.is_empty() and (bool(item.get("dropped", false)) or actor.unarmed_until_tick > clock.tick):
 		return "disarmed"
+	if shape_kind == "cone":
+		return ""
 	var actor_snap: Dictionary = snapshot.get(actor.id, {})
 	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
 	var reach: int = _attack_range(action, item)
@@ -1377,11 +1568,12 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 		var snap: Dictionary = snapshot.get(target.id, {})
 		if not bool(snap.get("alive", false)):
 			return "target_dead"
-		var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
-		var a := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
-		var b := Vector2i(int(target_pos[0]), int(target_pos[1]))
-		if CombatantState.hex_distance(a, b) > reach:
-			return "out_of_range"
+		if shape_kind != "line":
+			var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
+			var a := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+			var b := Vector2i(int(target_pos[0]), int(target_pos[1]))
+			if CombatantState.hex_distance(a, b) > reach:
+				return "out_of_range"
 		var part_key := String(t.get("part", ""))
 		if part_key.contains("head"):
 			var targetable: bool = bool(snap.get("exposed", false)) \
@@ -1390,6 +1582,143 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 			if not targetable:
 				return "head_not_targetable"
 	return ""
+
+
+## Decision #31 cone windup re-check (R2: leaving the AREA before resolution
+## dodges it — per target, since a sweep is multi-target): recompute the
+## committed arc from the actor's SNAPSHOT hex + the declared aim direction and
+## EXCLUDE every target whose snapshot hex is outside it (or who died, or whose
+## head-gate closed) — each exclusion is exactly the out-of-range windup dodge,
+## applied per head. rounds/rpm shrink with the list (one round per swept
+## target, the v1 multi-target model); survivors still get burned. The caller
+## collapses the whole windup only when EVERY target escaped.
+func _recheck_cone_targets(actor: CombatantState, action: Dictionary, snapshot: Dictionary, shape: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var toward_raw: Array = shape.get("toward", [])
+	var size: int = int(shape.get("size", 0))
+	if toward_raw.size() != 2 or size <= 0:
+		return events  # malformed shape — nothing to re-check against
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var origin := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(origin, origin + dir, size))
+	var remaining: Array = []
+	for target_entry: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = target_entry
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		var reason: String = ""
+		if target == null:
+			reason = "target_missing"
+		else:
+			var snap: Dictionary = snapshot.get(target.id, {})
+			var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
+			if not bool(snap.get("alive", false)):
+				reason = "target_dead"
+			elif not arc.has(Vector2i(int(target_pos[0]), int(target_pos[1]))):
+				reason = "left_area"
+			elif String(t.get("part", "")).contains("head") and not (bool(snap.get("exposed", false))
+					or bool(snap.get("helpless", false)) or bool(snap.get("overwhelmed", false))):
+				reason = "head_not_targetable"
+		if reason == "":
+			remaining.append(t)
+		else:
+			events.append({
+				"type": "windup_target_escaped", "actor": actor.id,
+				"target": String(t.get("id", "")), "reason": reason,
+			})
+	action["targets"] = remaining
+	action["rounds"] = mini(int(action.get("rounds", remaining.size())), remaining.size())
+	action["rpm"] = maxi(1, mini(int(action.get("rpm", maxi(1, remaining.size()))), maxi(1, remaining.size())))
+	return events
+
+
+## Decision #31 dash charge (retires "line resolves as plain reach"): the dash
+## is an honest CHARGE along its committed lane (the declared area_shape, built
+## by EnemyAI from HexGeometry.line_extended). All geometry evaluates against
+## the tick-start SNAPSHOT (R2 simultaneity — same-tick movement neither dodges
+## nor blocks); only the dasher's position mutation is live. Steps:
+##  1. lane validity: the dasher must still stand on lane[0] (lane_lost
+##     otherwise — no mechanic moves a winding-up dasher today, so this is a
+##     safety) and the target's snapshot hex must still be ON the lane beyond
+##     index 0 — a target that left the committed corridor dodged the windup
+##     (left_lane -> the standard invalidation collapse, like out_of_range).
+##  2. charge: the dasher advances along the lane toward the hex
+##     adjacent-before the target, stopping BEFORE the first hex occupied by a
+##     living, in-play combatant (snapshot hexes) — a charge is a run, not a
+##     teleport: bodies block it, and an interloper on the lane SHIELDS the
+##     declared target (v1: only declared targets are ever hit).
+##  3. contact: stopped short of adjacency = an honest MISS (dash_stopped_short;
+##     the Moment was spent charging, no strike, no Tool collapse); reaching
+##     adjacency lets the strike resolve through the normal round (R22 dodge
+##     ladder unchanged).
+## Returns {"invalid": String ("" = ok), "stopped_short": bool, "events": [...]}.
+func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: Dictionary, shape: Dictionary) -> Dictionary:
+	var out_events: Array[Dictionary] = []
+	var lane: Array[Vector2i] = _shape_lane(shape)
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var origin := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
+	if lane.size() < 2 or origin != lane[0]:
+		return {"invalid": "lane_lost", "stopped_short": false, "events": out_events}
+	var targets: Array = action.get("targets", [])
+	if targets.is_empty():
+		return {"invalid": "target_missing", "stopped_short": false, "events": out_events}
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null:
+		return {"invalid": "target_missing", "stopped_short": false, "events": out_events}
+	var target_snap: Dictionary = snapshot.get(target.id, {})
+	var target_pos_raw: Array = target_snap.get("position", [target.position.x, target.position.y])
+	var target_pos := Vector2i(int(target_pos_raw[0]), int(target_pos_raw[1]))
+	var t_idx: int = lane.find(target_pos)
+	if t_idx < 1:
+		return {"invalid": "left_lane", "stopped_short": false, "events": out_events}
+	# Snapshot occupancy: everyone alive and in play except the dasher and the
+	# declared target (the charge stops before the target via stop_idx anyway).
+	var occupied: Dictionary = {}
+	var ids: Array = snapshot.keys()
+	ids.sort()
+	for id: Variant in ids:
+		if String(id) == actor.id or String(id) == target.id:
+			continue
+		var snap: Dictionary = snapshot[id]
+		if not bool(snap.get("alive", false)):
+			continue
+		var pos_raw: Array = snap.get("position", [])
+		if pos_raw.size() == 2:
+			occupied[Vector2i(int(pos_raw[0]), int(pos_raw[1]))] = true
+	var stop_idx: int = t_idx - 1
+	var final_idx: int = 0
+	for k: int in range(1, stop_idx + 1):
+		if occupied.has(lane[k]):
+			break
+		final_idx = k
+	if final_idx > 0:
+		var from: Vector2i = actor.position
+		actor.position = lane[final_idx]
+		out_events.append({
+			"type": "dash_charged", "actor": actor.id,
+			"from": [from.x, from.y], "to": [lane[final_idx].x, lane[final_idx].y],
+			"hexes": final_idx,
+		})
+	if final_idx < stop_idx:
+		out_events.append({
+			"type": "dash_stopped_short", "actor": actor.id, "target": target.id,
+			"at": [lane[final_idx].x, lane[final_idx].y],
+			"distance": HexGeometry.distance(lane[final_idx], target_pos),
+		})
+		return {"invalid": "", "stopped_short": true, "events": out_events}
+	return {"invalid": "", "stopped_short": false, "events": out_events}
+
+
+## The committed lane hexes off an area_shape (serialization-safe int pairs).
+static func _shape_lane(shape: Dictionary) -> Array[Vector2i]:
+	var lane: Array[Vector2i] = []
+	for pair: Variant in shape.get("lane", []) as Array:
+		var p: Array = pair
+		if p.size() == 2:
+			lane.append(Vector2i(int(p[0]), int(p[1])))
+	return lane
 
 
 ## Deterministic self-heal location: the not-destroyed part with the largest
@@ -1488,7 +1817,7 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				dodged_event.merge(dodge_detail)
 				events.append(dodged_event)
 				if is_dash_dodge:
-					events.append_array(_dash_dodge_riders(target, attacker, ability_dodge))
+					events.append_array(_dash_dodge_riders(target, attacker, ability_dodge, action))
 				if not group.is_empty():
 					events.append_array(_merge_drop(group, target))
 				return events
@@ -1543,13 +1872,23 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
-	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick))
+	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick,
+			attacker.id if attacker != null else ""))
 	# self_stance (dance): the stance ends when its owner is hit (takes damage).
 	if target.dancing and reduced > 0:
 		events.append_array(_end_dance(target, "hit"))
 	# R15/NQ2: record the landed hit for single-hit breach; a combined action's
 	# linked strikes (shared combo_id) merge into one hit for the threshold.
 	target.record_hit(String(action.get("combo_id", "")), reduced)
+	# Wave 2b: "release if hit for 5" listens at this same single-hit seam — a
+	# net hit (post-record, so a combo reads its merged running total) >= 5 on
+	# a boss mid-death-spin forces the release and aborts the sequence.
+	if reduced > 0:
+		var hit_total: int = reduced
+		var release_combo := String(action.get("combo_id", ""))
+		if release_combo != "":
+			hit_total = int(target.combo_hits_this_tick.get(release_combo, reduced))
+		events.append_array(ai.check_death_spin_release(target, hit_total))
 	# R23: net damage dealt to an AI-controlled combatant builds grudge on it,
 	# keyed by the attacker (1:1 net-damage scale, PLACEHOLDER R14) — a hit
 	# blocked to 0 builds nothing. EnemyAI's weighted targeting reads the score.
@@ -1573,6 +1912,7 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 				"source": "attack",
 				"injection": bool(action.get("injection", false)),
 				"poison_type": String(action.get("poison_type", "")),
+				"attacker": attacker.id if attacker != null else "",  # R11 #14 v2 wound source
 			}))
 	return events
 
@@ -1580,21 +1920,29 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 ## R22 dash counters ladder riders on a SUCCESSFUL dash dodge: the sidestep
 ## rides ANY successful dodge (auto or rolled); the counterattack rides only a
 ## Reflexes >= counter_at auto-dodge. Both deterministic, both rng-free.
-func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_dodge: Dictionary) -> Array[Dictionary]:
+## Decision #31: the action's committed lane feeds the sidestep — dodging a
+## charge means getting OFF ITS LANE.
+func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_dodge: Dictionary, action: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if dasher == null:
 		return events
-	events.append_array(_dash_sidestep(dodger, dasher))
+	var lane_set: Dictionary = HexGeometry.to_set(_shape_lane(action.get("area_shape", {}) as Dictionary))
+	events.append_array(_dash_sidestep(dodger, dasher, lane_set))
 	var counter_at: int = int(ability_dodge.get("counter_at", 0))
 	if counter_at > 0 and dodger.trait_total("reflexes") >= counter_at:
 		events.append_array(_dash_counter(dodger, dasher))
 	return events
 
 
-## R22 1-hex sidestep: the first unoccupied hex in the fixed HEX_NEIGHBORS order
-## that strictly INCREASES distance from the dasher. No free improving hex ->
-## the dodge still negates, no displacement.
-func _dash_sidestep(dodger: CombatantState, dasher: CombatantState) -> Array[Dictionary]:
+## R22 1-hex sidestep, upgraded by decision #31: dodging a charge moves the
+## dodger OFF THE LANE specifically — the first unoccupied hex in the fixed
+## HEX_NEIGHBORS order that is NOT on the committed charge lane (the same
+## deterministic first-fit rule as before, aimed at the real geometry). When
+## the action carries no lane (an authored dodge block on a non-line action)
+## the pre-#31 rule stands: the first free hex strictly INCREASING distance
+## from the attacker. No qualifying free hex -> the dodge still negates, no
+## displacement.
+func _dash_sidestep(dodger: CombatantState, dasher: CombatantState, lane_set: Dictionary) -> Array[Dictionary]:
 	var occupied: Dictionary = {}
 	var ids: Array = combatants.keys()
 	ids.sort()
@@ -1609,7 +1957,10 @@ func _dash_sidestep(dodger: CombatantState, dasher: CombatantState) -> Array[Dic
 		var candidate: Vector2i = from + neighbor
 		if occupied.has(candidate):
 			continue
-		if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
+		if lane_set.is_empty():
+			if CombatantState.hex_distance(candidate, dasher.position) <= from_d:
+				continue
+		elif lane_set.has(candidate):
 			continue
 		dodger.position = candidate
 		return [{
@@ -1643,6 +1994,153 @@ func _dash_counter(dodger: CombatantState, dasher: CombatantState) -> Array[Dict
 	events.append_array(_strike_round(dasher, part_key, condition_id, int(damage.get("amount", 0)),
 		{"kind": "attack", "key": "dash_counter", "counter": true}, dodger))
 	return events
+
+
+## Wave 2b — the dash's authored "knock aside", now real: a target the charge
+## CONNECTED with is displaced to the first free fixed-order neighbor OFF the
+## committed lane (the involuntary sibling of the R22 sidestep's first-fit
+## rule, decision #31 geometry) and knocked PRONE (the "aside" cost). No free
+## off-lane neighbor: no displacement, still prone. A victim FELLED by the
+## dash is down already (dead, not prone) — no knock-aside on a corpse. The
+## charge rule itself is unchanged (wave 2a): the dasher stopped
+## adjacent-before the target's SNAPSHOT hex, so after the shove it may
+## legally stand adjacent to a now-empty hex — that is the documented
+## interaction, not a bug.
+func _dash_knock_aside(target: CombatantState, dasher: CombatantState, lane_set: Dictionary) -> Array[Dictionary]:
+	if not target.alive or target.removed_from_play:
+		return []
+	var events: Array[Dictionary] = []
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == target.id or not other.alive or other.removed_from_play:
+			continue
+		occupied[other.position] = true
+	var from: Vector2i = target.position
+	var to: Vector2i = from
+	var displaced: bool = false
+	for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
+		var candidate: Vector2i = from + neighbor
+		if occupied.has(candidate) or lane_set.has(candidate):
+			continue
+		to = candidate
+		displaced = true
+		break
+	if displaced:
+		target.position = to
+	events.append({
+		"type": "knocked_aside", "combatant": target.id, "by": dasher.id,
+		"from": [from.x, from.y], "to": [to.x, to.y], "displaced": displaced,
+	})
+	if not bool(target.statuses.get("prone", false)):
+		target.statuses["prone"] = true
+		events.append({"type": "knocked_prone", "combatant": target.id,
+			"source": dasher.id, "skill": "dash"})
+		events.append_array(_end_dance(target, "knocked_prone"))
+	return events
+
+
+# ------------------------------------------------------ death spin beats (wave 2b)
+
+## True when a chew/spin beat's preconditions broke between decide and
+## resolution: no live sequence, wrong beat, or the hold is gone (victim
+## dead/removed, released, escaped). LIVE state, mirroring
+## _resolve_grapple_suffocate's grip check.
+func _death_spin_beat_stale(actor: CombatantState, action: Dictionary) -> bool:
+	var spin: Dictionary = ai.death_spins.get(actor.id, {})
+	if spin.is_empty():
+		return true
+	var expected_beat: int = 1 if String(action.get("death_spin_beat", "")) == "chew" else 2
+	if int(spin.get("beat", 0)) != expected_beat:
+		return true
+	var victim: CombatantState = combatants.get(String(spin.get("victim", "")))
+	return victim == null or not victim.alive or victim.removed_from_play \
+			or actor.grappling != victim.id or victim.grappled_by != actor.id
+
+
+## Advances/finishes a REALLY-resolved death-spin beat (the marker hook after
+## the strike rounds — a feinted/stuttered beat never reaches this, so the
+## sequence retries instead of skipping). CHEW: beat 1 -> 2, event. SPIN: the
+## victim is FLUNG down the spin lane (prone on landing when it survives), the
+## hold ends, the sequence clears, death_spin_kill closes the show. The strike
+## itself already ran the honest R14 gate; a kill in it auto-released via
+## _release_grapples, which is why the release here is conditional.
+func _apply_death_spin_beat(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	var beat_kind := String(action.get("death_spin_beat", ""))
+	if beat_kind == "":
+		return []
+	var spin: Dictionary = ai.death_spins.get(actor.id, {})
+	if spin.is_empty():
+		return []
+	var events: Array[Dictionary] = []
+	var victim_id := String(spin.get("victim", ""))
+	var victim: CombatantState = combatants.get(victim_id)
+	if beat_kind == "chew" and int(spin.get("beat", 0)) == 1:
+		spin["beat"] = 2
+		var arms: Array = []
+		for t: Variant in action.get("targets", []) as Array:
+			arms.append(String((t as Dictionary).get("part", "")))
+		events.append({
+			"type": "death_spin_chew", "combatant": actor.id, "victim": victim_id,
+			"arms": arms,
+		})
+	elif beat_kind == "spin" and int(spin.get("beat", 0)) == 2:
+		ai.death_spins.erase(actor.id)
+		var flung_from: Vector2i = victim.position if victim != null else Vector2i.ZERO
+		var fling: Dictionary = {"to": flung_from, "hexes": 0}
+		var prone: bool = false
+		if victim != null:
+			fling = _death_spin_fling_target(actor, victim)
+			victim.position = fling["to"]
+			if victim.alive and not victim.removed_from_play \
+					and not bool(victim.statuses.get("prone", false)):
+				victim.statuses["prone"] = true
+				prone = true
+				events.append({"type": "knocked_prone", "combatant": victim.id,
+					"source": actor.id, "skill": "death_spin"})
+				events.append_array(_end_dance(victim, "knocked_prone"))
+			if actor.grappling == victim_id and victim.grappled_by == actor.id:
+				actor.grappling = ""
+				victim.grappled_by = ""
+				events.append({"type": "grapple_ended", "grappler": actor.id,
+					"target": victim_id, "reason": "death_spin_finished"})
+		var to: Vector2i = fling["to"]
+		events.append({
+			"type": "death_spin_kill", "combatant": actor.id, "victim": victim_id,
+			"flung_from": [flung_from.x, flung_from.y], "flung_to": [to.x, to.y],
+			"hexes_flung": int(fling["hexes"]), "prone": prone,
+		})
+	return events
+
+
+## The beat-3 fling geometry: the spin lane is the HexGeometry ray from the
+## boss THROUGH the victim; the victim flies SPIN_FLING_HEXES hexes down it,
+## stopping before the first hex occupied by another living, in-play
+## combatant. Deterministic, rng-free. {"to": Vector2i, "hexes": int} —
+## hexes 0 means nowhere to fly (the victim drops on the spot).
+func _death_spin_fling_target(boss: CombatantState, victim: CombatantState) -> Dictionary:
+	var start: Vector2i = victim.position
+	var span: int = HexGeometry.distance(boss.position, start)
+	var lane: Array[Vector2i] = HexGeometry.line_extended(boss.position, start, span + EnemyAI.SPIN_FLING_HEXES)
+	var start_idx: int = lane.find(start)
+	if start_idx < 0:
+		return {"to": start, "hexes": 0}
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == victim.id or not other.alive or other.removed_from_play:
+			continue
+		occupied[other.position] = true
+	var final_idx: int = start_idx
+	for k: int in range(start_idx + 1, mini(lane.size(), start_idx + 1 + EnemyAI.SPIN_FLING_HEXES)):
+		if occupied.has(lane[k]):
+			break
+		final_idx = k
+	return {"to": lane[final_idx], "hexes": final_idx - start_idx}
 
 
 ## First damage entry of an ability (the v1 multi-damage deferral, R11 #16).
@@ -1684,9 +2182,30 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 	if target == null or not target.alive or actor.grappling != "":
 		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "invalid_target"})
 		return events
+	# Wave 2b: re-verify the death-spin grabbing hand at resolution (it may have
+	# been disabled between declare and resolve — same live re-check family as
+	# reload's needs_both_hands). No hold lands on a dead hand.
+	var is_death_spin: bool = bool(action.get("death_spin", false))
+	var grab_part := String(action.get("grab_part", ""))
+	if is_death_spin and (grab_part == "" or not actor.part_usable(grab_part, clock.tick)):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple", "reason": "grab_hand_disabled"})
+		return events
 	actor.grappling = target.id
 	target.grappled_by = actor.id
 	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id})
+	# Wave 2b: a death-spin grab ARMS the 3-beat sequence at the moment the hold
+	# actually lands (beat 1 done — chew next). The dodge model does NOT apply
+	# to the grab (an adjacent cost-1 instant, R2); the counterplay is the
+	# authored release-on-5 / R9 escape chain, not a dodge roll.
+	if is_death_spin:
+		ai.death_spins[actor.id] = {
+			"beat": 1, "victim": target.id, "part": grab_part,
+			"started_tick": clock.tick,
+		}
+		events.append({
+			"type": "death_spin_grab", "combatant": actor.id, "victim": target.id,
+			"part": grab_part, "release_threshold": EnemyAI.RELEASE_HIT_THRESHOLD,
+		})
 	# R9: automatic when grappler Physique >= target's; otherwise the attempt
 	# is Forced Action – Body — always allowed, consequences apply, hold lands.
 	if actor.trait_total("physique") < target.trait_total("physique"):
@@ -1716,7 +2235,7 @@ func _resolve_grapple_suffocate(actor: CombatantState, action: Dictionary) -> Ar
 		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple_suffocate", "reason": "grip_lost"})
 		return events
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "grapple_suffocate", "result": "ok"})
-	events.append_array(cond.apply(target, "torso", "suffocation", clock.tick, {"source": "attack"}))
+	events.append_array(cond.apply(target, "torso", "suffocation", clock.tick, {"source": "attack", "attacker": actor.id}))
 	return events
 
 

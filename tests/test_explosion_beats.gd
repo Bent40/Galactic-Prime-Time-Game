@@ -205,8 +205,15 @@ func test_boss_phase_advances_and_the_boss_attacks_next_moment() -> void:
 	advance(sim, 1)
 	var next_events: Array[Dictionary] = ai_decide(sim, "boss")
 	var decision: Dictionary = assert_event(next_events, "ai_decision", "the boss acts again")
+	# Wave 2b nuance: the GRAB would outrank the dash for this adjacent lone
+	# target — but enter_valve_one's canonical burst breach landed net 8 on the
+	# RIGHT HAND (8 HP -> 0, disabled), and that is the boss's only grab hand
+	# (the left is the flamethrower arm). Killing the hand kills the death-spin
+	# threat — emergent counterplay, R11 #19 — so the dash stays the honest pick.
+	assert_false(boss_state(sim).part_usable("right_hand", sim.clock.tick),
+		"the breach staging disabled the grab hand")
 	assert_eq(String(decision.get("choice", "")), "attack", "normal fight behavior resumed")
-	assert_eq(String(decision.get("ability", "")), "dash", "one target in reach -> the line charge")
+	assert_eq(String(decision.get("ability", "")), "dash", "no grab hand -> the line charge, as before")
 
 
 func test_hp_gate_stays_quiet_mid_beat_then_reengages() -> void:
@@ -283,6 +290,8 @@ func test_no_more_phase_not_implemented_waits() -> void:
 	assert_event(events, "explosion_blast", "the valve actually fired")
 	var attacked: bool = false
 	for event: Dictionary in events_of(events, "ai_decision"):
-		if String(event.get("choice", "")) == "attack":
+		# Wave 2b: the death-spin beats (grab/chew/spin) are fighting too — an
+		# adjacent survivor is grabbed rather than dashed post-valve.
+		if ["attack", "grab", "chew", "spin"].has(String(event.get("choice", ""))):
 			attacked = true
 	assert_true(attacked, "the boss fights on after the valve")

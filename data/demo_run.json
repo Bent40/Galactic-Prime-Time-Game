@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "note": "PROVISIONAL — CANONICAL 2-ENCOUNTER SLICE RUN (KAN-4 run engine, decision log #31). The authored demo run the RunState engine consumes verbatim: encounter 1 is the tutorial-floor brood skirmish where the party meets Sasha (staged as a party-side ally NPC — decision #31's staging default: the recruit FIGHTS the offer encounter, and joining AS-IS carries that damage), encounter 2 is the Incine-Dile den with the (possibly) grown party. RECRUIT PICK — Sasha 'The Tell' over Nikita, three reasons: (1) party gap — Imani tanks on Physique 5, Dario tricks on Reflexes/Charm 5/5, nobody fields Mind; Sasha's Mind 5 is the only spread that adds a new axis to the demo pair (her own file's stated role). (2) Kit safety vs the slice boss — the Incine-Dile is Mind 1, so her feints can never be read (R24), while Nikita's bruiser kit duplicates Imani's Force role. (3) Frame fit — a casino floor manager who counted cards on her own abductors is the Cosmic Casino slice's most on-theme first recruit. Nikita stays reserved for a later den. All numbers PLACEHOLDER (R14); every spec below is copied VERBATIM from its loadout source and drift-gated by tests/test_run_state.gd (test_demo_run_data_contract).",
+    "schema": "run: { key, name, run_seed (int — the canonical demo seed; callers may override), party [full add_combatant specs — source data/demo_loadouts.json, resolved via the documented loadout-id rule (combat id = loadout key's first '_'-token; race id -> races.json key)], encounters [encounter defs per simulation/run_state.gd: { key, kind: 'combat', enemies [{enemy_key (data/enemies.json), id?, name?, count?, position?/positions?}], allies [{spec: full add_combatant spec}] (party-side NPCs, NOT roster), recruit_offer?: recruit loadout key (data/recruit_loadouts.json), party_positions?: {id: [q, r]} }] }"
+  },
+  "run": {
+    "key": "demo_slice_run",
+    "name": "Cosmic Casino — Floor One (demo slice)",
+    "run_seed": 47,
+    "party": [
+      {
+        "id": "imani",
+        "name": "Imani",
+        "loadout_key": "imani_the_door",
+        "race": "human",
+        "team": "party",
+        "position": [1, 0],
+        "traits": { "physique": 5, "reflexes": 2, "mind": 4, "charm": 3 },
+        "skills": [
+          { "id": 4, "key": "strong_strike", "level": 2 },
+          { "id": 23, "key": "overhead_slam", "level": 1, "cap": 6, "cap_note": "R16 skill-trade" },
+          { "id": 8, "key": "brace", "level": 2 }
+        ],
+        "camera_call_stacks": 1
+      },
+      {
+        "id": "dario",
+        "name": "Dario",
+        "loadout_key": "dario_encore",
+        "race": "human",
+        "team": "party",
+        "position": [0, 1],
+        "traits": { "physique": 2, "reflexes": 5, "mind": 2, "charm": 5 },
+        "skills": [
+          { "id": 26, "key": "feint", "level": 3, "cap": 6, "cap_note": "R16 skill-trade" },
+          { "id": 27, "key": "pressure_strike", "level": 1 },
+          { "id": 33, "key": "dance", "level": 2 }
+        ],
+        "camera_call_stacks": 1,
+        "bit": { "key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point." }
+      }
+    ],
+    "encounters": [
+      {
+        "key": "brood_landing",
+        "kind": "combat",
+        "name": "Brood Landing (tutorial floor)",
+        "enemies": [
+          {
+            "enemy_key": "roach_dog",
+            "name": "Roach-dog",
+            "count": 3,
+            "positions": [[2, 0], [2, -1], [-1, 1]]
+          }
+        ],
+        "allies": [
+          {
+            "spec": {
+              "id": "sasha",
+              "name": "Sasha \"The Tell\" Marchenko",
+              "loadout_key": "sasha_the_tell",
+              "race": "human",
+              "team": "party",
+              "position": [1, -1],
+              "traits": { "physique": 3, "reflexes": 4, "mind": 5, "charm": 2 },
+              "skills": [
+                { "id": 26, "key": "feint", "level": 2 },
+                { "id": 8, "key": "brace", "level": 2 },
+                { "id": 4, "key": "strong_strike", "level": 1 }
+              ],
+              "camera_call_stacks": 1
+            }
+          }
+        ],
+        "recruit_offer": "sasha_the_tell"
+      },
+      {
+        "key": "incinedile_den",
+        "kind": "combat",
+        "name": "The Incine-Dile Den",
+        "enemies": [
+          {
+            "enemy_key": "incinedile",
+            "id": "boss",
+            "name": "Incine-Dile",
+            "position": [0, 0]
+          }
+        ],
+        "party_positions": {
+          "imani": [1, 0],
+          "dario": [0, 1],
+          "sasha": [1, -1]
+        }
+      }
+    ]
+  }
+}

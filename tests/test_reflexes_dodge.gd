@@ -7,8 +7,9 @@ extends SimTestBase
 ## boss's aimed-round dodge (boss_traits.dodge_threshold, retuned 4 -> 7) and
 ## the Dash counters ladder (the dash ability's "dodge" block — threshold 7,
 ## counter_at 9: auto-dodge + 1-hex sidestep at 7+, + counterattack at 9+; the
-## sidestep rides ANY successful dash dodge). Prone joins Helpless/Exposed as
-## an ineligible window (the slam punish).
+## sidestep rides ANY successful dash dodge and, since decision #31, moves the
+## dodger OFF the committed charge lane specifically). Prone joins
+## Helpless/Exposed as an ineligible window (the slam punish).
 ##
 ## RNG-consumption pins use a TWIN RandomNumberGenerator seeded to the live
 ## stream's state: exactly-one-draw and zero-draw claims are proven against
@@ -26,6 +27,16 @@ func add_boss(sim: CombatSim, id: String = "boss", overrides: Dictionary = {}) -
 
 func ai_decide(sim: CombatSim, id: String) -> Array[Dictionary]:
 	return sim.apply_command({"type": "ai_decide", "actor": id})
+
+
+## Wave 2b: the death-spin GRAB now outranks the dash for an ADJACENT lone
+## target (R11 #19 decide order). These tests pin the DASH LADDER itself, so
+## the boss is staged with a dash-only phase list — the same behavior-list
+## staging idiom as test_incinedile's phase-filter test — keeping every
+## position-exact ladder pin on its original geometry.
+func dash_only_phases() -> Array:
+	return [{"phase_number": 1, "name": "T1", "trigger_condition": "staging",
+		"behavior": {"abilities": ["flamethrower", "dash"]}}]
 
 
 func boss_state(sim: CombatSim, id: String = "boss") -> CombatantState:
@@ -196,7 +207,7 @@ func test_dash_vs_reflexes_seven_auto_dodges_and_sidesteps() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dodger", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 3, "reflexes": 7, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var events: Array[Dictionary] = ai_decide(sim, "boss")
 	assert_eq(String(first_event(events, "ai_decision").get("ability", "")), "dash", "lone target -> dash")
 	var state_before: int = sim.ai.ai_rng.state
@@ -207,11 +218,16 @@ func test_dash_vs_reflexes_seven_auto_dodges_and_sidesteps() -> void:
 	assert_eq(sim.ai.ai_rng.state, state_before, "the auto-dodge consumed no rng")
 	var sidestep: Dictionary = assert_event(resolved, "dash_sidestepped", "the sidestep rides the dodge")
 	assert_eq(sidestep.get("from", []), [1, 0], "from the pre-dodge hex")
-	assert_eq(sidestep.get("to", []), [2, 0], "first free HEX_NEIGHBORS hex that increases distance")
+	# Decision #31: dodging a CHARGE means leaving its LANE — the dash's
+	# committed lane runs (0,0)..(6,0), so the old pick (2,0) is ON it; the
+	# first free HEX_NEIGHBORS hex OFF the lane is (2,-1) ((1,0)+(1,-1)).
+	assert_eq(sidestep.get("to", []), [2, -1], "first free HEX_NEIGHBORS hex OFF the charge lane")
 	var dodger: CombatantState = sim.combatants["dodger"]
-	assert_eq([dodger.position.x, dodger.position.y], [2, 0], "position actually changed by 1 hex")
+	assert_eq([dodger.position.x, dodger.position.y], [2, -1], "position actually changed by 1 hex")
+	assert_false(HexGeometry.to_set(HexGeometry.line_extended(Vector2i(0, 0), Vector2i(1, 0), 6))
+		.has(dodger.position), "the dodger is genuinely off the lane")
 	assert_eq(CombatantState.hex_distance(dodger.position, boss_state(sim).position), 2,
-		"distance from the dasher increased (1 -> 2)")
+		"distance from the dasher still increased (1 -> 2)")
 	assert_no_event(resolved, "dash_countered", "Reflexes 7 < 9: no counterattack")
 	assert_no_event(resolved, "damage_applied", "the dodge negates the dash entirely")
 	assert_no_event(resolved, "condition_applied", "no crushed rider on a dodged dash")
@@ -221,7 +237,7 @@ func test_dash_vs_reflexes_nine_counters_the_dasher() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dodger", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 8, "reflexes": 9, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var state_before: int = sim.ai.ai_rng.state
 	ai_decide(sim, "boss")
 	var resolved: Array[Dictionary] = advance(sim, 3)
@@ -254,7 +270,7 @@ func test_dash_vs_imani_reflexes_two_always_connects() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "imani", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var state_before: int = sim.ai.ai_rng.state
 	ai_decide(sim, "boss")
 	var resolved: Array[Dictionary] = advance(sim, 3)
@@ -272,7 +288,7 @@ func test_dash_windup_is_visible_before_it_resolves() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [1, 0],
 		"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	var events: Array[Dictionary] = ai_decide(sim, "boss")
 	var declared: Dictionary = assert_event(events, "action_declared", "the dash declares")
 	assert_eq(int(declared.get("cost", 0)), 2, "cost 2")
@@ -312,7 +328,7 @@ func _staged_fight(sim_seed: int) -> CombatSim:
 		"traits": {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}})
 	add_human(sim, "far", {"team": "party", "position": [12, 0],
 		"traits": {"physique": 3, "reflexes": 2, "mind": 3, "charm": 3}})
-	add_boss(sim)
+	add_boss(sim, "boss", {"phases": dash_only_phases()})
 	return sim
 
 

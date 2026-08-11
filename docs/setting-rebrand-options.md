@@ -35,7 +35,7 @@ realms get selected as hosts; champions are wagered on by a divine audience.
 | Loot boxes / tiers | Jackpots & comps; Lounge box-opening = the prize floor |
 | The Lounge (corporate base) | **The comp suite** — the house always comps your room; surveillance = the house watching its assets |
 | Boss/Upgrade tokens | House markers & chips |
-| Tags (TVTropes dependency — flagged debt) | **EPITHETS** — gods grant epithets ("Sasha the Nine-Lived"); mythology-native, self-owned, kills the TVTropes debt |
+| Tags (TVTropes dependency — flagged debt) | ~~**EPITHETS** — gods grant epithets ("Sasha the Nine-Lived"); mythology-native, self-owned, kills the TVTropes debt~~ **SUPERSEDED 2026-08-10 (D-24)** — overturned the SAME DAY by the Q2 ruling at `design/patron-gods.md:126-150`: tags and epithets are **two coexisting systems, not a rename** (tags = performable crowd labels; epithets = earned myth-recreation). A straight rename would have destroyed the spine at `story-canon.md:83-88`. |
 | Time skips between floors | The framework fast-forwards the host realm between acts — gods skip the boring parts |
 | Ascension (retire → patron) | **The pipeline to godhood** — see the ending, below |
 | Cross-party patronage (Stage 2 async) | Cross-party **wagering** — other players' patrons bet on your run |
@@ -152,8 +152,13 @@ axis, and changes one conclusion:
    the story from the game. We only take the game, not the full story." Marcus/Viola/#3
    are examples only. (Whether the game's table sits in the same Earth special or its own
    is now a flavor call, not a coupling risk — default: unspecified until it matters.)
-3. ~~**Does the live TTRPG campaign re-skin too?**~~ **RULED 2026-07-16: RE-SKIN TO
-   CASINO** — the live table adopts the casino frame alongside the game.
+3. ~~**Does the live TTRPG campaign re-skin too?**~~ ~~**RULED 2026-07-16: RE-SKIN TO
+   CASINO** — the live table adopts the casino frame alongside the game.~~
+   **SUPERSEDED 2026-08-10 by D-V2 (D-21): v1 is FROZEN; v2 bends.** The live TTRPG table
+   does **NOT** re-skin — it keeps its original alien / The Corporation™ setting, and
+   everything Cosmic-Casino-flavored stays **video-game-only**. This resolves the
+   long-standing contradiction in favour of `ttrpg-update-plan.md:5-9`. See
+   `versions/v2-decisions-round2.md` (Part 10 §D) and `versions/v1-v2-fork-spec.md` §1.
 4. ~~**Momus?**~~ **RULED 2026-07-16: MOMUS, shared host** across the novel and the game.
 5. ~~**The title.**~~ **RULED 2026-07-16: keep "Galactic Prime Time" for now** (it
    survives diegetically as the show's in-world name; revisit only if a rename earns it).
