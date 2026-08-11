@@ -1,6 +1,6 @@
 # Floors 1–3 — The Buried God (v2 campaign arc)
 
-**Status:** RULED by the owner 2026-08-10 · **v2 (Cosmic Casino) only** — v1 is frozen.
+**Status:** **DESIGN COMPLETE** — fully ruled by the owner 2026-08-10 · **v2 (Cosmic Casino) only** — v1 is frozen.
 Governing rulings: [`../versions/v2-decisions-round2.md`](../versions/v2-decisions-round2.md).
 Set question (pre-existing canon, `../story-canon.md:91-93`): ***"Will you cure what's
 corrupted, and at what cost?"***
@@ -580,10 +580,14 @@ century of a capital's devotion has been landing on seven dead queens who never 
 | **Q-60** | Does the queen know she built over the **tongue** rather than the body? (§13.3) | Either works; (a) is more tragic, (b) is more dangerous |
 | **Q-61** | Adopt the **decoy-graves** explanation for the hundred-year search — Bifrons's *"seeming Candles"* and Bune's grave-moving, hired by Beelzebub? (§13.3) | Yes — free, and it gives F2 an author |
 | **Q-62** | Can Cinnabrus **hear** without speaking? | RULED — hear only |
-| **Q-63** | Adopt **hunting Beelzebub's believers** as a running floors-4–9 thread? (§14.3) | Yes — it gives six floor-sets a spine and weaponises the divinity economy |
-| **Q-64** | Does the city's reverence for seven fictional queens mean **Vermilia gains nothing** from ruling it? (§14.5) | Yes — it is why a queen is still poor, and why she needs her god back |
-| **Q-65** | Confirm **Vermilia**, or take Sindra / Rubedine? (§14.5) | **Vermilia** |
-| **Q-66** | Adopt the **seven queens / empty crypt** proposal? (§14.5) | Yes — it solves the ageing problem and puts her funerals over his tongue |
+| **Q-63** | RULED — **yes.** Hunting Beelzebub's believers is the running floors-4–9 thread |
+| **Q-64** | RULED — **correct.** The city's reverence lands on seven queens who never existed; Vermilia gains nothing from ruling it |
+| **Q-65** | RULED — **Vermilia** |
+| **Q-66** | RULED — **yes.** Seven queens, mother to daughter, all her; the crypt above the tongue is full of her empty coffins |
+
+> **The F1–F3 set is now fully ruled.** Every question raised against it has an owner
+> decision. What remains is authoring — encounters, the F2 decoy-grave puzzle, the three
+> route walkthroughs, Vermilia's court, and stat blocks — not design.
 | **Q-56** | Does the queen have a **name**? | Draft on request |
 | **Q-57** | If the party gives her Beelzebub's name, can she **act** on it in-campaign, or is it a seed for a later floor-set? | Seed — a demon queen moving on a roster god is a floors-4–9 event |
 | **Q-58** | Is **Nullrot** loyal to Cinnabrus, or to the queen? | To Cinnabrus — which puts it at odds with her when their methods diverge |
