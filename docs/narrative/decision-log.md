@@ -23,4 +23,10 @@
 6. **Nothing OPEN resolved:** title, host, timer, player-OC death, production cast,
    convergence matrix, Medium forks/brand breach, Nikita's key scenes, finale staging,
    TTRPG re-skin — all carried with owners, matching the GDD's OPEN list.
+   **↳ Annotation (D-22 reconciliation, 2026-08-10) — records the state at the 2026-07-16
+   run only:** **title kept for now** · **host = Momus, shared** · **timer = a *season*
+   mechanic, not cosmology (Option E REJECTED — the gods are NOT starving)** —
+   `../setting-rebrand-options.md:157-164` · **TTRPG re-skin SUPERSEDED 2026-08-10 by
+   D-V2 — v1 is FROZEN and does NOT re-skin** (`../versions/v2-decisions-round2.md`;
+   `../ttrpg-update-plan.md:5-9`). The rest stand open.
 7. **needs_narrative flag from the GDD run: satisfied** by this document.

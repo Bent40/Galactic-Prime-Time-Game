@@ -242,7 +242,8 @@ Per-run god stats: **fixed cores + small seeded jitter** (RULED, Q3).
   shaping.)
 - **Q7** — Forsaken = **hardcore opt-in**: the god offers it randomly for higher stakes,
   never on a first run, from the 2nd run onwards; manual trigger after winning with a
-  character once ⟨PROVISIONAL⟩; never mid-campaign.
+  character once ⟨PROVISIONAL⟩ **— CONFIRMED (owner 2026-07-16;
+  `../gdd/decision-log.md:31-32`; D-22 reconciliation 2026-08-10)**; never mid-campaign.
 - **Q8** — Buffs = conditional blessings AND loot/affix roll quality; temporary /
   continuous-on-a-condition / sometimes permanent. Non-patron affection → gift chance +
   buy-out interest.
