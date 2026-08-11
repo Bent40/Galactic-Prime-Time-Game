@@ -5,9 +5,20 @@
 
 ## Done
 
-- **Suite: 448 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
-  gate (seeds · import · suite · slice smoke · balance WIN) at tip `4d26a70`; branch
-  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep.
+- **Suite: 511 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+  gate (seeds · import · suite · slice smoke · balance WIN); branch
+  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep at `9af6d09`.
+- **Wave 3 — the whole unblocked backlog (2026-07-25):** pack synergy (R15 enemy
+  combos, personality-gated opportunistic linking — two blocked roach bites merge
+  into a wound) + serialized readable ai_stance (the aura_reading substrate);
+  the G3 keyword tree (49 ruled entries, narrow/broad from book §4.5) + Gemstone
+  mutation machinery (skill_forge.gd; Iron Stance recipe canonical, effect
+  data-only pending a retarget-guard archetype; pricing = KAN-7); the WAR HOUND
+  (compendium §4.6, first pack-hunting Elite, PROVISIONAL) + the 3-encounter demo
+  run with the hype chain live (40%/60% openings pinned); KAN-5 arenas
+  (arena.gd — opt-in bounds/walls/trash-cans respected by every movement path;
+  dash wall bounces via the exact cube edge mirror; can explosions
+  environment-attributed; the last two R11 #20 inert strings REAL; R28).
 - **Sign-off batch RULED + implemented (decision #32, 2026-07-25):** R26 undodgable
   attacks (data-driven, every dodge path skipped rng-free, transparency mandatory,
   valve blasts first application); hype chains (40/60/80/100% retention, serialized

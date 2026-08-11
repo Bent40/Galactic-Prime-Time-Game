@@ -24,17 +24,17 @@ directly to `main` — fetch + merge origin/main before pushing.
    on Pressure Strike (stands as-is); my two PROVISIONAL story readings —
    Sasha "Little shadow" may_reoffer / Nikita "The lonely" gone_for_run.
 
-### ▶️ Unblocked engine backlog (in rough priority)
-- Pack synergy (R15 enemy combos) and AI stances for `aura_reading`.
-- A second authored enemy/encounter from the compendium (the demo_run mob fight
-  reuses roach templates).
-- Keyword tree (G3, book §4.5) + Gemstone mutations (Iron Stance) in sim skill
-  data — content grows past the 6 implemented skills.
-- KAN-5 arenas: walls/bounds + environment objects (un-inerts "dash bounces" and
-  "trash cans pop"), rooms/dungeon flow, stealth/detection (R20).
-- KAN-7: threshold-dice upgrade economy (ruled, unpriced), R6 XP, patron-roster
-  migration, cap enforcement (creation's R16 cap annotation has no runtime
-  consumer yet).
+### ▶️ Backlog status (wave 3 DONE 2026-07-25 — all four landed at `9af6d09`)
+- ~~Pack synergy + AI stances~~ · ~~keyword tree + mutations~~ · ~~second enemy
+  (war hound) + 3-encounter run~~ · ~~KAN-5 arenas (bounces + can pops real)~~.
+- **Still open, KAN-5 proper:** rooms/dungeon FLOW beyond single-combat arenas
+  (corridors/doors/the hound maze-funnel), real AI pathfinding (greedy step
+  strands on concave walls — honest limitation), stealth/detection/cover (R20),
+  owner-authored room layouts (all wall/can positions PLACEHOLDER).
+- **Content pass:** the ~37 unimplemented skills (incl. aura_reading on the new
+  stance substrate, Intercept, Iron Stance's retarget-guard archetype).
+- **KAN-7 (parked — needs owner pricing):** threshold-dice upgrade economy,
+  Gemstone Bronze pricing, R6 XP, patron-roster migration, cap enforcement.
 
 ### 🧰 process notes
 - Every wave: worktree → subagent ("do the work yourself") → main-agent verify
