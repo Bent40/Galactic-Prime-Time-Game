@@ -299,6 +299,13 @@ func view_combatants() -> Array[Dictionary]:
 			# free move, the first inventory use and 0-cost reactions all consume
 			# it. Straight off the state so UIs can gate 0-cost entries honestly.
 			"free_action_used": c.free_action_used,
+			# R20 (ADDITIVE, wave 4c): true while this combatant is stealthed —
+			# concealed from HOSTILE targeting (AI exclusion + target_stealthed
+			# rejections), never from the broadcast: the cameras are omniscient
+			# (R20: stealth does not suppress hype — what you DO with it does),
+			# so the view carries the flag and presentation decides how a
+			# hidden contestant reads on screen.
+			"stealthed": c.stealthed,
 			# R23 (ADDITIVE): an AI combatant's antagonism map (opponent id ->
 			# grudge score, plain copy) so the HUD/inspector can show who the
 			# boss hates. {} for contestants — they never hold grudges here.

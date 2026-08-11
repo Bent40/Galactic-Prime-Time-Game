@@ -435,7 +435,9 @@ func apply_shock(c: CombatantState, source_tier: int, tick: int, part: String = 
 	events.append({"type": "shock_changed", "combatant": c.id, "from_tier": old, "to_tier": new_shock})
 	# --- Tier effects, each emitted only when its threshold is newly crossed ---
 	if new_shock >= 1 and old < 1:
-		# TODO: R20 stealth/noise consumes shock_shout to break the combatant's stealth
+		# R20 (wave 4c): the noise seed is WIRED — CombatSim._stealth_checks
+		# consumes shock_shout in _post and breaks the SHOUTER's stealth
+		# (stealth_broken reason "shout"). No range: a shout is heard.
 		events.append({"type": "shock_shout", "combatant": c.id})
 	if new_shock >= 2 and old < 2:
 		c.shock_stutter_pending = true

@@ -133,6 +133,15 @@ var armed_primes: Dictionary = {}
 var charges: Dictionary = {}
 
 # Status effects / forced-action fallout
+## R20 stealth (KAN-5 wave 4c): true while this combatant is STEALTHED —
+## concealed from the opposing team's information surface (EnemyAI._opponents
+## excludes it; hostile declares/reactions/grapples reject target_stealthed).
+## Default false = detected (the opt-in compat pin). Entered via the sim's
+## `stealth` command; broken by sight (Stealth.sees, swept every command), the
+## Shock-T1 Shout (R13 noise seed), going down, or a voluntary reveal.
+## Serialized ONLY while true, so a stealth-free fight's to_dict() — and every
+## hash over it — stays byte-identical to the pre-stealth engine.
+var stealthed: bool = false
 var exposed_until_tick: int = 0
 var helpless_until_tick: int = 0
 var unarmed_until_tick: int = 0
@@ -493,7 +502,7 @@ func record_hit(combo_id: String, amount: int) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"id": id,
 		"display_name": display_name,
 		"team": team,
@@ -555,6 +564,12 @@ func to_dict() -> Dictionary:
 		"grappled_by": grappled_by,
 		"bleed_out": bleed_out.duplicate(true),
 	}
+	# R20 compat pin (wave 4c, the arena-key pattern): "stealthed" exists ONLY
+	# while true — a stealth-free combatant serializes byte-identically to the
+	# pre-stealth engine (state_hash covered either way).
+	if stealthed:
+		out["stealthed"] = true
+	return out
 
 
 static func from_dict(data: Dictionary) -> CombatantState:
@@ -625,4 +640,6 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.grappling = String(data.get("grappling", ""))
 	c.grappled_by = String(data.get("grappled_by", ""))
 	c.bleed_out = (data.get("bleed_out", {}) as Dictionary).duplicate(true)
+	# Pre-stealth saves lack the key: false = detected, the legacy default.
+	c.stealthed = bool(data.get("stealthed", false))
 	return c
