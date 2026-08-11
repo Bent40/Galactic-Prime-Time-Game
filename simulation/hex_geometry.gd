@@ -59,9 +59,13 @@ extends RefCounted
 ## CENTER INCLUDED — the exact membership rule the explosion beat has always
 ## used (it excludes the boss by id, not by hex).
 ##
-## ARENA BOUNDS: the sim has NO bounds concept yet — data/enemies.json's
-## arena_hexes is authored data the engine does not read. All shapes here are
-## deliberately unbounded; bounds arrive with the KAN-5 arena work.
+## ARENA BOUNDS (KAN-5 wave 3d): bounds now EXIST — but not here. The shapes
+## in this file stay deliberately unbounded, pure primitives; the OPT-IN arena
+## (simulation/arena.gd — bounds, walls, trash cans, the dash-bounce
+## reflection walk) COMPOSES them and is consulted by the movement/lane paths
+## when a CombatSim carries one. No arena = every path behaves exactly as
+## before. data/enemies.json's arena_hexes stays the per-enemy design record;
+## the engine reads the encounter def's "arena" block (data/demo_run.json).
 
 ## The canonical fixed neighbor order (E, NE, NW, W, SW, SE) — kept equal to
 ## EnemyAI.HEX_NEIGHBORS by test (the two constants must never drift).

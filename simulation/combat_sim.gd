@@ -28,6 +28,15 @@ extends RefCounted
 ##   {"type": "prime", "actor", "key"}                          arm a PREP-CHANNEL prime (R3)
 ##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
+##   {"type": "set_arena", "arena": {config}}                  OPT-IN arena (KAN-5 wave 3d)
+##       Bounds/walls/objects per simulation/arena.gd's config shape. Absent
+##       arena = today's unbounded behavior, with a byte-identical to_dict()
+##       (the "arena" key is only present once set — the legacy compat pin).
+##       Issued by GameController._stage_encounter BEFORE the add_combatant
+##       batch when the encounter def carries an "arena" block; rejected when
+##       an arena is already set, the config is invalid, walls/objects fall
+##       outside the bounds, or an already-staged combatant would be left on
+##       a blocked hex.
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -42,6 +51,10 @@ var hype: HypeEngine
 var tags: TagEngine
 var evidence: EvidenceEngine
 var ai: EnemyAI
+## OPT-IN arena (KAN-5 wave 3d): null = unbounded legacy (the overwhelming
+## default — harnesses and pre-arena saves). Set via the set_arena command,
+## serialized under "arena" ONLY when present (byte-identical legacy dicts).
+var arena: Arena = null
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -122,6 +135,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _bit(cmd)
 		"ai_decide":
 			events = _ai_decide(cmd)
+		"set_arena":
+			events = _set_arena(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -196,6 +211,16 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "missing_id"}]
 	if combatants.has(id):
 		return [{"type": "command_rejected", "reason": "duplicate_id", "combatant": id}]
+	# KAN-5 staging honesty: with an arena set, a spawn must land inside the
+	# bounds and off walls/objects (rejected at add time — GameController
+	# stages the arena BEFORE the add batch so every spawn is checked).
+	if arena != null:
+		var pos_raw: Array = spec.get("position", [0, 0])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not arena.in_bounds(pos):
+			return [{"type": "command_rejected", "reason": "staging_out_of_bounds", "combatant": id, "position": [pos.x, pos.y]}]
+		if arena.is_wall(pos) or arena.object_index_at(pos) >= 0:
+			return [{"type": "command_rejected", "reason": "staging_blocked_hex", "combatant": id, "position": [pos.x, pos.y]}]
 	var c := CombatantState.from_spec(spec, static_data)
 	c.next_action_tick = clock.tick
 	combatants[id] = c
@@ -527,6 +552,49 @@ func _prime(cmd: Dictionary) -> Array[Dictionary]:
 	return [{"type": "prime_armed", "actor": actor.id, "key": key}]
 
 
+## KAN-5 (wave 3d) — the OPT-IN arena command. Validates the authored config
+## (simulation/arena.gd shape), then that walls/objects sit inside the bounds
+## and off each other, then that every ALREADY-STAGED combatant remains on a
+## legal hex (staging order puts set_arena before the add batch, so this guard
+## matters only for late/manual sets). On success the arena is wired into the
+## EnemyAI + ActionResolver movement/lane paths and serialized under "arena"
+## (hash-covered). Rejections mutate nothing.
+func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
+	if arena != null:
+		return [{"type": "command_rejected", "reason": "arena_already_set"}]
+	var parsed: Arena = Arena.from_config(cmd.get("arena", {}))
+	if parsed == null:
+		return [{"type": "command_rejected", "reason": "invalid_arena"}]
+	for wall: Vector2i in parsed.sorted_walls():
+		if not parsed.in_bounds(wall):
+			return [{"type": "command_rejected", "reason": "arena_wall_out_of_bounds", "hex": [wall.x, wall.y]}]
+	var object_hexes: Dictionary = {}
+	for obj: Dictionary in parsed.objects:
+		var pos_raw: Array = obj.get("position", [])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not parsed.in_bounds(pos) or parsed.is_wall(pos) or object_hexes.has(pos):
+			return [{"type": "command_rejected", "reason": "arena_object_misplaced", "hex": [pos.x, pos.y]}]
+		object_hexes[pos] = true
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not parsed.in_bounds(c.position) or parsed.is_wall(c.position) \
+				or parsed.object_index_at(c.position) >= 0:
+			return [{"type": "command_rejected", "reason": "combatant_outside_arena",
+				"combatant": c.id, "position": [c.position.x, c.position.y]}]
+	arena = parsed
+	ai.arena = arena
+	resolver.arena = arena
+	var summary: Dictionary = arena.view()
+	return [{
+		"type": "arena_set",
+		"bounds": summary["bounds"],
+		"walls": summary["walls"],
+		"objects": summary["objects"],
+	}]
+
+
 # ------------------------------------------------------------------ enemy AI (R11 #15)
 
 ## AI-controlled combatants ready for an ai_decide this tick (sorted) — the
@@ -675,6 +743,8 @@ func _ai_summon(actor: CombatantState, summon: Dictionary) -> Array[Dictionary]:
 
 ## Nearest unoccupied hex around `center`, deterministic: growing rings, fixed
 ## axial scan order inside each ring. `claimed` holds hexes taken this batch.
+## KAN-5: with an arena set, blocked hexes (out-of-bounds/walls/trash cans)
+## are never candidates — summons place on legal ground only.
 func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 	var occupied: Dictionary = claimed.duplicate()
 	var ids: Array = combatants.keys()
@@ -688,6 +758,8 @@ func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 			for dr: int in range(-radius, radius + 1):
 				var candidate := center + Vector2i(dq, dr)
 				if CombatantState.hex_distance(center, candidate) != radius:
+					continue
+				if arena != null and arena.blocks_movement(candidate):
 					continue
 				if not occupied.has(candidate):
 					return candidate
@@ -722,7 +794,7 @@ func to_dict() -> Dictionary:
 	ids.sort()
 	for id: Variant in ids:
 		combatant_dicts[String(id)] = (combatants[id] as CombatantState).to_dict()
-	return {
+	var out: Dictionary = {
 		"rng_seed": rng_seed,
 		"rng_state": rng.state,
 		"clock": clock.to_dict(),
@@ -734,6 +806,11 @@ func to_dict() -> Dictionary:
 		"evidence": evidence.to_dict(),
 		"ai": ai.to_dict(),
 	}
+	# KAN-5 compat pin: the "arena" key exists ONLY once an arena is set — a
+	# no-arena sim serializes byte-identically to the pre-arena engine.
+	if arena != null:
+		out["arena"] = arena.to_dict()
+	return out
 
 
 static func from_dict(data: Dictionary) -> CombatSim:
@@ -771,6 +848,12 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.hype.tags = sim.tags
 	# Re-wire the evidence ledger's live refs (the clock instance was replaced).
 	sim.evidence.wire(sim.combatants, sim.clock)
+	# KAN-5: pre-arena saves lack "arena" — null keeps the unbounded legacy
+	# behavior, matching a fresh sim. Wired AFTER ai/resolver were replaced.
+	if data.has("arena"):
+		sim.arena = Arena.from_dict(data.get("arena", {}))
+		sim.ai.arena = sim.arena
+		sim.resolver.arena = sim.arena
 	return sim
 
 

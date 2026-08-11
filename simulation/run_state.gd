@@ -66,7 +66,11 @@ extends RefCounted
 ##    "recruit_offer"?: recruit loadout key — maps to the staged ally whose
 ##                combat id is the key's first "_"-separated token (the
 ##                documented loadout-id rule, same join view_bid uses),
-##    "party_positions"?: {id: [q, r]} — restage positions for roster members}
+##    "party_positions"?: {id: [q, r]} — restage positions for roster members,
+##    "arena"?: {bounds/walls/objects — simulation/arena.gd's config shape,
+##                KAN-5 wave 3d}. Passed through staging() verbatim; the
+##                controller issues set_arena BEFORE the add batch. Absent =
+##                the unbounded legacy combat, unchanged.}
 ##
 ## WHAT PERSISTS vs RESETS BETWEEN ENCOUNTERS (_sanitize_carry — the policy):
 ## The party's post-combat CombatantState.to_dict() is captured at end_encounter
@@ -553,6 +557,10 @@ func staging() -> Dictionary:
 		"camera_calls_used": camera_used,
 		"tags_held": tags_held,
 		"hype_start": chain_hype_start(),
+		# KAN-5 (wave 3d): the encounter's authored arena block, verbatim ({} =
+		# no arena — the unbounded legacy combat). The controller stages it
+		# via set_arena BEFORE the add batch.
+		"arena": (def.get("arena", {}) as Dictionary).duplicate(true),
 	}
 
 

@@ -93,19 +93,35 @@ const HEX_NEIGHBORS: Array[Vector2i] = [
 ## of truth; this map parses them into the effect keys the sim consumes. An
 ## authored string with NO entry here is a DATA-ONLY no-op by design: it stays
 ## visible in the data, upgrades_active() never reports it, nothing executes.
-## The two deliberate data-only entries (and why — see rules-addendum R11 #20):
-##  * "dash bounces between walls up to 2 bounces" — there are NO walls yet:
-##    geometry is unbounded (hex_geometry.gd header); bounces arrive with the
-##    KAN-5 arenas.
-##  * "flamethrower pops trash cans instantly" — trash cans are not sim
-##    entities; environment objects are KAN-5 scope.
+## Wave 3d (KAN-5 arenas) un-inerts the last two: "dash bounces between walls"
+## and "flamethrower pops trash cans instantly" now map to real effects — but
+## both are ARENA-GATED: without an arena there are no walls and no cans, so
+## a no-arena fight behaves exactly as before (the flipped inert pin in
+## tests/test_phase_upgrades.gd). See rules-addendum R11 #20 + R28.
 const UPGRADE_EFFECTS: Dictionary = {
 	"death spin grab range +1": "grab_range_plus_1",
 	"death spin costs 2 moments": "spin_two_moments",
 	"dash can change direction mid-run": "dash_bend",
 	"network fully exposed": "network_stays_exposed",
 	"flamethrower tracks closest target": "cone_track_closest",
+	"dash bounces between walls up to 2 bounces": "dash_wall_bounce",
+	"flamethrower pops trash cans instantly": "cans_pop_instantly",
 }
+
+## KAN-5 (wave 3d) — the bank-shot aim candidates the bounce-lane planner
+## tries AFTER the direct from->target ray fails (documented, PROVISIONAL —
+## coarse by design): the six axial directions in HEX_NEIGHBORS order, then
+## the six "diagonal" directions derived as HEX_NEIGHBORS[i] +
+## HEX_NEIGHBORS[(i+1) % 6] (E+NE, NE+NW, NW+W, W+SW, SW+SE, SE+E). The first
+## candidate whose bounced walk legally reaches the target wins. Oblique bank
+## shots outside this set stay hand-buildable — the resolver honors any
+## committed lane; the planner just never finds them.
+const DASH_BANK_DIRECTIONS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+	Vector2i(2, -1), Vector2i(1, -2), Vector2i(-1, -1),
+	Vector2i(-2, 1), Vector2i(-1, 2), Vector2i(1, 1),
+]
 
 ## Wave 3a — the stance TABLE (see the header contract): decide choice -> the
 ## serialized ai_stance the substrate exposes for `aura_reading`.
@@ -119,6 +135,10 @@ const STANCE_FOR_CHOICE: Dictionary = {
 ## Wired refs (never serialized — re-wired by CombatSim, like ConditionEngine).
 var combatants: Dictionary = {}
 var clock: Clock
+## KAN-5 (wave 3d): the sim's OPT-IN arena, wired by CombatSim at set_arena /
+## from_dict (the arena itself serializes on CombatSim under "arena"). null =
+## unbounded legacy — every arena check below is guarded on it.
+var arena: Arena = null
 ## Serialized AI state.
 var ai_rng := RandomNumberGenerator.new()
 var boss_phase: Dictionary = {}  # combatant id -> current phase_number (default 1)
@@ -473,8 +493,10 @@ func _grab_decision(actor: CombatantState, allowed: Array, opponents: Array[Comb
 			continue
 		if opponent.size_rank() - actor.size_rank() > 1:
 			continue  # R9: target no more than one size larger
-		if distance > 1 and occupied.has(grab_pull_hex(actor.position, opponent.position)):
-			continue  # wave 2d: a blocked drag hex means the grab cannot land
+		var pull: Vector2i = grab_pull_hex(actor.position, opponent.position)
+		if distance > 1 and (occupied.has(pull) \
+				or (arena != null and arena.blocks_movement(pull))):
+			continue  # wave 2d/3d: a blocked drag hex means the grab cannot land
 		adjacent.append(opponent)
 	if adjacent.is_empty():
 		return {}
@@ -766,6 +788,14 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 		if lane_info.has("bend"):
 			var bend: Vector2i = lane_info["bend"]
 			action["area_shape"]["bend"] = [bend.x, bend.y]
+		# Wave 3d: the wall-bounce points ride the committed shape (like the
+		# bend) — the declare gate phase-checks them and the dash_charged
+		# event surfaces them.
+		if lane_info.has("bounces"):
+			var bounce_pairs: Array = []
+			for bounce_hex: Vector2i in lane_info["bounces"] as Array:
+				bounce_pairs.append([bounce_hex.x, bounce_hex.y])
+			action["area_shape"]["bounces"] = bounce_pairs
 	var decision: Dictionary = {
 		"choice": "attack", "tier": tier,
 		"ability": String(strike.get("key", "")),
@@ -779,14 +809,71 @@ func _strike_or_close(actor: CombatantState, tier: String, strike: Dictionary, o
 
 ## The committed dash lane from `from` to the target, or {} when none exists:
 ## {"lane": Array[Vector2i]} for a straight lane; {"lane", "bend": Vector2i}
-## for a bent one (wave 2d, phase 4+ only). Straight is always preferred — the
-## bend exists to reach a lane-valid target OTHERWISE unreachable.
+## for a bent one (wave 2d, phase 4+); {"lane", "bounces": Array[Vector2i]}
+## for a wall-bounced one (wave 3d, arena + phase 3+). Preference order
+## (documented): straight > bounced (forced by walls, phase-3 upgrade) >
+## bent (chosen, phase-4 upgrade) — a bounce is the wall's doing, a bend is
+## the boss's choice, and the planner never composes both (a hand-built lane
+## may carry both markers; the resolver walks any committed corridor).
+##
+## ARENA HONESTY (wave 3d): with an arena set, the straight lane is the
+## bounced walk at budget 0 — it ENDS at the first wall/bounds hex, so a
+## target beyond a wall is simply not lane-reachable without the phase-3
+## bounce upgrade. With the upgrade, the walk REFLECTS off walls (up to 2 —
+## Arena.bounced_lane, the reflection-model authority) and, when the direct
+## ray misses, the planner tries the fixed DASH_BANK_DIRECTIONS aims in order
+## (deterministic, rng-free bank shots). Trash cans never block or bounce a
+## lane — the charge smashes through them (resolver).
 func _dash_lane_for(actor: CombatantState, from: Vector2i, target: CombatantState, reach: int) -> Dictionary:
-	if _dash_lane_exists(actor, from, target, reach):
-		return {"lane": HexGeometry.line_extended(from, target.position, reach)}
+	if arena == null:
+		if _dash_lane_exists(actor, from, target, reach):
+			return {"lane": HexGeometry.line_extended(from, target.position, reach)}
+		if has_upgrade(actor, "dash_bend"):
+			return _bent_dash_lane(actor, from, target, reach)
+		return {}
+	if from == target.position:
+		return {}
+	var max_bounces: int = Arena.MAX_DASH_BOUNCES if has_upgrade(actor, "dash_wall_bounce") else 0
+	# Direct ray first (budget 0 == today's straight rule, wall-truncated).
+	var walk: Dictionary = arena.bounced_lane(from, target.position, reach, max_bounces)
+	if _lane_connects(actor, walk["lane"], target.position):
+		return _lane_result(walk)
+	# Bank-shot search (bounce upgrade only): fixed-order aim candidates.
+	if max_bounces > 0:
+		for dir: Vector2i in DASH_BANK_DIRECTIONS:
+			walk = arena.bounced_lane(from, from + dir, reach, max_bounces)
+			if _lane_connects(actor, walk["lane"], target.position):
+				return _lane_result(walk)
 	if has_upgrade(actor, "dash_bend"):
 		return _bent_dash_lane(actor, from, target, reach)
 	return {}
+
+
+## Packs a bounced-walk result into the committed-lane shape (the "bounces"
+## key rides only when a reflection actually happened).
+static func _lane_result(walk: Dictionary) -> Dictionary:
+	var out: Dictionary = {"lane": walk["lane"]}
+	if not (walk["bounces"] as Array).is_empty():
+		out["bounces"] = walk["bounces"]
+	return out
+
+
+## True when `lane` legally CONNECTS with the target: the target's hex sits on
+## the lane beyond index 0 and every hex strictly between origin and target is
+## unoccupied by a living, in-play combatant (the same rule the straight lane
+## has always obeyed — the charge must genuinely reach adjacent-before the
+## target). Trash cans do not occupy for lanes (charges smash through).
+func _lane_connects(actor: CombatantState, lane_variant: Variant, target_pos: Vector2i) -> bool:
+	var lane: Array[Vector2i] = lane_variant
+	var t_idx: int = lane.find(target_pos)
+	if t_idx < 1:
+		return false
+	var occupied: Dictionary = _occupied_hexes(actor)
+	occupied.erase(target_pos)
+	for k: int in range(1, t_idx):
+		if occupied.has(lane[k]):
+			return false
+	return true
 
 
 ## Wave 2d — "dash can change direction mid-run" (phase 4+): a ONE-bend charge
@@ -810,6 +897,11 @@ func _bent_dash_lane(actor: CombatantState, from: Vector2i, target: CombatantSta
 		for bend: Vector2i in HexGeometry.blast(from, d1):
 			if HexGeometry.distance(from, bend) != d1 or bend == target.position:
 				continue
+			# Wave 3d: with an arena, a bend point on a wall/out-of-bounds hex
+			# is never a candidate (the planner's chosen-bend lanes are wall-
+			# free; walls force BOUNCES, handled before the bend search).
+			if arena != null and arena.blocks_lane(bend):
+				continue
 			var d2: int = HexGeometry.distance(bend, target.position)
 			if d2 < 1 or d1 + d2 > reach:
 				continue
@@ -819,6 +911,8 @@ func _bent_dash_lane(actor: CombatantState, from: Vector2i, target: CombatantSta
 			var t_idx: int = lane.find(target.position)
 			if t_idx < 1:
 				continue
+			if arena != null and _lane_crosses_wall(lane):
+				continue  # a chosen-bend corridor must be wall-free end to end
 			var blocked: bool = false
 			for k: int in range(1, t_idx):
 				if occupied.has(lane[k]):
@@ -827,6 +921,14 @@ func _bent_dash_lane(actor: CombatantState, from: Vector2i, target: CombatantSta
 			if not blocked:
 				return {"lane": lane, "bend": bend}
 	return {}
+
+
+## True when any lane hex is a wall/out-of-bounds hex (arena must be set).
+func _lane_crosses_wall(lane: Array[Vector2i]) -> bool:
+	for hex: Vector2i in lane:
+		if arena.blocks_lane(hex):
+			return true
+	return false
 
 
 ## Chains line(from, bend) + line_extended(bend, target, tail_len) into one
@@ -1255,6 +1357,9 @@ func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Var
 		for neighbor: Vector2i in HEX_NEIGHBORS:
 			var candidate: Vector2i = pos + neighbor
 			if occupied.has(candidate):
+				continue
+			# KAN-5: walls/bounds/trash cans block AI steps like occupied hexes.
+			if arena != null and arena.blocks_movement(candidate):
 				continue
 			var d: int = CombatantState.hex_distance(candidate, goal)
 			if d < best_d:
