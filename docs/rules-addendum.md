@@ -1069,14 +1069,78 @@ encounter block mirrors.
   (no accumulation). A destroyed can's hex unblocks. Events:
   `trash_can_burned` / `trash_can_exploded` / `trash_can_smashed`; state
   additively exposed via `view_arena()` (bounds/walls/objects + live burn).
-- **Still OPEN for KAN-5 proper:** rooms/dungeon FLOW beyond single-combat
-  arenas (corridors, doors, multi-room exploration, the maze funnel), real
-  pathfinding for AI movement (the greedy step stays greedy), stealth/
-  detection/cover (R20 remains open), environment objects beyond the trash
-  can, and owner-authored room layouts (every authored wall/can position is
-  PLACEHOLDER — the owner redesigns rooms with the front).
+- **Still OPEN for KAN-5 proper:** ~~rooms/dungeon FLOW beyond single-combat
+  arenas (corridors, doors, multi-room exploration, the maze funnel)~~ SHIPPED
+  wave 4b (R29 below), real pathfinding for AI movement (the greedy step
+  stays greedy), stealth/detection/cover (R20 remains open), environment
+  objects beyond the trash can, and owner-authored room layouts (every
+  authored wall/can/door position is PLACEHOLDER — the owner redesigns rooms
+  with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in
   `tests/test_phase_upgrades.gd`).
+
+## R29 — Doors & dungeon flow: the room graph (KAN-5 wave 4b, 2026-08-11 — PROVISIONAL)
+
+**Doors and the dungeon room-graph shipped** — the structure layer of KAN-5
+proper. Both are STRICTLY OPT-IN like the arena itself: a door-less arena and
+an exits-less encounter list behave (and serialize) byte-identically to wave
+3d; the CI harnesses stage neither and byte-diff clean.
+
+- **Doors** (`simulation/arena.gd` `doors: [{key, position, state:
+  "open"|"closed"}]`, authored per arena on the encounter def; serialized with
+  the arena, hash-covered, the `doors` key present only when authored): a
+  **CLOSED door blocks exactly like a wall through the ONE existing blocking
+  query** (`Arena.is_wall`, which `blocks_lane`/`blocks_movement` compose) —
+  so every consumer inherits doors with zero edits: free/scheduled moves
+  reject `hex_blocked`, AI steps detour or wait, dash lanes END at a closed
+  door (and a phase-3+ dash **BOUNCES off a closed door like any wall**),
+  sidesteps/knock-asides/flings/summons/repositions all treat it as solid,
+  and LOS-when-it-exists will read the same query. An **OPEN door blocks
+  nothing** (standing in a doorway is legal). **Staging never spawns on a
+  door hex**, open or closed (`staging_on_door_hex`); `set_arena` validates
+  door placement (in bounds, off walls/objects/other doors —
+  `arena_door_misplaced`) and the seed validator mirrors both plus the
+  spawn check.
+- **The `door` command** (`{actor, key, set: "open"|"closed"}`): the actor
+  must be alive/ready and **ADJACENT** (distance exactly 1 — standing ON an
+  open door cannot close it under itself), and the flip **costs the
+  free-action slot** (R3, the inventory-interaction family: one free action
+  per combatant per tick, shared with The Bit / the free move / the first
+  inventory use / 0-cost reactions; v1 deliberately grants NO Moment-cost
+  fallback, so one door interaction per tick is the cap). Closing onto a hex
+  with a live body rejects (`door_blocked_by_body`). **Enemies never issue
+  it in v1** — the AI never decides doors (no enemy_ai path exists; a closed
+  door honestly walls an enemy off — the greedy walker waits like any walled
+  mob). Event: `door_changed {actor, key, position, state}`.
+- **Dungeon flow** (`simulation/run_state.gd`): the run's encounter list
+  generalizes to a **room graph** — defs author `exits: [{key, to, label}]`;
+  index 0 is the entry room. After a room's combat WINs (and any recruit
+  beat resolves — the offer outranks), the cleared room's exits decide:
+  **0 exits = a TERMINAL room, the run auto-finishes WIN** (the graph
+  counterpart of "every encounter cleared"; `end_run` in a graph run is
+  always early extraction = ABANDONED); **1 exit auto-advances**
+  (`run_exit_chosen {auto: true}` — corridor cadence, no beat); **2+ exits
+  open the EXPLORATION beat** (`run_exploration_beat`; the view exposes the
+  exits; the `choose_exit {key}` run command resolves it — rejected
+  mid-combat/mid-offer/outside the beat, and the beat is unmissable like the
+  offer beat). **The graph is a DAG in v1** (documented; loops are future):
+  `revisitable` defaults false, visited tracking is DERIVED from logged
+  state (records + active room — replay-safe), and the validator gates
+  authored maps (exits resolve, terminal exists, no cycles, all rooms
+  reachable). **Chain semantics:** choosing an exit is still back-to-back —
+  the hype chain persists through exploration beats untouched; a future REST
+  beat stays the one chain-breaker (unchanged data hook). Sim seeds stay
+  `encounter_seed(room index)` — path-independent. Full backward compat: a
+  def set with no exits is the exact pre-graph linear run (same behavior,
+  same serialization — no graph key ever appears).
+- **The authored demo branch** (`data/demo_run.json`): Brood Landing →
+  choice of the Kennel Gauntlet (hound pair) or the Service Corridor (light
+  roach reuse) → the Incine-Dile den (terminal; its arena authors the closed
+  service hatch + the open kennel gate — the §4.6 maze-funnel texture as
+  DATA, no herding AI). **Every door/exit position and label is PLACEHOLDER
+  (R14) — owner-authored maps still pending.**
+  Tests: `tests/test_doors.gd` + `tests/test_dungeon_flow.gd` (+ the updated
+  run-engine pins in `tests/test_run_state.gd` / `tests/test_run_persistence.gd`).
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

@@ -880,8 +880,11 @@ def main() -> int:
     # Additive: validated only when data/demo_run.json exists. Mirrors the
     # engine's set_arena/staging gates (simulation/arena.gd + combat_sim.gd):
     # bounds shape sane, walls in bounds, objects (trash cans) in bounds and
-    # off walls, and NO wall/object on any staged spawn hex.
+    # off walls, doors (wave 4b) in bounds and off walls/objects/other doors,
+    # and NO wall/object/door on any staged spawn hex.
     arena_count = 0
+    door_count = 0
+    exit_count = 0
     if (DATA / "demo_run.json").is_file():
         dr = load("demo_run.json")
         run = dr.get("run", {}) if isinstance(dr, dict) else {}
@@ -958,6 +961,36 @@ def main() -> int:
                 burn = obj.get("burn", 0)
                 if not isinstance(burn, int) or burn < 0:
                     fail("demo_run.json", f"{where}: object burn must be int >= 0")
+            # Doors (wave 4b, R29): mirrors Arena.from_config (shape) +
+            # CombatSim._set_arena (placement) — unique non-empty keys, a
+            # ruled state, in bounds, off walls/objects/other doors.
+            doors = set()
+            door_keys = set()
+            for door in arena.get("doors", []) or []:
+                if not isinstance(door, dict) or not door.get("key"):
+                    fail("demo_run.json", f"{where}: door needs a non-empty key")
+                    continue
+                dk = door.get("key")
+                if dk in door_keys:
+                    fail("demo_run.json", f"{where}: duplicate door key {dk!r}")
+                door_keys.add(dk)
+                if door.get("state") not in ("open", "closed"):
+                    fail("demo_run.json", f"{where}: door {dk!r} state "
+                                          f"{door.get('state')!r} must be 'open' or 'closed'")
+                h = _hex(door.get("position"))
+                if h is None:
+                    fail("demo_run.json", f"{where}: door {dk!r} bad position")
+                    continue
+                if not in_bounds(h):
+                    fail("demo_run.json", f"{where}: door {dk!r} at {list(h)} outside the bounds")
+                if h in walls:
+                    fail("demo_run.json", f"{where}: door {dk!r} at {list(h)} sits on a wall")
+                if h in objects:
+                    fail("demo_run.json", f"{where}: door {dk!r} at {list(h)} sits on an object")
+                if h in doors:
+                    fail("demo_run.json", f"{where}: two doors share hex {list(h)}")
+                doors.add(h)
+                door_count += 1
             # Spawn hexes: enemies (position/positions), staged allies, and the
             # party (encounter 0 uses the party specs' own positions; later
             # encounters restage via party_positions).
@@ -989,6 +1022,82 @@ def main() -> int:
                     fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on a wall")
                 if h in objects:
                     fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on an object")
+                if h in doors:
+                    fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on a door hex "
+                                          "(a doorway is never a spawn hex, wave 4b)")
+
+        # ---- KAN-5 wave 4b: room-GRAPH integrity (R29) -----------------------
+        # Only when any def authors "exits" (graph mode; a linear list skips
+        # this whole block). Mirrors RunState's graph rules: exit keys unique
+        # per room, every exit resolves to a real encounter key, at least one
+        # TERMINAL room (no exits) exists, the graph is a DAG (no cycles, v1),
+        # and every room is reachable from the entry room (index 0).
+        encs = [e for e in (run.get("encounters", []) or []) if isinstance(e, dict)]
+        enc_keys = [e.get("key") for e in encs]
+        if len(enc_keys) != len(set(enc_keys)):
+            fail("demo_run.json", f"duplicate encounter keys: {sorted(k for k in set(enc_keys) if enc_keys.count(k) > 1)}")
+        graph_mode = any("exits" in e for e in encs)
+        if graph_mode and encs:
+            adjacency: dict = {}
+            for e in encs:
+                k = e.get("key", "?")
+                if "revisitable" in e and not isinstance(e["revisitable"], bool):
+                    fail("demo_run.json", f"{k}: revisitable must be a bool (wave 4b)")
+                targets = []
+                seen_exit_keys = set()
+                for x in e.get("exits", []) or []:
+                    if not isinstance(x, dict) or not x.get("key") or not x.get("to"):
+                        fail("demo_run.json", f"{k}: exit rows need non-empty key + to")
+                        continue
+                    if x["key"] in seen_exit_keys:
+                        fail("demo_run.json", f"{k}: duplicate exit key {x['key']!r}")
+                    seen_exit_keys.add(x["key"])
+                    if x["to"] not in enc_keys:
+                        fail("demo_run.json", f"{k}: exit {x['key']!r} -> {x['to']!r} "
+                                              "does not resolve to an encounter key")
+                        continue
+                    targets.append(x["to"])
+                    exit_count += 1
+                adjacency[k] = targets
+            if not any(not adjacency.get(e.get("key"), []) for e in encs):
+                fail("demo_run.json", "graph mode: no TERMINAL room (a def without exits) "
+                                      "exists — the run could never WIN (R29)")
+            # Cycle check (v1 DAG): iterative DFS with colors.
+            WHITE, GRAY, BLACK = 0, 1, 2
+            color = {k: WHITE for k in adjacency}
+            for start in adjacency:
+                if color[start] != WHITE:
+                    continue
+                stack = [(start, iter(adjacency[start]))]
+                color[start] = GRAY
+                while stack:
+                    node, it = stack[-1]
+                    nxt = next(it, None)
+                    if nxt is None:
+                        color[node] = BLACK
+                        stack.pop()
+                        continue
+                    if color.get(nxt, BLACK) == GRAY:
+                        fail("demo_run.json", f"graph mode: cycle through {nxt!r} — "
+                                              "the v1 room graph must be a DAG (R29)")
+                        color[nxt] = BLACK
+                    elif color.get(nxt) == WHITE:
+                        color[nxt] = GRAY
+                        stack.append((nxt, iter(adjacency[nxt])))
+            # Reachability from the entry room (index 0).
+            entry = encs[0].get("key")
+            reached = set()
+            frontier = [entry]
+            while frontier:
+                node = frontier.pop()
+                if node in reached:
+                    continue
+                reached.add(node)
+                frontier.extend(adjacency.get(node, []))
+            unreachable = sorted(set(adjacency) - reached)
+            if unreachable:
+                fail("demo_run.json", f"graph mode: rooms {unreachable} unreachable "
+                                      f"from the entry room {entry!r} (R29)")
 
     if notes:
         print("\n".join(notes))
@@ -1004,7 +1113,8 @@ def main() -> int:
           f"{len(te_rows)} slice tags, {len(loadouts)} demo loadouts, "
           f"{len(recruits)} recruit loadouts, {len(roster)} roster patrons, "
           f"{dcmap_pairs} domain->condition affinities, {len(kw_skills)} skill keyword "
-          f"entries, {len(mutations)} mutation recipes, {arena_count} encounter arenas "
+          f"entries, {len(mutations)} mutation recipes, {arena_count} encounter arenas, "
+          f"{door_count} doors, {exit_count} graph exits "
           f"— {n} rows checked).")
     return 0
 

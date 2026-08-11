@@ -709,8 +709,9 @@ func test_demo_run_stages_the_authored_arenas() -> void:
 	# The staging plan carries the block verbatim (where arena defs LIVE).
 	assert_eq(int(((gc.run.staging().get("arena", {}) as Dictionary).get("bounds", {}) as Dictionary).get("width", 0)),
 		13, "RunState.staging() passes the encounter's arena block through")
-	# The den def authors the incinedile's 41x60 design record + props.
-	var den: Dictionary = (def.get("encounters", []) as Array)[2]
+	# The den def authors the incinedile's 41x60 design record + props (wave
+	# 4b moved the den to index 3 — the branch map's terminal room).
+	var den: Dictionary = (def.get("encounters", []) as Array)[3]
 	var den_arena: Dictionary = den.get("arena", {})
 	assert_eq([int((den_arena.get("bounds", {}) as Dictionary).get("width", 0)),
 		int((den_arena.get("bounds", {}) as Dictionary).get("height", 0))], [41, 60],
