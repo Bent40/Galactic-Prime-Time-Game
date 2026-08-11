@@ -502,8 +502,9 @@ death_spin + the dash knock-aside moved to REAL per
 wave 2b (2026-08-10, #19); the phase upgrades moved to REAL per wave 2d (2026-08-10,
 #20); wall bounces + trash cans — the last two — moved to REAL per wave 3d
 (2026-08-11, KAN-5 arenas: OPT-IN bounds/walls/objects, R28 — no arena = the
-unbounded legacy combat, byte-identical; rooms/dungeon FLOW and stealth/
-detection R20 stay open).
+unbounded legacy combat, byte-identical; rooms/dungeon FLOW shipped wave 4b
+(R29) and stealth/detection R20 shipped its v1 binary-sight slice wave 4c —
+see the R20 IMPLEMENTED marker for what remains downscoped).
 
 ## R12 — Session-designed systems adopted from the Master Compendium (2026-07-14)
 
@@ -713,6 +714,75 @@ facing are KAN-5-era** (they need positional facing + sized terrain the sim does
 yet). The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or on move")
 is the seed of the sight rule; Shock-T1 Shout ("breaks stealth") is the noise seed. This
 ruling supersedes the review-1 B10 gap ("stealth referenced, no rules"). Q58 CLOSED.
+
+**IMPLEMENTED — the v1 binary sight/hearing slice (KAN-5 wave 4c, 2026-08-11), exactly
+the phase-in the paragraph above authorizes.** `simulation/stealth.gd` (pure sight
+queries) + the sim's `stealth` command (`{"actor", "set": "hide"|"reveal"}`; hide costs
+the R3 FREE-ACTION SLOT — the door/bit family; this section prices nothing, so the slot
+is a documented v1 choice — reveal is free). **STRICTLY OPT-IN, default = everyone
+detected:** the `stealthed` key serializes (combatant dict + tick snapshot) ONLY while
+true, so a stealth-free fight's dict/hash is **byte-identical** to the pre-stealth
+engine (pinned against recorded e6c7c37 hashes in `tests/test_stealth.gd`; both CI
+harnesses byte-diff clean). Every check is deterministic and **rng-free** — this section
+authors no detection roll, so no stream is ever touched.
+
+- **SHIPPED — sight:** seen iff a hostile observer (alive, in play, not helpless — a
+  fainted guard keeps no watch; allies are exempt: you hide WITH your party FROM the
+  enemy) has the target within **exactly 2 × Mind** ("roughly 2×" resolved to exactly —
+  PROVISIONAL number, R14 family) **and** line-of-sight: the hex line with walls +
+  **CLOSED doors** + out-of-bounds blocking — the one R29 query LOS was promised to
+  read; an OPEN door blocks nothing. "Mind sufficient" IS the range: Mind 0 sees
+  nothing, even adjacent (the roach_dog). Entry requires being UNSEEN (rejected
+  `in_enemy_sight`, observer named) and un-grappled (`in_grapple` — physical contact is
+  detection). Detection re-checks after **every command** (either side moving, a door
+  opening, an observer recovering — the `_stealth_checks` sweep in `_post`); breaks emit
+  `stealth_broken` with reason `seen` (+observer) / `shout` / `downed` /
+  `revealed_self`.
+- **SHIPPED — the noise seed:** Shock-T1 Shout **breaks the shouter's stealth**
+  (R13 wire via `shock_shout`, range-free — a shout is heard). Damage ALONE never
+  breaks stealth (not a ruled break) — but a hit whose condition shocks (burn T1) shouts
+  the hider out through this path.
+- **SHIPPED — AI honesty:** a stealthed target is **excluded from `_opponents`**
+  (targeting, cone counting, the R23 draw — zero rng consumed on the shrunken pool);
+  with every opponent hidden the mob **waits (`no_targets`) — it honestly loses the
+  target**. Hostile player-surface asks mirror it: declares (attack/skill/grapple) and
+  damaging reactions at a stealthed hostile reject `target_stealthed`; an aimed hostile
+  **windup collapses** if its target hides mid-windup (R2 snapshot re-check). Attacking
+  FROM stealth neither breaks it (sight/noise are the only ruled breaks — sight usually
+  reveals a melee attacker anyway: adjacent + Mind ≥ 1) **nor grants any bonus** (this
+  section authors no first-strike rule; none invented).
+- **SHIPPED — physicality over information (documented v1 line):** committed AREA
+  geometry — cone arcs, charge lanes, blasts — hits **bodies by hex**, stealthed or
+  not; stealth gates targeted INFORMATION, it never phases the body out.
+- **SHIPPED — views (additive):** `view_combatants().stealthed` (the broadcast stays
+  omniscient — cameras see everything, per the hype bullet above); preview rows carry
+  `target_stealthed` when the ask would reject. Stealth resets between encounters
+  (RunState carry) and never touches hype (nothing scored, nothing suppressed).
+- **DOWNSCOPED — flagged loudly, not silently dropped** (each needs a system that does
+  not exist yet):
+  * **vision cones/facing** — no positional facing exists (this section's own phasing
+    defers true cones); v1 sight is 360°;
+  * **hearing beyond the Shout** — no noise-propagation substrate: the
+    investigate/ignore personality reactions, the per-creature smart threshold, and the
+    **ALERTED-but-unlocated** state (the scapegoating/illusion/decoy design space) all
+    wait on it;
+  * **disguise** — no disguise items/skills exist to carry the range property
+    (PLACEHOLDER R14 regardless);
+  * **cover heights / sized gaps / skill-by-gap-size** — sized terrain unmodeled (own
+    phasing defers); v1 cover = full-height wall/closed-door LOS blocking only, and
+    environment OBJECTS (trash cans) deliberately do NOT block sight (no height model
+    to say they should);
+  * **the rival-god curse-unstealthy lever** — divine interventions are KAN-7;
+  * **the Camouflage skill itself** — rides the content pass (the `stealth` command is
+    its substrate); enemy AI never DECIDES to stealth in v1 (no policy path — the
+    command works for any combatant, like doors).
+
+Tests: `tests/test_stealth.gd` (entry/exit/slot, the exact 2×Mind boundary both sides,
+Mind-0 blindness, ally exemption, wall/door LOS both states with the mid-fight door
+reveal, the Shout wire + the quiet-damage negative, AI exclusion/honest loss/
+re-acquisition with rng pins, every hostile-surface gate, windup collapse vs. instant
+no-re-check, cone-burns-the-hidden-body, serialization round-trip mid-stealth,
+lockstep, determinism, zero-rng discipline, carry reset, and the legacy hash pins).
 
 ## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
 
@@ -1084,14 +1154,19 @@ encounter block mirrors.
   additively exposed via `view_arena()` (bounds/walls/objects + live burn).
 - **Still OPEN for KAN-5 proper:** ~~real AI pathfinding~~ SHIPPED wave 4a
   (`simulation/pathing.gd`, the AI-steps bullet above); ~~rooms/dungeon FLOW
-  (corridors, doors, multi-room exploration)~~ SHIPPED wave 4b (R29 below).
+  (corridors, doors, multi-room exploration)~~ SHIPPED wave 4b (R29 below);
+  ~~stealth/detection/cover (R20, wave 4c)~~ SHIPPED wave 4c — the v1
+  binary-sight slice (`simulation/stealth.gd` + the `stealth` command; the
+  R20 IMPLEMENTED marker lists what stays downscoped: cones/facing, hearing
+  beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever).
   Remaining: the hound maze-funnel herding (`corner_the_prey`, wave 4d),
-  stealth/detection/cover (R20, wave 4c), environment objects beyond the
-  trash can, and owner-authored room layouts (every authored wall/can/door
-  position is PLACEHOLDER — the owner redesigns rooms with the front).
+  environment objects beyond the trash can, and owner-authored room layouts
+  (every authored wall/can/door position is PLACEHOLDER — the owner
+  redesigns rooms with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in
   `tests/test_phase_upgrades.gd`); the wave-4a pathfinding contract is
-  pinned in `tests/test_pathing.gd`.
+  pinned in `tests/test_pathing.gd`; the wave-4c stealth contract in
+  `tests/test_stealth.gd`.
 
 ## R29 — Doors & dungeon flow: the room graph (KAN-5 wave 4b, 2026-08-11 — PROVISIONAL)
 

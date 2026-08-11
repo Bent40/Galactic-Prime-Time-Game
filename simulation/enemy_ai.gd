@@ -1060,8 +1060,16 @@ static func _wait(tier: String, reason: String) -> Dictionary:
 ## Living, in-play combatants whose team differs from the actor's. An actor
 ## with an EMPTY team sees no targets (teams are explicit — R11 #15); a
 ## teamless combatant IS hostile to any teamed enemy. A grappled actor is
-## locked onto its living grappler. Targets without an attackable part are
-## skipped. Sorted-id iteration keeps this deterministic.
+## locked onto its living grappler (physical contact — a grappler can never be
+## stealthed anyway, the stealth command rejects in_grapple). Targets without
+## an attackable part are skipped, and so is a STEALTHED target (R20 AI
+## honesty, wave 4c): an undetected opponent does not EXIST to the policy —
+## no targeting, no cone counting, no pack draw, no antagonism weight ever
+## reads it. With every opponent stealthed the tier policies wait
+## ("no_targets"): the mob honestly loses the target — no search or
+## last-known-position behavior (R20's "investigate" rides the downscoped
+## hearing model; documented in the addendum's IMPLEMENTED marker).
+## Sorted-id iteration keeps this deterministic.
 func _opponents(actor: CombatantState) -> Array[CombatantState]:
 	var out: Array[CombatantState] = []
 	if actor.team == "":
@@ -1080,6 +1088,8 @@ func _opponents(actor: CombatantState) -> Array[CombatantState]:
 			continue
 		if not other.alive or other.removed_from_play:
 			continue
+		if other.stealthed:
+			continue  # R20: the fiction says the actor does not know it is there
 		if _attackable_parts(other).is_empty():
 			continue
 		out.append(other)

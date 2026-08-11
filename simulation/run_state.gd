@@ -175,6 +175,8 @@ extends RefCounted
 ##   - combat buffs/debuffs: brace_guard, feint_forced, feint_by, dancing,
 ##     dance_charm; grapple links (grappling/grappled_by — the partner did not
 ##     follow you out); exposed_cache (recomputed).
+##   - stealthed (R20, wave 4c): in-encounter concealment — the next room
+##     re-stages (and re-sees) you; the compat-conditional key is erased.
 ##   - broadcast plane, EXCEPT the chained hype meter: the HypeEngine
 ##     goal/spotlight and the EvidenceEngine ledger are per-encounter (each
 ##     fight is its own broadcast segment; the run keeps each segment's outcome
@@ -815,6 +817,10 @@ static func _sanitize_carry(raw_variant: Variant) -> Dictionary:
 	carry["grappling"] = ""
 	carry["grappled_by"] = ""
 	carry["strained_grip"] = false
+	# R20 (wave 4c): stealth is in-encounter concealment — you are re-staged
+	# (and re-seen) in the next room. The key is compat-conditional (present
+	# only while true), so ERASE it rather than write false.
+	carry.erase("stealthed")
 	# Statuses: only the condition-justified incapacitated persists (its head
 	# condition carried too); overwhelmed/prone/slowed are per-combat posture.
 	var statuses: Dictionary = {}

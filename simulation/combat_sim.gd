@@ -49,6 +49,34 @@ extends RefCounted
 ##       never issue it in v1 — the AI never decides doors (no enemy_ai
 ##       code path exists for it; a closed door honestly walls enemies off).
 ##       Emits door_changed {actor, key, position, state}.
+##   {"type": "stealth", "actor", "set"?: "hide"|"reveal"}    R20 (KAN-5 wave 4c)
+##       The v1 binary stealth model (rules-addendum R20 — its own phasing
+##       note authorizes this slice; the IMPLEMENTED marker there carries the
+##       full mapping + every downscope). STRICTLY OPT-IN: default = everyone
+##       detected; the "stealthed" key serializes only while true, so a
+##       stealth-free fight is byte-identical to the pre-stealth engine.
+##       HIDE (default): the actor must be alive/ready, un-grappled (physical
+##       contact IS detection — R9 links reject in_grapple) and currently
+##       UNSEEN by every living hostile that can act (Stealth.sees — 2× Mind
+##       range + hex-line LOS through walls/closed doors; rejected
+##       in_enemy_sight naming the observer). Costs the FREE-ACTION SLOT (R3,
+##       the door/bit family — UNPRICED by R20, documented v1 choice; no
+##       Moment-cost fallback). Emits stealth_entered.
+##       REVEAL: voluntarily drops concealment — free (abandoning a state is
+##       not an act), emits stealth_broken reason "revealed_self".
+##       While stealthed: EnemyAI._opponents excludes the actor (the mob
+##       honestly loses the target — no search/last-known-position behavior,
+##       R20's investigate rides the downscoped hearing model); hostile
+##       declares/reactions/grapples at it reject target_stealthed; an aimed
+##       hostile windup collapses if it hides mid-windup (R2). Committed AREA
+##       shapes (cones, charge lanes, blasts) still hit its BODY by hex —
+##       physicality over information — and damage alone never breaks stealth,
+##       but the Shock-T1 Shout it may trigger does (R13 noise seed).
+##       Stealth BREAKS automatically (the per-command _stealth_checks sweep,
+##       zero rng — R20 authors no roll): "seen" (any hostile gains range+LOS
+##       — either side moving, a door opening...), "shout" (Shock T1), or
+##       "downed" (death/removal). stealth_broken carries the reason (+
+##       observer when seen).
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
@@ -151,6 +179,8 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _set_arena(cmd)
 		"door":
 			events = _door(cmd)
+		"stealth":
+			events = _stealth(cmd)
 		_:
 			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
 	_post(events)
@@ -174,6 +204,11 @@ func _post(events: Array[Dictionary]) -> void:
 	ids.sort()
 	for id: Variant in ids:
 		events.append_array(ExposureEngine.refresh(combatants[id], clock.tick))
+	# R20 (wave 4c): the stealth sweep — every command re-checks every stealthed
+	# combatant (sight / shout / downed) BEFORE the broadcast plane ingests, so
+	# hype/tags/evidence see stealth_broken too. No-op (no events, no rng, no
+	# state) while nobody is stealthed — the legacy compat pin.
+	events.append_array(_stealth_checks(events))
 	events.append_array(hype.ingest(events))
 	# Tag detection runs AFTER hype so Scene Stealer sees hype_goal_completed /
 	# hype_camera_call_started. Its tag_* outputs are system events (no
@@ -689,6 +724,86 @@ func _door(cmd: Dictionary) -> Array[Dictionary]:
 	}]
 
 
+## R20 (KAN-5 wave 4c) — the stealth command (contract in the class header;
+## design + downscopes in the rules-addendum R20 IMPLEMENTED marker). HIDE
+## gates in rejection-priority order (actor gates → state gates → the sight
+## gate → the free-action slot LAST, so a rejected ask never wastes the slot —
+## the door precedent); REVEAL is free. Rejections mutate nothing.
+func _stealth(cmd: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(String(cmd.get("actor", "")))
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": String(cmd.get("actor", ""))}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	var to_state := String(cmd.get("set", "hide"))
+	if to_state != "hide" and to_state != "reveal":
+		return [{"type": "command_rejected", "reason": "unknown_stealth_state", "actor": actor.id, "set": to_state}]
+	if to_state == "reveal":
+		if not actor.stealthed:
+			return [{"type": "command_rejected", "reason": "not_stealthed", "actor": actor.id}]
+		actor.stealthed = false
+		return [{"type": "stealth_broken", "combatant": actor.id, "reason": "revealed_self"}]
+	if actor.stealthed:
+		return [{"type": "command_rejected", "reason": "already_stealthed", "actor": actor.id}]
+	# R9 links are physical contact — the R20 binary ("if you are seen, you are
+	# not stealthed") cannot be entered while an enemy literally holds you (and
+	# holding someone means they know exactly where you are).
+	if actor.grappling != "" or actor.grappled_by != "":
+		return [{"type": "command_rejected", "reason": "in_grapple", "actor": actor.id}]
+	var observer: String = Stealth.first_observer_seeing(combatants, actor, arena, clock.tick)
+	if observer != "":
+		return [{"type": "command_rejected", "reason": "in_enemy_sight", "actor": actor.id, "observer": observer}]
+	# R3 free-action economy: checked LAST so a rejected ask never wastes the
+	# slot; the hide consumes it (one free action per tick — the door family).
+	if actor.free_action_used:
+		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+	actor.free_action_used = true
+	actor.stealthed = true
+	return [{"type": "stealth_entered", "actor": actor.id}]
+
+
+## R20 (wave 4c) — the per-command stealth sweep (called from _post): breaks
+## every stealthed combatant that is now DOWNED (death/removal — a body is not
+## hidden), SHOUTED (Shock T1, the R13 "breaks stealth" noise seed — the
+## shock_shout events of THIS command's batch), or SEEN (the binary sight
+## check — any living hostile that can act with range + LOS; both sides'
+## movement, door flips, an observer recovering... all funnel through here
+## because _post runs after every command). Deterministic and rng-FREE — R20
+## authors no detection roll, so the sweep never touches either rng stream;
+## with nobody stealthed it is a pure no-op (the legacy byte-compat pin).
+## Breaking one stealth never changes another's visibility (a stealthed body
+## blocks no sight line), so a single pass is complete.
+func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var shouters: Dictionary = {}
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "shock_shout":
+			shouters[String(event.get("combatant", ""))] = true
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not c.stealthed:
+			continue
+		if not c.alive or c.removed_from_play:
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "downed"})
+			continue
+		if shouters.has(c.id):
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "shout"})
+			continue
+		var observer: String = Stealth.first_observer_seeing(combatants, c, arena, clock.tick)
+		if observer != "":
+			c.stealthed = false
+			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "seen", "observer": observer})
+	return out
+
+
 # ------------------------------------------------------------------ enemy AI (R11 #15)
 
 ## AI-controlled combatants ready for an ai_decide this tick (sorted) — the
@@ -863,13 +978,19 @@ func _free_hex_near(center: Vector2i, claimed: Dictionary) -> Vector2i:
 # ------------------------------------------------------------------ snapshot
 
 func _snapshot_entry(c: CombatantState) -> Dictionary:
-	return {
+	var entry: Dictionary = {
 		"position": [c.position.x, c.position.y],
 		"alive": c.alive and not c.removed_from_play,
 		"exposed": c.exposed_cache,
 		"helpless": c.is_helpless(clock.tick),
 		"overwhelmed": bool(c.statuses.get("overwhelmed", false)),
 	}
+	# R20 compat pin (wave 4c, the combatant-dict pattern): the key exists ONLY
+	# while stealthed — legacy snapshots (serialized under "tick_snapshot")
+	# stay byte-identical. Windup re-checks read it (target_stealthed, R2).
+	if c.stealthed:
+		entry["stealthed"] = true
+	return entry
 
 
 func _rebuild_snapshot() -> void:

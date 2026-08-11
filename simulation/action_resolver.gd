@@ -71,6 +71,17 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	if not validation.is_empty():
 		return validation
 
+	# R20 (KAN-5 wave 4c) — AI honesty for hand-built commands too: aiming at a
+	# STEALTHED hostile rejects at declare (the actor's fiction holds no target
+	# — EnemyAI._opponents already excludes them; this is the same gate for the
+	# player surface). Covers every target-carrying kind: attack/skill
+	# ("targets" rows) and the grapple family ("target"). Ally targets are
+	# exempt — the party coordinates with its own hidden scout (documented v1
+	# reading; friendly fire on a stealthed teammate stays legal, Q69).
+	var stealth_gate: Array[Dictionary] = _validate_targets_not_stealthed(actor, action)
+	if not stealth_gate.is_empty():
+		return stealth_gate
+
 	# R3 priming gate (decision-log #20): "cooldowns do not exist" — a declared
 	# action instead gates on its PRIME. Unsatisfied primes reject at declare.
 	var prime_reason: String = _prime_unmet(actor, action)
@@ -255,6 +266,10 @@ func _has_status(c: CombatantState, status: String) -> bool:
 ##                 undodgable: bool — R26 (additive): the action's data-driven
 ##                 undodgable flag; when true the dodge uncertainty collapses
 ##                 honestly (dodge_possible false, outcome "undodgable"),
+##                 target_stealthed: true — R20 (additive, wave 4c): present
+##                 ONLY when the target is a stealthed hostile — declaring
+##                 this would reject target_stealthed, and the preview says
+##                 so instead of projecting an unaskable hit,
 ##                 read_possible: bool, read_threshold: int,
 ##                 read_mind: int, read_die: int,
 ##                 read_outcome: "" | "ineligible" | "auto_read" | "roll_needed" | "impossible",
@@ -396,7 +411,7 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 			read_roll_needed = read_threshold - read_mind
 		else:
 			read_outcome = "impossible"
-	return {
+	var row: Dictionary = {
 		"id": target_id,
 		"part": part_key,
 		"force": force,
@@ -419,6 +434,13 @@ func _preview_target_row(actor: CombatantState, action: Dictionary, target_id: S
 		"read_outcome": read_outcome,
 		"read_roll_needed": read_roll_needed,
 	}
+	# R20 (ADDITIVE, wave 4c) — preview honesty: aiming at a stealthed HOSTILE
+	# would reject at declare (target_stealthed), so the row says so instead of
+	# projecting a hit that cannot be asked for. Key present only when true
+	# (existing preview consumers keep their exact row shape).
+	if target.stealthed and target.team != actor.team:
+		row["target_stealthed"] = true
+	return row
 
 
 ## The damage dict the strike would actually use, mirroring _strike_via_spec /
@@ -518,6 +540,22 @@ func _preview_combined(action: Dictionary) -> Dictionary:
 		"per_target": rows,
 		"merged": merged,
 	}
+
+
+## R20 (wave 4c): [] when no declared target is a stealthed HOSTILE, else the
+## target_stealthed rejection. Reads action "targets" rows (attack/skill) and
+## the single "target" field (grapple kinds). Unknown ids fall through — the
+## kind-specific validators own those rejections.
+func _validate_targets_not_stealthed(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	for target_entry: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = target_entry
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		if target != null and target.stealthed and target.team != actor.team:
+			return _reject("target_stealthed", {"actor": actor.id, "target": target.id})
+	var single: CombatantState = combatants.get(String(action.get("target", "")))
+	if single != null and single.stealthed and single.team != actor.team:
+		return _reject("target_stealthed", {"actor": actor.id, "target": single.id})
+	return []
 
 
 func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> Array[Dictionary]:
@@ -952,6 +990,11 @@ func reaction(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 	var cost: int = int(payload.get("cost", 0))
 	if cost <= 0 and actor.free_action_used:
 		return _reject("free_action_used", {"actor": actor_id})
+	# R20 (wave 4c): a damaging reaction cannot aim at a stealthed hostile —
+	# same honesty gate as declare, checked BEFORE the slot/readiness mutate.
+	var aimed: CombatantState = combatants.get(String(payload.get("target", "")))
+	if aimed != null and aimed.stealthed and aimed.team != actor.team:
+		return _reject("target_stealthed", {"actor": actor_id, "target": aimed.id})
 	actor.reaction_used = true
 	if cost <= 0:
 		actor.free_action_used = true
@@ -1694,6 +1737,15 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 		var snap: Dictionary = snapshot.get(target.id, {})
 		if not bool(snap.get("alive", false)):
 			return "target_dead"
+		# R20 (wave 4c): a hostile target that slipped into stealth during the
+		# windup VANISHED from the attacker's fiction — the aimed windup
+		# collapses exactly like the R2 out-of-range escape. Plain aimed
+		# actions only: a committed charge LANE is physical geometry (bodies on
+		# it get hit by hex, stealthed or not — physicality over information),
+		# and cones re-check per target in _recheck_cone_targets, which keeps
+		# stealthed bodies in the arc for the same reason.
+		if shape_kind == "" and bool(snap.get("stealthed", false)) and target.team != actor.team:
+			return "target_stealthed"
 		if shape_kind != "line":
 			var target_pos: Array = snap.get("position", [target.position.x, target.position.y])
 			var a := Vector2i(int(actor_pos[0]), int(actor_pos[1]))
