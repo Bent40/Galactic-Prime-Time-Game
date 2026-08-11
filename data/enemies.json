@@ -25,6 +25,11 @@
       "Affliction": 0,
       "Psychic": 0
     },
+    "personality": {
+      "pack_hunter": true,
+      "pack": "roach",
+      "note": "R15 pack synergy (wave 3a): roaches hunt as a brood — when two ready roaches' own R23 antagonism draws AGREE on a victim this tick, the second links its bite to the first (shared combo_id -> one merged Force through one Robustness gate; pairs only in v1). Opportunistic, never scripted: the draws stay intact. Elites/bosses are NOT pack hunters. All numbers PLACEHOLDER (R14)."
+    },
     "abilities": [
       {
         "key": "bite",

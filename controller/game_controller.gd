@@ -301,6 +301,13 @@ func view_combatants() -> Array[Dictionary]:
 			# grudge score, plain copy) so the HUD/inspector can show who the
 			# boss hates. {} for contestants — they never hold grudges here.
 			"antagonism": c.antagonism.duplicate(true) if EnemyAI.AI_CATEGORIES.has(c.category) else {},
+			# Wave 3a (ADDITIVE): the AI stance substrate for `aura_reading` —
+			# the actor's last-decide intent read (aggressive / hunting /
+			# defensive / building; the table lives in EnemyAI's header).
+			# "unknown" for an AI that has not decided yet; "" for contestants
+			# (stances are AI-only — the skill reads ENEMY intent).
+			"ai_stance": (String(sim.ai.stances.get(String(id), "unknown"))
+					if EnemyAI.AI_CATEGORIES.has(c.category) else ""),
 			"parts": parts,
 		})
 	return out

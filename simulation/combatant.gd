@@ -356,6 +356,19 @@ func personality_decay() -> float:
 	return float(personality.get("decay", 1.0))
 
 
+## R15 pack synergy gate (wave 3a): does this creature hunt as a pack? Authored
+## on mob templates only (roach_dog); elites/bosses fight alone — default false.
+func personality_pack_hunter() -> bool:
+	return bool(personality.get("pack_hunter", false))
+
+
+## R15 pack FAMILY (wave 3a, documented choice: the explicit personality key,
+## not an id/enemy_key prefix): two pack hunters link only when both carry the
+## same non-empty pack name ("roach"). "" = no family = never links.
+func personality_pack() -> String:
+	return String(personality.get("pack", ""))
+
+
 ## Over-10 stat-cap formulas — adopted verbatim from the char-sheet app (R6).
 static func over_cap(total: int, divisor: int) -> int:
 	return int(floor(maxi(0, total - 10) / float(divisor)))

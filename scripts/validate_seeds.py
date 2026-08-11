@@ -295,13 +295,17 @@ def main() -> int:
         # decision #29): optional; when present the biases are numbers >= 0,
         # mock_sensitive is a bool, note is free-form. spare_respect is the
         # RESERVED sparing hook — carried and validated, read by nothing yet.
+        # R15 pack synergy (wave 3a): pack_hunter is a bool gate, pack is the
+        # non-empty family string; a pack_hunter without a pack never links,
+        # so authoring one without the other is flagged.
         pers = e.get("personality")
         if pers is not None:
             if not isinstance(pers, dict):
                 fail("enemies.json", f"{k}: personality must be an object (R23)")
             else:
                 allowed = {"proximity_bias", "grudge_weight", "mock_sensitive",
-                           "mock_grudge", "low_hp_bias", "decay", "spare_respect", "note"}
+                           "mock_grudge", "low_hp_bias", "decay", "spare_respect", "note",
+                           "pack_hunter", "pack"}
                 extra = set(pers) - allowed
                 if extra:
                     fail("enemies.json", f"{k}: personality keys {sorted(extra)} invalid (R23)")
@@ -312,6 +316,12 @@ def main() -> int:
                         fail("enemies.json", f"{k}: personality.{fk} must be a number >= 0 (R23)")
                 if "mock_sensitive" in pers and not isinstance(pers["mock_sensitive"], bool):
                     fail("enemies.json", f"{k}: personality.mock_sensitive must be a bool (R23)")
+                if "pack_hunter" in pers and not isinstance(pers["pack_hunter"], bool):
+                    fail("enemies.json", f"{k}: personality.pack_hunter must be a bool (R15 wave 3a)")
+                if "pack" in pers and (not isinstance(pers["pack"], str) or not pers["pack"]):
+                    fail("enemies.json", f"{k}: personality.pack must be a non-empty string (R15 wave 3a)")
+                if pers.get("pack_hunter") and not pers.get("pack"):
+                    fail("enemies.json", f"{k}: pack_hunter without a pack family never links (R15 wave 3a)")
         # abilities — the shapes EnemyAI v1 consumes (simulation/enemy_ai.gd):
         # damage list (strike), range/area reach, summon, heal.
         for a in e.get("abilities", []):

@@ -591,7 +591,26 @@ func _ai_decide(cmd: Dictionary) -> Array[Dictionary]:
 		# chew/spin = marker-carrying attacks), so validation, feints, shock
 		# and the Forced-Action machinery all apply like any other action.
 		"attack", "heal", "grab", "chew", "spin":
-			events.append_array(resolver.declare(actor.id, decision.get("action", {})))
+			var declared: Array[Dictionary] = resolver.declare(actor.id, decision.get("action", {}))
+			events.append_array(declared)
+			# R15 pack synergy (wave 3a): the linked pair announces itself only
+			# once the second strike is REALLY scheduled — a rejected declare
+			# emits nothing (the partner's residual combo_id resolves solo,
+			# byte-identical to an unlinked strike).
+			if decision.has("pack_link"):
+				var scheduled: bool = false
+				for event: Dictionary in declared:
+					if String(event.get("type", "")) == "action_declared":
+						scheduled = true
+				if scheduled:
+					var link: Dictionary = decision["pack_link"]
+					events.append({
+						"type": "pack_synergy",
+						"combo_id": String(link.get("combo_id", "")),
+						"members": [String(link.get("partner", "")), actor.id],
+						"target": String(link.get("target", "")),
+						"part": String(link.get("part", "")),
+					})
 		"stand":
 			# Skill-feel pass: a prone boss spends its Moment standing back up —
 			# the SAME cost-1 stand action players use (declared through the
