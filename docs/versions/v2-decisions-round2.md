@@ -923,6 +923,164 @@ and a Floor 0 tutorial is the natural home for the civilian's "what *is* this" b
 
 ---
 
+## Part 12 — Round 8: the batch clears
+
+### 12.1 Rulings
+
+| # | Ruling |
+|---|---|
+| **D-10** | **Camera Call = double or nothing.** It calls the table to gamble on your *specific declared action*: higher earnings on success, higher loss on failure |
+| **D-11** | **Both** — tags carry crowd domains, epithets carry god jurisdictions (split by plane, per Frame-C) |
+| **D-19** | Keep **"Godly"** (now literally true); free **"Mythic"** from at least one of its four ladders |
+| **D-23** | **100 tags** — the data stands; the 84-pruning is retired |
+| **D-27** | ✅ **Firearms are canon in v2** — *"we are in modern reality."* No longer an inference |
+| **Q-27** | Tutorial is **Floor 0** — outside the count. ID-0.29's ten floors survives intact |
+| **Q-28** | Demons are **NPCs and enemies — not playable, unless a character is *changed into* one** |
+| **Q-29** | **Speaking a floor-god's name does not pay them — praying to them does.** A floor-god's goal is to collect enough reverence to **pay the casino back and earn its right of existence** |
+| **Q-30** | Earth's remains have **no voice and no agency**. Simply the desolate remains |
+| **Q-31** | The floor-runners are a **separate broke cast**, not drawn from the 24-god roster |
+
+### 12.2 D-10 is better than what I proposed
+
+I suggested Camera Call should double the reverence swing. **"Double or nothing on a declared
+action" is a stronger mechanic**, for three reasons:
+
+1. **It is a *declared* bet.** The player chooses the moment and names the action. That is
+   agency, where a passive multiplier is just variance.
+2. **It makes the two planes fire together** (Frame-C): the broadcast plane sees a Camera
+   Call; the wager plane sees the table taking odds on one specific act.
+3. **It restores "spectacle over safety" as a real decision** — declaring big when you are
+   not sure is exactly the behaviour the show wants and the smart play punishes.
+
+**Open detail:** does a failed double-or-nothing cost *only the stake*, or does it also
+**burn earned reverence** (named followers walking away)? The second is harsher and more
+faithful to reverence being losable. **→ Q-32.**
+
+### 12.3 Q-29 gives every floor-god a motive and a clock
+
+> *"A floor god's goal is to collect enough reverence to pay the casino back and earn its
+> right of existence."*
+
+This is the best single line of lore produced in this pass. It means:
+
+- **Every floor-set has a host with a stake and a debt.** The set's question
+  (`story-canon.md:68`) is now *that god's* question, asked by something that will cease to
+  exist if the answer doesn't pay.
+- **Prayer is a mechanic, not flavour.** A contestant can pay a floor-god in reverence —
+  and since divinity is finite and earned (Q-22), **praying costs you what it gives them.**
+  That is a genuine moral trade in the campaign's own currency.
+- **The house has leverage over its own runners.** A bankrupt god running your floor is
+  itself being squeezed, which makes it bargainable, desperate, and occasionally an ally.
+- **It explains the whole institution.** The casino doesn't need to be evil; it holds the
+  debt. `cosmic-casino-canon.md` §4's *"a framework with no motive at all"* now has teeth
+  without a villain.
+
+**Sharpest consequence:** a contestant can **save or condemn a god**. On a floor whose runner
+is short of its debt, praying is charity that costs you the campaign's only real resource —
+and refusing is an execution you commit by doing nothing. That is the spine
+(*"how much can we break your essence down…"*) pointed at the *audience* for once.
+
+**→ Q-33: is a floor-god's debt a visible number?** Recommend yes — a floor-set-long ledger
+the party watches, which makes the choice concrete instead of abstract.
+
+### 12.4 Approved and applied
+
+**Group C — adopted** (mycelium dropped, see §12.5):
+
+| # | Adopted |
+|---|---|
+| **D-14** | The **anti-prime** is the curse chassis — a curse adds or invalidates a §4.6 prime |
+| **D-15** | Boss ladder: **Shrine → Temple → Pantheon**; supers **Legend → Age-Ender → The House** |
+| **D-18** | The Advanced Fabricator is fronted by a **bankrupt smith-god** — also fills the materials corpus's flagged smith-god gap. *(Now doubly apt: a smith-god in debt to the house is a floor-runner in miniature.)* |
+| **D-20** | The **Nikita adjacency separation rule** — no shared scene, floor, or episode with the Abrahamic-corporate satire |
+
+**Group D — housekeeping, applied:** D-21, D-22, D-24 (doc reconciliation sweep) · D-26
+(the three-way consistency guard, written) · **D-28 applied** — `data/migrations/001_initial_schema.sql:212`
+now reads `CHECK (source_type IN ('Patron', 'House', 'Crowd'))`; verified the value was
+referenced nowhere else in the codebase before changing it · D-29 (archive `messages`,
+don't migrate — recorded) · D-30 (contestant/champion register split — recorded).
+
+**Group E — flavour, adopted:** Farm → **augury pen** · Wizard's Tower → **the Sanctum** ·
+the Goldsmith's bench → **"the cage"** · a **HOUSE** lane in the Box Namer · the three coupon
+renames (Wardrobe Comp · Altar Marker — Lesser · Forge Marker — Basic) · Med Bay is a
+**marker**, not a comp · §17.1 "Exposure" renamed (the word is taken twice — by the combat
+state and a sim class) · top box tiers mapped onto the relic taxonomy (Godly → God Relic,
+Mythic → Follower Relic) · Nine Lives and Unkillable re-homed to the epithet track · Skill
+Tomes split into **God Relics** and **Follower Relics** · enemy disposition is
+**encounter-level** · the four TV-coded skills renamed (Vibe Control, Heroic Punch, Slice n'
+Dice, Play to the Camera) — *note: renames break name-matching in `apply-skill-passover.js`.*
+
+### 12.5 The mycelium is dropped — one consequence to place
+
+**Ruled: drop it.** Under D-V2 this is **v2-only** — v1 keeps the mycelium unchanged.
+
+The cost the audit flagged is real: the Incinedile's discoverable win condition *is* the
+mycelium — 6 phases, breach paths, network-as-body-part, all play-tested. **The mechanics
+should survive the re-theme**; only the fiction changes. Three re-themes that preserve the
+network structure exactly:
+
+| | Re-theme | Fit |
+|---|---|---|
+| **a** | **The root-system of a bankrupt god's dead temple** — the boss is squatting in it | Ties straight into Q-29's floor-god debt; strongest option |
+| **b** | **A dead god's nervous system**, still twitching | Myth-native; keeps the body-horror register |
+| **c** | A creature with a genuinely distributed nervous system — no divine element | Cheapest; loses the thematic hook |
+
+**→ Q-34.** Also affects the Mycelium Core item, the Mycelium-Threaded Hide, and the
+"Mycelius Chrom Production Co" shopkeep — 3 records plus an NPC, v2 side only.
+
+### 12.6 D-25 explained (you asked)
+
+**The problem, in the book's own words.**
+
+§2.1 defines Charm (`gpt-system-v1.0.md:55-57`):
+> *"**Charm** — **presentability**: how objectively camera-ready you are — photogenics,
+> striking looks, visual impressiveness… **Charm is not warmth or likability** — those live
+> in the audience's reaction to you (Tags and crowd response), never in the number."*
+
+R18 (`rules-addendum.md:594-601`) restates it as a hard ruling: **"Charm is NOT charisma."**
+
+But §2.3's action table (`gpt-system-v1.0.md:98-100`) keys three social actions to it:
+
+| Action | Stat(s) | Reads as |
+|---|---|---|
+| **Command** | Charm | *You lead because you are photogenic* |
+| **Persuade** | Charm + Mind | *You talk people around by being attractive* |
+| **Intimidate** | Charm + Physique | *You are frightening because you look striking* — **this one is arguably fine**; menace really is partly visual |
+
+**So Command and Persuade are incoherent under the book's own definition of the stat.**
+Intimidate survives, because presentability plausibly contributes to threat.
+
+**Why it was missed:** `docs/audits/skills-audit.md` applied R18 across the *skills* and
+flagged an "R18 sweep" — the sweep never reached the action table.
+
+**Cost of fixing:** moving a stat owes **skill-point refunds** to anyone who invested under
+the old mapping (`audits/skills-audit.md:98`). With 5 live PCs that is small but real.
+
+**The likely fix** (not applied — awaiting your call): Persuade → **Mind** (+ Charm as a
+secondary), Command → **Mind** or Mind + Charm, Intimidate → **unchanged**.
+
+**Your three options:**
+
+| | Option | Effect |
+|---|---|---|
+| **a** | **Fix in v1 as errata** | Corrects a live incoherence; costs refunds to 5 PCs. v1's freeze covers *setting*, not errata — but it is your table |
+| **b** | **Fix in v2 only** | v1 keeps the quirk; the two books diverge on a rule for no thematic reason — the exact drift the consistency guard exists to prevent |
+| **c** | **Leave it** | Zero cost; the book contradicts itself in a spot players rarely touch |
+
+**Recommendation: (a).** It is a genuine defect rather than a fork, and fixing it in one
+place keeps the shared spine honest.
+
+### 12.7 Outstanding
+
+| # | Question | Rec |
+|---|---|---|
+| **D-25** | Fix the Charm/action-table contradiction in **v1 as errata**, v2-only, or leave? (§12.6) | **v1 errata** |
+| **Q-32** | Does a failed double-or-nothing cost only the stake, or **burn earned reverence**? (§12.2) | Burn — reverence is losable |
+| **Q-33** | Is a floor-god's **debt a visible number** the party can watch? (§12.3) | Yes |
+| **Q-34** | What replaces the mycelium in v2? (§12.5) | **(a)** the root-system of a bankrupt god's dead temple |
+
+---
+
 ## Part 5 — What D-01 unblocks immediately
 
 1. **The floor-set question bank** (fork spec §7) — a question only classifies you if there

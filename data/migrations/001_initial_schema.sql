@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS patron_goals (
 	name TEXT NOT NULL UNIQUE,
 	description TEXT NOT NULL DEFAULT '',
 	goal_type TEXT NOT NULL,
-	source_type TEXT NOT NULL DEFAULT 'Patron' CHECK (source_type IN ('Patron', 'Corporate', 'Crowd')),
+	source_type TEXT NOT NULL DEFAULT 'Patron' CHECK (source_type IN ('Patron', 'House', 'Crowd')),
 	tag_id INTEGER,
 	trigger_conditions TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(trigger_conditions)),
 	reward TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(reward)),
