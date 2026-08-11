@@ -11,17 +11,18 @@ commit pushed to both). Both at `e13d8e2` (wave 2 complete, CI green). Develop o
 the session branch; push `-u` to both. NOTE: the owner also pushes ledger commits
 directly to `main` — fetch + merge origin/main before pushing.
 
-### ⏸️ Owner-paced (both open items)
+### ⏸️ Owner-paced (open items)
 1. **Front rework (decision #31):** the owner drafts ALL mockups; we build against
    them. The engines are ready — everything driveable via commands + view API.
    KAN-4 mockup-gate UI decisions (docs/ux-designs/kan4/README.md) deferred to
    that pass.
-2. **PROVISIONAL sign-off batch** (implemented-as-written, none blocking):
-   phase-5 spin = chew+spin merged (R11 #20) · P5 cone-tracking tie rules ·
-   Tactical Roll hard-counters valve KOs (R25 — blast centers on the boss's
-   occupied hex) · recruits join as-is / decline final (#31) · Sasha & Nikita
-   sheets + open 4th skill slots · boss dodge threshold 4→7 (R22 retune) ·
-   camera stacks bounded 0..1 (creation engine).
+2. **Sign-off batch RULED 2026-07-25 (decision #32) — implemented at `4d26a70`,
+   CI green:** approvals as shipped + three changes now live: R26 undodgable
+   attacks (valve blast first application, telegraph/schedule/preview all carry
+   it); hype chains 40/60/80/100% retention; story-driven declines. Small
+   leftovers still open: the premades' 4th skill slots; cross-character CHAIN
+   on Pressure Strike (stands as-is); my two PROVISIONAL story readings —
+   Sasha "Little shadow" may_reoffer / Nikita "The lonely" gone_for_run.
 
 ### ▶️ Unblocked engine backlog (in rough priority)
 - Pack synergy (R15 enemy combos) and AI stances for `aura_reading`.

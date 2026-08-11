@@ -5,9 +5,14 @@
 
 ## Done
 
-- **Suite: 433 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
-  gate (seeds · import · suite · slice smoke · balance WIN) at tip `e13d8e2`; branch
+- **Suite: 448 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+  gate (seeds · import · suite · slice smoke · balance WIN) at tip `4d26a70`; branch
   `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep.
+- **Sign-off batch RULED + implemented (decision #32, 2026-07-25):** R26 undodgable
+  attacks (data-driven, every dodge path skipped rng-free, transparency mandatory,
+  valve blasts first application); hype chains (40/60/80/100% retention, serialized
+  chain index, replay-identical); story-driven recruit declines (`on_decline` data);
+  epithets Sasha "Little shadow" / Nikita "The lonely".
 - **The 2026-07-23/25 rulings batch, all implemented** (decision-log #27–31, addendum
   R22–R25, R11 #19–#20): explosion valves REAL (telegraph → escape → blast → KO =
   Helpless 2 Clocks → boss keeps fighting — dormancy bug dead); R22 dodge (Reflexes
@@ -48,10 +53,9 @@
 - **Owner front rework (decision #31):** owner drafts all mockups; we build them
   against the ready engines. UI decisions from the KAN-4 mockup gate are deferred
   to that pass.
-- **Owner sign-off batch (PROVISIONAL, implemented-as-written):** phase-5 spin
-  model + cone-tracking ties (R11 #20); Tactical Roll hard-counters valve KOs
-  (R25); recruits join as-is / decline final (#31); Sasha & Nikita sheets + open
-  4th skill slots; boss dodge threshold 4→7; camera stacks 0..1.
+- **Small open leftovers from the ruled batch (#32):** the premades' 4th skill
+  slots; cross-character CHAIN on Pressure Strike (stands as-is); the two
+  PROVISIONAL on_decline story readings.
 - Engine backlog (unblocked): pack synergy (R15 enemy combos), AI stances
   (aura_reading), second authored enemy/encounter, keyword tree (G3) + Gemstone
   mutations in sim data, then KAN-5 arenas (walls/environment un-inert the last
