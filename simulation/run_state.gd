@@ -19,9 +19,10 @@ extends RefCounted
 ##   {"type": "begin_encounter"}                         between -> combat
 ##       Starts encounter #completed. Rejected while a recruit offer is available
 ##       or open (the offer beat is unmissable — resolve it first). Emits
-##       run_encounter_started {index, key, sim_seed};
+##       run_encounter_started {index, key, sim_seed, hype_start};
 ##       sim_seed = run_seed * 1000003 + (index + 1) * 7919 (documented
-##       arithmetic — deterministic, no hash dependency).
+##       arithmetic — deterministic, no hash dependency); hype_start = the
+##       chain-retained opening meter (decision #32 — see the persists table).
 ##   {"type": "end_encounter", "outcome": "WIN"|"LOSS",
 ##    "carried": {id: CombatantState.to_dict()}, "camera_calls_used": {id: int},
 ##    "tags_held": {id: {tag: true}}, "hype_meter": int}  combat -> between/finished
@@ -37,8 +38,13 @@ extends RefCounted
 ##       PROVISIONAL (#31): the recruit joins AS-IS, carrying whatever damage
 ##       they took fighting that encounter as a staged ally.
 ##   {"type": "decline_recruit"}                         offer -> between
-##       PROVISIONAL (#31): a declined recruit is GONE for the rest of the run —
-##       re-offer impossible.
+##       STORY-DRIVEN (decision #32, supersedes #31's global decline-final): the
+##       recruit's own data decides. The offer spec's "on_decline" is honored:
+##       "gone_for_run" (the default when the spec is silent — #31's behavior)
+##       bars any re-offer for the rest of the run; "may_reoffer" leaves the
+##       recruit offerable again by a LATER encounter's recruit_offer (same run
+##       — a fresh offer beat; declining the re-offer re-honors the data). The
+##       run_recruit_declined event reports the policy HONORED.
 ##   {"type": "end_run"}                                 between -> finished
 ##       Outcome WIN when every encounter cleared, else ABANDONED (PROVISIONAL —
 ##       extraction before clearing the route; R17 run types will refine).
@@ -54,7 +60,9 @@ extends RefCounted
 ##                 "overrides"? (merged into the add_combatant spec last)}],
 ##    "allies":  [{"spec": {full add_combatant spec, team "party"}}]  (staged
 ##                party-side NPCs that are NOT roster members — the recruit
-##                fights here before the offer),
+##                fights here before the offer; a recruit spec may carry
+##                "on_decline": "gone_for_run" | "may_reoffer", copied verbatim
+##                from its recruit_loadouts.json row — decision #32),
 ##    "recruit_offer"?: recruit loadout key — maps to the staged ally whose
 ##                combat id is the key's first "_"-separated token (the
 ##                documented loadout-id rule, same join view_bid uses),
@@ -121,12 +129,27 @@ extends RefCounted
 ##   - combat buffs/debuffs: brace_guard, feint_forced, feint_by, dancing,
 ##     dance_charm; grapple links (grappling/grappled_by — the partner did not
 ##     follow you out); exposed_cache (recomputed).
-##   - broadcast plane: the HypeEngine meter/band/goal/spotlight and the
-##     EvidenceEngine ledger are per-encounter (each fight is its own broadcast
-##     segment; the run keeps each segment's outcome + final hype in `records`).
-##     PROVISIONAL — no ruling on a run-level hype carryover yet.
+##   - broadcast plane, EXCEPT the chained hype meter: the HypeEngine
+##     goal/spotlight and the EvidenceEngine ledger are per-encounter (each
+##     fight is its own broadcast segment; the run keeps each segment's outcome
+##     + final hype in `records`). The METER is CHAIN-RETAINED (decision #32,
+##     supersedes the per-encounter hype reset): back-to-back encounters retain
+##     hype — the next encounter of a chain OPENS at floor(retention% x the
+##     previous segment's ending meter), retention laddered 40% / 60% / 80%
+##     then 100% for every further link (CHAIN_RETENTION_PCT, floor rounding —
+##     chaining encounters is rewarded with hype). Today EVERY encounter
+##     chains (no rest beats exist yet); a future rest/lounge beat RESETS
+##     hype_chain_index to 0 (data hook only — no such encounter kind is
+##     authored). Applied at staging via staging().hype_start, derived purely
+##     from logged state (records + hype_chain_index), so a bare-RunState
+##     replay of the run log reproduces it.
 
 const PHASES: Array[String] = ["idle", "between", "combat", "offer", "finished"]
+
+## Hype-chain retention ladder (decision #32): link N of a chain opens at
+## floor(CHAIN_RETENTION_PCT[min(N, 4)]% x the previous ending meter). Index 0
+## = a chain-opening encounter (fresh meter); 100% holds for all further links.
+const CHAIN_RETENTION_PCT: Array[int] = [0, 40, 60, 80, 100]
 
 var run_seed: int = 0
 var phase: String = "idle"
@@ -146,8 +169,17 @@ var completed: int = 0
 var available_offer: Dictionary = {}
 ## The open offer beat (same shape) — accept_recruit / decline_recruit resolve it.
 var pending_offer: Dictionary = {}
-## recruit_key -> true for every recruit declined this run (re-offer impossible).
+## recruit_key -> true for every recruit declined GONE-FOR-RUN (re-offer
+## impossible). Decision #32: only a decline whose honored on_decline is
+## gone_for_run lands here — a may_reoffer decline leaves no mark, so a later
+## encounter's recruit_offer finds the recruit eligible again.
 var declined: Dictionary = {}
+## Consecutive back-to-back encounters completed in the current hype chain
+## (decision #32). Today EVERY encounter is chained (no rest beats exist); a
+## future rest/lounge beat RESETS this to 0 (data hook only — no such
+## encounter kind is authored yet). Serialized: chain retention must survive
+## save/restore between encounters.
+var hype_chain_index: int = 0
 ## One record per completed encounter: {"index", "key", "sim_seed", "outcome",
 ## "hype_meter", "survivors": [ids]}.
 var records: Array[Dictionary] = []
@@ -256,6 +288,7 @@ func _begin_encounter() -> Array[Dictionary]:
 		"index": active_index,
 		"key": String(encounters[active_index].get("key", "")),
 		"sim_seed": encounter_seed(active_index),
+		"hype_start": chain_hype_start(),
 	}]
 	return events
 
@@ -297,6 +330,9 @@ func _end_encounter(cmd: Dictionary) -> Array[Dictionary]:
 	})
 	completed += 1
 	active_index = -1
+	# One more link on the hype chain (decision #32): every encounter today is
+	# back-to-back — a future rest/lounge beat resets this instead (data hook).
+	hype_chain_index += 1
 	var events: Array[Dictionary] = [{
 		"type": "run_encounter_ended",
 		"index": record_index,
@@ -388,13 +424,20 @@ func _accept_recruit() -> Array[Dictionary]:
 func _decline_recruit() -> Array[Dictionary]:
 	if phase != "offer":
 		return _reject("no_open_offer")
-	# PROVISIONAL default (#31): declined = gone for the rest of the run.
+	# Story-driven decline (decision #32, supersedes #31's global decline-final):
+	# the recruit's own loadout data decides. Anything other than an explicit
+	# "may_reoffer" honors as gone_for_run (#31's behavior, kept as the safe
+	# default for silent/unknown values — the seed validator gates the enum).
 	var recruit_key := String(pending_offer["recruit_key"])
-	declined[recruit_key] = true
+	var may_reoffer: bool = \
+		String((pending_offer.get("spec", {}) as Dictionary).get("on_decline", "gone_for_run")) == "may_reoffer"
+	if not may_reoffer:
+		declined[recruit_key] = true
 	var events: Array[Dictionary] = [{
 		"type": "run_recruit_declined",
 		"recruit_key": recruit_key,
 		"id": String(pending_offer["id"]),
+		"on_decline": "may_reoffer" if may_reoffer else "gone_for_run",  # the policy HONORED
 	}]
 	pending_offer = {}
 	phase = "between"
@@ -428,6 +471,20 @@ func encounter_seed(index: int) -> int:
 	return run_seed * 1000003 + (index + 1) * 7919
 
 
+## The meter the NEXT encounter of the chain opens with (decision #32,
+## supersedes the per-encounter hype reset): floor(retention% x the previous
+## encounter's ending meter), retention laddered 40/60/80 then 100 for all
+## further links; 0 on a chain-opening encounter. Pure read off logged state
+## (records carry the enriched end_encounter's hype_meter; hype_chain_index
+## advances only in the reducer), so a bare-RunState replay reproduces it.
+func chain_hype_start() -> int:
+	if hype_chain_index <= 0 or records.is_empty():
+		return 0
+	var pct: int = CHAIN_RETENTION_PCT[mini(hype_chain_index, CHAIN_RETENTION_PCT.size() - 1)]
+	var prev_meter: int = int((records.back() as Dictionary).get("hype_meter", 0))
+	return int(floor(prev_meter * pct / 100.0))
+
+
 ## Read-only staging plan for the ACTIVE encounter — the controller executes it
 ## through the EXISTING start_combat/apply_command path. Deterministic: same run
 ## state, same plan. {} outside the combat phase.
@@ -438,6 +495,8 @@ func encounter_seed(index: int) -> int:
 ##                      freshly-added base spec (serialized-state hand-off)
 ##   camera_calls_used: id -> stacks already spent this run (B9 splice)
 ##   tags_held:         id -> held tags to splice (PROVISIONAL carry)
+##   hype_start:        the chain-retained opening meter (decision #32 — the
+##                      controller seeds the HypeEngine with it at staging)
 func staging() -> Dictionary:
 	if phase != "combat":
 		return {}
@@ -493,6 +552,7 @@ func staging() -> Dictionary:
 		"carried": carried,
 		"camera_calls_used": camera_used,
 		"tags_held": tags_held,
+		"hype_start": chain_hype_start(),
 	}
 
 
@@ -623,6 +683,9 @@ func view() -> Dictionary:
 		"phase": phase,
 		"outcome": outcome,
 		"encounter": {"active_index": active_index, "completed": completed, "total": encounters.size()},
+		# Decision #32: the chain link count + the meter the next encounter to
+		# start opens with (== the active one's opening meter while live).
+		"hype_chain": {"index": hype_chain_index, "hype_start": chain_hype_start()},
 		"encounters": encounter_rows,
 		"roster": roster_rows,
 		"available_offer": _offer_view(available_offer),
@@ -698,6 +761,7 @@ func to_dict() -> Dictionary:
 		"available_offer": available_offer.duplicate(true),
 		"pending_offer": pending_offer.duplicate(true),
 		"declined": declined.duplicate(true),
+		"hype_chain_index": hype_chain_index,
 		"records": records.duplicate(true),
 		"outcome": outcome,
 	}
@@ -716,6 +780,7 @@ static func from_dict(data: Dictionary) -> RunState:
 	run.available_offer = (data.get("available_offer", {}) as Dictionary).duplicate(true)
 	run.pending_offer = (data.get("pending_offer", {}) as Dictionary).duplicate(true)
 	run.declined = (data.get("declined", {}) as Dictionary).duplicate(true)
+	run.hype_chain_index = int(data.get("hype_chain_index", 0))
 	for entry: Variant in data.get("records", []) as Array:
 		run.records.append((entry as Dictionary).duplicate(true))
 	run.outcome = String(data.get("outcome", ""))

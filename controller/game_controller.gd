@@ -1071,9 +1071,10 @@ func _end_encounter_payload() -> Dictionary:
 ## Executes RunState.staging(): a fresh CombatSim on the derived encounter seed,
 ## every combatant added through the EXISTING command funnel (combatant_added
 ## flows to listeners exactly as today), then the serialized-state hand-off —
-## carried members, the B9 spent-stack ledger and held tags are spliced into the
-## sim's own to_dict snapshot and the sim is rebuilt via from_dict (the public
-## serialization path; no live objects cross encounters). The encounter's
+## carried members, the B9 spent-stack ledger, held tags and the #32
+## chain-retained hype meter are spliced into the sim's own to_dict snapshot
+## and the sim is rebuilt via from_dict (the public serialization path; no live
+## objects cross encounters). The encounter's
 ## command log restarts empty at the spliced checkpoint: the initial snapshot is
 ## re-derivable from the RUN log (DIRECTION #5), and in-combat commands append
 ## from there.
@@ -1084,7 +1085,8 @@ func _stage_encounter(staging: Dictionary) -> void:
 	var carried: Dictionary = staging.get("carried", {})
 	var camera_used: Dictionary = staging.get("camera_calls_used", {})
 	var tags_held: Dictionary = staging.get("tags_held", {})
-	if not (carried.is_empty() and camera_used.is_empty() and tags_held.is_empty()):
+	var hype_start: int = int(staging.get("hype_start", 0))
+	if not (carried.is_empty() and camera_used.is_empty() and tags_held.is_empty() and hype_start == 0):
 		var snapshot: Dictionary = sim.to_dict()
 		var ids: Array = carried.keys()
 		ids.sort()
@@ -1114,5 +1116,21 @@ func _stage_encounter(staging: Dictionary) -> void:
 		tag_ids.sort()
 		for id: Variant in tag_ids:
 			((snapshot["tags"] as Dictionary)["held"] as Dictionary)[String(id)] = (tags_held[id] as Dictionary).duplicate(true)
+		# Hype-chain retention (decision #32, supersedes the per-encounter hype
+		# reset): a chained encounter OPENS with RunState.staging()'s retained
+		# meter, spliced through the same public serialization path as the carry
+		# (never a live-object poke). The band is re-derived from HypeEngine's
+		# own BANDS floors (highest-first) so views read consistently from tick
+		# 0. hype_start is derived purely from LOGGED run state (the previous
+		# end_encounter's recorded meter + the serialized chain index), so a
+		# replay of the run log stages the identical meter; a chain-opening
+		# encounter (hype_start 0) leaves the fresh engine untouched.
+		if hype_start > 0:
+			var hype_block: Dictionary = snapshot["hype"]
+			hype_block["meter"] = hype_start
+			for entry: Variant in HypeEngine.BANDS:
+				if hype_start >= int((entry as Array)[1]):
+					hype_block["band"] = String((entry as Array)[0])
+					break
 		sim = CombatSim.from_dict(snapshot)
 	command_log = []

@@ -1,7 +1,7 @@
 {
   "_meta": {
     "note": "PROVISIONAL — CANONICAL 2-ENCOUNTER SLICE RUN (KAN-4 run engine, decision log #31). The authored demo run the RunState engine consumes verbatim: encounter 1 is the tutorial-floor brood skirmish where the party meets Sasha (staged as a party-side ally NPC — decision #31's staging default: the recruit FIGHTS the offer encounter, and joining AS-IS carries that damage), encounter 2 is the Incine-Dile den with the (possibly) grown party. RECRUIT PICK — Sasha 'The Tell' over Nikita, three reasons: (1) party gap — Imani tanks on Physique 5, Dario tricks on Reflexes/Charm 5/5, nobody fields Mind; Sasha's Mind 5 is the only spread that adds a new axis to the demo pair (her own file's stated role). (2) Kit safety vs the slice boss — the Incine-Dile is Mind 1, so her feints can never be read (R24), while Nikita's bruiser kit duplicates Imani's Force role. (3) Frame fit — a casino floor manager who counted cards on her own abductors is the Cosmic Casino slice's most on-theme first recruit. Nikita stays reserved for a later den. All numbers PLACEHOLDER (R14); every spec below is copied VERBATIM from its loadout source and drift-gated by tests/test_run_state.gd (test_demo_run_data_contract).",
-    "schema": "run: { key, name, run_seed (int — the canonical demo seed; callers may override), party [full add_combatant specs — source data/demo_loadouts.json, resolved via the documented loadout-id rule (combat id = loadout key's first '_'-token; race id -> races.json key)], encounters [encounter defs per simulation/run_state.gd: { key, kind: 'combat', enemies [{enemy_key (data/enemies.json), id?, name?, count?, position?/positions?}], allies [{spec: full add_combatant spec}] (party-side NPCs, NOT roster), recruit_offer?: recruit loadout key (data/recruit_loadouts.json), party_positions?: {id: [q, r]} }] }"
+    "schema": "run: { key, name, run_seed (int — the canonical demo seed; callers may override), party [full add_combatant specs — source data/demo_loadouts.json, resolved via the documented loadout-id rule (combat id = loadout key's first '_'-token; race id -> races.json key)], encounters [encounter defs per simulation/run_state.gd: { key, kind: 'combat', enemies [{enemy_key (data/enemies.json), id?, name?, count?, position?/positions?}], allies [{spec: full add_combatant spec; a recruit spec carries on_decline verbatim from its recruit_loadouts.json row — decision #32 story-driven declines}] (party-side NPCs, NOT roster), recruit_offer?: recruit loadout key (data/recruit_loadouts.json), party_positions?: {id: [q, r]} }] }"
   },
   "run": {
     "key": "demo_slice_run",
@@ -57,7 +57,7 @@
           {
             "spec": {
               "id": "sasha",
-              "name": "Sasha \"The Tell\" Marchenko",
+              "name": "Sasha \"Little shadow\" Marchenko",
               "loadout_key": "sasha_the_tell",
               "race": "human",
               "team": "party",
@@ -68,7 +68,8 @@
                 { "id": 8, "key": "brace", "level": 2 },
                 { "id": 4, "key": "strong_strike", "level": 1 }
               ],
-              "camera_call_stacks": 1
+              "camera_call_stacks": 1,
+              "on_decline": "may_reoffer"
             }
           }
         ],

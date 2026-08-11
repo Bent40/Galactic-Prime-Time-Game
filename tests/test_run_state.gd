@@ -18,7 +18,16 @@ extends SimTestBase
 ##     never regenerates HP (Q29/B11);
 ##   * recruitment beats: accept -> roster 3 with the recruit's encounter-1
 ##     damage present in encounter 2 (PROVISIONAL #31 as-is default); decline ->
-##     roster stays 2, re-offer impossible, encounter 2 staged without her;
+##     STORY-DRIVEN (decision #32, supersedes #31's global decline-final): the
+##     recruit's authored on_decline decides — gone_for_run bars any re-offer
+##     (the #31 behavior), may_reoffer lets a LATER encounter's recruit_offer
+##     open a FRESH beat (Sasha's authored story; declining again re-honors
+##     the data) — encounter 2 staged without her either way;
+##   * hype chains (decision #32, supersedes the per-encounter hype reset):
+##     chained encounters open at floor(retention% x the previous ending
+##     meter), laddered 40/60/80 then 100% — exact floor math pinned on a
+##     synthetic run, the live HypeEngine splice pinned through the
+##     controller, the chain index pinned through serialization;
 ##   * save/restore BETWEEN encounters and MID-encounter-2 (serialized state
 ##     only) -> identical continuations;
 ##   * run outcomes: win both -> WIN; party wipe in encounter 1 -> LOSS and
@@ -223,6 +232,27 @@ func test_demo_run_data_contract() -> void:
 			int((sasha_loadout.get("traits", {}) as Dictionary).get(trait_key, -2)),
 			"ally sasha: %s verbatim from the recruit premade" % trait_key)
 	assert_false(ally.has("bit"), "Sasha has NO authored bit (decision #25 — she never performs)")
+	# Decision #32 drift gates: the epithet renames + the authored decline
+	# stories, verbatim between the loadout file and the staged ally spec.
+	assert_eq(String(ally.get("name", "")), String(sasha_loadout.get("display_name", "?")),
+		"ally sasha: display name verbatim from the recruit premade")
+	assert_true(String(sasha_loadout.get("display_name", "")).contains("Little shadow"),
+		"Sasha's epithet is 'Little shadow' (decision #32 rename)")
+	assert_eq(String(ally.get("on_decline", "")), String(sasha_loadout.get("on_decline", "?")),
+		"ally sasha: on_decline verbatim from the recruit premade (#32 story-driven declines)")
+	assert_eq(String(sasha_loadout.get("on_decline", "")), "may_reoffer",
+		"Sasha's authored decline story: the little shadow keeps showing up (PROVISIONAL #32)")
+	var nikita_loadout: Dictionary = {}
+	for lo: Variant in recruits.get("loadouts", []) as Array:
+		if String((lo as Dictionary).get("key", "")) == "nikita_headliner":
+			nikita_loadout = lo
+	assert_false(nikita_loadout.is_empty(), "nikita_headliner exists in recruit_loadouts.json")
+	assert_true(String(nikita_loadout.get("display_name", "")).contains("The lonely"),
+		"Nikita's epithet is 'The lonely' (decision #32 rename)")
+	assert_eq(String(nikita_loadout.get("on_decline", "")), "gone_for_run",
+		"Nikita's authored decline story: pride wounded, he walks for good (PROVISIONAL #32)")
+	assert_eq(String((nikita_loadout.get("bit", {}) as Dictionary).get("key", "")), "the_pose",
+		"Nikita keeps his authored bit 'The Pose' through the rename")
 	var enemy_keys: Dictionary = {}
 	for entry: Variant in SimTestBase.load_json("res://data/enemies.json") as Array:
 		enemy_keys[String((entry as Dictionary).get("key", ""))] = true
@@ -334,19 +364,27 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 
 # ----------------------------------------------------------- (3) decline path
 
-func test_decline_removes_recruit_for_the_rest_of_the_run() -> void:
+func test_decline_in_the_demo_run_honors_sashas_may_reoffer_story() -> void:
+	# Sasha's authored on_decline is may_reoffer (decision #32, PROVISIONAL
+	# reading of "Little shadow"): declining leaves NO gone-for-run mark — but
+	# the demo run's second encounter carries no recruit_offer, so she simply
+	# is not staged again (the actual RE-offer beats are pinned synthetically
+	# in section 9 below).
 	var gc: Node = _controller()
 	_start_demo_run(gc)
 	_drive_encounter_one(gc)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
 	var declined: Array[Dictionary] = gc.apply_run_command({"type": "decline_recruit"})
-	assert_event(declined, "run_recruit_declined", "decline_recruit emits its run event")
-	assert_eq(gc.run.roster.size(), 2, "the roster stays 2 (PROVISIONAL #31)")
-	# Re-offer impossible: declined = gone for the REST of the run.
+	assert_eq(String(assert_event(declined, "run_recruit_declined", "decline_recruit emits its run event")
+		.get("on_decline", "")), "may_reoffer", "the event reports Sasha's authored story policy")
+	assert_true(gc.run.declined.is_empty(), "a may_reoffer decline leaves no gone-for-run mark (#32)")
+	assert_eq(gc.run.roster.size(), 2, "the roster stays 2")
+	# The beat is SPENT — nothing is available to re-ask between encounters
+	# (only a later encounter's recruit_offer could open a fresh beat).
 	var reoffer: Array[Dictionary] = gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
-	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "recruit_declined_for_run",
-		"a declined recruit can never be re-offered")
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_such_offer",
+		"no beat is open between encounters — a re-offer needs a later encounter's recruit_offer")
 	gc.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc.sim.combatants.has("sasha"), "encounter 2 is staged WITHOUT the declined recruit")
 	assert_eq(gc.sim.combatants.size(), 3, "imani + dario + the boss on the table")
@@ -486,4 +524,242 @@ func test_run_command_gating_and_abandon() -> void:
 	var again: Array[Dictionary] = gc.apply_run_command({"type": "end_run"})
 	assert_eq(String(first_event(again, "run_command_rejected").get("reason", "")), "run_already_ended",
 		"a finished run rejects further run commands")
+	gc.free()
+
+
+# ------------------------- (8) hype chains across encounters (decision #32)
+# Synthetic bare-reducer runs (the replay idiom — RunState consumes ENRICHED
+# commands directly, no sims), so the retention arithmetic pins exactly.
+
+static func _plain_defs(count: int) -> Array:
+	var defs: Array = []
+	for i: int in range(count):
+		defs.append({"key": "enc_%d" % (i + 1), "kind": "combat"})
+	return defs
+
+
+static func _start_synthetic(run: RunState, defs: Array) -> void:
+	run.apply_command({"type": "start_run", "seed": 9,
+		"party": [{"id": "ava", "name": "Ava"}], "encounters": defs})
+
+
+## An enriched WIN end_encounter (what the controller would log): the founder
+## survives; extra_carried adds staged-ally captures (the recruit beats).
+static func _win_cmd(hype: int, extra_carried: Dictionary = {}) -> Dictionary:
+	var carried: Dictionary = {"ava": {"alive": true}}
+	carried.merge(extra_carried, true)
+	return {"type": "end_encounter", "outcome": "WIN", "carried": carried, "hype_meter": hype}
+
+
+func test_hype_chain_retention_ladder_exact_math() -> void:
+	# Decision #32 over a 6-encounter synthetic chain, floor rounding pinned:
+	# links open at 0%, 40%, 60%, 80%, 100%, then 100% for all further links.
+	var run := RunState.new()
+	_start_synthetic(run, _plain_defs(6))
+	var expectations: Array = [
+		# [ending meter fed to end_encounter, the NEXT link's expected opening meter]
+		[137, 54],   # 40%: floor(137 * 0.40) = floor(54.8) -> 54
+		[47, 28],    # 60%: floor(47 * 0.60) = floor(28.2) -> 28
+		[21, 16],    # 80%: floor(21 * 0.80) = floor(16.8) -> 16
+		[9, 9],      # 100%: link 4 retains everything
+		[200, 200],  # 100% HOLDS for every further link
+	]
+	var started: Array[Dictionary] = run.apply_command({"type": "begin_encounter"})
+	assert_eq(int(assert_event(started, "run_encounter_started", "encounter 1 starts").get("hype_start", -1)), 0,
+		"a chain-opening encounter starts at meter 0")
+	assert_eq(int(run.staging().get("hype_start", -1)), 0, "staging agrees for the chain opener")
+	for i: int in range(expectations.size()):
+		var ending: int = int((expectations[i] as Array)[0])
+		var want: int = int((expectations[i] as Array)[1])
+		run.apply_command(_win_cmd(ending))
+		assert_eq(run.hype_chain_index, i + 1, "link count advanced with completed encounter %d" % (i + 1))
+		assert_eq(run.chain_hype_start(), want, "link %d opens at the pinned floor" % (i + 2))
+		started = run.apply_command({"type": "begin_encounter"})
+		assert_eq(int(assert_event(started, "run_encounter_started", "the next link starts").get("hype_start", -1)),
+			want, "run_encounter_started carries the retained meter for link %d" % (i + 2))
+		assert_eq(int(run.staging().get("hype_start", -1)), want,
+			"staging carries the retained meter for link %d" % (i + 2))
+	run.apply_command(_win_cmd(5))
+	run.apply_command({"type": "end_run"})
+	assert_eq(String(run.outcome), "WIN", "the synthetic chain cleared cleanly")
+
+
+func test_hype_chain_survives_save_restore_between_encounters() -> void:
+	# The chain index SERIALIZES: a between-encounters to_dict/from_dict round
+	# trip must stage the same retained meter as the uninterrupted run.
+	var live := RunState.new()
+	_start_synthetic(live, _plain_defs(3))
+	live.apply_command({"type": "begin_encounter"})
+	live.apply_command(_win_cmd(137))
+	live.apply_command({"type": "begin_encounter"})
+	live.apply_command(_win_cmd(50))
+	var snapshot: Dictionary = live.to_dict()
+	assert_eq(int(snapshot.get("hype_chain_index", -1)), 2, "hype_chain_index is in the serialized run state")
+	var restored: RunState = RunState.from_dict(snapshot)
+	assert_eq(restored.hype_chain_index, 2, "the chain index survived the round trip")
+	assert_eq(restored.state_hash(), live.state_hash(), "the round trip is state-hash faithful")
+	assert_eq(restored.chain_hype_start(), 30, "the restored link 3 opens at floor(50 * 0.60) = 30")
+	# Identical continuations (retention path included) land identical hashes.
+	for run: RunState in ([live, restored] as Array):
+		run.apply_command({"type": "begin_encounter"})
+		run.apply_command(_win_cmd(80))
+		run.apply_command({"type": "end_run"})
+	assert_eq(restored.state_hash(), live.state_hash(), "identical continuations land identical hashes")
+	# Mutation teeth: a tampered chain index must change the hash.
+	var tampered: Dictionary = live.to_dict()
+	tampered["hype_chain_index"] = 7
+	assert_ne(RunState.from_dict(tampered).state_hash(), live.state_hash(),
+		"hype_chain_index is covered by the run state hash")
+
+
+func test_chained_encounter_opens_with_retained_meter_in_the_live_sim() -> void:
+	# Decision #32 end to end through the controller: encounter 2 of the demo
+	# run OPENS with floor(40% x encounter 1's recorded ending meter) on the
+	# LIVE HypeEngine, band consistent with the engine's own floors.
+	var gc: Node = _controller()
+	_start_demo_run(gc)
+	_drive_encounter_one(gc)
+	gc.apply_run_command({"type": "end_encounter"})
+	var ending: int = int((gc.run.records[0] as Dictionary).get("hype_meter", -1))
+	assert_true(ending > 0, "honesty precondition: the brood fight actually generated hype (got %d)" % ending)
+	var expected: int = int(floor(ending * 40 / 100.0))
+	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
+	gc.apply_run_command({"type": "accept_recruit"})
+	var started: Array[Dictionary] = gc.apply_run_command({"type": "begin_encounter"})
+	assert_eq(int(assert_event(started, "run_encounter_started", "encounter 2 starts").get("hype_start", -1)),
+		expected, "the run event announces the retained meter")
+	assert_eq(int(gc.sim.hype.meter), expected, "the staged sim's HypeEngine OPENS at the retained meter")
+	var want_band := "cold"
+	for entry: Variant in HypeEngine.BANDS:
+		if expected >= int((entry as Array)[1]):
+			want_band = String((entry as Array)[0])
+			break
+	assert_eq(String(gc.sim.hype.band), want_band, "the opening band matches the engine's own floors")
+	var chain_view: Dictionary = gc.view_run().get("hype_chain", {})
+	assert_eq(int(chain_view.get("index", -1)), 1, "view_run exposes the chain link count")
+	assert_eq(int(chain_view.get("hype_start", -1)), expected, "view_run exposes the retained opening meter")
+	gc.free()
+
+
+# --------------------- (9) story-driven declines (decision #32, synthetic)
+# Three-encounter synthetic runs where EVERY encounter stages the same recruit
+# as an ally and offers them — the shape the demo run cannot exercise yet.
+
+static func _recruit_defs(count: int, recruit_key: String, on_decline: String) -> Array:
+	var defs: Array = []
+	for i: int in range(count):
+		defs.append({
+			"key": "enc_%d" % (i + 1), "kind": "combat",
+			"allies": [{"spec": {"id": recruit_key.get_slice("_", 0), "name": "Rex",
+				"team": "party", "on_decline": on_decline}}],
+			"recruit_offer": recruit_key,
+		})
+	return defs
+
+
+func test_decline_gone_for_run_bars_reoffer_for_the_run() -> void:
+	# on_decline "gone_for_run" = the #31 behavior, now authored per #32.
+	var run := RunState.new()
+	_start_synthetic(run, _recruit_defs(2, "rex_solo", "gone_for_run"))
+	run.apply_command({"type": "begin_encounter"})
+	run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	run.apply_command({"type": "offer_recruit", "recruit_key": "rex_solo"})
+	var declined_events: Array[Dictionary] = run.apply_command({"type": "decline_recruit"})
+	assert_eq(String(assert_event(declined_events, "run_recruit_declined", "the decline resolves")
+		.get("on_decline", "")), "gone_for_run", "the event reports the honored policy")
+	assert_true(run.declined.has("rex_solo"), "a gone_for_run decline marks the recruit gone")
+	# The LATER encounter stages him again and he survives — still no offer.
+	run.apply_command({"type": "begin_encounter"})
+	var ended: Array[Dictionary] = run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	assert_no_event(ended, "run_recruit_available", "a gone recruit is never re-offered by a later encounter")
+	var reoffer: Array[Dictionary] = run.apply_command({"type": "offer_recruit", "recruit_key": "rex_solo"})
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "recruit_declined_for_run",
+		"the explicit re-ask rejects exactly like #31 always did")
+	assert_true(RunState.from_dict(run.to_dict()).declined.has("rex_solo"),
+		"the gone-mark survives a serialization round trip")
+
+
+func test_decline_may_reoffer_allows_a_later_fresh_offer_and_accept() -> void:
+	var run := RunState.new()
+	_start_synthetic(run, _recruit_defs(3, "rex_shadow", "may_reoffer"))
+	run.apply_command({"type": "begin_encounter"})
+	run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	run.apply_command({"type": "offer_recruit", "recruit_key": "rex_shadow"})
+	var declined_events: Array[Dictionary] = run.apply_command({"type": "decline_recruit"})
+	assert_eq(String(assert_event(declined_events, "run_recruit_declined", "the decline resolves")
+		.get("on_decline", "")), "may_reoffer", "the event reports the honored policy")
+	assert_true(run.declined.is_empty(), "a may_reoffer decline leaves NO gone-mark")
+	assert_eq(run.roster.size(), 1, "and the roster does not grow")
+	# A LATER encounter's recruit_offer finds him eligible again — a FRESH beat.
+	run.apply_command({"type": "begin_encounter"})
+	var ended: Array[Dictionary] = run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	assert_event(ended, "run_recruit_available", "the later encounter re-offers the may_reoffer recruit")
+	var offered: Array[Dictionary] = run.apply_command({"type": "offer_recruit", "recruit_key": "rex_shadow"})
+	assert_event(offered, "run_recruit_offered", "the fresh offer beat opens")
+	var joined: Array[Dictionary] = run.apply_command({"type": "accept_recruit"})
+	assert_event(joined, "run_recruit_joined", "accept works on the second ask")
+	assert_eq(run.roster.size(), 2, "the roster grew on the second ask")
+	var rex_row: Dictionary = {}
+	for row: Dictionary in run.roster:
+		if String(row["id"]) == "rex":
+			rex_row = row
+	assert_eq(int(rex_row.get("joined_encounter", -9)), 1, "he joined at the SECOND encounter (index 1)")
+	# Already on the roster: the third encounter must NOT offer him again.
+	run.apply_command({"type": "begin_encounter"})
+	var third: Array[Dictionary] = run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	assert_no_event(third, "run_recruit_available", "a rostered recruit is never offered again")
+	run.apply_command({"type": "end_run"})
+	assert_eq(String(run.outcome), "WIN", "the synthetic run closes clean")
+
+
+func test_declining_a_may_reoffer_recruit_again_re_honors_the_data() -> void:
+	var run := RunState.new()
+	_start_synthetic(run, _recruit_defs(3, "rex_shadow", "may_reoffer"))
+	for round_i: int in range(2):
+		run.apply_command({"type": "begin_encounter"})
+		run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+		run.apply_command({"type": "offer_recruit", "recruit_key": "rex_shadow"})
+		var declined_events: Array[Dictionary] = run.apply_command({"type": "decline_recruit"})
+		assert_eq(String(assert_event(declined_events, "run_recruit_declined", "decline resolves")
+			.get("on_decline", "")), "may_reoffer", "decline %d re-honors the recruit's data" % (round_i + 1))
+		assert_true(run.declined.is_empty(), "still no gone-mark after decline %d" % (round_i + 1))
+	# Third encounter: STILL offerable — the story data holds indefinitely.
+	run.apply_command({"type": "begin_encounter"})
+	var ended: Array[Dictionary] = run.apply_command(_win_cmd(0, {"rex": {"alive": true}}))
+	assert_event(ended, "run_recruit_available", "the recruit keeps showing up (may_reoffer honored again)")
+	run.apply_command({"type": "offer_recruit", "recruit_key": "rex_shadow"})
+	run.apply_command({"type": "accept_recruit"})
+	assert_eq(run.roster.size(), 2, "and can still finally be accepted")
+
+
+# --------------------------- (10) the #32 epithets surface on the run views
+
+func test_epithets_surface_on_the_run_views() -> void:
+	# Decision #32 renames flow wherever the loadout personas flow: the offer
+	# beats, the view_run roster and view_combatants all carry the ally spec's
+	# display name (copied verbatim from recruit_loadouts.json).
+	var gc: Node = _controller()
+	_start_demo_run(gc)
+	_drive_encounter_one(gc)
+	gc.apply_run_command({"type": "end_encounter"})
+	var available: Dictionary = gc.view_run().get("available_offer", {})
+	assert_true(String(available.get("name", "")).contains("Little shadow"),
+		"the available offer surfaces Sasha's #32 epithet (got '%s')" % String(available.get("name", "")))
+	gc.apply_run_command({"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
+	var pending: Dictionary = gc.view_run().get("pending_offer", {})
+	assert_true(String(pending.get("name", "")).contains("Little shadow"), "the open beat surfaces it too")
+	gc.apply_run_command({"type": "accept_recruit"})
+	var sasha_row: Dictionary = {}
+	for row: Variant in gc.view_run().get("roster", []) as Array:
+		if String((row as Dictionary).get("id", "")) == "sasha":
+			sasha_row = row
+	assert_true(String(sasha_row.get("name", "")).contains("Little shadow"),
+		"the view_run roster row carries the renamed epithet")
+	gc.apply_run_command({"type": "begin_encounter"})
+	var combatant_row: Dictionary = {}
+	for row: Variant in gc.view_combatants():
+		if String((row as Dictionary).get("id", "")) == "sasha":
+			combatant_row = row
+	assert_true(String(combatant_row.get("name", "")).contains("Little shadow"),
+		"view_combatants shows the staged recruit under her renamed epithet")
 	gc.free()

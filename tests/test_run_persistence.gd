@@ -23,8 +23,10 @@ extends SimTestBase
 ##     envelope stamps no wall-clock metadata anywhere — the combat envelope
 ##     stamps none, run envelopes mirror that — so the WHOLE file is
 ##     deterministic payload and the comparison excludes nothing);
-##   * a save from a run with a DECLINED recruit restores the declined state:
-##     re-offer still impossible, encounter 2 staged without her.
+##   * a save from a run with a DECLINED recruit restores the STORY-honored
+##     decline (decision #32): Sasha's may_reoffer decline leaves NO
+##     gone-for-run mark — its absence survives the round trip — and
+##     encounter 2 stages without her (it carries no recruit_offer).
 
 const DEMO_RUN_PATH := "res://data/demo_run.json"
 const MAX_FIGHT_TICKS := 60
@@ -280,7 +282,7 @@ func test_save_load_save_round_trip_is_byte_identical() -> void:
 	gc_c.free()
 
 
-# --------------------------------------- (5) the DECLINED recruit persists
+# --------------------------------------- (5) the DECLINED-recruit state persists
 
 func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 	var gc: Node = _controller()
@@ -293,12 +295,17 @@ func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 	var gc_loaded: Node = _controller()
 	assert_true(gc_loaded.load_run("runpersist_declined", load_static_data()), "load the declined-state save")
 	assert_eq(gc_loaded.run.roster.size(), 2, "the restored roster stays the founding pair")
-	assert_true(gc_loaded.run.declined.has("sasha_the_tell"), "the declined record survived the round trip")
-	# Re-offer still impossible after the restore (PROVISIONAL #31: gone for the run).
+	# Sasha's authored on_decline is may_reoffer (decision #32 story-driven
+	# declines): the decline leaves NO gone-for-run mark, and what must survive
+	# the round trip is that ABSENCE — a later encounter's recruit_offer could
+	# re-offer her (the demo run's encounter 2 simply carries none; the re-offer
+	# beats themselves are pinned in test_run_state.gd's synthetic runs).
+	assert_true(gc_loaded.run.declined.is_empty(),
+		"a may_reoffer decline leaves no gone-mark, load or no load (#32)")
 	var reoffer: Array[Dictionary] = gc_loaded.apply_run_command(
 		{"type": "offer_recruit", "recruit_key": "sasha_the_tell"})
-	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "recruit_declined_for_run",
-		"a declined recruit can never be re-offered, load or no load")
+	assert_eq(String(first_event(reoffer, "run_command_rejected").get("reason", "")), "no_such_offer",
+		"no beat is open between encounters — only a later encounter's recruit_offer re-offers")
 	gc_loaded.apply_run_command({"type": "begin_encounter"})
 	assert_false(gc_loaded.sim.combatants.has("sasha"), "encounter 2 stages WITHOUT the declined recruit")
 	gc.free()

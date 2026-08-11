@@ -191,6 +191,12 @@ def check_loadouts(name: str, loadouts: list, race_ids: set, patron_ids: set,
             for tg in lo_tags:
                 if tg not in tag_keys:
                     fail(name, f"{k}: tag {tg!r} is not a tags.json key")
+        # Story-driven decline policy (decision #32) — OPTIONAL additive key
+        # (recruit premades author it; absent = the engine's gone_for_run
+        # default). When present it must be one of the two ruled behaviors.
+        if "on_decline" in lo and lo["on_decline"] not in ("gone_for_run", "may_reoffer"):
+            fail(name, f"{k}: on_decline {lo.get('on_decline')!r} must be "
+                       "'gone_for_run' or 'may_reoffer' (decision #32)")
         if lo.get("rewireable") is not True:
             fail(name, f"{k}: rewireable must be true (owner principle, "
                        "slice-contestants §RULED item 9)")
