@@ -69,7 +69,7 @@ func dario_spec() -> Dictionary:
 
 func sasha_spec() -> Dictionary:
 	return {
-		"name": "Sasha \"The Tell\" Marchenko",
+		"name": "Sasha \"Little shadow\" Marchenko",
 		"id": "sasha",
 		"body_plan": "human",
 		"traits": {"physique": 3, "reflexes": 4, "mind": 5, "charm": 2},
