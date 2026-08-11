@@ -480,7 +480,97 @@ clock they can feel: **the longer they take, the more likely the piece walks.**
 
 ---
 
-## 14. Open
+## 14. Rulings Q-53 – Q-58, and what they open
+
+### 14.1 The hunger is unrouted reverence — **if the god allows it** (Q-53)
+
+Confirmed, with a refinement that changes the whole patron tier: **stability flowing down
+the vassalage is a grant, not a pipe.** A god *chooses* whether to route it.
+
+- Demons are therefore dependent on their god's **goodwill**, not merely its existence.
+- A god can **starve its own followers** deliberately. Patronage is a relationship with a
+  tap on it, at every level of the pyramid — including the party's, once they hold one.
+- And it puts a hook in the arc's ending: **reviving Cinnabrus does not guarantee he feeds
+  them.** He is owed two centuries of silence and has every reason to be strange about it.
+  The party's charity buys a *possibility*, not an outcome.
+
+**Q-54:** curing ends demons as **farmers**, not as demons. The harvest stops; the danger
+does not.
+
+### 14.2 Beelzebub plays both sides (Q-55)
+
+> *"Bid for or against, trying to manipulate them away from the truth."*
+
+He does not need the party to lose. **He needs them not to find the tongue.** So he works
+whichever side is cheaper:
+
+| | **Bidding FOR them** | **Bidding AGAINST them** |
+|---|---|---|
+| Instrument | Patronage — with terms | Wagering on their failure; tipping the dealer against them (`cosmic-casino-canon.md:33-34`) |
+| What it buys | **Control.** His taboo already forbids curing, so his own contract steers them off the arc's whole question | **Obstruction.** Trials, monsters, curses — the canon hindrance channel |
+| The tell | Generous, early, and specific about where *not* to go | Nothing personal. Just weather |
+
+**Either way the goal is the same, and neither reads as villainy** — it reads as a rival
+protecting an asset, which is the register canon asks for. The party may never learn the
+patron who helped them on F1 was steering them from what was under their feet.
+
+### 14.3 Q-57 — the capital becomes a base, and revenge becomes economics
+
+> *"The capital joins their lounge. They can recruit the queen and her soldier-demons for
+> the battlefields on floors 4–9, and hunt down believers of Beelzebub."*
+
+**This is already canon, and now it has a cause.** `../GPT_Master_Compendium.md:267` has the
+capital attaching to the Lounge as a persistent location from Floor 3 — written before any
+of this existed. It was a structural convenience. It is now **the fee for saving a god.**
+
+And the second half is the significant part:
+
+> **Hunting Beelzebub's believers is an attack on his divinity.**
+>
+> Under Q-14 a god's power *is* their named, living followers. So killing them is not
+> flavour revenge — it is **subtraction from his ledger.** The queen's two-century grudge
+> resolves not into a duel she would lose, but into a **campaign of attrition against a
+> seated patron god's balance sheet**, fought across floors 4–9, with the party's own
+> recruited demons doing it.
+
+That is the divinity economy weaponised, and it falls directly out of rules already ruled.
+It also gives floors 4–9 a **running thread** rather than six disconnected floor-sets:
+the party arrives at each new floor with a war already in progress. **⟨→ Q-63⟩**
+
+### 14.4 Nullrot (Q-58)
+
+Loyal to **Cinnabrus**, not the queen. **An olden demon who owes Cinnabrus his life.**
+
+The arc is built of debts — the house's, Beelzebub's foreclosure, the queen's century of
+unanswerable prayer — and Nullrot is the one debt being *paid*. He is older than the queen,
+he chose this, and when their methods diverge he will side with the god over the regent.
+
+### 14.5 The queen — name draft (Q-56)
+
+**Recommended: VERMILIA.**
+
+> **Cinnabar** is the ore. **Vermilion** is the pigment you get by grinding it.
+> **She is what he was turned into** — the refined remainder of the thing that killed
+> everyone she knew. A deep court red: blood, plague, and royalty in one word.
+
+Alternates: **Sindra** (cinder — what's left after) · **Rubedine** (rubedo, the red stage —
+alchemical, colder).
+
+**And she cannot age in public.** A demon holding a throne for 170 years has to solve that,
+so ⟨PROPOSAL⟩ she has ruled as a **succession of queens** — mother to daughter, seven of
+them, all her.
+
+> **The royal crypt sits directly above the tongue, and every coffin in it is empty.**
+> She built the most heavily guarded room in the world by staging her own funerals in it.
+
+This also creates a real wrinkle in the economy: **the city reveres a name that is not
+hers.** Under Q-18 a follower is a *named* being and naming is the transaction — so a
+century of a capital's devotion has been landing on seven dead queens who never existed.
+**She rules a city and is still poor.** ⟨→ Q-64⟩
+
+---
+
+## 15. Open
 
 | # | Question | Rec |
 |---|---|---|
@@ -489,7 +579,11 @@ clock they can feel: **the longer they take, the more likely the piece walks.**
 | **Q-55** | Does **Beelzebub actually bid on the party** during F1–F3? (§10, §13.4) | Yes — it is the arc's sharpest single scene, and §13.4 gives it a motive |
 | **Q-60** | Does the queen know she built over the **tongue** rather than the body? (§13.3) | Either works; (a) is more tragic, (b) is more dangerous |
 | **Q-61** | Adopt the **decoy-graves** explanation for the hundred-year search — Bifrons's *"seeming Candles"* and Bune's grave-moving, hired by Beelzebub? (§13.3) | Yes — free, and it gives F2 an author |
-| **Q-62** | Can Cinnabrus **hear** without speaking, or is he sealed both ways? | Hear only — it is what makes the queen's two centuries land |
+| **Q-62** | Can Cinnabrus **hear** without speaking? | RULED — hear only |
+| **Q-63** | Adopt **hunting Beelzebub's believers** as a running floors-4–9 thread? (§14.3) | Yes — it gives six floor-sets a spine and weaponises the divinity economy |
+| **Q-64** | Does the city's reverence for seven fictional queens mean **Vermilia gains nothing** from ruling it? (§14.5) | Yes — it is why a queen is still poor, and why she needs her god back |
+| **Q-65** | Confirm **Vermilia**, or take Sindra / Rubedine? (§14.5) | **Vermilia** |
+| **Q-66** | Adopt the **seven queens / empty crypt** proposal? (§14.5) | Yes — it solves the ageing problem and puts her funerals over his tongue |
 | **Q-56** | Does the queen have a **name**? | Draft on request |
 | **Q-57** | If the party gives her Beelzebub's name, can she **act** on it in-campaign, or is it a seed for a later floor-set? | Seed — a demon queen moving on a roster god is a floors-4–9 event |
 | **Q-58** | Is **Nullrot** loyal to Cinnabrus, or to the queen? | To Cinnabrus — which puts it at odds with her when their methods diverge |
