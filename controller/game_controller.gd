@@ -259,7 +259,7 @@ func view_combatants() -> Array[Dictionary]:
 				"hidden": bool(part.get("hidden", false)) and not c.breached,
 				"conditions": conds,
 			})
-		out.append({
+		var row: Dictionary = {
 			"id": String(id),
 			"name": c.display_name,
 			"team": c.team,
@@ -323,8 +323,95 @@ func view_combatants() -> Array[Dictionary]:
 			"ai_stance": (String(sim.ai.stances.get(String(id), "unknown"))
 					if EnemyAI.AI_CATEGORIES.has(c.category) else ""),
 			"parts": parts,
-		})
+		}
+		# Batch C (ADDITIVE, only-when-owned — the CONTESTANT-facing knowledge
+		# surfaces; spectator contract note: the broadcast stays omniscient —
+		# ai_stance above and view_schedule are unchanged for every consumer.
+		# These keys gate what a CONTESTANT knows, so they appear only on the
+		# row of a combatant who OWNS the skill / holds the live reveal):
+		#   aura_reads    — aura_reading passive: enemy id -> stance STRING for
+		#                   every enemy this owner currently SEES (Stealth.sees
+		#                   — the R30 facing cone applies) within the skill's
+		#                   range. Feeling, never intent (the lane rule).
+		#   pattern_reads — read_the_pattern reveals: target id -> the target's
+		#                   CURRENT pending schedule rows (live re-read each
+		#                   view — the reveal is "know their schedule until the
+		#                   Clock reset", so a read on an idle enemy pays off
+		#                   when they declare). Rows use the view_schedule
+		#                   vocabulary.
+		var aura: Dictionary = _aura_reads(c)
+		if not aura.is_empty():
+			row["aura_reads"] = aura
+		if not c.pattern_reads.is_empty():
+			var reads: Dictionary = {}
+			var read_targets: Array = c.pattern_reads.keys()
+			read_targets.sort()
+			for read_target: Variant in read_targets:
+				var grant: Dictionary = c.pattern_reads[read_target]
+				reads[String(read_target)] = _pattern_rows_for(String(read_target), maxi(1, int(grant.get("actions", 1))))
+			row["pattern_reads"] = reads
+		out.append(row)
 	return out
+
+
+## Batch C (aura_reading — the wave-3a substrate paying off): the stance map
+## this OWNER can read right now. {} unless the combatant is a non-AI skill
+## owner (aura_reading granted) — contestants read enemies, never the other
+## way. Per sorted enemy: AI-controlled + currently SEEN by the owner
+## (Stealth.sees — hostility, the R30 facing cone, sight range, LOS; a
+## stealthed enemy is unseen by construction) + within the skill's aura_range
+## at the granted level. Value = the same substrate string ai_stance carries
+## ("unknown" before that enemy's first decide) — FEELING only, never the
+## decision/action (Read the Pattern's lane) and never thoughts (Telepathy's).
+func _aura_reads(c: CombatantState) -> Dictionary:
+	var out: Dictionary = {}
+	if sim == null or EnemyAI.AI_CATEGORIES.has(c.category):
+		return out
+	var level: int = c.skill_level("aura_reading")
+	if level <= 0:
+		return out
+	var aura_range: int = int(SkillBook.mechanics("aura_reading", level).get("aura_range", 3))
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var enemy: CombatantState = sim.combatants[id]
+		if not EnemyAI.AI_CATEGORIES.has(enemy.category):
+			continue
+		if CombatantState.hex_distance(c.position, enemy.position) > aura_range:
+			continue
+		if not Stealth.sees(c, enemy, sim.arena, sim.clock.tick):
+			continue
+		out[String(id)] = String(sim.ai.stances.get(String(id), "unknown"))
+	return out
+
+
+## Batch C (read_the_pattern): the CURRENT pending schedule rows for one
+## revealed target, capped at the reveal's actions count — the same projection
+## the pattern_read event froze at read time, re-read live so the knowledge
+## stays fresh until the Clock-reset expiry. view_schedule vocabulary.
+func _pattern_rows_for(target_id: String, limit: int) -> Array:
+	var rows: Array = []
+	for entry: Dictionary in sim.clock.scheduled_entries():
+		if rows.size() >= limit:
+			break
+		if String(entry.get("actor", "")) != target_id:
+			continue
+		var action: Dictionary = entry.get("action", {})
+		var window: int = int(entry.get("window", 0))
+		var resolve_tick: int = int(entry.get("tick", 0))
+		var key := String(action.get("key", ""))
+		if key == "":
+			key = String(action.get("item", ""))
+		if key == "":
+			key = String(action.get("kind", "attack"))
+		rows.append({
+			"kind": String(action.get("kind", "attack")),
+			"key": key,
+			"declared_tick": (resolve_tick - window) if window > 0 else resolve_tick,
+			"resolve_tick": resolve_tick,
+			"windup": window > 0,
+		})
+	return rows
 
 
 ## Per-combatant granted-skill projection for view_combatants: one plain row per

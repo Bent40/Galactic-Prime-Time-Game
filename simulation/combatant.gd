@@ -150,6 +150,8 @@ var stance: String = ""
 var armed_primes: Dictionary = {}
 ## STACK: generic named-resource counter fallback (resource -> count) for stack
 ## primes whose resource is not the camera-call stack (that one reads derived_stats).
+## Batch C: grantable via the combatant spec's `charges` field (from_spec) —
+## field_triage's bandage_charge economy rides this counter.
 var charges: Dictionary = {}
 
 # Status effects / forced-action fallout
@@ -203,6 +205,21 @@ var guard: Dictionary = {}
 ## value) and the NON-consumed flat reduction applies to covered-type damage
 ## this combatant takes. Serialized ONLY while non-empty (same compat pin).
 var iron_stance: Dictionary = {}
+## forced_roll_save (acrobatic_save, batch C): the ARMED save — {"dice": int}
+## while armed via the G1 movement-forfeit declare (R25: NO prime, NO stance),
+## {} = unarmed. The owner's next Forced Action – BODY roll consumes it
+## (ActionResolver._forced_body_roll draws the extra dice and keeps the
+## lowest-severity result). Serialized ONLY while non-empty (the stealthed
+## compat-pin pattern) so a save-free fight hashes byte-identically.
+var forced_save: Dictionary = {}
+## intel_reveal declared form (read_the_pattern, batch C): live reveals —
+## target_id -> {"actions": int}. A reveal lasts until the Clock reset
+## (CombatSim's reset sweep clears the map and emits pattern_read_expired);
+## while live, GameController projects the target's CURRENT scheduled entries
+## onto this owner's view row (the knowledge stays fresh — reading an idle
+## enemy pays off when they declare). Serialized ONLY while non-empty (same
+## compat pin).
+var pattern_reads: Dictionary = {}
 
 # Grapple (R9)
 var grappling: String = ""
@@ -274,6 +291,12 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 	var dice_spec: Dictionary = spec.get("threshold_dice", {})
 	for die_key: Variant in dice_spec:
 		c.threshold_dice[String(die_key)] = int(dice_spec[die_key])
+	# Batch C: grantable STACK charges (the generic counter _stack_count reads —
+	# field_triage's bandage_charge economy). Same grant pattern as
+	# threshold_dice; absent = {} = no charges, byte-identical legacy specs.
+	var charges_spec: Dictionary = spec.get("charges", {})
+	for charge_key: Variant in charges_spec:
+		c.charges[String(charge_key)] = int(charges_spec[charge_key])
 
 	c.boss_traits = (spec.get("boss_traits", template.get("traits", {})) as Dictionary).duplicate(true)
 	# R23 personality (decision #29): spec override wins, else the enemy
@@ -647,6 +670,14 @@ func to_dict() -> Dictionary:
 		out["guard"] = guard.duplicate(true)
 	if not iron_stance.is_empty():
 		out["iron_stance"] = iron_stance.duplicate(true)
+	# Batch-C compat pins (the same only-when-set pattern): the armed save and
+	# any live pattern reveals exist ONLY while set — a fight that never uses
+	# the medics-&-minds batch serializes byte-identically to the pre-batch
+	# engine (hash-covered whenever either is live).
+	if not forced_save.is_empty():
+		out["forced_save"] = forced_save.duplicate(true)
+	if not pattern_reads.is_empty():
+		out["pattern_reads"] = pattern_reads.duplicate(true)
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -735,4 +766,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	# Pre-batch-B saves lack both keys: {} = no guard armed / no stance held.
 	c.guard = (data.get("guard", {}) as Dictionary).duplicate(true)
 	c.iron_stance = (data.get("iron_stance", {}) as Dictionary).duplicate(true)
+	# Pre-batch-C saves lack both keys: {} = no save armed / no live reveals.
+	c.forced_save = (data.get("forced_save", {}) as Dictionary).duplicate(true)
+	c.pattern_reads = (data.get("pattern_reads", {}) as Dictionary).duplicate(true)
 	return c

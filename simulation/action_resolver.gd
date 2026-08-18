@@ -138,6 +138,11 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 		var skill_spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
 		if String(skill_spec.get("archetype", "")) == "declared_dodge":
 			return _declare_tactical_roll(actor, action, skill_spec)
+		# Batch C (acrobatic_save — G1/R25): the forced_roll_save arming shares
+		# the tactical roll's economy — its cost is the MOVEMENT allowance, not
+		# a Moment or the free slot — so it routes before the R3 slot caps too.
+		if String(skill_spec.get("archetype", "")) == "forced_roll_save":
+			return _declare_forced_roll_save(actor, action, skill_spec)
 		var skill_gate: Array[Dictionary] = _validate_skill_declare(actor, action, skill_spec)
 		if not skill_gate.is_empty():
 			return skill_gate
@@ -214,7 +219,7 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
 		var arch := String(spec.get("archetype", ""))
 		if arch == "committed_strike" or arch == "conditional_followup" \
-				or arch == "interrupt_counter" \
+				or arch == "interrupt_counter" or arch == "psychic_strike" \
 				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
 		if arch == "strike":
@@ -861,6 +866,12 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_skill_grapple(actor, action, spec)
 		"interrupt_counter":
 			return _validate_interrupt_counter(actor, action, spec)
+		"ally_treatment":
+			return _validate_ally_treatment(actor, action, spec)
+		"intel_reveal":
+			return _validate_intel_reveal(actor, action, spec)
+		"psychic_strike":
+			return _validate_psychic_strike(actor, action, spec)
 	return []
 
 
@@ -1245,6 +1256,95 @@ func _validate_interrupt_counter(actor: CombatantState, action: Dictionary, spec
 	return _batch_strike_gate(actor, action, spec)
 
 
+## ally_treatment (batch C) declare gate: one target row {id, part} + the
+## action's "condition" naming what to treat. Self only where the spec allows
+## it (seal_the_wound); otherwise a same-team ALLY within treat_range. The
+## condition must be on the spec's treatable list (empty list = any) and
+## ACTUALLY ACTIVE on the named part (instance or a live non-bleed_out timer)
+## — a treatment never declares against a wound that is not there.
+func _validate_ally_treatment(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var t: Dictionary = targets[0]
+	var target: CombatantState = combatants.get(String(t.get("id", "")))
+	if target == null or not target.alive or target.removed_from_play:
+		return _reject("invalid_treatment_target", {"actor": actor.id})
+	if target.id == actor.id:
+		if not bool(spec.get("self_allowed", false)):
+			return _reject("cannot_target_self", {"actor": actor.id})
+	elif target.team == "" or target.team != actor.team:
+		return _reject("target_not_ally", {"actor": actor.id, "target": target.id})
+	var reach: int = int(spec.get("treat_range", 1))
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		return _reject("out_of_range", {"target": target.id, "range": reach})
+	var condition_id := ConditionEngine.normalize_condition_id(String(action.get("condition", "")))
+	var treatable: Array = spec.get("treatable", [])
+	if condition_id == "" or (not treatable.is_empty() and not treatable.has(condition_id)):
+		return _reject("condition_not_treatable", {"actor": actor.id, "condition": condition_id})
+	var part_key := String(t.get("part", ""))
+	if not target.parts.has(part_key):
+		return _reject("no_such_part", {"target": target.id, "part": part_key})
+	if not _condition_treat_active(target, part_key, condition_id):
+		return _reject("condition_not_active", {"target": target.id, "part": part_key, "condition": condition_id})
+	return []
+
+
+## Is the condition live for a treatment: an instance on the named part, or a
+## running timer for it (suffocation/dissolution/death timers — never the
+## bleed_out grace, which delay() deliberately does not touch: stabilization
+## goes through delaying the DRIVING condition instead).
+func _condition_treat_active(target: CombatantState, part_key: String, condition_id: String) -> bool:
+	if not target.condition_instance(part_key, condition_id).is_empty():
+		return true
+	for timer: Dictionary in target.timers:
+		if String(timer.get("condition", "")) == condition_id and String(timer.get("kind", "")) != "bleed_out":
+			return true
+	return false
+
+
+## intel_reveal (batch C) declare gate. The passive form (aura_reading) is
+## never declarable — owning it IS the mechanic (the view layer reads the
+## grant). The declared form (read_the_pattern) reads one living ENEMY within
+## read_range that the reader can SEE — Stealth.sees, so the reader's R30
+## facing cone, sight range and LOS all gate the read (an enemy over your
+## shoulder cannot be pattern-read).
+func _validate_intel_reveal(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if String(spec.get("form", "")) != "declared_read":
+		return _reject("passive_skill", {"actor": actor.id, "key": String(action.get("key", ""))})
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null or not target.alive or target.removed_from_play:
+		return _reject("invalid_read_target", {"actor": actor.id})
+	if actor.team == "" or target.team == "" or target.team == actor.team:
+		return _reject("target_not_enemy", {"actor": actor.id, "target": target.id})
+	var reach: int = int(spec.get("read_range", 3))
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		return _reject("out_of_range", {"target": target.id, "range": reach})
+	if not Stealth.sees(actor, target, arena, clock.tick):
+		return _reject("target_not_visible", {"actor": actor.id, "target": target.id})
+	return []
+
+
+## psychic_strike (mind_burst, batch C) declare gate: one target row aimed at
+## the HEAD (the authored "Single (Head only)"), line of sight (the L8
+## out-of-sight rung stays threshold data), then the shared attack-legality
+## gate with the spec's range + bypass_head_gate injected (the bypass is the
+## point: Exposure never gates this head declare).
+func _validate_psychic_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	if not String((targets[0] as Dictionary).get("part", "")).contains("head"):
+		return _reject("head_part_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target != null and not Stealth.has_los(arena, actor.position, target.position):
+		return _reject("no_line_of_sight", {"actor": actor.id, "target": target.id})
+	return _batch_strike_gate(actor, action, spec)
+
+
 func _effective_cost(actor: CombatantState, kind: String, action: Dictionary, uses_strained: bool) -> int:
 	var base: int = _base_cost(actor, kind, action)
 	var eff: int = base
@@ -1431,6 +1531,41 @@ func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dic
 		"spaces": spaces, "range": roll_range, "level": int(action.get("level", 1)),
 	}]
 	return events
+
+
+## Batch C (acrobatic_save — G1, rules-addendum R25): the forced_roll_save
+## ARMING. Same economy as the tactical roll ("Acrobatic Save gets the same
+## movement-forfeit cost in place of its cooldown"): the declare consumes the
+## actor's MOVEMENT for the Moment (moved_this_tick — a free move after
+## arming rejects already_moved; arming after any move rejects
+## movement_spent) and touches neither the free-action slot nor the Moment
+## economy. NO prime, NO stance (the ladders doc's old prime note is
+## superseded — see its 2026-08-18 tail annotation). Arming sets forced_save
+## {"dice": N}; the owner's next Forced Action – BODY roll consumes it
+## (_forced_body_roll). Nothing is scheduled — the arming IS the resolution.
+## Gates mirror the movement family: no arming while grappled (R9), winding
+## up (R2 commit) or Prone (the data's own requirement; Helpless is already
+## rejected by declare()).
+func _declare_forced_roll_save(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	# already_armed FIRST: an armed save makes the declare pointless whatever
+	# the movement state — never charge (or confusingly report) movement for it.
+	if not actor.forced_save.is_empty():
+		return _reject("already_armed", {"actor": actor.id})
+	if actor.grappled_by != "" or actor.grappling != "":
+		return _reject("grappled", {"actor": actor.id})
+	if actor.windup_pending:
+		return _reject("winding_up", {"actor": actor.id})
+	if bool(actor.statuses.get("prone", false)):
+		return _reject("prone", {"actor": actor.id})
+	if actor.moved_this_tick:
+		return _reject("movement_spent", {"actor": actor.id})
+	# --- all checks passed; mutate ---
+	actor.moved_this_tick = true
+	actor.forced_save = {"dice": maxi(1, int(spec.get("extra_dice", 1)))}
+	return [{
+		"type": "acrobatic_save_armed", "actor": actor.id,
+		"dice": int(actor.forced_save["dice"]), "level": int(action.get("level", 1)),
+	}]
 
 
 # ------------------------------------------------------------------ inventory
@@ -1891,6 +2026,16 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_skill_grapple(actor, entry, snapshot, forced_queue, spec)
 		"interrupt_counter":
 			return _resolve_interrupt_counter(actor, entry, snapshot, forced_queue, spec)
+		"ally_treatment":
+			return _resolve_ally_treatment(actor, entry, spec)
+		"intel_reveal":
+			return _resolve_intel_reveal(actor, entry, spec)
+		"psychic_strike":
+			return _resolve_psychic_strike(actor, entry, snapshot, forced_queue, spec)
+		"forced_roll_save":
+			# Unreachable via declare (the arming routes before scheduling);
+			# defensive so a hand-built entry can never fall into the strike path.
+			return [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "not_schedulable"}]
 		_:
 			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
 
@@ -2044,12 +2189,57 @@ func _resolve_self_stance(actor: CombatantState, action: Dictionary, spec: Dicti
 ## Tool for a new collapse source — pass the authored table.
 func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue: Array[Dictionary], original_target: String, table: String = ForcedAction.TABLE_TOOL, roll_reason: String = "invalidated_windup") -> Array[Dictionary]:
 	var events: Array[Dictionary] = [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": reason}]
-	var collapse: Dictionary = ForcedAction.roll(table, rng)
-	events.append(ForcedAction.make_event(actor.id, collapse, roll_reason))
+	var collapse: Dictionary
+	if table == ForcedAction.TABLE_BODY:
+		# Batch C: an inflicted BODY collapse (counter_surge's cut) goes through
+		# the save chokepoint — an armed acrobatic_save betters this roll too.
+		var body: Dictionary = _forced_body_roll(actor, roll_reason)
+		collapse = body["rolled"]
+		events.append_array(body["events"])
+	else:
+		collapse = ForcedAction.roll(table, rng)
+		events.append(ForcedAction.make_event(actor.id, collapse, roll_reason))
 	forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {
 		"part": actor.acting_part(clock.tick), "target": original_target,
 	}})
 	return events
+
+
+## Batch C (acrobatic_save): the ONE chokepoint every resolver-side Forced
+## Action – BODY roll goes through. Unarmed: exactly the legacy shape — one
+## roll off the action rng stream, one forced_action_triggered event, ZERO
+## extra draws (the twin-RNG guarantee: an un-armed fight is byte-identical
+## to the pre-batch engine). Armed (victim.forced_save): the arming is
+## consumed FIRST (per roll — a same-batch second Body roll gets no save),
+## `dice` EXTRA dice are drawn from the SAME stream, every die emitted inside
+## the acrobatic_save event, and the LOWEST-severity consequence is kept
+## (ForcedAction.save_severity — the documented deterministic choose rule; a
+## severity tie keeps the EARLIEST roll, i.e. the original). The
+## forced_action_triggered event then carries the CHOSEN roll — the one whose
+## consequence actually applies. Returns {"rolled": chosen, "events": [...]}.
+func _forced_body_roll(victim: CombatantState, reason: String) -> Dictionary:
+	var events: Array[Dictionary] = []
+	var rolled: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
+	if not victim.forced_save.is_empty():
+		var dice: int = maxi(1, int(victim.forced_save.get("dice", 1)))
+		victim.forced_save = {}  # consumed per roll — armed for THAT roll only
+		var rolls: Array[Dictionary] = [rolled]
+		for i: int in range(dice):
+			rolls.append(ForcedAction.roll(ForcedAction.TABLE_BODY, rng))
+		var best: int = 0
+		for i: int in range(1, rolls.size()):
+			if ForcedAction.save_severity(rolls[i]) < ForcedAction.save_severity(rolls[best]):
+				best = i
+		var roll_rows: Array = []
+		for r: Dictionary in rolls:
+			roll_rows.append({"roll": int(r["roll"]), "consequence": String(r["consequence"])})
+		events.append({
+			"type": "acrobatic_save", "actor": victim.id, "reason": reason,
+			"rolls": roll_rows, "chosen_index": best, "kept_original": best == 0,
+		})
+		rolled = rolls[best]
+	events.append(ForcedAction.make_event(victim.id, rolled, reason))
+	return {"rolled": rolled, "events": events}
 
 
 ## leap_strike (pounce): the leap lands and the strike resolves in ONE action.
@@ -2221,9 +2411,9 @@ func _resolve_aoe_cone_strike(actor: CombatantState, entry: Dictionary, _snapsho
 			continue
 		events.append_array(_knockback_away(member, actor))
 		if member.category == "Mob":
-			var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
-			events.append(ForcedAction.make_event(member.id, body_roll, "shockwave"))
-			forced_queue.append({"actor": member.id, "rolled": body_roll, "ctx": {"part": member.acting_part(clock.tick)}})
+			var body: Dictionary = _forced_body_roll(member, "shockwave")
+			events.append_array(body["events"])
+			forced_queue.append({"actor": member.id, "rolled": body["rolled"], "ctx": {"part": member.acting_part(clock.tick)}})
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
 		"key": String(action.get("key", "shockwave")), "result": "ok", "rounds": members.size()})
 	return events
@@ -2479,9 +2669,9 @@ func _resolve_skill_grapple(actor: CombatantState, entry: Dictionary, snapshot: 
 	# Action – Body — always allowed, consequences apply, hold lands.
 	var acting: String = actor.bite_part(clock.tick) if grip == "bite" else actor.acting_part(clock.tick)
 	if actor.trait_total("physique") < target.trait_total("physique"):
-		var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
-		events.append(ForcedAction.make_event(actor.id, body_roll, "grapple_above_weight"))
-		forced_queue.append({"actor": actor.id, "rolled": body_roll, "ctx": {"part": acting, "target": target.id}})
+		var body: Dictionary = _forced_body_roll(actor, "grapple_above_weight")
+		events.append_array(body["events"])
+		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting, "target": target.id}})
 	# death_grip_jaws L2+: the initial-bite Bleed rider on close.
 	var bite: int = int(spec.get("bite_bleed", 0))
 	if bite > 0 and target.alive:
@@ -2543,6 +2733,164 @@ func _resolve_interrupt_counter(actor: CombatantState, entry: Dictionary, snapsh
 		events.append({"type": "windup_cut", "actor": actor.id, "victim": target.id,
 			"cut": cut, "remaining_before": remaining, "remaining_after": remaining - cut,
 			"resolve_tick": new_tick})
+	return events
+
+
+# ---------------------------------------------------- batch-C skill resolvers
+
+## ally_treatment (batch C — seal_the_wound / field_triage): DELAY ONLY.
+## HONESTY PIN (FINAL default #8): this resolver has no resolve mode and no
+## heal_part call — HP restoration and full cures structurally cannot happen
+## here (tests/test_skills_batch_c.gd asserts the structure, not just the
+## behavior). Re-checks the live target (an instant can still lose it to a
+## same-tick death earlier in the batch), then delays the named condition
+## delay_clocks Clocks through ConditionEngine.delay — whose existing
+## bleed-out hook STABILIZES a downed ally when the delayed condition drives
+## the bleed-out (R5's 0-HP-stabilized: alive, held, no HP restored — not a
+## special case here). field_triage's bandage_charge is consumed ONLY when
+## the treatment actually lands (the delay found the condition live) — a
+## premise that evaporated between declare and resolve never burns the
+## bandage. A treatment is not an attack: it never enters _strike_round, so
+## the batch-B retarget_guard ignores it by construction — a guarded ally
+## receives their own bandage, never the guardian.
+func _resolve_ally_treatment(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	var target: CombatantState = _first_target(action)
+	if target == null or not target.alive or target.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	var rows: Array = action.get("targets", [])
+	var part_key: String = "" if rows.is_empty() else String((rows[0] as Dictionary).get("part", ""))
+	var condition_id := ConditionEngine.normalize_condition_id(String(action.get("condition", "")))
+	var clocks: int = maxi(1, int(spec.get("delay_clocks", 1)))
+	var delay_events: Array[Dictionary] = cond.delay(target, part_key, condition_id, clocks)
+	var landed: bool = false
+	for ev: Dictionary in delay_events:
+		var ev_type := String(ev.get("type", ""))
+		if ev_type == "condition_delayed" or ev_type == "timer_delayed":
+			landed = true
+	if landed:
+		events.append({
+			"type": "treatment_applied", "actor": actor.id, "target": target.id,
+			"part": part_key, "condition": condition_id, "clocks": clocks,
+			"skill": String(action.get("key", "")),
+		})
+	events.append_array(delay_events)
+	var consumes := String(spec.get("consumes", ""))
+	if landed and consumes != "":
+		var remaining: int = maxi(0, int(actor.charges.get(consumes, 0)) - 1)
+		actor.charges[consumes] = remaining
+		events.append({"type": "charge_consumed", "actor": actor.id, "resource": consumes, "remaining": remaining})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "")), "result": "ok", "rounds": 0})
+	return events
+
+
+## intel_reveal declared form (read_the_pattern, batch C): ZERO rng. The read
+## deep-copies the target's pending Clock entries (seq order — the
+## scheduled_entries spectator probe) into a deterministic pattern_read event
+## and records the reveal on the actor (pattern_reads). LIFETIME: "until the
+## next Clock reset" verbatim — CombatSim's reset sweep clears the map and
+## emits pattern_read_expired. KNOWLEDGE SURFACE (documented choice): the
+## event carries the rows revealed AT READ TIME; while the reveal lives,
+## GameController.view_combatants projects the target's CURRENT entries onto
+## the OWNER's row (additive "pattern_reads" key) — so reading an idle enemy
+## pays off the moment they declare, and the broadcast/spectator surface
+## (view_schedule — already omniscient) is untouched. Visibility re-checks
+## LIVE at resolution: a same-tick earlier resolution can kill the target or
+## break the reader's sight (Stealth.sees — cone included).
+func _resolve_intel_reveal(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	if String(spec.get("form", "")) != "declared_read":
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "passive_skill"})
+		return events
+	var target: CombatantState = _first_target(action)
+	if target == null or not target.alive or target.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	if not Stealth.sees(actor, target, arena, clock.tick):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_not_visible"})
+		return events
+	var actions_revealed: int = maxi(1, int(spec.get("actions_revealed", 1)))
+	actor.pattern_reads[target.id] = {"actions": actions_revealed}
+	events.append({
+		"type": "pattern_read", "actor": actor.id, "target": target.id,
+		"actions": actions_revealed,
+		"schedule": _pattern_schedule_rows(target.id, actions_revealed),
+	})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "read_the_pattern")), "result": "ok", "rounds": 0})
+	return events
+
+
+## The deterministic schedule projection a pattern read reveals: the target's
+## pending Clock entries (seq order), up to `limit` rows, projected to the
+## view_schedule vocabulary — kind / key / declared_tick / resolve_tick /
+## windup. Deep-copied source (scheduled_entries), zero rng, zero mutation.
+func _pattern_schedule_rows(target_id: String, limit: int) -> Array:
+	var rows: Array = []
+	for sched: Dictionary in clock.scheduled_entries():
+		if rows.size() >= limit:
+			break
+		if String(sched.get("actor", "")) != target_id:
+			continue
+		var sched_action: Dictionary = sched.get("action", {})
+		var window: int = int(sched.get("window", 0))
+		var resolve_tick: int = int(sched.get("tick", 0))
+		var key := String(sched_action.get("key", ""))
+		if key == "":
+			key = String(sched_action.get("item", ""))
+		if key == "":
+			key = String(sched_action.get("kind", "attack"))
+		rows.append({
+			"kind": String(sched_action.get("kind", "attack")),
+			"key": key,
+			"declared_tick": (resolve_tick - window) if window > 0 else resolve_tick,
+			"resolve_tick": resolve_tick,
+			"windup": window > 0,
+		})
+	return rows
+
+
+## psychic_strike (mind_burst, batch C): the strike VARIANT — a windup that
+## delivers Shock, not HP. Re-checks the premise against the R2 tick-start
+## SNAPSHOT like every windup: a dead target, a hostile that slipped into
+## stealth (vanished from the caster's fiction — the R20 rule plain aimed
+## windups follow), a target out of the spec range, or broken line of sight
+## collapses into the standard invalidated shape (Forced – Tool). Then ONE
+## apply_shock at the spec tier: the R13 stated-tier + escalation model owns
+## the already-Shocked case (old > 0 -> max(old + 1, tier)), and the struck
+## head part rides along for the per-organ elevation. Deliberately no
+## _strike_round: no Force/Robustness, no physical dodge (R22 is
+## Reflexes-vs-physical), no damage_applied — psychic noise is not a wound.
+func _resolve_psychic_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	var rows: Array = action.get("targets", [])
+	var part: String = "" if rows.is_empty() else String((rows[0] as Dictionary).get("part", ""))
+	var target: CombatantState = _first_target(action)
+	var original_first: String = "" if target == null else target.id
+	if target == null or not target.alive or target.removed_from_play:
+		return _collapse_batch_windup(actor, "target_gone", forced_queue, original_first)
+	var snap: Dictionary = snapshot.get(target.id, {})
+	if bool(snap.get("stealthed", false)) and target.team != actor.team:
+		return _collapse_batch_windup(actor, "target_stealthed", forced_queue, original_first)
+	var actor_snap: Dictionary = snapshot.get(actor.id, {})
+	var actor_pos_raw: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+	var target_pos_raw: Array = snap.get("position", [target.position.x, target.position.y])
+	var from := Vector2i(int(actor_pos_raw[0]), int(actor_pos_raw[1]))
+	var to := Vector2i(int(target_pos_raw[0]), int(target_pos_raw[1]))
+	if CombatantState.hex_distance(from, to) > int(spec.get("attack_range", 5)):
+		return _collapse_batch_windup(actor, "target_left_range", forced_queue, original_first)
+	if not Stealth.has_los(arena, from, to):
+		return _collapse_batch_windup(actor, "lost_line_of_sight", forced_queue, original_first)
+	var tier: int = int(spec.get("shock_tier", 2))
+	events.append({"type": "mind_burst", "actor": actor.id, "target": target.id, "part": part, "tier": tier})
+	events.append_array(cond.apply_shock(target, tier, clock.tick, part))
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "mind_burst")), "result": "ok", "rounds": 1})
 	return events
 
 
@@ -2722,9 +3070,9 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 
 	# Condition-driven Forced Action – Body (bleeding T2+, crushed T1, exhausted T3...).
 	if cond.forced_body_required(actor, acting_part):
-		var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
-		events.append(ForcedAction.make_event(actor.id, body_roll, "condition_forced_body"))
-		forced_queue.append({"actor": actor.id, "rolled": body_roll, "ctx": {"part": acting_part}})
+		var body: Dictionary = _forced_body_roll(actor, "condition_forced_body")
+		events.append_array(body["events"])
+		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting_part}})
 
 	# Requirements gate (R10): unmet -> still allowed, but effect magnitude is
 	# halved (round down) AND the Tool d6 table triggers.
@@ -3959,9 +4307,9 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 	# R9: automatic when grappler Physique >= target's; otherwise the attempt
 	# is Forced Action – Body — always allowed, consequences apply, hold lands.
 	if actor.trait_total("physique") < target.trait_total("physique"):
-		var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
-		events.append(ForcedAction.make_event(actor.id, body_roll, "grapple_above_weight"))
-		forced_queue.append({"actor": actor.id, "rolled": body_roll, "ctx": {"part": actor.acting_part(clock.tick), "target": target.id}})
+		var body: Dictionary = _forced_body_roll(actor, "grapple_above_weight")
+		events.append_array(body["events"])
+		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": actor.acting_part(clock.tick), "target": target.id}})
 	return events
 
 

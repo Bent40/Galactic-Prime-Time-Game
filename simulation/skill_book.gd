@@ -50,6 +50,41 @@ extends RefCounted
 ##                          reschedule); a full cut collapses the action into
 ##                          Forced Action – BODY (the parameterized collapse
 ##                          table — the feint path keeps Tool, F3)
+##   ally_treatment       — batch C "Medics & Minds": delay a condition's
+##                          advancement on self/an ally via ConditionEngine.delay
+##                          — mode is DELAY ONLY (FINAL default #8: never a cure,
+##                          never HP; no resolve/heal path exists in the
+##                          resolver). Two carriers via spec fields:
+##                          seal_the_wound (self_allowed, bleeding/infected
+##                          only) and field_triage (ally-only, any condition,
+##                          consumes a bandage_charge via the generic STACK
+##                          prime)
+##   intel_reveal         — batch C: knowledge plays, zero rng. Two forms:
+##                          "declared_read" (read_the_pattern — reveal one
+##                          VISIBLE enemy's scheduled action(s) until the Clock
+##                          reset; visibility = Stealth.sees, the observer's R30
+##                          facing cone applies) and "passive_aura"
+##                          (aura_reading — no declare: OWNING the skill exposes
+##                          the ai_stance of enemies the owner currently SEES on
+##                          the contestant-facing view surface; feeling, never
+##                          intent — GameController._aura_reads gates it)
+##   psychic_strike       — batch C (mind_burst — a strike VARIANT, not a new
+##                          family): windup psychic hit that applies Shock at
+##                          the spec tier via ConditionEngine.apply_shock (the
+##                          stated-tier + escalation model handles the already-
+##                          Shocked); may target the Head regardless of Exposure
+##                          (bypass_head_gate); needs line of sight below the
+##                          L8 threshold rung; no HP damage, no physical dodge
+##   forced_roll_save     — batch C (acrobatic_save): the G1 MOVEMENT-FORFEIT
+##                          arming (R25 — NO prime, NO stance: the ladders doc's
+##                          old prime note is superseded by its tail
+##                          annotation). Declaring spends the Moment's movement
+##                          (the tactical_roll plumbing) and ARMS the save;
+##                          the owner's next Forced Action – BODY roll draws
+##                          spec extra_dice extra dice from the SAME action rng
+##                          stream and keeps the LOWEST-severity result
+##                          (ForcedAction.save_severity — tie keeps the
+##                          original); the arming is consumed per roll
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
@@ -62,6 +97,13 @@ extends RefCounted
 ## way: intercept + iron_stance (retarget_guard), pressure_hold +
 ## death_grip_jaws (skill_grapple), counter_surge (interrupt_counter) — all
 ## magnitudes PLACEHOLDER (R14), L1 core + data-row L2-4, L5+ threshold DATA.
+## Content pass batch C ("Medics & Minds") encodes six more the same way:
+## seal_the_wound + field_triage (ally_treatment), read_the_pattern +
+## aura_reading (intel_reveal), mind_burst (psychic_strike — the strike
+## variant), acrobatic_save (forced_roll_save — the G1 movement-forfeit
+## arming) — all magnitudes PLACEHOLDER (R14), L1 core + data-row L2-4, L5+
+## threshold DATA (incl. seal L6 resolve, pattern L8 remote read, burst L8
+## out-of-sight, save L6 any-fumble).
 ## The remaining skills in data/skills.json are the fill-in-later content pass;
 ## until encoded they resolve through the generic `strike` fallback so an
 ## unknown key still does a real, honest thing.
@@ -111,6 +153,10 @@ const KNOWN_KEYS: Array[String] = [
 	# passover NEW_SKILLS; skills.json ids 5, 7, 46, 47, 49).
 	"intercept", "iron_stance", "pressure_hold", "death_grip_jaws",
 	"counter_surge",
+	# Content pass batch C — medics & minds (ladders #3/#6/#19/#29/#37 + the
+	# G6 passover field_triage; skills.json ids 3, 6, 19, 29, 37, 48).
+	"seal_the_wound", "field_triage", "read_the_pattern", "aura_reading",
+	"mind_burst", "acrobatic_save",
 ]
 
 ## Generic fallback for any un-encoded skill: a plain single-target strike so the
@@ -137,6 +183,13 @@ static func is_self_skill(key: String) -> bool:
 	var arch := String(spec.get("archetype", ""))
 	if arch == "retarget_guard":
 		return String(spec.get("form", "")) == "stance"
+	# Batch C: the save arming names no target (the movement forfeit is the
+	# whole declare); the passive aura is never declared at all but reads
+	# self-shaped for any HUD affordance that asks.
+	if arch == "forced_roll_save":
+		return true
+	if arch == "intel_reveal":
+		return String(spec.get("form", "")) == "passive_aura"
 	return arch == "self_guard" or arch == "self_stance"
 
 
@@ -491,6 +544,139 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"cost_cut": lv,
 				"collapse_table": "body",
 				"prime": {"type": "state", "who": "target", "status": "winding_up"},
+			}
+		"seal_the_wound":
+			# Batch C (ladder #3; Filipe's / Nikita-kit condition manager).
+			# Mind, cost 1 (instant). Delay Bleeding OR Infection on SELF or an
+			# ADJACENT ally for delay_clocks Clocks (1 at L1, +1/+2/+3 — data
+			# rows; PLACEHOLDER R14) via ConditionEngine.delay. HONESTY PIN
+			# (FINAL default #8, applied verbatim): mode is DELAY ONLY at
+			# L1-4 — never a cure, never HP; the ally_treatment resolver has
+			# NO resolve branch and NO heal_part call, structurally. The L6
+			# "resolve" rung stays threshold DATA. Delaying the condition that
+			# drives a bleed-out stabilizes the downed ally (R5 — the delay()
+			# machinery's existing _stabilize hook, not a special case).
+			spec = {
+				"archetype": "ally_treatment",
+				"cost": 1,
+				"treat_range": 1,
+				"self_allowed": true,
+				"treatable": ["bleeding", "infected"],
+				"delay_clocks": lv,
+			}
+		"field_triage":
+			# Batch C (G6 passover NEW_SKILL #11, skills.json id 48). Mind,
+			# cost 1 (instant). Treat an ADJACENT ally's condition — delay one
+			# advancement (delay_clocks: 1 at L1; L2 +1 Clock; L4 +2 Clocks
+			# total over base — data rows) — CONSUMING a bandage_charge: the
+			# generic charges STACK prime gates the declare (the audit's
+			# "item-as-prime, R3's items-skip-primes inverted"), and the
+			# resolver decrements the charge when the treatment actually
+			# lands. Charges are GRANTED via the combatant spec's `charges`
+			# field (CombatantState.from_spec) — the same generic counter
+			# _stack_count already reads. L3 extends the treat range to 2
+			# hexes (the data row's "treat at 1 space of range" read as one
+			# space of SEPARATION — PROVISIONAL interpretation, flagged).
+			# Ally-only (no self), any active condition. All numbers
+			# PLACEHOLDER (R14); L6 "fully resolve once per combat" stays
+			# threshold DATA (default #8 honesty pin applies here too).
+			spec = {
+				"archetype": "ally_treatment",
+				"cost": 1,
+				"treat_range": [1, 1, 2, 2][lv - 1],
+				"self_allowed": false,
+				"treatable": [],
+				"delay_clocks": [1, 2, 2, 3][lv - 1],
+				"consumes": "bandage_charge",
+				"prime": {"type": "stack", "resource": "bandage_charge", "count": 1},
+			}
+		"read_the_pattern":
+			# Batch C (ladder #6; Nikita's). Mind, cost 1 (instant). Reveal
+			# one VISIBLE enemy's next scheduled action(s) until the Clock
+			# reset: visibility is Stealth.sees — the OBSERVER's R30 facing
+			# cone applies (the skill user must SEE the target; an enemy over
+			# your shoulder cannot be read) — and the read reaches read_range
+			# hexes (the authored 3; the L8 remote-read rung stays threshold
+			# DATA). actions_revealed scales 1 -> 4 (the +1/+2/+3 Action data
+			# rows; the Clock's one-scheduled-action cap makes >1 mostly
+			# future-proofing, honestly). ZERO rng: the resolver deep-copies
+			# Clock.scheduled_entries() rows into a deterministic
+			# pattern_read event and records the reveal on the actor
+			# (pattern_reads — swept clear at the Clock reset by CombatSim);
+			# GameController exposes the live knowledge additively on the
+			# OWNER's view_combatants row. All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "intel_reveal",
+				"form": "declared_read",
+				"cost": 1,
+				"read_range": 3,
+				"actions_revealed": lv,
+			}
+		"aura_reading":
+			# Batch C (ladder #29; Filipe's). Mind, PASSIVE, cost 0 — no
+			# declare exists (declaring rejects passive_skill): OWNING the
+			# skill is the mechanic. The wave-3a substrate pays off: a
+			# combatant with aura_reading granted gets the ai_stance of every
+			# enemy they can currently SEE (Stealth.sees — the R30 facing
+			# cone gates it) within aura_range hexes (3 at L1, +1/+2/+3 —
+			# data rows) exposed additively on THEIR view_combatants row
+			# (GameController._aura_reads). FEELING, never intent: the stance
+			# string only — actions are Read the Pattern's lane, thoughts are
+			# Telepathy's (the FINAL lane-authoring note). Broadcast
+			# omniscience is unchanged — every row's ai_stance field stays;
+			# this gates the CONTESTANT-facing knowledge surface only.
+			# All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "intel_reveal",
+				"form": "passive_aura",
+				"cost": 0,
+				"aura_range": 2 + lv,
+			}
+		"mind_burst":
+			# Batch C (ladder #19). [MAGIC] Mind, cost 2 (windup). The strike
+			# VARIANT: a psychic hit that applies Shock T2 through
+			# ConditionEngine.apply_shock — the stated-tier + escalation
+			# model (R13) handles already-Shocked targets (old tier ->
+			# max(old + 1, 2); the head part is passed so re-abusing the same
+			# organ elevates per R13's per-organ rule). No HP damage, no
+			# physical dodge (the R22 dodge is Reflexes-vs-physical —
+			# documented). May target the HEAD regardless of Exposure:
+			# bypass_head_gate (the audit's shared shape with decapitate).
+			# Requires line of sight below the L8 remote-stun threshold rung
+			# (Stealth.has_los — LOS only, not the sight cone: the burst is
+			# aimed, the spec range is its own gate). Range 5 at L1,
+			# +5/+10/+15 (data rows). The data's "Req Telepathy Lv 3" is an
+			# UNLOCK requirement (KAN-7 progression / acquisition), NOT a
+			# runtime prime — deliberately not encoded here, exactly like
+			# every other unlock_requirements row. PLACEHOLDER (R14).
+			spec = {
+				"archetype": "psychic_strike",
+				"cost": 2,
+				"attack_range": 5 * lv,
+				"shock_tier": 2,
+				"bypass_head_gate": true,
+			}
+		"acrobatic_save":
+			# Batch C (ladder #37). Reflexes, cost 0 — the REAL cost is the
+			# G1 MOVEMENT FORFEIT (owner 2026-07-23, rules-addendum R25:
+			# "Acrobatic Save gets the same movement-forfeit cost in place of
+			# its cooldown" — NO prime, NO stance; the ladders doc's old
+			# "re-express as a prime" note is SUPERSEDED by its 2026-08-18
+			# tail annotation). Declaring consumes the Moment's movement
+			# (moved_this_tick — the tactical_roll plumbing) and ARMS the
+			# save; the owner's next Forced Action – BODY roll draws
+			# extra_dice extra dice (1 at L1, +1/+2/+3 — data rows) from the
+			# SAME action rng stream, every die emitted, and keeps the
+			# LOWEST-severity consequence (ForcedAction.save_severity — the
+			# documented deterministic rule; a tie keeps the ORIGINAL roll).
+			# The arming is consumed per roll. PROVISIONAL: the arming
+			# persists until that next Body roll consumes it (G1 prices the
+			# arming, not a window — revisit with R14). The L6 "any fumble"
+			# (Tool) rung stays threshold DATA. PLACEHOLDER (R14).
+			spec = {
+				"archetype": "forced_roll_save",
+				"cost": 0,
+				"extra_dice": lv,
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the
