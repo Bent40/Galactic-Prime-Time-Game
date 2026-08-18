@@ -386,3 +386,17 @@
     - **Epithets renamed:** Sasha **"Little shadow"**, Nikita **"The lonely"**.
     Open from #10 (unanswered, standing as-is): both premades' 4th skill slots; the
     cross-character CHAIN cash-in on Nikita's Pressure Strike.
+33. **Content-pass rulings batch (owner 2026-08-18).** Three calls on the scoping flags:
+    - **A FACING primitive is RULED IN** — "for sure needed", and it belongs to the
+      stealth engine too: R20's deferred vision CONES build on it. Scope: a serialized
+      hex-direction facing on combatants with a deterministic update rule; "behind"
+      gates (decapitate / slip_through / vibe_control) read the rear arc instead of the
+      Exposed approximation Batch A ships interim; R20 sight upgrades from 360° to
+      facing cones. Lands as its own story between content batches (all sim files
+      collide); Batch A's approximation is explicitly interim.
+    - **NO exclusive skills — G7 binds the sim.** The `exclusive_to` field is RETIRED
+      (validator now rejects it); acquisition-requirement gates replace it
+      (`acquisition` string on the row). reversion's `exclusive_to: nikita` converted
+      to a G7-style acquisition gate (PROVISIONAL wording).
+    - **F2 (the Brace/Intercept/Iron-Stance L6-10 band conflict) explained to the
+      owner, ruling pending** — does not touch the L1-4 content pass.

@@ -582,9 +582,13 @@ def main() -> int:
     for s in skills:
         skill_ids.add(s.get("id"))
         k = s.get("key", "?")
-        excl = s.get("exclusive_to")
-        if excl is not None and (not isinstance(excl, str) or not excl):
-            fail("skills.json", f"{k}: exclusive_to must be a non-empty string (character key) or null")
+        # G7 RULED (owner 2026-08-18, decision #33): NO exclusive skills — acquisition
+        # requirements instead. The field is retired; its presence is now an error.
+        if s.get("exclusive_to") is not None:
+            fail("skills.json", f"{k}: exclusive_to is retired (G7 — no exclusive skills; use an 'acquisition' gate)")
+        acq = s.get("acquisition")
+        if acq is not None and (not isinstance(acq, str) or not acq):
+            fail("skills.json", f"{k}: acquisition must be a non-empty string when present")
         if s.get("primary_stat") not in STATS:
             fail("skills.json", f"{k}: primary_stat invalid")
         if s.get("secondary_stat") is not None and s.get("secondary_stat") not in STATS:
