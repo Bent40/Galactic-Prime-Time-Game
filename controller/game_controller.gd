@@ -279,6 +279,11 @@ func view_combatants() -> Array[Dictionary]:
 			# enemies / anyone with no grants, never guessed.
 			"skills": _view_skills(c),
 			"position": [c.position.x, c.position.y],
+			# R30 (ADDITIVE, decision #33): the facing direction index 0..5
+			# into HexGeometry.DIRECTIONS (0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE) —
+			# presentation reads it to orient sprites/cones; the update table
+			# (addendum R30) owns every change, no facing command exists in v1.
+			"facing": c.facing,
 			"alive": c.alive,
 			"shock": c.shock,
 			"exposed": c.exposed_cache,
@@ -1137,6 +1142,15 @@ func _stage_encounter(staging: Dictionary) -> void:
 			var carry: Dictionary = (carried[id] as Dictionary).duplicate(true)
 			# The staging position wins (the carry was position-sanitized).
 			carry["position"] = (combatants[String(id)] as Dictionary).get("position", [0, 0])
+			# R30 (decision #33): the staging FACING wins too — facing is
+			# in-combat posture like position, and the next room re-stages
+			# (and re-orients) you toward its own nearest opponent. The carry
+			# predates facing in RunState's sanitizer, so the compat-conditional
+			# key is re-derived here off the freshly staged add (present only
+			# when the staging default was non-zero — the only-when-set pin).
+			carry.erase("facing")
+			if (combatants[String(id)] as Dictionary).has("facing"):
+				carry["facing"] = (combatants[String(id)] as Dictionary)["facing"]
 			combatants[String(id)] = carry
 			# Keep the tick-start snapshot honest for the spliced member (the
 			# same fields _snapshot_entry derives, computed off the carry).

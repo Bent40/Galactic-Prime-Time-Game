@@ -55,6 +55,35 @@ static func _reject(reason: String, detail: Dictionary = {}) -> Array[Dictionary
 	return events
 
 
+# ----------------------------------------------------- facing (R30, decision #33)
+
+## R30 — face `c` along the from→to ray (the nearest axial direction,
+## HexGeometry.direction_index's canonical tie rule). No-op for a zero-length
+## ray. The VOLUNTARY-movement half of the update table: resolved moves,
+## repositions, leaps, tactical rolls. Involuntary displacement (knockback /
+## knock-aside / sidestep / fling / drag) deliberately never calls this.
+static func _face_along(c: CombatantState, from: Vector2i, to: Vector2i) -> void:
+	var idx: int = HexGeometry.direction_index(from, to)
+	if idx >= 0:
+		c.facing = idx
+
+
+## R30 — the targeted-DECLARE half of the update table: face the (first)
+## declared target. Reads "targets"[0].id (attack/skill rows) else the single
+## "target" String (grapple kinds). Unknown/absent/same-hex targets change
+## nothing (the kind validators already gated legality).
+func _face_declared_target(actor: CombatantState, action: Dictionary) -> void:
+	var target_id: String = ""
+	var targets: Array = action.get("targets", [])
+	if not targets.is_empty():
+		target_id = String((targets[0] as Dictionary).get("id", ""))
+	if target_id == "":
+		target_id = String(action.get("target", ""))
+	var target: CombatantState = combatants.get(target_id)
+	if target != null:
+		_face_along(actor, actor.position, target.position)
+
+
 # ------------------------------------------------------------------ declare
 
 ## Declares a scheduled or free (0-Moment) action. Action dict keys:
@@ -127,6 +156,13 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	# --- all checks passed; mutate ---
 	if uses_strained:
 		actor.strained_grip = false
+	# R30 update table (decision #33): every TARGETED declare faces the (first)
+	# target's direction at declare — windups included (face at declare, HOLD
+	# through the windup: no re-face at strike resolution, so a committed boss
+	# can honestly be flanked mid-windup). Reads "targets"[0] (attack/skill)
+	# else the single "target" field (the grapple family). Target-less declares
+	# (stand/wait/reload/brace/dance/shockwave's aimed arc) change nothing.
+	_face_declared_target(actor, action)
 	var window: int = 0
 	var resolve_tick: int = clock.tick
 	if eff_cost <= 0:
@@ -903,11 +939,13 @@ func _validate_slip_reposition_strike(actor: CombatantState, action: Dictionary,
 
 
 ## head_finisher (decapitate) declare gate: single Head row on an EXPOSED
-## target — the STATE half of the ladder's "CHAIN + STATE" gate lives here
-## (the canonical R3 prime carries exactly one predicate; the chain half
-## already rejected in _prime_unmet). The head gate itself is bypassed
-## (bypass_head_gate) — the exposure requirement here is what keeps that
-## honest: no free head shots outside the carved opening.
+## target that the actor stands BEHIND — the STATE half of the ladder's
+## "CHAIN + STATE" gate plus the R30 rear-arc gate (decision #33: the ladder's
+## "positioned behind" is REAL now — Stealth.is_behind against the target's
+## live facing retires Batch A's interim Exposed-only approximation; the chain
+## half already rejected in _prime_unmet). The head gate itself is bypassed
+## (bypass_head_gate) — exposure + the rear arc are what keep that honest: no
+## free head shots outside the carved opening.
 func _validate_head_finisher(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	var targets: Array = action.get("targets", [])
 	if targets.size() != 1:
@@ -920,6 +958,8 @@ func _validate_head_finisher(actor: CombatantState, action: Dictionary, spec: Di
 		return _reject("unknown_target", {"target": String(t.get("id", ""))})
 	if not target.exposed_cache:
 		return _reject("target_not_exposed", {"target": target.id})
+	if not Stealth.is_behind(target, actor.position):
+		return _reject("not_behind_target", {"actor": actor.id, "target": target.id})
 	return _batch_strike_gate(actor, action, spec)
 
 
@@ -1174,6 +1214,10 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 			return _reject("free_action_used", {"actor": actor_id})
 		actor.free_action_used = true
 		actor.moved_this_tick = true
+		# R30: a resolved move faces the movement direction — the from→to ray's
+		# nearest axial direction (the sim's move is a from→to hop, so the ray
+		# IS the last step; documented in the addendum R30 entry).
+		_face_along(actor, actor.position, to)
 		actor.position = to
 		var events: Array[Dictionary] = [{
 			"type": "moved", "actor": actor_id, "to": [to.x, to.y], "spaces": spaces, "free": true,
@@ -1263,6 +1307,9 @@ func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dic
 	actor.rolled_this_window = true
 	var from: Vector2i = actor.position
 	actor.position = to
+	# R30: the roll is VOLUNTARY movement — face the roll direction (yes, a
+	# roll away turns your back; the table has no dodge exception, documented).
+	_face_along(actor, from, to)
 	var events: Array[Dictionary] = [{
 		"type": "tactical_roll", "actor": actor.id,
 		"from": [from.x, from.y], "to": [to.x, to.y],
@@ -1618,7 +1665,10 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			events = _resolve_skill(actor, entry, snapshot, forced_queue)
 		"move":
 			var to: Array = action.get("to", [actor.position.x, actor.position.y])
-			actor.position = Vector2i(int(to[0]), int(to[1]))
+			var move_to := Vector2i(int(to[0]), int(to[1]))
+			# R30: a resolved (scheduled) move faces the movement direction.
+			_face_along(actor, actor.position, move_to)
+			actor.position = move_to
 			events.append({"type": "moved", "actor": actor.id, "to": to, "spaces": int(action.get("spaces", 0)), "free": false})
 		"inventory":
 			events.append({"type": "inventory_used", "actor": actor.id, "free": false, "interaction": String(action.get("interaction", "use"))})
@@ -1887,6 +1937,10 @@ func _resolve_leap_strike(actor: CombatantState, entry: Dictionary, snapshot: Di
 			return _collapse_batch_windup(actor, "leap_blocked", forced_queue, target_id)
 		var from: Vector2i = actor.position
 		actor.position = to
+		# R30: the resolved leap faces its movement direction (the table's
+		# leap rule; the strike's own declare already faced the prey from the
+		# ORIGINAL hex — resolves never re-face toward targets).
+		_face_along(actor, from, to)
 		events.append({"type": "pounce_leap", "actor": actor.id,
 			"from": [from.x, from.y], "to": [to.x, to.y],
 			"spaces": CombatantState.hex_distance(from, to)})
@@ -1896,32 +1950,49 @@ func _resolve_leap_strike(actor: CombatantState, entry: Dictionary, snapshot: Di
 
 
 ## slip_reposition_strike (slip_through): the leg cuts (rows rebuilt at
-## declare), then the far-side reposition, then the Exposed rider. Cost 1 =
-## instant (R2): no windup re-checks. F5 (of record in the SkillBook spec):
-## "behind" is UNMODELED — far-side hex + Exposed rider approximate it, and no
-## facing is invented.
+## declare), then the REAR-ARC reposition, then the Exposed rider. Cost 1 =
+## instant (R2): no windup re-checks. R30 retrofit (decision #33 — retires the
+## F5 far-side approximation): "reposition behind" is REAL — the destination
+## scans the target's REAR-arc adjacent hexes in a fixed, documented order
+## (directly behind = facing+3 first, then facing+2, then facing+4; the
+## target's LIVE facing at resolution), taking the first free one (the actor's
+## own hex counts as free — already behind = stay put). No rear hex free =
+## the pre-R30 far-side fallback (the hex directly across, then the first free
+## neighbor in fixed order), documented: the slip still happens, just not
+## cleanly behind. The reposition faces its movement direction (R30 table).
 func _resolve_slip_reposition_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	var target: CombatantState = _first_target(action)
 	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
 	if target != null and target.alive:
-		# Far side: the hex directly across the target from the actor; blocked,
-		# the first free neighbor of the target (fixed order) that is not the
-		# actor's own hex; nowhere free = hold position (the wall rule).
 		var from: Vector2i = actor.position
-		var far: Vector2i = target.position + (target.position - from)
 		var to: Vector2i = from
-		if _movement_blocked_reason(actor, far) == "":
-			to = far
-		else:
-			for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
-				var candidate: Vector2i = target.position + neighbor
-				if candidate == from:
-					continue
-				if _movement_blocked_reason(actor, candidate) == "":
-					to = candidate
-					break
+		var found_rear: bool = false
+		for rear_offset: int in [3, 2, 4]:
+			var candidate: Vector2i = target.position \
+				+ HexGeometry.DIRECTIONS[(target.facing + rear_offset) % 6]
+			if candidate == from or _movement_blocked_reason(actor, candidate) == "":
+				to = candidate
+				found_rear = true
+				break
+		if not found_rear:
+			# Far-side fallback (the pre-R30 rule, kept verbatim): directly
+			# across the target from the actor; blocked, the first free
+			# neighbor of the target (fixed order) that is not the actor's own
+			# hex; nowhere free = hold position (the wall rule).
+			var far: Vector2i = target.position + (target.position - from)
+			if _movement_blocked_reason(actor, far) == "":
+				to = far
+			else:
+				for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
+					var candidate: Vector2i = target.position + neighbor
+					if candidate == from:
+						continue
+					if _movement_blocked_reason(actor, candidate) == "":
+						to = candidate
+						break
 		if to != from:
+			_face_along(actor, from, to)  # R30: voluntary reposition
 			actor.position = to
 		events.append({"type": "slip_through_reposition", "actor": actor.id,
 			"from": [from.x, from.y], "to": [to.x, to.y], "moved": to != from})
@@ -2114,7 +2185,9 @@ func _resolve_pow_strike(actor: CombatantState, entry: Dictionary, snapshot: Dic
 ## direction; ties break along the canonical order). Wall / bounds / trash-can
 ## / living-body blocked = no displacement (the shove stops honestly) — and NO
 ## prone is implied: unlike the dash's knock-aside, a plain knockback only
-## displaces unless a ladder explicitly says otherwise.
+## displaces unless a ladder explicitly says otherwise. R30: INVOLUNTARY
+## displacement — the victim's facing never changes (getting shoved does not
+## spin you around; the update table's explicit exclusion).
 func _knockback_away(target: CombatantState, from_actor: CombatantState) -> Array[Dictionary]:
 	if not target.alive or target.removed_from_play:
 		return []
@@ -2191,6 +2264,8 @@ func _free_reposition(actor: CombatantState, action: Dictionary, max_spaces: int
 		# actor holds position (the unmoved event below), the skill still lands.
 		if dist >= 1 and dist <= max_spaces \
 				and (arena == null or not arena.blocks_movement(to)):
+			# R30: a resolved reposition is voluntary movement — face it.
+			_face_along(actor, actor.position, to)
 			actor.position = to
 			return [{"type": event_type, "actor": actor.id, "to": [to.x, to.y], "spaces": dist, "free": true}]
 	# TODO: deterministic free step toward/around the target when no reposition_to
@@ -2571,6 +2646,13 @@ func _resolve_dash_charge(actor: CombatantState, action: Dictionary, snapshot: D
 		if occupied.has(lane[k]):
 			break
 		final_idx = k
+	# R30: the dash charge faces the LANE direction at the dasher's final hex —
+	# toward the next lane hex (for a bent/bounced corridor: the direction of
+	# the segment the charge ended on). Applies on a stopped-short charge too
+	# (the Moment was spent charging down that lane); an INVALIDATED lane
+	# (lane_lost / left_lane) returned above and keeps the declare-time facing.
+	if final_idx + 1 < lane.size():
+		_face_along(actor, lane[final_idx], lane[final_idx + 1])
 	if final_idx > 0:
 		var from: Vector2i = actor.position
 		actor.position = lane[final_idx]
@@ -2881,7 +2963,8 @@ func _dash_dodge_riders(dodger: CombatantState, dasher: CombatantState, ability_
 ## the action carries no lane (an authored dodge block on a non-line action)
 ## the pre-#31 rule stands: the first free hex strictly INCREASING distance
 ## from the attacker. No qualifying free hex -> the dodge still negates, no
-## displacement.
+## displacement. R30: the sidestep is REFLEX displacement, not a chosen move —
+## facing never changes (the update table's explicit exclusion).
 func _dash_sidestep(dodger: CombatantState, dasher: CombatantState, lane_set: Dictionary) -> Array[Dictionary]:
 	var occupied: Dictionary = {}
 	var ids: Array = combatants.keys()
@@ -3211,7 +3294,8 @@ func _apply_death_spin_beat(actor: CombatantState, action: Dictionary) -> Array[
 ## boss THROUGH the victim; the victim flies SPIN_FLING_HEXES hexes down it,
 ## stopping before the first hex occupied by another living, in-play
 ## combatant. Deterministic, rng-free. {"to": Vector2i, "hexes": int} —
-## hexes 0 means nowhere to fly (the victim drops on the spot).
+## hexes 0 means nowhere to fly (the victim drops on the spot). R30: the
+## fling is INVOLUNTARY — the flung victim's facing never changes.
 func _death_spin_fling_target(boss: CombatantState, victim: CombatantState) -> Dictionary:
 	var start: Vector2i = victim.position
 	var span: int = HexGeometry.distance(boss.position, start)
@@ -3303,6 +3387,11 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 		target.position = pull
 	actor.grappling = target.id
 	target.grappled_by = actor.id
+	# R30: a grapple faces BOTH parties toward each other (physical contact
+	# turns the held victim too — the one involuntary facing in the table,
+	# ruled explicitly). Positions read post-drag, so the hold faces true.
+	_face_along(actor, actor.position, target.position)
+	_face_along(target, target.position, actor.position)
 	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id})
 	# Wave 2b: a death-spin grab ARMS the 3-beat sequence at the moment the hold
 	# actually lands (beat 1 done — chew next). The dodge model does NOT apply

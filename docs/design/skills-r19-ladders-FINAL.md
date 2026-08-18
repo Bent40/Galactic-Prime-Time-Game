@@ -684,3 +684,14 @@ cost, explicitly NO prime. The engine implements G1. Also noted for the 6-10 ban
 (does not affect L1-4 implementation): R1's "Intercept/Iron Stance fold into Brace
 L8/L9" conflicts with the later G6-round-3 Gemstone merge (Intercept Lv5 + Brace
 Lv3 -> Iron Stance, parents consumed) — OWNER CALL needed before any L6+ authoring.
+
+**F5 RESOLVED (2026-08-18, decision #33 / addendum R30):** the content-pass caution
+that "behind" was UNMODELED (Batch A shipped Slip Through's "reposition behind" as a
+far-side approximation and Decapitate's "positioned behind" as Exposed-only) is
+retired — the FACING primitive landed with the R20 vision cones. Slip Through (#21)
+now repositions into the target's REAL rear arc (far-side fallback when no rear hex
+is free) and Decapitate (#22) declare-gates on `is_behind` (rejects
+`not_behind_target`) alongside the unchanged CHAIN + Exposed gates. The 6-10 rungs
+that touch the gate stay threshold data as authored (#22 L8 "no longer requires
+melee-behind", L9 chain-release); Vibe Control's Exposed-from-behind reads the same
+gate when its content pass lands. Contract of record: addendum **R30**.

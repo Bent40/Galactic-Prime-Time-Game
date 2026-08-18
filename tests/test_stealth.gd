@@ -4,8 +4,9 @@ extends SimTestBase
 ##
 ## Under test:
 ##  * the LEGACY BYTE-COMPAT PIN: two stealth-free fights (plain + arena/door)
-##    replay to the EXACT state hashes recorded on the pre-stealth engine
-##    (e6c7c37) — opt-in stealth changes nothing it does not touch.
+##    replay to EXACT recorded state hashes (originally the pre-stealth
+##    e6c7c37 engine; re-pin history at the constants below) — opt-in stealth
+##    changes nothing it does not touch.
 ##  * the `stealth` command: hide/reveal, every rejection (unknown actor /
 ##    dead / helpless / unknown state / already_stealthed / not_stealthed /
 ##    in_grapple / in_enemy_sight with the observer named / free_action_used),
@@ -55,8 +56,18 @@ extends SimTestBase
 ## moved. Sequence B resolves no targeted action, so ARENA_DOOR still proves
 ## byte-identity with the pre-stealth format, and the structural
 ## no-stealthed-key assertions below are untouched.
-const LEGACY_HASH_PLAIN: String = "17b40bcc2e247e15d7a4a1c529c7251f73a0ddbd99c859163d2016423273b3b9"
-const LEGACY_HASH_ARENA_DOOR: String = "aa9257b0081cc5687053044601349e198b21e6156d2ccc051375bb351474f35e"
+## BOTH RE-PINNED facing primitive (R30, decision #33, 2026-08-18): `facing`
+## serializes only-when-non-zero, and both sequences stage the mob FACING its
+## nearest opponent (A: [5,0]→h1 = W → "facing":3; B: [5,5]→h1 = NW →
+## "facing":2). Re-record procedure (the honest one): the ba089cb BASE engine
+## reproduced the previous pins byte-identically, and a canonical-serialize
+## DIFF between the base and facing engines on these exact logs showed
+## EXACTLY one insertion per sequence — the mob's facing key — with every
+## other byte (rng states, decisions, events, h1's key-set: h1 only ever
+## moves/attacks EAST, facing 0, no key) unchanged. One honest new serialized
+## field; zero behavior drift (both CI harnesses byte-diff clean).
+const LEGACY_HASH_PLAIN: String = "6d8046456d4aee1059e775d8d08f6eee2519c511f2e36df4b5c8ee25ca9b6a70"
+const LEGACY_HASH_ARENA_DOOR: String = "f6f64238efd4596bcba526c5a32d60583d6c5d7c55e599aa328b2f41658680d5"
 
 
 func stealth(sim: CombatSim, actor: String, to_state: String = "hide") -> Array[Dictionary]:
@@ -192,9 +203,12 @@ func test_mind_zero_sees_nothing_and_allies_never_break_stealth() -> void:
 
 
 func test_helpless_observer_keeps_no_watch() -> void:
+	# R30 restage: the watcher adds first (no opponents -> facing 0 = E), so
+	# h1 must stand EAST of it to be in the front arc — the pre-facing layout
+	# (h1 west of the watcher) would now be a legitimate behind-the-back hide.
 	var sim: CombatSim = make_sim()
-	add_watcher(sim, [3, 0])  # in range (3 <= 6)...
-	add_human(sim, "h1", {"team": "party", "position": [0, 0]})
+	add_watcher(sim, [0, 0])  # facing E; h1 at [3,0] is in range (3 <= 6)...
+	add_human(sim, "h1", {"team": "party", "position": [3, 0]})
 	assert_rejected(stealth(sim, "h1"), "in_enemy_sight", "awake watcher blocks the hide")
 	# ...but a FAINTED watcher (Shock T3 -> Helpless) sees nothing (R13/R20).
 	sim.cond.apply_shock(sim.combatants["watcher"], 3, sim.clock.tick)
@@ -240,8 +254,9 @@ func test_wall_cover_holds_until_someone_moves() -> void:
 	add_human(sim, "h1", {"team": "party", "position": [4, 0]})
 	assert_event(stealth(sim, "h1"), "stealth_entered", "the wall shields the hide")
 	# The WATCHER moves off the blocked line -> the sweep catches the hider
-	# (R20's "reacting turns/moves it so you enter its cone" analog: v1 has no
-	# facing, so the escalation is purely positional).
+	# (R20's "reacting turns/moves it so you enter its cone", literally now:
+	# the move re-faces the watcher SE, whose front arc {SW, SE, E} still
+	# holds h1's E direction — R30 cones + the re-opened line reveal).
 	var step: Array[Dictionary] = move(sim, "watcher", [0, 2])
 	var broken: Dictionary = assert_event(step, "stealth_broken", "observer movement re-opens the line")
 	assert_eq(String(broken.get("reason", "")), "seen", "seen on the observer's own move")

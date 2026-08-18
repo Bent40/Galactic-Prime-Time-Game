@@ -1,8 +1,10 @@
 extends SimTestBase
 ## Content pass batch A — chains & strikes (docs/design/skills-r19-ladders-FINAL.md).
 ## Nine encoded skills: the pounce→slip_through→decapitate chain (size gate,
-## far-side reposition + Exposed rider [F5 behind-approximation], head-gate
-## bypass, cinematic_kill spectacle scoring), the overhead_slam→shockwave→
+## REAR-ARC reposition + Exposed rider + the not_behind_target gate — the R30
+## facing retrofit, decision #33, retiring the interim F5 far-side/Exposed
+## approximation; head-gate bypass, cinematic_kill spectacle scoring), the
+## overhead_slam→shockwave→
 ## execution chain (cone membership + slam-victim exclusion, knockback
 ## wall-stop, Forced Body on Mobs, the Prone|Helpless gate + Shock T3 rider),
 ## thousand_cuts (multi-part declare + the all-3-bleeding tier payoff),
@@ -51,6 +53,10 @@ func add_mob(sim: CombatSim, id: String, pos: Array) -> void:
 func add_party(sim: CombatSim, id: String, pos: Array, physique: int = 3) -> void:
 	add_human(sim, id, {"team": "party", "position": pos,
 		"traits": {"physique": physique, "reflexes": 3, "mind": 3, "charm": 3}})
+
+
+func move(sim: CombatSim, id: String, to: Array) -> Array[Dictionary]:
+	return sim.apply_command({"type": "move", "actor": id, "to": to})
 
 
 # ================================================= chain 1: pounce → slip → decapitate
@@ -105,9 +111,13 @@ func test_chain_one_full_to_cinematic_kill() -> void:
 	assert_eq(int(prey.parts["right_leg"]["hp"]), 49, "both legs cut")
 	assert_eq(prey.condition_tier("left_leg", "bleeding"), 1, "leg Bleed T1")
 	assert_eq(prey.condition_tier("right_leg", "bleeding"), 1, "leg Bleed T1")
-	var repos: Dictionary = assert_event(ev2, "slip_through_reposition", "the far-side reposition happened")
-	assert_eq(repos.get("to", []), [4, 0], "the far side of [3,0] seen from [2,0] is [4,0]")
-	assert_eq(sasha.position, Vector2i(4, 0), "actor stands on the far side")
+	var repos: Dictionary = assert_event(ev2, "slip_through_reposition", "the rear-arc reposition happened")
+	# R30 retrofit: prey staged facing W (toward sasha), so directly-behind =
+	# facing+3 = E = [4,0] — the REAL rear arc, no longer the F5 far-side
+	# approximation (which lands the same hex in this head-on geometry).
+	assert_eq(repos.get("to", []), [4, 0], "directly behind prey (facing W -> rear E) from [2,0] is [4,0]")
+	assert_eq(sasha.position, Vector2i(4, 0), "actor stands behind the target")
+	assert_true(Stealth.is_behind(prey, sasha.position), "the destination is IN the target's rear arc (R30)")
 	assert_event(ev2, "slip_through_exposed", "the Exposed rider is an attributed event")
 	assert_true(prey.exposed_cache, "the target is Exposed for the finisher window")
 	# decapitate: bypass-gated head slash; head 3 → 0 = the cinematic kill.
@@ -160,6 +170,51 @@ func test_chain_one_gates() -> void:
 	assert_rejected(declare(sim3, "sasha", {"kind": "skill", "key": "decapitate", "level": 1,
 		"targets": [{"id": "prey", "part": "head"}]}), "target_not_exposed",
 		"the STATE half of the finisher gate is enforced at declare")
+
+
+func test_decapitate_rejects_from_the_front_arc() -> void:
+	# The R30 retrofit's other half (decision #33): the ladder's "positioned
+	# behind" is REAL — exposure alone no longer opens the finisher. Chain +
+	# Exposed both live, but sasha walks around to the target's FRONT arc
+	# (prey faces W; [2,0] is its front-W hex) -> not_behind_target.
+	var sim: CombatSim = _chain_one_sim(50)
+	declare(sim, "sasha", {"kind": "skill", "key": "pounce", "level": 1, "leap_to": [2, 0],
+		"targets": [{"id": "prey", "part": "torso"}]})
+	advance(sim, 3)
+	declare(sim, "sasha", {"kind": "skill", "key": "slip_through", "level": 1, "targets": [{"id": "prey"}]})
+	advance(sim)
+	var prey: CombatantState = sim.combatants["prey"]
+	assert_true(prey.exposed_cache, "precondition: the Exposed window is open")
+	assert_eq((sim.combatants["sasha"] as CombatantState).last_action_key, "slip_through",
+		"precondition: the chain is live")
+	move(sim, "sasha", [2, 0])  # a free move never clears the chain bookkeeping
+	assert_rejected(declare(sim, "sasha", {"kind": "skill", "key": "decapitate", "level": 1,
+		"targets": [{"id": "prey", "part": "head"}]}), "not_behind_target",
+		"Exposed + chain intact, but the actor stands in the FRONT arc — the real gate rejects")
+
+
+func test_slip_through_prefers_a_flanking_rear_hex_when_directly_behind_is_blocked() -> void:
+	# The documented rear-arc scan order: directly behind (facing+3) first,
+	# then facing+2, then facing+4 — a body on [4,0] pushes the slip onto the
+	# SE rear flank [3,1], still behind, and the finisher still fires from it.
+	var sim: CombatSim = _chain_one_sim(3)
+	add_elite(sim, "blocker", [4, 0], {})
+	var sasha: CombatantState = sim.combatants["sasha"]
+	var prey: CombatantState = sim.combatants["prey"]
+	declare(sim, "sasha", {"kind": "skill", "key": "pounce", "level": 1, "leap_to": [2, 0],
+		"targets": [{"id": "prey", "part": "torso"}]})
+	advance(sim, 3)
+	declare(sim, "sasha", {"kind": "skill", "key": "slip_through", "level": 1, "targets": [{"id": "prey"}]})
+	var ev: Array[Dictionary] = advance(sim)
+	var repos: Dictionary = assert_event(ev, "slip_through_reposition", "the reposition still happens")
+	assert_eq(repos.get("to", []), [3, 1], "blocked directly-behind -> the facing+2 rear flank (SE of prey)")
+	assert_eq(sasha.position, Vector2i(3, 1), "actor stands on the rear flank")
+	assert_true(Stealth.is_behind(prey, sasha.position), "the flank hex is still IN the rear arc")
+	# The finisher accepts from the flank (rear-arc, not just directly-behind).
+	declare(sim, "sasha", {"kind": "skill", "key": "decapitate", "level": 1,
+		"targets": [{"id": "prey", "part": "head"}]})
+	var ev2: Array[Dictionary] = advance(sim)
+	assert_event(ev2, "cinematic_kill", "the rear-flank finisher fires — the whole retrofit chain holds")
 
 
 func test_decapitate_without_kill_has_no_cinematic_beat() -> void:

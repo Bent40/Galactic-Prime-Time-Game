@@ -20,6 +20,19 @@ var category: String = "Contestant"  # Contestant / Mob / Elite / Boss
 var template_key: String = ""
 var size: String = "Medium"
 var position: Vector2i = Vector2i.ZERO
+## FACING (decision #33 — the facing primitive; rules-addendum R30): an axial
+## hex-direction index 0..5 into HexGeometry.DIRECTIONS / EnemyAI.HEX_NEIGHBORS
+## (0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE). Updated AUTOMATICALLY and
+## deterministically by the R30 update table (targeted declares, resolved
+## moves/repositions/leaps, dash charges, grapples — ActionResolver owns the
+## seams; involuntary displacement never re-faces); there is NO facing command
+## in v1 — a contestant cannot deliberately guard their back yet (documented
+## R30 limitation). Staging default (CombatSim._add_combatant): face the
+## nearest opponent at add time, else direction 0. Consumed by Stealth's R20
+## front-arc vision cone (sees) and the is_behind rear-arc gates. Serialized
+## ONLY while != 0 (the stealthed/last_action_target compat-pin pattern; the
+## documented serialization default is 0) — see to_dict.
+var facing: int = 0
 
 ## part_key -> {"name": String, "hp": int, "base_max_hp": int, "lethal": bool,
 ##              "disabled": bool, "destroyed": bool, "hidden": bool}
@@ -589,6 +602,14 @@ func to_dict() -> Dictionary:
 	# while a targeted action has resolved — hash-covered whenever it matters.
 	if last_action_target != "":
 		out["last_action_target"] = last_action_target
+	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
+	# exists ONLY while != 0 — the documented serialization default is
+	# direction 0 (E), so a combatant that never faced away from 0 serializes
+	# byte-identically to the pre-facing engine. (A fight where the staging
+	# default or the update table lands a non-zero facing legitimately grows
+	# the key — hash-covered whenever it matters.)
+	if facing != 0:
+		out["facing"] = facing
 	return out
 
 
@@ -664,4 +685,6 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.bleed_out = (data.get("bleed_out", {}) as Dictionary).duplicate(true)
 	# Pre-stealth saves lack the key: false = detected, the legacy default.
 	c.stealthed = bool(data.get("stealthed", false))
+	# Pre-facing saves lack the key: 0 (E) is the documented R30 default.
+	c.facing = int(data.get("facing", 0))
 	return c
