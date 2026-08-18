@@ -139,6 +139,17 @@ extends RefCounted
 ##   - skills, bit, threshold_dice, resistances, allocated_physical, personality,
 ##     abilities, boss_phases, boss_traits, items: static grants / identity;
 ##     consumed item uses & magazines stay consumed (B11 economy).
+##   - charges (the STACK counter): batch C made it the consumable
+##     bandage_charge economy — spec-granted, decremented on use, nothing
+##     builds it mid-combat — so B11/Q29 governs (consumed charges stay
+##     consumed for the run, unspent ones stay held; refresh is Lounge scope,
+##     the B9 session frame). Supersedes #20's blanket prime-substrate reset
+##     for this one counter; the rest of the prime substrate still resets.
+##   - tier-2 absorb/cap markers (#34/#35): ROSTER-layer bookkeeping on the
+##     roster row's SPEC skill rows — they never enter CombatantState.to_dict
+##     at all (from_spec normalizes combat rows to {key, level}), so the
+##     sanitizer never sees them and they survive with the spec by
+##     construction.
 ##   - alive / removed_from_play: R17 — death is permanent within the run
 ##     (recruited NPCs permanently losable in every mode); R5 — mind collapse is
 ##     permanent. Dead/removed members stay on the roster RECORD but are never
@@ -160,10 +171,14 @@ extends RefCounted
 ##   - next_action_tick, windup_pending: the encounter's Clock (and its
 ##     scheduled-action queue) does not outlive its CombatSim.
 ##   - per-tick/per-Clock flags: free_action_used, reaction_used, moved_this_tick,
-##     inventory_uses, took_scheduled_action_this_clock, damage_taken_this_tick,
+##     rolled_this_window (R25 — the G1 roll marker), inventory_uses,
+##     took_scheduled_action_this_clock, damage_taken_this_tick,
 ##     largest_single_hit_this_tick, combo_hits_this_tick.
-##   - prime substrate: last_action_key, stance, armed_primes, charges — R3
-##     primes are in-combat flow state (decision #20).
+##   - prime substrate: last_action_key, last_action_target (batch A — the
+##     chain and its same-target gate never cross encounters), stance,
+##     armed_primes — R3 primes are in-combat flow state (decision #20).
+##     charges is deliberately NOT here — the STACK counter persists (Q29,
+##     see PERSISTS above).
 ##   - tick-anchored windows: exposed_until_tick, helpless_until_tick,
 ##     unarmed_until_tick, part_locked_until — anchored to the dead Clock's
 ##     absolute ticks; shock-T4's rest-of-combat Helpless/Exposed resets WITH
@@ -177,6 +192,22 @@ extends RefCounted
 ##     follow you out); exposed_cache (recomputed).
 ##   - stealthed (R20, wave 4c): in-encounter concealment — the next room
 ##     re-stages (and re-sees) you; the compat-conditional key is erased.
+##   - post-R20 armings/links (content batches B-D; only-when-set keys, ERASED
+##     like stealthed): guard + iron_stance (batch B — the intercept arming
+##     and the held stance: the reaction economy is per-combat and the anchor
+##     hex / guarded ward belong to the old room's geometry), forced_save
+##     (batch C — the G1 movement-forfeit arming, R25: momentary combat flow
+##     like armed_primes), pattern_reads (batch C — intel lives "until the
+##     Clock reset" and the encounter's Clock died with the enemies it read),
+##     conceal (batch D — rides stealthed, anchored to a hex of the old room;
+##     the modifier never outlives the stealth it modifies), channeling +
+##     held_by (batch D — the TK channel and its mirror: the partner did not
+##     follow you out, the grapple-link rule; sustained_tick anchors to the
+##     dead Clock).
+##   - facing (R30, decision #33): re-derived at STAGING rather than sanitized
+##     here — GameController._stage_encounter erases the carried key and
+##     stamps the staged add's face-nearest-opponent default (the documented
+##     R30 seam; the carry rides it inert until then).
 ##   - broadcast plane, EXCEPT the chained hype meter: the HypeEngine
 ##     goal/spotlight and the EvidenceEngine ledger are per-encounter (each
 ##     fight is its own broadcast segment; the run keeps each segment's outcome
@@ -793,6 +824,7 @@ static func _sanitize_carry(raw_variant: Variant) -> Dictionary:
 	carry["free_action_used"] = false
 	carry["reaction_used"] = false
 	carry["moved_this_tick"] = false
+	carry["rolled_this_window"] = false
 	carry["inventory_uses"] = 0
 	carry["took_scheduled_action_this_clock"] = false
 	carry["damage_taken_this_tick"] = 0
@@ -803,11 +835,13 @@ static func _sanitize_carry(raw_variant: Variant) -> Dictionary:
 	carry["unarmed_until_tick"] = 0
 	carry["part_locked_until"] = {}
 	carry["exposed_cache"] = false
-	# Prime substrate (R3/#20) — in-combat flow state.
+	# Prime substrate (R3/#20) — in-combat flow state. charges is deliberately
+	# NOT reset: batch C made the STACK counter the consumable bandage_charge
+	# economy, and B11/Q29 rules consumables — consumed stays consumed, unspent
+	# stays held for the run (see the header's PERSISTS table).
 	carry["last_action_key"] = ""
 	carry["stance"] = ""
 	carry["armed_primes"] = {}
-	carry["charges"] = {}
 	# Combat buffs/debuffs, grapple links, momentary fallout.
 	carry["brace_guard"] = 0
 	carry["feint_forced"] = false
@@ -821,6 +855,20 @@ static func _sanitize_carry(raw_variant: Variant) -> Dictionary:
 	# (and re-seen) in the next room. The key is compat-conditional (present
 	# only while true), so ERASE it rather than write false.
 	carry.erase("stealthed")
+	# Content batches A-D — the combat-scoped fields added AFTER this sanitizer
+	# was written. Every one rides the stealthed only-when-set compat pin, so
+	# ERASE (never write a default): last_action_target (batch A — the chain
+	# same-target gate dies with last_action_key above); guard + iron_stance
+	# (batch B — the intercept arming and the held stance: per-combat reaction
+	# economy / anchor geometry); forced_save (batch C — the G1 movement-forfeit
+	# arming, R25); pattern_reads (batch C — intel expires at the Clock reset
+	# and the encounter's Clock died); conceal (batch D — rides the erased
+	# stealth); channeling + held_by (batch D — the partner did not follow you
+	# out, the grapple-link rule). facing is deliberately ABSENT here: the
+	# controller splice re-derives it at staging (R30/#33 — see the header).
+	for combat_scoped: String in ["last_action_target", "guard", "iron_stance",
+			"forced_save", "pattern_reads", "conceal", "channeling", "held_by"]:
+		carry.erase(combat_scoped)
 	# Statuses: only the condition-justified incapacitated persists (its head
 	# condition carried too); overwhelmed/prone/slowed are per-combat posture.
 	var statuses: Dictionary = {}
