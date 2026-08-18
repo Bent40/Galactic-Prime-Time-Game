@@ -281,7 +281,12 @@ overturning one is a code change, not a rewrite.
 13. **Camera Call (spectacle engine v1):** stacks per R6's Charm over-cap formula, spent
     per use (`camera_call` command); the "doubled gains AND losses" canon is read as
     *spectacle points attributed to the spotlit combatant are doubled* — cross-referencing
-    who CAUSED the spotlit combatant's drama is v2. The spotlight ends at the end of the
+    who CAUSED the spotlit combatant's drama is v2. **SUPERSEDED IN TABLETOP CANON
+    (v2 D-10/Q-32, 2026-08-11): Camera Call is a declared double-or-nothing BET on an
+    uncertain action — failure burns named Followers. The engine swap needs the v2
+    named-Follower ledger (KAN-7; three-way guard items T-4/U-4) and is PARKED; the sim
+    keeps the v1 doubling model until that ledger exists.** The spotlight ends at the end
+    of the
     spotlit combatant's current-or-next action (resolved or invalidated), at their death,
     or after a 2-Clock fallback so it can never dangle; one spotlight at a time. The caller
     passes the same actor gates as declared actions (alive → not removed → not Helpless): a

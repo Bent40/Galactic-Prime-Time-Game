@@ -3,7 +3,9 @@
 **Date:** 2026-07-17 · **Scope:** `data/skills.json` (44 rows), `data/skill_thresholds.json`
 (82 rows) · **Judged against:** `docs/rules-addendum.md` (R3 no-cooldowns/priming, R10
 requirements gate, R14 damage quantization, R15 combined actions, R16 races/backgrounds,
-R18 Charm=presentability), `docs/gdd/gdd.md` §Game Mechanics + §RPG Specific,
+R18 Charm=presence — WIDENED 2026-08-10, D-25: voice, facial control and body language
+are in-stat, which retires this audit's narrow-Charm stat-move suggestions (voicebox,
+telepathy) in favor of the FINAL ladders' seeded stats), `docs/gdd/gdd.md` §Game Mechanics + §RPG Specific,
 `docs/design/patron-gods.md` (epithets are a separate track — no overlap found),
 `docs/characters/nikita.md` + `sasha.md`, and the engine surface in
 `simulation/action_resolver.gd`.

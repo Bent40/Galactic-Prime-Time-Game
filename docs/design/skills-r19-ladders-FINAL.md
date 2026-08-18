@@ -665,3 +665,14 @@ and all 10 cross-cutting questions. **All residuals RULED by the owner 2026-07-1
 *(Everything else — passives, chains, the elemental line, spectacle skills, Reversion, Seal The Wound,
 Swim's racial question, Dance's stat question, all cooldown/empty-effects/garbled-text items — is
 resolved above or routed to the implementation data-hygiene pass.)*
+
+---
+
+**Display-rename caution (v2 Group E, 2026-08-11 — recorded here so no new authored
+text hard-codes the old names):** four TV-coded skills are renamed in v2, final wording
+NOT yet pinned for two: Vibe Control (→ Presence / Hold the Room), Heroic Punch
+(→ Champion's Fist), Slice n' Dice (→ Twin Fangs / Crossing Cuts), Play to the Camera
+(→ Play to the Gallery / Work the Odds). The content pass implements MECHANICS under the
+existing sim keys (vibe_control, heroic_punch, slice_n_dice, play_to_the_camera) and
+keeps display names data-sourced — never baked into flavor strings — until the owner
+pins the four.
