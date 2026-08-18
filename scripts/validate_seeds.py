@@ -728,11 +728,23 @@ def main() -> int:
                                      "compatibility_override — parents cleared by GM "
                                      "fiat, not the narrow-keyword rule (G3)")
                 if kw_doc is not None:
-                    for ref in pkeys + ([res["key"]] if isinstance(res, dict)
-                                        and isinstance(res.get("key"), str) else []):
+                    for ref in pkeys:
                         if ref not in kw_skills:
                             fail("skill_mutations.json", f"{k}: {ref!r} has no "
                                                          "skill_keywords.json entry")
+                    # The RESULT key needs no keyword entry to ship: tier-2
+                    # results are DATA-declared ahead of their content pass
+                    # (decision #35 — the iron_stance interim pattern), and G3
+                    # keywords are OWNER-ruled per skill, never invented here.
+                    # Surface the pending assignment as a non-fatal NOTE (it
+                    # becomes load-bearing only when the key turns parent —
+                    # and then the parent check above catches it).
+                    if isinstance(res, dict) and isinstance(res.get("key"), str) \
+                            and res["key"] not in kw_skills:
+                        notes.append(f"NOTE skill_mutations.json: {k} result "
+                                     f"{res['key']!r} has no skill_keywords.json entry yet "
+                                     "— awaiting its ruled keyword assignment (tier-2 "
+                                     "content pass)")
                     # G3: parents pairwise share a NARROW keyword, unless the
                     # recipe carries the explicit authored override.
                     if not m.get("compatibility_override", False):
@@ -746,6 +758,267 @@ def main() -> int:
                                          f"{k}: parents {a!r} x {b!r} share no NARROW "
                                          "keyword (G3 — broad-only is the GM-call tier; "
                                          "needs an authored compatibility_override)")
+
+    # ---- Tier-2 enablement (decisions #34 + #35, owner 2026-08-18) -----------
+    # Q3 NON-RESTRICTION — deliberate and load-bearing: recipe PARENT keys are
+    # NOT restricted to tier-1/base skills, to skills.json keys, or to
+    # SkillBook.KNOWN_KEYS. Decision #35 Q3 rules that tier-3 merges WILL
+    # exist — a tier-2 result key (e.g. iron_stance, already both a recipe
+    # result and a live skill) must stay legal as a future recipe PARENT. Do
+    # not add such a restriction here; the engine (SkillForge.validate_mutation)
+    # is keys-and-levels-only for the same reason, and
+    # tests/test_tier2_enablement.gd pins the structural openness.
+    if mutations:
+        mut_by_key = {m.get("key"): m for m in mutations}
+        for m in mutations:
+            k = m.get("key", "?")
+            # min-level sanity: levels run 0..10 — a minimum past 10 is unreachable.
+            for p in m.get("parents") or []:
+                if isinstance(p, dict) and isinstance(p.get("min_level"), int) \
+                        and p["min_level"] > 10:
+                    fail("skill_mutations.json", f"{k}: parent {p.get('key')!r} "
+                                                 f"min_level {p['min_level']} > 10 (unreachable)")
+            # twin_of — the ONE sanctioned result-key duplication (M8's mirrored
+            # animal-side twin): must name another recipe with the same parent
+            # key SET (roles/min-levels may flip) and the same result key.
+            if "twin_of" in m:
+                t = m["twin_of"]
+                target = mut_by_key.get(t) if isinstance(t, str) else None
+                if target is None or target is m:
+                    fail("skill_mutations.json", f"{k}: twin_of {t!r} names no other recipe")
+                else:
+                    own_p = {p.get("key") for p in m.get("parents") or [] if isinstance(p, dict)}
+                    twin_p = {p.get("key") for p in target.get("parents") or [] if isinstance(p, dict)}
+                    if own_p != twin_p:
+                        fail("skill_mutations.json", f"{k}: twin_of {t!r} but parent key sets "
+                                                     f"differ ({sorted(own_p)} vs {sorted(twin_p)})")
+                    own_r = (m.get("result") or {}).get("key") if isinstance(m.get("result"), dict) else None
+                    twin_r = (target.get("result") or {}).get("key") if isinstance(target.get("result"), dict) else None
+                    if own_r != twin_r:
+                        fail("skill_mutations.json", f"{k}: twin_of {t!r} but result keys differ "
+                                                     f"({own_r!r} vs {twin_r!r})")
+        # Result-key uniqueness across recipes: a shared result key is legal
+        # ONLY inside a declared twin group (all but one member carry twin_of
+        # naming into the group).
+        results_to_recipes: dict = {}
+        for m in mutations:
+            res = m.get("result")
+            if isinstance(res, dict) and isinstance(res.get("key"), str):
+                results_to_recipes.setdefault(res["key"], []).append(m)
+        for rk, group in results_to_recipes.items():
+            if len(group) > 1:
+                group_keys = {g.get("key") for g in group}
+                undeclared = [g.get("key") for g in group
+                              if g.get("twin_of") not in group_keys]
+                if len(undeclared) > 1:
+                    fail("skill_mutations.json", f"result key {rk!r} produced by recipes "
+                                                 f"{sorted(str(x) for x in undeclared)} without a "
+                                                 "twin_of declaration — result keys must be unique "
+                                                 "outside an authored twin pair")
+
+    # skill_absorptions.json — authored ABSORB entries (decisions #34 + #35 Q2;
+    # engine: SkillForge.validate_absorption / apply_absorption). ABSORB = flat
+    # unlock of the survivor's L6-8 band, gated on an authored PER-PAIR minimum
+    # fodder level; legality is STRICTLY narrow-shared (no override tier —
+    # broad-only pairs are Mod-Center offer scope). Validate if present.
+    absorptions: list = []
+    if (DATA / "skill_absorptions.json").is_file():
+        ab = load("skill_absorptions.json")
+        if not isinstance(ab, dict) or not isinstance(ab.get("absorptions"), list):
+            fail("skill_absorptions.json", "top level must be an object with an 'absorptions' list")
+        else:
+            if not isinstance(ab.get("_meta"), dict):
+                fail("skill_absorptions.json", "_meta object required (#35 Q2 provenance + semantics note)")
+            absorptions = [a for a in ab["absorptions"] if isinstance(a, dict)]
+            if len(absorptions) != len(ab["absorptions"]):
+                fail("skill_absorptions.json", "every absorption must be an object")
+            check_unique("skill_absorptions.json", absorptions, "key")
+            skills_id_by_key = {s.get("key"): s.get("id") for s in skills}
+            thr_by_id = {t.get("id"): t for t in thresholds}
+            for a in absorptions:
+                k = a.get("key", "?")
+                for f_ in ("key", "note"):
+                    if not isinstance(a.get(f_), str) or not a.get(f_):
+                        fail("skill_absorptions.json", f"{k}: {f_} must be a non-empty string")
+                surv = a.get("survivor")
+                surv_key = None
+                if not isinstance(surv, dict) or not isinstance(surv.get("key"), str) \
+                        or not surv.get("key") or not isinstance(surv.get("min_level"), int) \
+                        or not (1 <= surv["min_level"] <= 10):
+                    fail("skill_absorptions.json", f"{k}: survivor must be "
+                                                   "{key: str, min_level: int 1..10}")
+                else:
+                    surv_key = surv["key"]
+                    if surv_key != a.get("key"):
+                        fail("skill_absorptions.json", f"{k}: entry key must equal the survivor "
+                                                       f"key (got survivor {surv_key!r})")
+                fodder = a.get("fodder")
+                fodder_keys: list = []
+                if not isinstance(fodder, list) or not (1 <= len(fodder) <= 2):
+                    fail("skill_absorptions.json", f"{k}: fodder must be a list of 1-2 authored "
+                                                   "candidates (tier proposal §2)")
+                else:
+                    for fr in fodder:
+                        if not isinstance(fr, dict) or not isinstance(fr.get("key"), str) \
+                                or not fr.get("key") \
+                                or not isinstance(fr.get("min_fodder_level"), int) \
+                                or not (1 <= fr["min_fodder_level"] <= 10):
+                            fail("skill_absorptions.json", f"{k}: fodder row {fr!r} must be "
+                                                           "{key: str, min_fodder_level: int 1..10}")
+                            continue
+                        if fr["key"] == surv_key:
+                            fail("skill_absorptions.json", f"{k}: a skill cannot absorb itself")
+                        if fr["key"] in fodder_keys:
+                            fail("skill_absorptions.json", f"{k}: duplicate fodder {fr['key']!r}")
+                        fodder_keys.append(fr["key"])
+                if kw_doc is not None and surv_key is not None:
+                    narrows = {n for ns in kw_doc["taxonomy"].values() for n in ns}
+                    for ref in [surv_key] + fodder_keys:
+                        if ref not in kw_skills:
+                            fail("skill_absorptions.json", f"{k}: {ref!r} has no "
+                                                           "skill_keywords.json entry")
+                    # STRICT narrow share per pair — absorbs have no override tier.
+                    for fk in fodder_keys:
+                        shared = set(kw_skills.get(surv_key, [])) & set(kw_skills.get(fk, [])) & narrows
+                        if not shared:
+                            fail("skill_absorptions.json",
+                                 f"{k}: survivor x fodder {fk!r} share no NARROW keyword "
+                                 "(G3 — absorb legality is strictly narrow; a broad-only "
+                                 "pair is Mod-Center offer scope, never an absorb)")
+                unlock = a.get("unlock")
+                if not isinstance(unlock, dict) or unlock.get("cap") != 8:
+                    fail("skill_absorptions.json", f"{k}: unlock.cap must be 8 — the ruled "
+                                                   "flat L6-8 band (#35 Q2)")
+                else:
+                    bonus = unlock.get("bonus")
+                    if not isinstance(bonus, dict) or not isinstance(bonus.get("threshold_id"), int) \
+                            or bonus.get("level") != 6 \
+                            or not isinstance(bonus.get("note"), str) or not bonus.get("note"):
+                        fail("skill_absorptions.json", f"{k}: unlock.bonus must be "
+                                                       "{threshold_id: int, level: 6, note: str} "
+                                                       "(the re-mapped L6 absorb bonus)")
+                    else:
+                        row = thr_by_id.get(bonus["threshold_id"])
+                        if row is None:
+                            fail("skill_absorptions.json", f"{k}: bonus threshold_id "
+                                                           f"{bonus['threshold_id']} not in "
+                                                           "skill_thresholds.json")
+                        else:
+                            if surv_key is not None and row.get("skill_id") != skills_id_by_key.get(surv_key):
+                                fail("skill_absorptions.json", f"{k}: bonus threshold_id "
+                                                               f"{bonus['threshold_id']} belongs to "
+                                                               f"skill_id {row.get('skill_id')}, not the "
+                                                               f"survivor {surv_key!r}")
+                            if row.get("level") != 6:
+                                fail("skill_absorptions.json", f"{k}: bonus threshold_id "
+                                                               f"{bonus['threshold_id']} is a "
+                                                               f"L{row.get('level')} row — the absorb "
+                                                               "bonus maps the survivor's L6 row")
+
+    # mod_center_offers.json — authored Modification-Center special offers
+    # (decision #35 Q1 route (a); engine gate: SkillForge.validate_offer; a
+    # redemption runs the ordinary validate_mutation override path). Offers are
+    # NOT normal recipes: every parent pair must share a BROAD group and NO
+    # narrow keyword — a narrow-shared pair authored as an offer is an
+    # authoring ERROR (it should be a normal skill_mutations.json recipe).
+    offers: list = []
+    if (DATA / "mod_center_offers.json").is_file():
+        of = load("mod_center_offers.json")
+        if not isinstance(of, dict) or not isinstance(of.get("offers"), list):
+            fail("mod_center_offers.json", "top level must be an object with an 'offers' list")
+        else:
+            if not isinstance(of.get("_meta"), dict):
+                fail("mod_center_offers.json", "_meta object required (#35 Q1 provenance note)")
+            offers = [o for o in of["offers"] if isinstance(o, dict)]
+            if len(offers) != len(of["offers"]):
+                fail("mod_center_offers.json", "every offer must be an object")
+            check_unique("mod_center_offers.json", offers, "key")
+            for o in offers:
+                k = o.get("key", "?")
+                for f_ in ("key", "name", "note"):
+                    if not isinstance(o.get(f_), str) or not o.get(f_):
+                        fail("mod_center_offers.json", f"{k}: {f_} must be a non-empty string")
+                parents = o.get("parents")
+                pkeys = []
+                if not isinstance(parents, list) or len(parents) < 2:
+                    fail("mod_center_offers.json", f"{k}: parents must be a list of >= 2 rows")
+                else:
+                    for p in parents:
+                        if not isinstance(p, dict) or not isinstance(p.get("key"), str) \
+                                or not p.get("key") or not isinstance(p.get("min_level"), int) \
+                                or not (1 <= p["min_level"] <= 10):
+                            fail("mod_center_offers.json", f"{k}: parent {p!r} must be "
+                                                           "{key: str, min_level: int 1..10}")
+                            continue
+                        if p["key"] in pkeys:
+                            fail("mod_center_offers.json", f"{k}: duplicate parent {p['key']!r}")
+                        pkeys.append(p["key"])
+                res = o.get("result")
+                if not isinstance(res, dict) or not isinstance(res.get("key"), str) \
+                        or not res.get("key") or not isinstance(res.get("level"), int) \
+                        or res["level"] < 1:
+                    fail("mod_center_offers.json", f"{k}: result must be {{key: str, level: int >= 1}}")
+                elif res["key"] in pkeys:
+                    fail("mod_center_offers.json", f"{k}: result {res['key']!r} is also a parent")
+                if o.get("compatibility_override") is not True:
+                    fail("mod_center_offers.json", f"{k}: compatibility_override must be true — "
+                                                   "the offer IS the recorded GM call past the "
+                                                   "narrow rule (#35 Q1)")
+                if "provisional" in o and not isinstance(o["provisional"], bool):
+                    fail("mod_center_offers.json", f"{k}: provisional must be a bool")
+                elif o.get("provisional"):
+                    notes.append(f"NOTE mod_center_offers.json: {k} is PROVISIONAL — "
+                                 "awaiting the owner's blessing (#35 Q1)")
+                if kw_doc is not None:
+                    narrows = {n for ns in kw_doc["taxonomy"].values() for n in ns}
+                    for ref in pkeys:
+                        if ref not in kw_skills:
+                            fail("mod_center_offers.json", f"{k}: {ref!r} has no "
+                                                           "skill_keywords.json entry")
+                    # The offer gate: every pair EXACTLY broad-only.
+                    for i in range(len(pkeys)):
+                        for j in range(i + 1, len(pkeys)):
+                            a_, b_ = pkeys[i], pkeys[j]
+                            shared_all = set(kw_skills.get(a_, [])) & set(kw_skills.get(b_, []))
+                            shared_narrow = shared_all & narrows
+                            shared_broad = shared_all & set(kw_doc["taxonomy"])
+                            if shared_narrow:
+                                fail("mod_center_offers.json",
+                                     f"{k}: parents {a_!r} x {b_!r} share the NARROW keyword(s) "
+                                     f"{sorted(shared_narrow)} — authoring error: a narrow-shared "
+                                     "pair is a NORMAL recipe (skill_mutations.json), not an offer")
+                            elif not shared_broad:
+                                fail("mod_center_offers.json",
+                                     f"{k}: parents {a_!r} x {b_!r} share no taxonomy keyword — "
+                                     "not offerable (#35 Q1 covers broad-only pairs)")
+                    sb = o.get("shared_broad")
+                    if not isinstance(sb, list) or not sb \
+                            or not all(isinstance(x, str) and x in kw_doc["taxonomy"] for x in sb):
+                        fail("mod_center_offers.json", f"{k}: shared_broad must be a non-empty "
+                                                       "list of broad group names")
+                    else:
+                        for x in sb:
+                            for ref in pkeys:
+                                if x not in kw_skills.get(ref, []):
+                                    fail("mod_center_offers.json", f"{k}: shared_broad {x!r} is "
+                                                                   f"not carried by parent {ref!r}")
+    # Result-key uniqueness ACROSS recipes + offers (twin duplication inside
+    # skill_mutations.json is handled above; here every distinct result key may
+    # have exactly one producer file-side).
+    recipe_results = {m["result"]["key"] for m in mutations
+                      if isinstance(m.get("result"), dict) and isinstance(m["result"].get("key"), str)}
+    offer_results: list = [o["result"]["key"] for o in offers
+                           if isinstance(o.get("result"), dict) and isinstance(o["result"].get("key"), str)]
+    for rk in offer_results:
+        if rk in recipe_results:
+            fail("mod_center_offers.json", f"result key {rk!r} is already produced by a "
+                                           "skill_mutations.json recipe — result keys must be "
+                                           "unique across recipes + offers")
+    seen_offer_results: set = set()
+    for rk in offer_results:
+        if rk in seen_offer_results:
+            fail("mod_center_offers.json", f"duplicate result key {rk!r} across offers")
+        seen_offer_results.add(rk)
 
     # skill_thresholds
     check_unique("skill_thresholds.json", thresholds, "id")
@@ -1117,14 +1390,16 @@ def main() -> int:
         print(f"validate_seeds: {len(failures)} failure(s).")
         return 1
     n = sum(len(x) for x in (races, enemies, conditions, skills, thresholds, items, patrons,
-                             goals, loadouts, recruits, roster, te_rows, kw_skills, mutations))
+                             goals, loadouts, recruits, roster, te_rows, kw_skills, mutations,
+                             absorptions, offers))
     print(f"validate_seeds: OK ({len(races)} races, {len(enemies)} enemies, "
           f"{len(conditions)} conditions, {len(skills)} skills, {len(thresholds)} thresholds, "
           f"{len(items)} items, {len(patrons)} patron gods, {len(goals)} crowd goals, "
           f"{len(te_rows)} slice tags, {len(loadouts)} demo loadouts, "
           f"{len(recruits)} recruit loadouts, {len(roster)} roster patrons, "
           f"{dcmap_pairs} domain->condition affinities, {len(kw_skills)} skill keyword "
-          f"entries, {len(mutations)} mutation recipes, {arena_count} encounter arenas, "
+          f"entries, {len(mutations)} mutation recipes, {len(absorptions)} absorb entries, "
+          f"{len(offers)} Mod-Center offers, {arena_count} encounter arenas, "
           f"{door_count} doors, {exit_count} graph exits "
           f"— {n} rows checked).")
     return 0

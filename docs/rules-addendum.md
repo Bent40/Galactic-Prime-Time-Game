@@ -1388,6 +1388,49 @@ windup hold + flanking a committed boss, involuntary no-change, the sees() cone,
 herding's cone fallback, only-when-set serialization, round-trip/lockstep/
 determinism, the additive view) + the retrofit pins in `tests/test_skills_batch_a.gd`.
 
+## R31 — Skill tiers past 5: merge / absorb / Mod-Center offers (decisions #34 + #35, 2026-08-18)
+
+**RULED (decision #34 "rule it in" + #35 by-number pass on
+`docs/design/skill-tiers-proposal.md`).** Tier 1 = every skill's L1–5 (L5 = mastery of
+the base form, untouched). Past 5, each skill is authored as exactly ONE of three
+shapes — per-skill, not universal:
+
+- **MERGE** (Gemstone, R27 extended): two narrow-compatible parents, **both consumed**,
+  yielding a tier-2 skill with its own L1–5. The 8 ruled recipes (M1 iron_stance —
+  shipped — + M2–M8, plus M8's mirrored animal-side twin) live in
+  `data/skill_mutations.json`; **min-levels are per-recipe authored values (Q5 — no
+  global convention)**. Tier-2 results are DATA-declared ahead of their content pass
+  (the proven iron_stance interim); result names PROVISIONAL.
+- **ABSORB** (#35 Q2): consume ONE narrow-compatible fodder skill to **flat-unlock the
+  survivor's L6–8 band** — cheaper than a merge, the survivor keeps its identity.
+  Gated on an **authored PER-ABSORB minimum fodder level** (fairness: higher where the
+  fodder is stat-cheap; all values PROVISIONAL); one absorb per survivor, ever;
+  strictly narrow — **no override tier for absorbs**. Data:
+  `data/skill_absorptions.json` (the 4 ruled absorptions + their L6 absorb-bonus
+  threshold re-map; row id 50 re-expressed per the no-non-magic-bypass default).
+  Engine: `SkillForge.validate_absorption`/`apply_absorption` — the survivor's roster
+  row gains `{absorbed, cap: 8}` (roster-layer annotations; `from_spec` drops them at
+  combat time by design, the loadout cap/cap_note precedent). *[Recorded reading:
+  flat-unlock + min-fodder; correct if "levels convert" was intended.]*
+- **LINEAR 6–10** stays reserved for skills ruled to deserve it (magic per the R19
+  framework ruling, performance/signature spectacle L10s) — 28 of 48 stamps.
+
+**Broad-only pairs are Modification-Center special offers** (#35 Q1 route a):
+authored in `data/mod_center_offers.json` as recipes carrying
+`compatibility_override: true` (the recorded GM call — redemption runs the ordinary
+R27 override path). An offer on a NARROW-shared pair is an authoring error (that pair
+is a normal recipe) — `SkillForge.validate_offer` + `validate_seeds` both reject it.
+The three shipped offers (the_unseen; the_long_con and phantom_grip with PROPOSED
+result names) are **PROVISIONAL awaiting the owner's blessing**.
+
+**Tier-3 openness (#35 Q3):** tier-3 merges WILL exist — nothing in the recipe schema,
+engine, or validator restricts a recipe parent to tier-1 skills; a tier-2 result key
+is a legal future parent (pinned in `tests/test_tier2_enablement.gd`).
+
+**Economy stays KAN-7:** merge/absorb/offer pricing, when offers appear in the Lounge
+flow, and who pays what to level an unlocked L6–8 band are all deliberately unpriced
+here (the R27 discipline, unchanged).
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

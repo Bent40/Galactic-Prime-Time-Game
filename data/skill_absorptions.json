@@ -1,0 +1,108 @@
+{
+  "_meta": {
+    "note": "Authored skill ABSORPTIONS (decisions #34 + #35 Q2, owner 2026-08-18; docs/design/skill-tiers-proposal.md RULED — the 4 ABSORB stamps §2). ABSORB = consume ONE compatible lesser skill (the FODDER) to push the SURVIVOR into its L6-8 band — cheaper than a merge, the survivor keeps its identity. RULED SEMANTICS (Q2): the unlock is FLAT — owning the fodder at the authored minimum unlocks the whole L6-8 band regardless of how far past that minimum the fodder was ('flat unlock + min-fodder' is the recorded reading of the ruling; flagged for correction if 'levels convert' was intended). The minimum fodder level is authored PER ABSORB PAIR (mirroring Q5's per-recipe spirit), per the owner's fairness rationale: 'it might be unfair depending on skill stat dependency' — so the minimum is HIGHER where the fodder is stat-cheap (single-stat fodder levels from one trait pool: min 4) and lower where it is stat-expensive (two-stat fodder pays a point from EACH listed stat per level: min 3, the merge-secondary echo). ALL min_fodder_level values are PROVISIONAL awaiting owner sign-off. Legality is strictly NARROW keyword share (G3) — absorbs have NO override tier; a broad-only pair is Mod-Center offer scope (data/mod_center_offers.json), never an absorb. One absorb per survivor, ever (the flat band unlocks once). ENGINE: simulation/skill_forge.gd validate_absorption/apply_absorption — pure, all-violations-at-once; the survivor's roster row gains {absorbed: <fodder key>, cap: 8} and the fodder row is removed. Those are ROSTER-LAYER annotations (the recruit_loadouts cap/cap_note precedent): CombatantState.from_spec normalizes combat rows to {key, level} and DROPS them by design — combat needs only the grant; the absorb bookkeeping lives in progression data. LEVELING the unlocked band (who pays what to go 6->7->8) is KAN-7 pricing scope, untouched here. The bonus mapping below records which authored L5+ threshold row becomes the survivor's L6 absorb bonus (tier proposal §3 appendix — nothing discarded).",
+    "schema": "absorption: { key (unique, = the survivor's skill key), survivor: {key, min_level} (the past-5 moment — authored per absorption, Q5 spirit; Lv 5 = mastery of the base form), fodder: [{key, min_fodder_level, rationale}] (1-2 authored candidates, each verified narrow-compatible with the survivor; min_fodder_level PROVISIONAL, authored per pair), unlock: { cap: 8 (the flat L6-8 band), bonus: {threshold_id, level: 6, note} (the re-mapped L6 absorb bonus — skill_thresholds.json row) }, note }"
+  },
+  "absorptions": [
+    {
+      "key": "controlled_sweep",
+      "survivor": {"key": "controlled_sweep", "min_level": 5},
+      "fodder": [
+        {
+          "key": "pounce",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'blade'; the absorbed leap lets the arc originate off-center / a step out (ladder L8-9). Single-stat fodder (physique only — stat-cheap), so the authored minimum sits at 4 (PROVISIONAL)."
+        },
+        {
+          "key": "slice_n_dice",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'blade'; the twin-arc widens the sweep. Single-stat fodder (physique only — stat-cheap): minimum 4 (PROVISIONAL)."
+        }
+      ],
+      "unlock": {
+        "cap": 8,
+        "bonus": {
+          "threshold_id": 2,
+          "level": 6,
+          "note": "On-kill splash to out-of-reach Mobs (tier proposal §3 appendix: ABSORB-BONUS @L6)."
+        }
+      },
+      "note": "Tier proposal #11: identity is the anti-swarm arc — absorption keeps it itself while buying the ladder's L6-8 situations (Elite-catching, rider-spreading author at content-pass time)."
+    },
+    {
+      "key": "shockwave",
+      "survivor": {"key": "shockwave", "min_level": 5},
+      "fodder": [
+        {
+          "key": "overhead_slam",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'blunt'; absorbing the slam satisfies the chain gate from within — standalone tremor (authored loosening, ruling #4). Single-stat fodder (physique only — stat-cheap): minimum 4 (PROVISIONAL)."
+        },
+        {
+          "key": "execution",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'blunt'. Single-stat fodder (physique only — stat-cheap): minimum 4 (PROVISIONAL)."
+        }
+      ],
+      "unlock": {
+        "cap": 8,
+        "bonus": {
+          "threshold_id": 44,
+          "level": 6,
+          "note": "Circle instead of cone — the full 360° ring, matching the ladder's L6 (tier proposal §3 appendix: ABSORB-BONUS @L6)."
+        }
+      },
+      "note": "Tier proposal #17: the link keeps its identity (the cone/ring tremor) and internalizes its own opener. Remote tremor / Elite forced-action land at L7-8 authoring."
+    },
+    {
+      "key": "pressure_strike",
+      "survivor": {"key": "pressure_strike", "min_level": 5},
+      "fodder": [
+        {
+          "key": "counter_surge",
+          "min_fodder_level": 3,
+          "rationale": "shared narrow 'precision'; the absorbed interrupt instinct generalizes the opening — fires off ANY Forced-Action opening, an ally's feint included per R15 (ladder L8). Two-stat fodder (physique + mind — a point from EACH per level, stat-expensive): minimum 3, the merge-secondary echo (PROVISIONAL)."
+        },
+        {
+          "key": "decapitate",
+          "min_fodder_level": 3,
+          "rationale": "shared narrow 'precision'. Two-stat fodder (physique + reflexes — stat-expensive): minimum 3 (PROVISIONAL)."
+        }
+      ],
+      "unlock": {
+        "cap": 8,
+        "bonus": {
+          "threshold_id": 50,
+          "level": 6,
+          "note": "RE-EXPRESSED per default #2 (no resistance-bypass outside magic): the row's 'hit ignores resistance completely' re-maps as ADDED FORCE through the R14 magnitude gate, not a bypass — content kept, wording fixed (tier proposal §3, the same discipline that demoted Execution's draft L10). Exact re-expressed numbers are content-pass scope."
+        }
+      },
+      "note": "Tier proposal #19: the feint-chain link cannot merge inside its own chain (feint shares no keyword with it — verified); absorption keeps the tempo-strike identity."
+    },
+    {
+      "key": "slip_through",
+      "survivor": {"key": "slip_through", "min_level": 5},
+      "fodder": [
+        {
+          "key": "tactical_roll",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'tumbling'; the reactive dodge feeds the dash. Single-stat fodder (reflexes only — stat-cheap): minimum 4 (PROVISIONAL)."
+        },
+        {
+          "key": "acrobatics",
+          "min_fodder_level": 4,
+          "rationale": "shared narrow 'tumbling'; slip through anything (ladder L8). Single-stat fodder (reflexes only — stat-cheap): minimum 4 (PROVISIONAL)."
+        }
+      ],
+      "unlock": {
+        "cap": 8,
+        "bonus": {
+          "threshold_id": 38,
+          "level": 6,
+          "note": "Reposition anywhere around the target within 2 spaces (tier proposal §3 appendix: ABSORB-BONUS @L6)."
+        }
+      },
+      "note": "Tier proposal #25: the chain's link survives its merging neighbors (it shares no keyword with pounce or decapitate — verified); absorbing a tumbling reaction pushes the dash to L6-8 without losing the chain identity."
+    }
+  ]
+}
