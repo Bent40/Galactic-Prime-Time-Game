@@ -1,14 +1,46 @@
 # Skill Tiers — Per-Skill Shape Proposal
 
-**Status: PROPOSAL — nothing below is ruled.** Every stamp, recipe, name, and re-map is a
-recommendation for the owner's yes/no pass; the data facts (keyword compatibilities, row
-counts) are verified, the design calls are not.
+**Status: RULED — decision #35 (owner 2026-08-18, by number).** The 48 stamps and 8
+recipes below **stand as proposed**; the five open questions were answered:
+
+- **Q1 = route (a):** orphans stay LINEAR; the override mechanism is **authored
+  Modification-Center special offers on broad-only pairs** — the three data-supported
+  candidates (camouflage×nightlurking, feint×vibe_control, telekinesis×pressure_hold)
+  entered as PROVISIONAL offers awaiting blessing. Taxonomy growth (route b) not adopted
+  now.
+- **Q2 = flat unlock + minimum fodder level:** ABSORB flat-unlocks the survivor's L6–8
+  band, gated on a minimum fodder level **authored PER ABSORB** (the owner's fairness
+  rationale: *"it might be unfair depending on skill stat dependency"* — mirroring Q5's
+  per-recipe spirit). **⚠ Recorded-reading flag: this is the recorded interpretation of
+  the ruling — correct it if "levels convert" was intended** (the decision-log #35 entry
+  carries the same flag).
+- **Q3 = tier-3 merges WILL exist** (*"for sure... We need a lot more skills"*): tier-2
+  skills keep short linear bands FOR NOW, and the recipe schema must never forbid tier-2
+  skills as future parents. Content-growth direction recorded.
+- **Q4 = strong_strike + acrobatics CONFIRMED LINEAR for now** — owner intent recorded:
+  they become mergeable later (revisit with the tier-3/content-growth wave).
+- **Q5 = per-recipe min-levels** (no global convention; the proposed 5/3 pairs are each
+  recipe's own authored values, changeable per recipe).
+
+**ENABLEMENT SHIPPED (tier-2 enablement story):** the ruled machinery is now data +
+forge operations — recipes M2–M8 + M8's mirrored animal-side twin in
+`data/skill_mutations.json`, the 4 absorptions in `data/skill_absorptions.json`, the 3
+PROVISIONAL offers in `data/mod_center_offers.json`,
+`SkillForge.validate_absorption/apply_absorption/validate_offer`, validator coverage in
+`scripts/validate_seeds.py`, tests in `tests/test_tier2_enablement.gd`, and addendum
+ruling **R31**. Result skills are DATA-declared only (tier-2 rung content = next content
+pass); result names and all min-level/min-fodder values stay PROVISIONAL; pricing stays
+KAN-7.
+
+The body below is preserved as proposed (it is now the ruled record). The data facts
+(keyword compatibilities, row counts) were verified at proposal time.
 **Directed by:** `docs/gdd/decision-log.md` **decision #34** (owner 2026-08-18, "Rule it
 in") — the tier model's directed artifact: every skill stamped MERGE / ABSORB / LINEAR
-with recipe/absorb candidates from the keyword data + the threshold re-map plan.
+with recipe/absorb candidates from the keyword data + the threshold re-map plan; ruled
+by **decision #35**.
 **How to answer: by number.** Stamp rows are **#1–#48**; merge recipes are **M1–M8**;
 open questions are **Q1–Q5**. "1–10 yes, 11 absorb instead, Q2 = levels" is a complete
-answer.
+answer. *(Answered 2026-08-18 — see the status block above.)*
 **Tabletop-shared:** skills are shared spine — the book already carries the merge rule
 (`Galactic-Prime-Time/rulebook/gpt-system-v1.0.md` §4.5: keyword compatibility, the
 Gemstone, the Intercept+Brace worked example). After the owner's pass this proposal syncs

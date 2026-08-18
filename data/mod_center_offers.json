@@ -1,0 +1,47 @@
+{
+  "_meta": {
+    "note": "Modification-Center SPECIAL OFFERS (decision #35 Q1 route (a), owner 2026-08-18; docs/design/skill-tiers-proposal.md RULED). Orphan skills stay LINEAR; the ruled override mechanism for a consumption evolution they could still want is an AUTHORED Mod-Center special offer on a BROAD-ONLY pair — offered, never automatic (book §4.5: broad-only is the ask-the-GM tier; the offer IS the recorded GM call, carried as compatibility_override: true, the existing G3 machine form). Offers are NOT normal recipes: an offer's parents must share a broad group and NO narrow keyword — a narrow-shared pair belongs in data/skill_mutations.json as a normal recipe, and validate_seeds rejects it here as an authoring error (simulation/skill_forge.gd validate_offer is the engine-side twin of that gate). A roster-gated offer redemption validates through the ordinary SkillForge.validate_mutation override path — an offer row is structurally a mutation recipe. ALL THREE SHIPPED OFFERS ARE PROVISIONAL — the three data-supported candidates named by decision #35, entered awaiting the owner's blessing; result names are proposals. Min-levels are per-offer authored values (Q5 spirit; identity-primary Lv 5 + secondary Lv 3). Results are DATA-DECLARED ONLY (no skills.json rows — content-pass scope); when/where an offer appears in the Lounge flow and what it COSTS is KAN-7 pricing scope.",
+    "schema": "offer: { key (unique offer id), name (display — PROVISIONAL until blessed), parents: [{key, min_level}] (>= 2 distinct skill keys sharing a BROAD group and no narrow keyword), shared_broad: [the broad group(s) the pair shares — authoring documentation, checked against the keyword data], compatibility_override: true (REQUIRED — the offer is the authored GM call past the narrow rule), result: {key, level} (not a parent key), provisional: true|false (false only after the owner blesses the offer), note }"
+  },
+  "offers": [
+    {
+      "key": "the_unseen",
+      "name": "The Unseen",
+      "parents": [
+        {"key": "camouflage", "min_level": 5},
+        {"key": "nightlurking", "min_level": 3}
+      ],
+      "shared_broad": ["infiltration"],
+      "compatibility_override": true,
+      "result": {"key": "the_unseen", "level": 1},
+      "provisional": true,
+      "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; name from tier proposal §2 #44's example). The infiltration family shares broad-only, pairwise — the poster family for offers. The ghost and the prowler fuse: not hidden-in-place, not moving-unseen — simply not there until it chooses to be. Consumes Sasha-kit texture (both parents); the R20 stealth engine is the natural consumer when content lands."
+    },
+    {
+      "key": "the_long_con",
+      "name": "The Long Con",
+      "parents": [
+        {"key": "feint", "min_level": 5},
+        {"key": "vibe_control", "min_level": 3}
+      ],
+      "shared_broad": ["performance"],
+      "compatibility_override": true,
+      "result": {"key": "the_long_con", "level": 1},
+      "provisional": true,
+      "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; result name PROPOSED here, owner may rename freely). The combat misdirection and the crowd's mood fuse into one sustained deception: the fight you show them was never the fight you were having. Broad-only 'performance' pair (feint: deception; vibe_control: presence — no narrow share, verified)."
+    },
+    {
+      "key": "phantom_grip",
+      "name": "Phantom Grip",
+      "parents": [
+        {"key": "telekinesis", "min_level": 5},
+        {"key": "pressure_hold", "min_level": 3}
+      ],
+      "shared_broad": ["control"],
+      "compatibility_override": true,
+      "result": {"key": "phantom_grip", "level": 1},
+      "provisional": true,
+      "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; result name PROPOSED here, owner may rename freely). The hold without the hands: the grapple discipline projected through psychic force — a pin at range. Broad-only 'control' pair (telekinesis carries the broad group; pressure_hold's narrow 'grapple' is unshared, verified). R9's boss/size Suffocation caps would ride along uncut at content time."
+    }
+  ]
+}

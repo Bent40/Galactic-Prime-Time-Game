@@ -243,3 +243,30 @@ func test_mutation_then_spec_is_deterministic_end_to_end() -> void:
 		add_human(sim, "tank", {"team": "party", "skills": mutated})
 		hashes.append(sim.state_hash())
 	assert_eq(hashes[0], hashes[1], "mutation -> spec -> sim is deterministic")
+
+
+# ------------------------------------------------- tier-2 recipe data (drift)
+
+func test_authored_recipes_stay_narrow_legal_in_the_ruled_data() -> void:
+	# Tier-2 enablement (decisions #34 + #35) grew the file to 9 recipes.
+	# Drift guard on the DATA legality the recipes rest on: every recipe
+	# without an authored override has pairwise narrow-shared parents in the
+	# ported keyword data (the loud-discrepancy idiom of
+	# test_iron_stance_recipe_is_the_ruled_canon, extended to all).
+	# The full tier-2 behavior suite lives in tests/test_tier2_enablement.gd.
+	var doc: Dictionary = load_json("res://data/skill_mutations.json")
+	var rows: Array = doc.get("mutations", [])
+	assert_eq(rows.size(), 9, "M1 + M2-M8 + M8's mirrored twin = 9 authored recipes")
+	for row: Variant in rows:
+		var recipe: Dictionary = row
+		var key := String(recipe.get("key", "?"))
+		if bool(recipe.get("compatibility_override", false)):
+			continue  # the GM-fiat tier — legality is the authored override itself
+		var parents: Array = recipe.get("parents", [])
+		for i: int in range(parents.size()):
+			for j: int in range(i + 1, parents.size()):
+				var verdict: Dictionary = SkillKeywords.compatible(
+					String((parents[i] as Dictionary).get("key", "")),
+					String((parents[j] as Dictionary).get("key", "")), keywords())
+				assert_eq(String(verdict["basis"]), "narrow_shared",
+					"recipe '%s' parents narrow-shared in the ruled data" % key)

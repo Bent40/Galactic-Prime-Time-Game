@@ -37,12 +37,59 @@ extends RefCounted
 ## KAN-7 scope — recorded in the data note, deliberately unpriced here.
 ## Usable by future progression AND creation-time validation; creation.gd is
 ## deliberately untouched (no creation surface consumes mutations yet).
+##
+## TIER-2 ENABLEMENT (decisions #34 + #35, owner 2026-08-18) adds two more
+## pure operations beside the merge:
+##
+## ABSORB (data/skill_absorptions.json; #35 Q2): consume ONE narrow-compatible
+## FODDER skill to FLAT-unlock the SURVIVOR's L6-8 band — the survivor keeps
+## its identity. Gates (validate_absorption, all-violations-at-once): survivor
+## owned at its authored min_level (5 — the past-5 moment), fodder owned at
+## its authored PER-PAIR min_fodder_level (the #35 fairness rationale: higher
+## where the fodder is stat-cheap), fodder among the entry's authored
+## candidates, pair narrow-compatible (STRICT — absorbs have NO override
+## tier; broad-only pairs are Mod-Center offer scope), survivor not already
+## absorbed (one absorb per survivor, ever). apply_absorption removes the
+## fodder row and stamps the survivor row {absorbed: fodder_key, cap: 8}.
+## HONESTY NOTE on the annotations: those are ROSTER-layer bookkeeping (the
+## recruit_loadouts cap/cap_note precedent) — CombatantState.from_spec
+## normalizes combat rows to {key, level} and DROPS them by design; combat
+## consumes only the grant, progression data carries the absorb record.
+## Leveling the unlocked band is KAN-7 pricing scope.
+##
+## MOD-CENTER OFFERS (data/mod_center_offers.json; #35 Q1 route a): authored
+## special offers on BROAD-ONLY pairs — an offer row is structurally a
+## mutation recipe carrying compatibility_override: true (the recorded GM
+## call), so a roster-gated redemption validates through the ordinary
+## validate_mutation override path, no new machinery. validate_offer is the
+## AUTHORING gate: an offer whose parents share a NARROW keyword is an
+## authoring error (that pair is a normal recipe), and a no-share pair is not
+## offerable at all — mirrored data-side by validate_seeds.
+##
+## Q3 OPENNESS (tier-3): nothing here restricts a recipe PARENT to tier-1
+## keys — a tier-2 result key (e.g. iron_stance) is a legal future parent;
+## validation is keys + levels against the roster, whatever the key's tier.
 
 const CODE_RECIPE_INVALID: String = "recipe_invalid"
 const CODE_PARENT_MISSING: String = "parent_missing"
 const CODE_PARENT_UNDERLEVELED: String = "parent_underleveled"
 const CODE_PARENTS_INCOMPATIBLE: String = "parents_incompatible"
 const CODE_RESULT_ALREADY_OWNED: String = "result_already_owned"
+
+const CODE_ABSORPTION_INVALID: String = "absorption_invalid"
+const CODE_FODDER_NOT_CANDIDATE: String = "fodder_not_candidate"
+const CODE_SURVIVOR_MISSING: String = "survivor_missing"
+const CODE_SURVIVOR_UNDERLEVELED: String = "survivor_underleveled"
+const CODE_FODDER_MISSING: String = "fodder_missing"
+const CODE_FODDER_UNDERLEVELED: String = "fodder_underleveled"
+const CODE_PAIR_INCOMPATIBLE: String = "pair_incompatible"
+const CODE_SURVIVOR_ALREADY_ABSORBED: String = "survivor_already_absorbed"
+
+const CODE_OFFER_INVALID: String = "offer_invalid"
+const CODE_OFFER_NOT_BROAD_ONLY: String = "offer_not_broad_only"
+
+## The ruled flat absorb band: an absorbed survivor's cap (L6-8 — #35 Q2).
+const ABSORB_CAP: int = 8
 
 
 ## Convenience: the recipe with the given key from a parsed
@@ -159,8 +206,201 @@ static func apply_mutation(roster_skills: Array, recipe: Dictionary,
 	return out
 
 
+# ------------------------------------------------------------------- absorbs
+
+## Convenience: the absorption entry for the given survivor key from a parsed
+## data/skill_absorptions.json doc; {} when absent.
+static func find_absorption(absorptions_doc: Dictionary, survivor_key: String) -> Dictionary:
+	for row: Variant in absorptions_doc.get("absorptions", []) as Array:
+		if row is Dictionary and String((row as Dictionary).get("key", "")) == survivor_key:
+			return row
+	return {}
+
+
+## Validates an absorption (#35 Q2) against a roster skills array: the named
+## fodder candidate is consumed to flat-unlock the survivor's L6-8 band.
+## Returns [] when legal, else one {code, field, message} per violation — ALL
+## violations at once, deterministic order (entry shape first; then fodder
+## candidacy; then survivor / fodder presence + levels in that order; then
+## narrow compatibility; then the one-absorb-ever gate). A malformed entry
+## short-circuits to its shape violations alone (the validate_mutation
+## idiom). Never mutates its inputs.
+static func validate_absorption(roster_skills: Array, absorption: Dictionary,
+		fodder_key: String, keywords_doc: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+
+	# --- entry shape (authored data — validate_seeds checks it too) ---------
+	var survivor: Variant = absorption.get("survivor")
+	var survivor_key := String((survivor as Dictionary).get("key", "")) if survivor is Dictionary else ""
+	var survivor_min: Variant = _as_int((survivor as Dictionary).get("min_level")) if survivor is Dictionary else null
+	if survivor_key == "" or survivor_min == null or int(survivor_min) < 1:
+		out.append(_violation(CODE_ABSORPTION_INVALID, "survivor",
+			"absorption survivor must be {key: non-empty String, min_level: int >= 1}"))
+	var candidates: Variant = absorption.get("fodder")
+	var candidate_keys: Array[String] = []
+	var fodder_min: Variant = null
+	if not (candidates is Array) or (candidates as Array).is_empty():
+		out.append(_violation(CODE_ABSORPTION_INVALID, "fodder",
+			"absorption fodder must be a list of >= 1 {key, min_fodder_level} rows"))
+	else:
+		for i: int in range((candidates as Array).size()):
+			var row_v: Variant = (candidates as Array)[i]
+			var key := String((row_v as Dictionary).get("key", "")) if row_v is Dictionary else ""
+			var min_level: Variant = _as_int((row_v as Dictionary).get("min_fodder_level")) if row_v is Dictionary else null
+			if key == "" or min_level == null or int(min_level) < 1:
+				out.append(_violation(CODE_ABSORPTION_INVALID, "fodder[%d]" % i,
+					"fodder rows must be {key: non-empty String, min_fodder_level: int >= 1}"))
+			elif key == survivor_key:
+				out.append(_violation(CODE_ABSORPTION_INVALID, "fodder[%d]" % i,
+					"a skill cannot absorb itself ('%s')" % key))
+			elif candidate_keys.has(key):
+				out.append(_violation(CODE_ABSORPTION_INVALID, "fodder[%d]" % i,
+					"duplicate fodder candidate '%s'" % key))
+			else:
+				candidate_keys.append(key)
+				if key == fodder_key:
+					fodder_min = min_level
+	if not out.is_empty():
+		return out
+
+	# --- the chosen fodder must be an AUTHORED candidate (per-pair minimums
+	# exist only for authored pairs — #35 Q2) --------------------------------
+	if fodder_min == null:
+		out.append(_violation(CODE_FODDER_NOT_CANDIDATE, "fodder",
+			"'%s' is not an authored fodder candidate for '%s' (authored: %s)" % [
+				fodder_key, survivor_key, str(candidate_keys)]))
+		return out
+
+	# --- survivor at its past-5 moment; fodder at its per-pair minimum ------
+	var survivor_owned: int = _granted_level(roster_skills, survivor_key)
+	if survivor_owned == 0:
+		out.append(_violation(CODE_SURVIVOR_MISSING, "survivor",
+			"survivor '%s' is not on the roster" % survivor_key))
+	elif survivor_owned < int(survivor_min):
+		out.append(_violation(CODE_SURVIVOR_UNDERLEVELED, "survivor",
+			"survivor '%s' owned at Lv%d, absorption needs >= Lv%d (the past-5 moment)" % [
+				survivor_key, survivor_owned, int(survivor_min)]))
+	var fodder_owned: int = _granted_level(roster_skills, fodder_key)
+	if fodder_owned == 0:
+		out.append(_violation(CODE_FODDER_MISSING, "fodder",
+			"fodder '%s' is not on the roster" % fodder_key))
+	elif fodder_owned < int(fodder_min):
+		out.append(_violation(CODE_FODDER_UNDERLEVELED, "fodder",
+			"fodder '%s' owned at Lv%d, this pair's authored minimum is Lv%d (#35 Q2 fairness gate)" % [
+				fodder_key, fodder_owned, int(fodder_min)]))
+
+	# --- STRICT narrow compatibility — absorbs have no override tier --------
+	var verdict: Dictionary = SkillKeywords.compatible(survivor_key, fodder_key, keywords_doc)
+	if not bool(verdict["compatible"]):
+		out.append(_violation(CODE_PAIR_INCOMPATIBLE, "fodder",
+			"'%s' x '%s' share no NARROW keyword (basis: %s) — absorb legality is strictly narrow (G3); broad-only pairs are Mod-Center offer scope, never absorbs" % [
+				survivor_key, fodder_key, String(verdict["basis"])]))
+
+	# --- one absorb per survivor, ever (the flat band unlocks once) ---------
+	var survivor_row: Dictionary = _row_for(roster_skills, survivor_key)
+	if survivor_row.has("absorbed"):
+		out.append(_violation(CODE_SURVIVOR_ALREADY_ABSORBED, "survivor",
+			"survivor '%s' already absorbed '%s' — the L6-8 band unlocks once (#35 Q2)" % [
+				survivor_key, String(survivor_row["absorbed"])]))
+
+	return out
+
+
+## Applies a VALID absorption: a NEW skills array with the fodder row removed
+## (consumed) and the survivor row stamped {absorbed: fodder_key, cap:
+## ABSORB_CAP} — level untouched, other rows deep-duplicated, order
+## preserved. PURE: inputs never touched; same inputs -> identical output.
+## The stamps are ROSTER-layer annotations (recruit_loadouts cap/cap_note
+## precedent): CombatantState.from_spec drops them by design — see the class
+## doc. On an invalid absorption: push_error + [] — never a half-roster.
+static func apply_absorption(roster_skills: Array, absorption: Dictionary,
+		fodder_key: String, keywords_doc: Dictionary) -> Array[Dictionary]:
+	var violations: Array[Dictionary] = validate_absorption(
+		roster_skills, absorption, fodder_key, keywords_doc)
+	if not violations.is_empty():
+		var codes: Array[String] = []
+		for v: Dictionary in violations:
+			codes.append(String(v["code"]))
+		push_error("SkillForge.apply_absorption: invalid absorption (%s)" % ", ".join(codes))
+		return []
+	var survivor_key := String((absorption["survivor"] as Dictionary)["key"])
+	var out: Array[Dictionary] = []
+	for row_v: Variant in roster_skills:
+		var row: Dictionary = row_v
+		var key := String(row.get("key", ""))
+		if key == fodder_key:
+			continue
+		var copy: Dictionary = row.duplicate(true)
+		if key == survivor_key:
+			copy["absorbed"] = fodder_key
+			copy["cap"] = ABSORB_CAP
+		out.append(copy)
+	return out
+
+
+# -------------------------------------------------------- Mod-Center offers
+
+## Convenience: the offer with the given key from a parsed
+## data/mod_center_offers.json doc; {} when absent.
+static func find_offer(offers_doc: Dictionary, offer_key: String) -> Dictionary:
+	for row: Variant in offers_doc.get("offers", []) as Array:
+		if row is Dictionary and String((row as Dictionary).get("key", "")) == offer_key:
+			return row
+	return {}
+
+
+## The AUTHORING gate for a Mod-Center offer (#35 Q1 route a): an offer is
+## structurally a mutation recipe carrying compatibility_override: true, and
+## its parents must share a BROAD group and NO narrow keyword. Returns [] for
+## a well-authored offer, else one {code, field, message} per violation —
+## a narrow-shared pair is an authoring ERROR (it belongs in
+## data/skill_mutations.json as a normal recipe) and a no-share pair is not
+## offerable at all. Roster gating is NOT checked here — redeem an offer
+## through the ordinary validate_mutation / apply_mutation override path.
+## Never mutates its inputs; mirrored data-side by validate_seeds.
+static func validate_offer(offer: Dictionary, keywords_doc: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	# Structural recipe shape first (reusing the mutation shape checks against
+	# an empty roster would drag in roster codes — check shape directly).
+	var shape: Array[Dictionary] = validate_mutation([], offer, keywords_doc)
+	for v: Dictionary in shape:
+		if String(v["code"]) == CODE_RECIPE_INVALID:
+			out.append(_violation(CODE_OFFER_INVALID, String(v["field"]), String(v["message"])))
+	if not out.is_empty():
+		return out
+	if not bool(offer.get("compatibility_override", false)):
+		out.append(_violation(CODE_OFFER_INVALID, "compatibility_override",
+			"an offer must carry compatibility_override: true — the offer IS the recorded GM call past the narrow rule (#35 Q1)"))
+	var parent_keys: Array[String] = []
+	for parent: Variant in offer.get("parents", []) as Array:
+		parent_keys.append(String((parent as Dictionary)["key"]))
+	for i: int in range(parent_keys.size()):
+		for j: int in range(i + 1, parent_keys.size()):
+			var verdict: Dictionary = SkillKeywords.compatible(
+				parent_keys[i], parent_keys[j], keywords_doc)
+			var basis := String(verdict["basis"])
+			if basis == SkillKeywords.BASIS_NARROW_SHARED:
+				out.append(_violation(CODE_OFFER_NOT_BROAD_ONLY, "parents",
+					"'%s' x '%s' share the NARROW keyword(s) %s — authoring error: a narrow-shared pair is a NORMAL recipe (data/skill_mutations.json), not a Mod-Center offer" % [
+						parent_keys[i], parent_keys[j], str(verdict["keywords"])]))
+			elif basis == SkillKeywords.BASIS_NONE:
+				out.append(_violation(CODE_OFFER_NOT_BROAD_ONLY, "parents",
+					"'%s' x '%s' share no taxonomy keyword at all — not offerable (#35 Q1 covers broad-only pairs)" % [
+						parent_keys[i], parent_keys[j]]))
+	return out
+
+
 static func _violation(code: String, field: String, message: String) -> Dictionary:
 	return {"code": code, "field": field, "message": message}
+
+
+## The first roster row carrying a key ({} = not owned) — first row wins,
+## mirroring _granted_level.
+static func _row_for(roster_skills: Array, key: String) -> Dictionary:
+	for row_v: Variant in roster_skills:
+		if row_v is Dictionary and String((row_v as Dictionary).get("key", "")) == key:
+			return row_v
+	return {}
 
 
 ## The granted level for a key on a roster skills array — first row wins
