@@ -79,6 +79,23 @@ var active_goal: Dictionary = {}
 ## Active Camera Call spotlight ({} = none): {caller, target, clocks_left}.
 var spotlight: Dictionary = {}
 var camera_calls_used: Dictionary = {}  # combatant id -> stacks spent this session
+## Batch D (play_to_the_camera — the hype_surge archetype): the live
+## party-wide surge window ({} = none): {"actor": id, "team": String,
+## "until_tick": int, "multiplier": int}. Opened by open_surge (the skill's
+## resolver, spending ONE Camera-Call stack through the SAME camera_calls_used
+## ledger the spotlight spends); while live, spectacle points credited to any
+## combatant on the surge team are multiplied ("every party member's audience
+## gains count double until your next Moment") — SUBJECT attribution, the
+## spotlight's own doubling model: a party member's beats count double whether
+## glorious or embarrassing (damage TAKEN by a party member is attributed to
+## them and doubles too — that is the "loss" the L6 editors-cut rung stops;
+## L6 stays threshold data).
+## Expiry: CombatSim calls expire_surge(clock.tick) before every ingest —
+## the window covers event batches ingested while tick <= until_tick, i.e.
+## through the actor's next Moment at L1 + the L2-4 duration rows. ONE surge
+## at a time (the spotlight's one-at-a-time precedent, PROVISIONAL).
+## Serialized ONLY while non-empty (the arena-key compat pin).
+var surge: Dictionary = {}
 ## Exposed-state mirror rebuilt from exposed_state_changed events, so the
 ## engine stays a pure event consumer (needed by the exposed_strike goal).
 var exposed: Dictionary = {}  # combatant id -> bool
@@ -135,11 +152,13 @@ func ingest(events: Array[Dictionary]) -> Array[Dictionary]:
 		var points: int = _points_for(event)
 		if points > 0:
 			points = _spotlit(event, points)
+			points = _surged(event, points)
 			points = _resonate(events, i, event, points, false)
 			gain += points
 			_credit(event, points)
 		if _goal_completed_by(event, i, events):
 			var payout: int = _spotlit(event, int(active_goal.get("payout", 0)))
+			payout = _surged(event, payout)
 			payout = _resonate(events, i, event, payout, true)
 			gain += payout
 			# R11 #14 v2 ("the payout is credited to that killer") + the I-13
@@ -210,6 +229,59 @@ func _spotlit(event: Dictionary, points: int) -> int:
 	if not spotlight.is_empty() and _attribution(event) == String(spotlight.get("target", "")):
 		return points * CAMERA_CALL_MULTIPLIER
 	return points
+
+
+## Batch D (play_to_the_camera): multiplies GAINS credited to any combatant on
+## the live surge's team ("every party member's audience gains count double").
+## Applied after _spotlit — a spotlit teammate during a surge stacks (the
+## spotlight doubling is canon, the surge doubling is the authored skill;
+## composing them is the deliberate reading, ×4 for the spotlit star).
+## Expiry ran before ingest (CombatSim.expire_surge), so a live window here is
+## a genuinely live window.
+func _surged(event: Dictionary, points: int) -> int:
+	if surge.is_empty() or points <= 0:
+		return points
+	var c: CombatantState = combatants.get(_attribution(event))
+	if c == null or c.team == "" or c.team != String(surge.get("team", "")):
+		return points
+	return points * maxi(1, int(surge.get("multiplier", 1)))
+
+
+## Batch D: opens the party-wide surge window, spending ONE Camera-Call stack
+## from the SAME camera_calls_used ledger the spotlight command spends (R6
+## stacks_total = the caller's derived stacks, validated by the resolver).
+## One surge at a time (the spotlight precedent) and no stack = no surge —
+## both surfaced as hype_surge_wasted (the caller already paid the Moment;
+## the honest outcome is a fizzle, never a silent success).
+func open_surge(actor_id: String, team: String, until_tick: int, multiplier: int, stacks_total: int) -> Array[Dictionary]:
+	if not surge.is_empty():
+		return [{"type": "hype_surge_wasted", "actor": actor_id, "reason": "surge_active"}]
+	var used: int = int(camera_calls_used.get(actor_id, 0))
+	if used >= stacks_total:
+		return [{"type": "hype_surge_wasted", "actor": actor_id, "reason": "no_camera_call_stacks"}]
+	camera_calls_used[actor_id] = used + 1
+	surge = {
+		"actor": actor_id, "team": team,
+		"until_tick": until_tick, "multiplier": multiplier,
+	}
+	return [{
+		"type": "hype_surge_started",
+		"actor": actor_id, "team": team,
+		"until_tick": until_tick, "multiplier": multiplier,
+		"stacks_remaining": stacks_total - used - 1,
+	}]
+
+
+## Batch D: closes the surge once the tick has passed its window — called by
+## CombatSim before every ingest, so scoring never reads a stale window.
+## No-op ([]) while no surge is live (the legacy compat pin: zero events,
+## zero state, zero rng).
+func expire_surge(tick: int) -> Array[Dictionary]:
+	if surge.is_empty() or tick <= int(surge.get("until_tick", 0)):
+		return []
+	var actor := String(surge.get("actor", ""))
+	surge = {}
+	return [{"type": "hype_surge_ended", "actor": actor, "reason": "expired"}]
 
 
 ## Slice-tag resonance (I-13): amplify `points` for events attributed to a
@@ -436,7 +508,7 @@ func _band_for(value: int) -> String:
 
 
 func to_dict() -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"meter": meter,
 		"band": band,
 		"ledger": ledger.duplicate(true),
@@ -446,6 +518,12 @@ func to_dict() -> Dictionary:
 		"exposed": exposed.duplicate(true),
 		"goal_rng_state": goal_rng.state,
 	}
+	# Batch D compat pin (the arena-key pattern): "surge" exists ONLY while a
+	# window is live — a surge-free session serializes byte-identically to the
+	# pre-batch engine (hash-covered whenever it matters).
+	if not surge.is_empty():
+		out["surge"] = surge.duplicate(true)
+	return out
 
 
 static func from_dict(data: Dictionary) -> HypeEngine:
@@ -457,6 +535,8 @@ static func from_dict(data: Dictionary) -> HypeEngine:
 	engine.spotlight = (data.get("spotlight", {}) as Dictionary).duplicate(true)
 	engine.camera_calls_used = (data.get("camera_calls_used", {}) as Dictionary).duplicate(true)
 	engine.exposed = (data.get("exposed", {}) as Dictionary).duplicate(true)
+	# Pre-batch-D saves lack "surge": {} = no live window (the compat pin).
+	engine.surge = (data.get("surge", {}) as Dictionary).duplicate(true)
 	# Pre-I9 saves lack goal_rng_state; the 0 fallback resumes on a stream that
 	# DIVERGES from a log replay — pre-release saves are disposable (R11 #14).
 	engine.goal_rng.state = int(data.get("goal_rng_state", 0))

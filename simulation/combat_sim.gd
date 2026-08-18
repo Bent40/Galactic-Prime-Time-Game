@@ -115,6 +115,9 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	hype = HypeEngine.new()
 	hype.setup(_goal_table(), sim_seed)
 	hype.wire(combatants)  # R11 #14 v2 team-awareness (live ref, like tags/evidence)
+	# Batch D (play_to_the_camera): the resolver reads the camera-call spend
+	# ledger through this ref (remaining-stack prime) and opens the surge on it.
+	resolver.wire_hype(hype)
 	# Slice tags (I-13) — the second broadcast-plane consumer, wired after hype
 	# so its detectors also see hype outputs (Scene Stealer). HypeEngine reads
 	# held tags back through hype.tags for resonance.
@@ -216,6 +219,17 @@ func _post(events: Array[Dictionary]) -> void:
 	# hype/tags/evidence see the break events too. No-op (no events, no rng,
 	# no state) while nobody holds either — the legacy compat pin.
 	events.append_array(_guard_checks())
+	# Batch D (telekinesis) — the channel sweep: a sustainer damaged in THIS
+	# command's batch (damage_applied events — resolutions, reactions, forced
+	# fallout and condition drains alike), grappled, helpless or down — or
+	# whose held target is gone — loses the grip (release_channel keeps the
+	# held_by mirror in sync). BEFORE the broadcast plane so the release is
+	# scored/seen too. No-op while nobody channels — the legacy compat pin.
+	events.append_array(_channel_checks(events))
+	# Batch D (play_to_the_camera): close an outlived surge window BEFORE this
+	# batch is scored — expiry is tick-driven, scoring must never read a stale
+	# window. No-op while none is live — the legacy compat pin.
+	events.append_array(hype.expire_surge(clock.tick))
 	events.append_array(hype.ingest(events))
 	# Tag detection runs AFTER hype so Scene Stealer sees hype_goal_completed /
 	# hype_camera_call_started. Its tag_* outputs are system events (no
@@ -402,6 +416,21 @@ func _advance_tick() -> Array[Dictionary]:
 			continue
 		events.append_array(ForcedAction.apply_consequence(
 			forced["rolled"], actor, forced.get("ctx", {}), cond, combatants, clock.tick))
+	# Batch D (telekinesis) — the per-Moment upkeep lapse: a live channel whose
+	# grip/sustain did NOT resolve on this completing tick (nothing declared,
+	# or the sustain was feinted/stuttered/invalidated away) lapses at the END
+	# of the unpaid Moment — the target was genuinely held through it (nobody
+	# knew the upkeep would fail until the Moment closed), then the
+	# concentration runs out with the tick. Sorted-id order, zero rng; a
+	# channel-free fight never enters the loop (the legacy compat pin).
+	var channel_ids: Array = combatants.keys()
+	channel_ids.sort()
+	for channel_id: Variant in channel_ids:
+		var holder: CombatantState = combatants[channel_id]
+		if holder.channeling.is_empty():
+			continue
+		if int(holder.channeling.get("sustained_tick", -1)) < clock.tick:
+			events.append_array(resolver.release_channel(holder, "sustain_lapsed"))
 	if clock.completes_clock():
 		events.append({"type": "clock_reset", "tick": clock.tick})
 		var ids: Array = combatants.keys()
@@ -806,6 +835,7 @@ func _stealth(cmd: Dictionary) -> Array[Dictionary]:
 		if not actor.stealthed:
 			return [{"type": "command_rejected", "reason": "not_stealthed", "actor": actor.id}]
 		actor.stealthed = false
+		actor.conceal = {}  # batch D: the camouflage modifier dies with the stealth
 		return [{"type": "stealth_broken", "combatant": actor.id, "reason": "revealed_self"}]
 	if actor.stealthed:
 		return [{"type": "command_rejected", "reason": "already_stealthed", "actor": actor.id}]
@@ -848,18 +878,39 @@ func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 	for id: Variant in ids:
 		var c: CombatantState = combatants[id]
 		if not c.stealthed:
+			# Batch D (camouflage) invariant: the modifier never outlives the
+			# stealth it rides — a dangling conceal is cleared silently.
+			if not c.conceal.is_empty():
+				c.conceal = {}
 			continue
 		if not c.alive or c.removed_from_play:
 			c.stealthed = false
+			c.conceal = {}
 			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "downed"})
 			continue
+		# Batch D (camouflage): the MOVEMENT break — any displacement off the
+		# woven anchor hex (voluntary or involuntary, the iron_stance rule)
+		# breaks the camouflage AND the stealth it rides ("Breaks if character
+		# moves"; the L6 move-one-hex rung stays threshold data). Checked
+		# before the sight sweep: the mover is revealed by the movement
+		# itself, whoever is watching.
+		if not c.conceal.is_empty():
+			var anchor_raw: Array = c.conceal.get("anchor", [])
+			if anchor_raw.size() != 2 \
+					or c.position != Vector2i(int(anchor_raw[0]), int(anchor_raw[1])):
+				c.stealthed = false
+				c.conceal = {}
+				out.append({"type": "stealth_broken", "combatant": c.id, "reason": "moved"})
+				continue
 		if shouters.has(c.id):
 			c.stealthed = false
+			c.conceal = {}
 			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "shout"})
 			continue
 		var observer: String = Stealth.first_observer_seeing(combatants, c, arena, clock.tick)
 		if observer != "":
 			c.stealthed = false
+			c.conceal = {}
 			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "seen", "observer": observer})
 	return out
 
@@ -905,6 +956,50 @@ func _guard_checks() -> Array[Dictionary]:
 				c.guard = {}
 				c.armed_primes.erase("intercept")
 				out.append({"type": "guard_ended", "guardian": c.id, "reason": guard_reason})
+	return out
+
+
+## Batch D (telekinesis) — the per-command channel sweep: the grip ENDS when
+## the sustainer takes damage ("ends on actor damage" — read off THIS batch's
+## damage_applied events with a real amount, so resolutions, reactions,
+## forced-action fallout and condition drains all count, independent of the
+## per-tick flag reset), is grappled (R9 contact breaks concentration), goes
+## helpless, or goes down — or when the held target is gone. Every break
+## funnels through release_channel (the held_by mirror can never dangle); a
+## stray held_by whose named holder no longer channels it is cleared silently
+## (defensive invariant, same spirit as the conceal clear). Deterministic
+## sorted-id order; zero rng; a channel-free fight is a pure no-op (the
+## compat pin).
+func _channel_checks(events: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var damaged: Dictionary = {}
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "damage_applied" and int(event.get("amount", 0)) > 0:
+			damaged[String(event.get("combatant", ""))] = true
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not c.channeling.is_empty():
+			var reason: String = ""
+			if not c.alive or c.removed_from_play:
+				reason = "downed"
+			elif c.is_helpless(clock.tick):
+				reason = "helpless"
+			elif c.grappling != "" or c.grappled_by != "":
+				reason = "grappled"
+			elif damaged.has(c.id):
+				reason = "damaged"
+			else:
+				var held: CombatantState = combatants.get(String(c.channeling.get("target", "")))
+				if held == null or not held.alive or held.removed_from_play:
+					reason = "target_gone"
+			if reason != "":
+				out.append_array(resolver.release_channel(c, reason))
+		if c.held_by != "":
+			var holder: CombatantState = combatants.get(c.held_by)
+			if holder == null or String(holder.channeling.get("target", "")) != c.id:
+				c.held_by = ""
 	return out
 
 
@@ -1174,6 +1269,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
 	sim.hype.set_goal_table(sim._goal_table())
 	sim.hype.wire(sim.combatants)  # R11 #14 v2 team-awareness ref
+	sim.resolver.wire_hype(sim.hype)  # batch D: camera-call ledger + surge
 	# Re-wire the tag engine (effect table is static data, never saved; the
 	# combatants ref is a live object) and reconnect hype's resonance lookup.
 	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))

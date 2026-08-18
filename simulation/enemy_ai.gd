@@ -1337,6 +1337,29 @@ static func add_antagonism(holder: CombatantState, earner_id: String, delta: flo
 	}]
 
 
+## R23 grudge REDUCTION (batch D — vibe_control's FEAR "de-prioritize"): the
+## mirror of add_antagonism. `holder` (the AI actor) has its grudge toward
+## `earner_id` reduced by `delta`, floored at 0 (a calm mind holds no
+## negative grudge — the R23 map is non-negative by contract). No-op — [] —
+## for a non-AI holder, a non-positive delta, a self-target, or a grudge
+## already at the floor (nothing changes, nothing is emitted). The
+## antagonism_changed event carries the NEGATIVE applied delta so the
+## broadcast stream reads the de-escalation honestly.
+static func reduce_antagonism(holder: CombatantState, earner_id: String, delta: float, source: String) -> Array[Dictionary]:
+	if delta <= 0.0 or earner_id == "" or earner_id == holder.id or not is_ai_controlled(holder):
+		return []
+	var old: float = float(holder.antagonism.get(earner_id, 0.0))
+	if old <= 0.0:
+		return []
+	var score: float = maxf(0.0, old - delta)
+	holder.antagonism[earner_id] = score
+	return [{
+		"type": "antagonism_changed",
+		"actor": holder.id, "target": earner_id,
+		"delta": score - old, "score": score, "source": source,
+	}]
+
+
 ## Parts an attack can meaningfully hit: hp > 0, not destroyed, not hidden
 ## behind surface immunity; heads only when the book's gate allows (R7).
 func _attackable_parts(target: CombatantState) -> Array[String]:
