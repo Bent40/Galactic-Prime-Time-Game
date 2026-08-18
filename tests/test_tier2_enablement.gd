@@ -413,7 +413,7 @@ func test_narrow_shared_pair_as_offer_fails_the_authoring_gate() -> void:
 		["offer_not_broad_only"] as Array[String],
 		"intercept x fire_ball share no taxonomy keyword — not offerable")
 	# And a missing override is an authoring error too.
-	var no_override: Dictionary = SkillForge.find_offer(offers(), "phantom_grip").duplicate(true)
+	var no_override: Dictionary = SkillForge.find_offer(offers(), "phantom_grasp").duplicate(true)
 	no_override.erase("compatibility_override")
 	assert_eq(codes_of(SkillForge.validate_offer(no_override, keywords())),
 		["offer_invalid"] as Array[String],

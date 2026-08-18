@@ -1420,7 +1420,7 @@ authored in `data/mod_center_offers.json` as recipes carrying
 `compatibility_override: true` (the recorded GM call — redemption runs the ordinary
 R27 override path). An offer on a NARROW-shared pair is an authoring error (that pair
 is a normal recipe) — `SkillForge.validate_offer` + `validate_seeds` both reject it.
-The three shipped offers (the_unseen; the_long_con and phantom_grip with PROPOSED
+The three shipped offers (the_unseen; the_long_con (PROPOSED name) and phantom_grasp (BLESSED, owner-renamed 2026-08-18) with
 result names) are **PROVISIONAL awaiting the owner's blessing**.
 
 **Tier-3 openness (#35 Q3):** tier-3 merges WILL exist — nothing in the recipe schema,

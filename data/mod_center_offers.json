@@ -8,12 +8,23 @@
       "key": "the_unseen",
       "name": "The Unseen",
       "parents": [
-        {"key": "camouflage", "min_level": 5},
-        {"key": "nightlurking", "min_level": 3}
+        {
+          "key": "camouflage",
+          "min_level": 5
+        },
+        {
+          "key": "nightlurking",
+          "min_level": 3
+        }
       ],
-      "shared_broad": ["infiltration"],
+      "shared_broad": [
+        "infiltration"
+      ],
       "compatibility_override": true,
-      "result": {"key": "the_unseen", "level": 1},
+      "result": {
+        "key": "the_unseen",
+        "level": 1
+      },
       "provisional": true,
       "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; name from tier proposal §2 #44's example). The infiltration family shares broad-only, pairwise — the poster family for offers. The ghost and the prowler fuse: not hidden-in-place, not moving-unseen — simply not there until it chooses to be. Consumes Sasha-kit texture (both parents); the R20 stealth engine is the natural consumer when content lands."
     },
@@ -21,27 +32,50 @@
       "key": "the_long_con",
       "name": "The Long Con",
       "parents": [
-        {"key": "feint", "min_level": 5},
-        {"key": "vibe_control", "min_level": 3}
+        {
+          "key": "feint",
+          "min_level": 5
+        },
+        {
+          "key": "vibe_control",
+          "min_level": 3
+        }
       ],
-      "shared_broad": ["performance"],
+      "shared_broad": [
+        "performance"
+      ],
       "compatibility_override": true,
-      "result": {"key": "the_long_con", "level": 1},
+      "result": {
+        "key": "the_long_con",
+        "level": 1
+      },
       "provisional": true,
       "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; result name PROPOSED here, owner may rename freely). The combat misdirection and the crowd's mood fuse into one sustained deception: the fight you show them was never the fight you were having. Broad-only 'performance' pair (feint: deception; vibe_control: presence — no narrow share, verified)."
     },
     {
-      "key": "phantom_grip",
-      "name": "Phantom Grip",
+      "key": "phantom_grasp",
+      "name": "Phantom Grasp",
       "parents": [
-        {"key": "telekinesis", "min_level": 5},
-        {"key": "pressure_hold", "min_level": 3}
+        {
+          "key": "telekinesis",
+          "min_level": 5
+        },
+        {
+          "key": "pressure_hold",
+          "min_level": 3
+        }
       ],
-      "shared_broad": ["control"],
+      "shared_broad": [
+        "control"
+      ],
       "compatibility_override": true,
-      "result": {"key": "phantom_grip", "level": 1},
+      "result": {
+        "key": "phantom_grasp",
+        "level": 1
+      },
       "provisional": true,
-      "note": "PROVISIONAL (decision #35 Q1 — awaiting owner blessing; result name PROPOSED here, owner may rename freely). The hold without the hands: the grapple discipline projected through psychic force — a pin at range. Broad-only 'control' pair (telekinesis carries the broad group; pressure_hold's narrow 'grapple' is unshared, verified). R9's boss/size Suffocation caps would ride along uncut at content time."
+      "note": "BLESSED (decision #35 Q1 — awaiting owner blessing; result name PROPOSED here, owner may rename freely). The hold without the hands: the grapple discipline projected through psychic force — a pin at range. Broad-only 'control' pair (telekinesis carries the broad group; pressure_hold's narrow 'grapple' is unshared, verified). R9's boss/size Suffocation caps would ride along uncut at content time.",
+      "status": "BLESSED (owner 2026-08-18: \"Phantom grasp, blessed.\")"
     }
   ]
 }
