@@ -428,3 +428,24 @@
       data + the threshold re-map plan — drafted when content Batch B lands, for the
       owner's yes/no pass. Tabletop-shared (skills are shared spine; book §4.5
       already carries the merge rule).
+35. **Tier proposal RULED (owner 2026-08-18, by number).** The 48 stamps + 8 recipes
+    stand as proposed. The five questions:
+    - **Q1 = route (a):** orphans stay LINEAR; the override mechanism is **authored
+      Modification-Center special offers on broad-only pairs** (the three
+      data-supported candidates — camouflage×nightlurking, feint×vibe_control,
+      telekinesis×pressure_hold — enter as PROVISIONAL offers awaiting blessing).
+      Taxonomy growth (route b) not adopted now.
+    - **Q2:** ABSORB = flat unlock of the survivor's L6-8 band, gated on a **minimum
+      fodder level** ("it might be unfair depending on skill stat dependency" —
+      the minimum is authored PER ABSORB, mirroring Q5's per-recipe spirit).
+      [Recorded reading: flat-unlock + min-fodder; correct if 'levels convert'
+      was intended.]
+    - **Q3: TIER-3 MERGES WILL EXIST** ("for sure... We need a lot more skills") —
+      tier-2 skills keep short linear bands FOR NOW, and the recipe schema must
+      never forbid tier-2 skills as future parents. Content-growth direction
+      recorded: the skill catalog is expected to expand substantially.
+    - **Q4:** strong_strike + acrobatics CONFIRMED LINEAR for now — owner intent
+      recorded: **they become mergeable later** (revisit with the tier-3/content
+      growth wave).
+    - **Q5: per-recipe min-levels** (no global convention; the proposed 5/3 pairs
+      are each recipe's own authored values, changeable per recipe).
