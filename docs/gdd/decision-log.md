@@ -404,3 +404,27 @@
       to a G7-style acquisition gate (PROVISIONAL wording).
     - **F2 (the Brace/Intercept/Iron-Stance L6-10 band conflict) explained to the
       owner, ruling pending** — does not touch the L1-4 content pass.
+      **↳ RESOLVED by #34: past-5 progression is merge/absorb-shaped; G6's merge is
+      canonical, R1's fold-into-Brace is retired.**
+34. **SKILL TIERS RULED IN (owner 2026-08-18): "Rule it in."** The tier-2 evolution
+    model, per-skill (not universal):
+    - **Tier 1** = every skill's L1-5, authored deeply; L5 = mastery of the base form.
+    - Past 5, each skill is authored as ONE of three shapes: **MERGE** (Gemstone —
+      both parents consumed, narrow-keyword-compatible, yields a tier-2 skill with its
+      own L1-5; Iron Stance = the canonical example, Intercept Lv5 already the merge
+      point), **ABSORB** (consume one compatible lesser skill to push the survivor
+      into L6-8 — cheaper than a merge, keeps identity), or **LINEAR 6-10** reserved
+      for skills ruled to deserve it (magic's L10 rule-transcending tier stays
+      source-gated per the R19 framework ruling #2).
+    - Keyword narrow-share gates merge/absorb legality (G3 becomes load-bearing);
+      broad-only maps to Modification Center special offers. Token/economy
+      re-expression (what Patron Tokens gate under tiers) = KAN-7 sitting.
+    - Supersedes the R19 framework's "6+ earned in-run / cap-10 token-gated" as the
+      universal shape; the 78 authored L5+ threshold rows re-map into tier-2 rungs
+      and absorb bonuses (nothing discarded).
+    - The L1-4 content pass is UNAFFECTED (identical under every tier shape).
+    - **Next artifact (owner-directed): the per-skill tier proposal** — every skill
+      stamped merge/absorb/linear with recipe/absorb candidates from the keyword
+      data + the threshold re-map plan — drafted when content Batch B lands, for the
+      owner's yes/no pass. Tabletop-shared (skills are shared spine; book §4.5
+      already carries the merge rule).
