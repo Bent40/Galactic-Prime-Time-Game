@@ -75,6 +75,55 @@ extends RefCounted
 ##                          Shocked); may target the Head regardless of Exposure
 ##                          (bypass_head_gate); needs line of sight below the
 ##                          L8 threshold rung; no HP damage, no physical dodge
+##   aoe_blast            — batch D "Casters & Showfolk": a ranged declare at a
+##                          TARGET HEX ("at"); the detonation is
+##                          HexGeometry.blast(center, radius) resolved per
+##                          caught combatant through _strike_round-grade rows
+##                          (snapshot membership, R2; the R25 AoE-center rule —
+##                          a blast-Moment roller escapes unless standing on
+##                          the CENTER; NOT undodgable — only valve blasts
+##                          carry that flag, R26). Carriers: poison_ball
+##                          (Tier-1 Poison, the entry-condition gate per
+##                          target), frost_ball (impact typed CRUSH per G8 +
+##                          the Chilled T1 rider), fire_ball (Burn + the
+##                          trash-can ignition family's blast-shaped sibling)
+##   stealth_conceal      — batch D (camouflage): a 3-Moment concealment
+##                          windup on the R20 substrate — resolves into
+##                          stealthed WITH an override reveal radius
+##                          (combatant.conceal, read by Stealth.sees) that
+##                          caps every observer's sight range; anchored to
+##                          the woven hex — ANY displacement breaks it (the
+##                          CombatSim sweep), alongside the normal break rules
+##   projection_control   — batch D (vibe_control): two declared modes vs a
+##                          PERCEIVING hostile (the target must SEE the actor
+##                          — Stealth.sees with the R30 cone). FEAR = 1-hex
+##                          push (the knockback helper) + a grudge REDUCTION
+##                          (EnemyAI.reduce_antagonism, floor 0); CHARM =
+##                          fixation (grudge INCREASE + the target faces the
+##                          actor — the second ruled involuntary facing) + a
+##                          1-hex actor reposition + the Exposed window whose
+##                          "from behind" half is the REAL R30 is_behind gate
+##   hype_surge           — batch D (play_to_the_camera): spends ONE
+##                          Camera-Call stack via the existing
+##                          camera_calls_used ledger and opens the timed
+##                          party-wide surge window in HypeEngine (serialized
+##                          only-when-set): party spectacle GAINS ×2 until
+##                          the actor's next Moment (+L2-4 duration rows)
+##   sustained_channel    — batch D (telekinesis): grip one visible target at
+##                          range — actor Exposed (ExposureEngine) + rooted,
+##                          target movement-locked (held_by); the sustain
+##                          occupies the actor's scheduled action each Moment
+##                          (re-declare {"sustain": true}, else the grip
+##                          lapses at tick end); a sustain may drag the
+##                          target 1 hex (forced movement, wall-honest);
+##                          breaks on actor damage / grapple / helpless
+##                          (the CombatSim sweep)
+##   item_flow            — batch D (juggling): the first combatant-to-
+##                          combatant item transfer — a 0-Moment (free-slot)
+##                          pass/catch moving one item dict between two
+##                          combatants within range, the juggler always one
+##                          end; enemy-source flow only for DROPPED items
+##                          (G8: wielded disarm is the L7 payoff, data)
 ##   forced_roll_save     — batch C (acrobatic_save): the G1 MOVEMENT-FORFEIT
 ##                          arming (R25 — NO prime, NO stance: the ladders doc's
 ##                          old prime note is superseded by its tail
@@ -104,6 +153,18 @@ extends RefCounted
 ## arming) — all magnitudes PLACEHOLDER (R14), L1 core + data-row L2-4, L5+
 ## threshold DATA (incl. seal L6 resolve, pattern L8 remote read, burst L8
 ## out-of-sight, save L6 any-fumble).
+## Content pass batch D ("Casters & Showfolk") encodes eight more the same
+## way: poison_ball + frost_ball + fire_ball (aoe_blast), camouflage
+## (stealth_conceal), vibe_control (projection_control), play_to_the_camera
+## (hype_surge), telekinesis (sustained_channel), juggling (item_flow) — all
+## magnitudes PLACEHOLDER (R14), L1 core + data-row L2-4, L5+ threshold DATA
+## (incl. poison L6 choose-the-toxin, frost L6 pin, fire L6 cluster, camo L6
+## move-one-hex, vibe L5 range, surge L5 survives-a-hit + L6 loss-cut,
+## telekinesis L6 un-Exposed, juggling L6 catch-attacks / L7 wielded
+## disarm). L2-4 "+N" rows read as totals over the L1 base (the
+## mind_burst/execution/slice precedent). Display names for vibe_control and
+## play_to_the_camera are NOT pinned (v2 Group E rename caution) —
+## data-sourced only; specs and events carry only the sim keys.
 ## The remaining skills in data/skills.json are the fill-in-later content pass;
 ## until encoded they resolve through the generic `strike` fallback so an
 ## unknown key still does a real, honest thing.
@@ -157,6 +218,11 @@ const KNOWN_KEYS: Array[String] = [
 	# G6 passover field_triage; skills.json ids 3, 6, 19, 29, 37, 48).
 	"seal_the_wound", "field_triage", "read_the_pattern", "aura_reading",
 	"mind_burst", "acrobatic_save",
+	# Content pass batch D — casters & showfolk (ladders #10/#12/#14/#17/#31/
+	# #32/#44 + the G6 passover play_to_the_camera; skills.json ids 10, 12,
+	# 14, 17, 31, 32, 44, 50).
+	"poison_ball", "frost_ball", "fire_ball", "camouflage", "vibe_control",
+	"play_to_the_camera", "telekinesis", "juggling",
 ]
 
 ## Generic fallback for any un-encoded skill: a plain single-target strike so the
@@ -190,6 +256,10 @@ static func is_self_skill(key: String) -> bool:
 		return true
 	if arch == "intel_reveal":
 		return String(spec.get("form", "")) == "passive_aura"
+	# Batch D: the camouflage windup and the surge name no target (the blast
+	# names a HEX, not a combatant — it stays out so the HUD asks for an aim).
+	if arch == "stealth_conceal" or arch == "hype_surge":
+		return true
 	return arch == "self_guard" or arch == "self_stance"
 
 
@@ -677,6 +747,193 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"archetype": "forced_roll_save",
 				"cost": 0,
 				"extra_dice": lv,
+			}
+		"poison_ball":
+			# Batch D (ladder #10). [MAGIC] Mind, cost 2 (windup). Ranged
+			# declare at a target hex ("at", within attack_range + LOS — the
+			# L8/L9 remote-origin rungs stay threshold data); detonation =
+			# HexGeometry.blast(at, blast_radius); each caught combatant takes
+			# one _strike_round row: the impact splatter (amount — a PLACEHOLDER
+			# R14 number; the book authors no HP line, but the R14 wound gate is
+			# what lets the toxin seed at all) delivering Tier-1 Poison. The
+			# poison ENTRY-CONDITION gate applies PER TARGET inside the
+			# condition system itself (_poison_gate_and_soup: an unwounded,
+			# un-helpless, non-head hit is condition_ignored / no_entry_condition
+			# — the L9 self-supplied-entry rung stays data). poison_type is the
+			# AUTHORED hemo below the L6 choose-the-toxin rung (threshold data)
+			# — stamped onto the action at declare so the soup machinery reads
+			# it. Radius rows +1/+1/+2, range rows +5 at L3/L4 (data;
+			# PLACEHOLDER R14).
+			spec = {
+				"archetype": "aoe_blast",
+				"cost": 2,
+				"damage_type": "poison",
+				"amount": 1,
+				"attack_range": [20, 20, 25, 25][lv - 1],
+				"blast_radius": [3, 4, 4, 5][lv - 1],
+				"poison_type": "hemo",
+			}
+		"frost_ball":
+			# Batch D (ladder #12). [MAGIC] Mind, cost 2 (windup). G8 BINDS the
+			# damage typing: "2 Chill Damage" -> flat damage + Chilled T1 —
+			# "Chilled deals no HP damage; the DAMAGE is the impact, type
+			# CRUSH". So the per-target row is a real crush round (force vs
+			# robustness, brace/iron-stance interactions, and R4's coupling: a
+			# LANDED crush impact seeds Crushed T1 exactly like every crush hit
+			# — the engine's own rule, documented) and the authored Chilled T1
+			# rides as a separate rider on every caught, un-escaped target
+			# (not dodged, not surface-blocked; Chilled is not wound-gated, so
+			# a robustness-blocked impact still chills — the normal-path rule).
+			# Damage rows +1/+1/+2, area rows +1 at L3/L4 (data; PLACEHOLDER
+			# R14).
+			spec = {
+				"archetype": "aoe_blast",
+				"cost": 2,
+				"damage_type": "crushed",
+				"amount": [2, 3, 3, 4][lv - 1],
+				"attack_range": 20,
+				"blast_radius": [2, 2, 3, 3][lv - 1],
+				"rider_condition": "chilled",
+			}
+		"fire_ball":
+			# Batch D (ladder #14). [MAGIC] Mind, cost 2 (windup). Burn damage
+			# + Burn T1 through the normal R4 coupling (burn IS the condition),
+			# 3-space radius (no area rows — the L6 cluster stays threshold
+			# data). IGNITES FLAMMABLES: every trash can in the blast takes the
+			# per-round burn amount as a TOUCH through the existing can-ignition
+			# family (_ignite_cans_in_blast — the cone machinery's blast-shaped
+			# sibling; accumulate-or-pop, cascades via _explode_cans, zero
+			# arena behavior change). Damage rows +1/+2/+3 (data; PLACEHOLDER
+			# R14).
+			spec = {
+				"archetype": "aoe_blast",
+				"cost": 2,
+				"damage_type": "burn",
+				"amount": lv,
+				"attack_range": 20,
+				"blast_radius": 3,
+				"ignites_flammables": true,
+			}
+		"camouflage":
+			# Batch D (ladder #44). Reflexes/Mind, cost 3 (the authored
+			# 3-Moment concealment windup). Resolves into STEALTH on the R20
+			# substrate with the concealment MODIFIER: combatant.conceal
+			# {"radius", "anchor"} — Stealth.sees caps every observer's
+			# effective sight range at reveal_radius ("revealed only within N
+			# spaces"; L2-4 shrink it — data rows -1/-2/-3 off the authored ~6,
+			# PLACEHOLDER R14), so entry is legal in plain sight of a DISTANT
+			# watcher (the unlock's own fiction) and the reveal sweep honors
+			# the shrunk radius. BREAKS ON MOVEMENT: any displacement off the
+			# anchor hex (voluntary or involuntary — the iron_stance rule)
+			# breaks camouflage and the stealth it rides (CombatSim sweep,
+			# reason "moved"; the L6 move-one-hex rung stays threshold data),
+			# alongside every normal stealth break (seen/shout/downed/reveal).
+			spec = {
+				"archetype": "stealth_conceal",
+				"cost": 3,
+				"reveal_radius": [6, 5, 4, 3][lv - 1],
+			}
+		"vibe_control":
+			# Batch D (ladder #31; G4 rework — fiction only, mechanics kept).
+			# Charm, cost 1 (instant). Two modes vs a PERCEIVING hostile — the
+			# target must currently SEE the actor (Stealth.sees: the TARGET's
+			# R30 facing cone, 2×Mind range, LOS — a Mind-0 or cone-blocked
+			# enemy cannot be vibed; that IS the perception gate).
+			#   FEAR ("too striking to approach"): 1-hex push directly away
+			#   (the batch-A knockback helper, wall-honest) + a grudge
+			#   REDUCTION toward the actor (EnemyAI.reduce_antagonism —
+			#   de-prioritize, floor 0; fear_calm PLACEHOLDER R14).
+			#   CHARM ("can't look away"): fixation — a grudge INCREASE toward
+			#   the actor (charm_fixate PLACEHOLDER R14) + the target FACES the
+			#   actor (the second ruled involuntary facing, the grapple's
+			#   mirror) + the actor may reposition 1 hex while they're fixed +
+			#   the target is Exposed for exposed_ticks — the ladder's
+			#   "Exposed-from-behind" whose "behind" half is the REAL R30
+			#   is_behind gate (decision #33): with the facing locked onto the
+			#   actor, the rear arc is exactly where the fixation can't watch.
+			# L2/L4 "+1 resist penetration" rows are CARRIED as data
+			# (resist_penetration — G4 defines it vs mental resistance; no
+			# mental-resistance gate exists below the L9 rung, so nothing
+			# consumes it yet — documented, not faked). L3 +2 range (data).
+			# Display name NOT pinned (v2 Group E) — data-sourced only.
+			spec = {
+				"archetype": "projection_control",
+				"cost": 1,
+				"attack_range": [3, 3, 5, 5][lv - 1],
+				"resist_penetration": [0, 1, 1, 2][lv - 1],
+				"fear_push": 1,
+				"fear_calm": 2.0,
+				"charm_fixate": 2.0,
+				"charm_reposition": 1,
+				"exposed_ticks": 2,
+			}
+		"play_to_the_camera":
+			# Batch D (G6 passover NEW_SKILL, skills.json id 50). Charm, cost 1
+			# (instant). The STACK prime spends ONE Camera-Call stack — the
+			# "camera_call" resource now honestly reads REMAINING stacks
+			# (derived total minus HypeEngine.camera_calls_used, the same
+			# ledger the spotlight command spends). Resolving opens the timed
+			# party-wide surge window in HypeEngine (serialized only-when-set):
+			# points credited to party members ×surge_multiplier until the
+			# actor's next Moment (SUBJECT attribution — the spotlight's own
+			# doubling model, glorious and embarrassing beats alike); L2-4
+			# lengthen the window (+1/+2/+3 Moments — data rows, imported in
+			# batch B; PLACEHOLDER R14). The L5 survives-a-hit and L6
+			# editors-cut (losses stop doubling) rows stay threshold DATA.
+			# Display name NOT pinned (v2 Group E) — data-sourced only.
+			spec = {
+				"archetype": "hype_surge",
+				"cost": 1,
+				"surge_multiplier": 2,
+				"surge_bonus_moments": lv - 1,
+				"prime": {"type": "stack", "resource": "camera_call", "count": 1},
+			}
+		"telekinesis":
+			# Batch D (ladder #17). [MAGIC] Mind, cost 1. Grip ONE visible
+			# target at range (front arc + 2×Mind sight + LOS — team-agnostic
+			# visibility; the G8-reconciled L6 "no longer Exposed" and L7
+			# "move while sustaining" stay threshold data). While the channel
+			# lives: the actor is Exposed (ExposureEngine — the R9-grapple
+			# mirror) and rooted (move/tactical-roll reject "channeling"); the
+			# target cannot take movement actions (held_by — move/roll/leap
+			# reject "held"; arms stay free per the authored line). UPKEEP:
+			# the sustain occupies the actor's scheduled action each Moment —
+			# a cost-1 {"sustain": true} re-declare per tick; declaring any
+			# other scheduled action abandons the grip, an unpaid Moment
+			# lapses it at tick end (CombatSim), and a free {"release": true}
+			# declare drops it voluntarily (abandoning a state — the stealth-
+			# reveal precedent). A sustain may carry "drag_to": one hex of
+			# forced movement for the target (wall/bounds/can/body-honest; the
+			# dragged body's facing never changes — R30 involuntary). ENDS on
+			# actor damage (any damage this tick — the sweep), grapple contact,
+			# helpless/downed either side, or the target leaving range/LOS at
+			# a sustain. The data's throw line stays UNIMPLEMENTED content
+			# (not in this story's L1 core — documented). Range rows +3/+6/+9
+			# (data; PLACEHOLDER R14).
+			spec = {
+				"archetype": "sustained_channel",
+				"cost": 1,
+				"grip_range": [10, 13, 16, 19][lv - 1],
+				"drag": 1,
+			}
+		"juggling":
+			# Batch D (ladder #32; the [spectacle L10] tail stays data).
+			# Reflexes, cost 0 — the FREE-SLOT economy ("absorbed into an
+			# existing action": R3's one free action per tick IS the price).
+			# The first combatant-to-combatant item transfer primitive: moves
+			# ONE item dict between two combatants within pass_range, the
+			# juggler always one end ("from"/"to"; both-other flows are the L6
+			# mass-flow rung — data). Enemy-source flow only for DROPPED items
+			# (G8: disarm gated to unwielded/dropped; wielded disarm is the L7
+			# payoff, threshold data); ally-source and own-item passes move
+			# freely; the transferred dict keeps its whole state (magazine
+			# rounds included) and lands un-dropped in the catcher's hands.
+			# Range rows +3/+6/+9 over the G8-reconciled base 5 (data;
+			# PLACEHOLDER R14).
+			spec = {
+				"archetype": "item_flow",
+				"cost": 0,
+				"pass_range": [5, 8, 11, 14][lv - 1],
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the

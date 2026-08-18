@@ -28,6 +28,14 @@ var combatants: Dictionary = {}
 var cond: ConditionEngine
 var rng: RandomNumberGenerator
 var ai: EnemyAI
+## Batch D (play_to_the_camera): the HypeEngine ref, wired by CombatSim via
+## wire_hype (both construction paths) — the camera_call STACK resource reads
+## the REMAINING stacks (derived total minus the spend ledger) through it, and
+## the hype_surge resolver opens the window on it (the _camera_call command
+## precedent: commands may drive the broadcast plane; it never reads back).
+## Held untyped so the resolver keeps no compile-order dependency; null (an
+## unwired unit-test resolver) degrades to the pre-batch derived-total read.
+var hype = null
 ## KAN-5 (wave 3d): the sim's OPT-IN arena, wired by CombatSim at set_arena /
 ## from_dict (serialized on CombatSim, never here). null = unbounded legacy —
 ## every arena check in the movement/lane paths below is guarded on it.
@@ -46,6 +54,13 @@ func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngi
 	cond = cond_ref
 	rng = rng_ref
 	ai = ai_ref
+
+
+## Batch D: the broadcast-plane ref for the camera-call spend ledger + the
+## surge window (see the `hype` field note). Separate from setup so existing
+## call sites and resolver-only unit contexts stay untouched.
+func wire_hype(hype_ref) -> void:
+	hype = hype_ref
 
 
 static func _reject(reason: String, detail: Dictionary = {}) -> Array[Dictionary]:
@@ -143,6 +158,14 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 		# a Moment or the free slot — so it routes before the R3 slot caps too.
 		if String(skill_spec.get("archetype", "")) == "forced_roll_save":
 			return _declare_forced_roll_save(actor, action, skill_spec)
+		# Batch D (telekinesis): a voluntary release is FREE and immediate —
+		# abandoning a state is not an act (the stealth-reveal precedent), so
+		# it touches neither the Moment economy nor the free-action slot.
+		if String(skill_spec.get("archetype", "")) == "sustained_channel" \
+				and bool(action.get("release", false)):
+			if actor.channeling.is_empty():
+				return _reject("not_channeling", {"actor": actor.id})
+			return release_channel(actor, "released")
 		var skill_gate: Array[Dictionary] = _validate_skill_declare(actor, action, skill_spec)
 		if not skill_gate.is_empty():
 			return skill_gate
@@ -159,6 +182,16 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 			return _reject("not_ready", {"actor": actor_id, "ready_at_tick": actor.next_action_tick})
 
 	# --- all checks passed; mutate ---
+	# Batch D (telekinesis): the sustain occupies the actor's SCHEDULED action
+	# each Moment — committing to any OTHER scheduled action abandons the grip
+	# first (free/0-cost actions coexist with the concentration; the movement
+	# family rejects "channeling" instead of abandoning, so a grip is never
+	# lost to a mis-click step). A sustained_channel declare that got this far
+	# IS the sustain (a second grip already rejected already_channeling).
+	var pre_events: Array[Dictionary] = []
+	if eff_cost > 0 and not actor.channeling.is_empty() \
+			and not _is_channel_sustain(kind, action):
+		pre_events = release_channel(actor, "abandoned")
 	if uses_strained:
 		actor.strained_grip = false
 	# R30 update table (decision #33): every TARGETED declare faces the (first)
@@ -183,14 +216,15 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	stored["eff_cost"] = eff_cost
 	stored["declared_tick"] = clock.tick
 	clock.schedule(actor_id, stored, resolve_tick, window)
-	var events: Array[Dictionary] = [{
+	var events: Array[Dictionary] = pre_events
+	events.append({
 		"type": "action_declared",
 		"actor": actor_id,
 		"kind": kind,
 		"cost": eff_cost,
 		"resolve_tick": resolve_tick,
 		"windup": window > 0,
-	}]
+	})
 	events.append_array(_apply_declare_riders(actor, kind, action, resolve_tick))
 	return events
 
@@ -220,6 +254,7 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		var arch := String(spec.get("archetype", ""))
 		if arch == "committed_strike" or arch == "conditional_followup" \
 				or arch == "interrupt_counter" or arch == "psychic_strike" \
+				or arch == "aoe_blast" \
 				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
 		if arch == "strike":
@@ -294,10 +329,16 @@ func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
 
 ## STACK resource count: the camera-call resource reuses the actor's Charm
 ## over-cap camera-call stacks (R6, derived); any other name reads the generic
-## `charges` fallback.
+## `charges` fallback. Batch D: with the hype ref wired the camera-call read
+## is the REMAINING stacks — derived total minus the camera_calls_used spend
+## ledger (the honest "spend a stack" gate; spotlights and surges spend from
+## the same pool). An unwired resolver keeps the pre-batch derived-total read.
 func _stack_count(actor: CombatantState, resource: String) -> int:
 	if resource == "camera_call":
-		return int(actor.derived_stats().get("camera_call_stacks", 0))
+		var total: int = int(actor.derived_stats().get("camera_call_stacks", 0))
+		if hype != null:
+			return maxi(0, total - int(hype.camera_calls_used.get(actor.id, 0)))
+		return total
 	return int(actor.charges.get(resource, 0))
 
 
@@ -872,6 +913,18 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_intel_reveal(actor, action, spec)
 		"psychic_strike":
 			return _validate_psychic_strike(actor, action, spec)
+		"aoe_blast":
+			return _validate_aoe_blast(actor, action, spec)
+		"stealth_conceal":
+			return _validate_stealth_conceal(actor, action, spec)
+		"projection_control":
+			return _validate_projection_control(actor, action, spec)
+		"hype_surge":
+			return _validate_hype_surge(actor, action, spec)
+		"sustained_channel":
+			return _validate_sustained_channel(actor, action, spec)
+		"item_flow":
+			return _validate_item_flow(actor, action, spec)
 	return []
 
 
@@ -921,6 +974,10 @@ func _target_downed(c: CombatantState) -> bool:
 ## (explicit command-stream movement; no auto-pathing, matching the
 ## _free_reposition convention).
 func _validate_leap_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	# Batch D (telekinesis): the leap is a movement action — a held body
+	# cannot pounce ("Held creatures cannot take movement actions").
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor.id, "by": actor.held_by})
 	var targets: Array = action.get("targets", [])
 	if targets.size() != 1:
 		return _reject("single_target_required", {"actor": actor.id})
@@ -1345,6 +1402,198 @@ func _validate_psychic_strike(actor: CombatantState, action: Dictionary, spec: D
 	return _batch_strike_gate(actor, action, spec)
 
 
+# --------------------------------------------- batch-D skill declare gates
+
+## aoe_blast (poison_ball / frost_ball / fire_ball) declare gate: the declare
+## names a target HEX ("at": [q, r]) — not combatant rows (membership is
+## resolved over whoever is really in the blast; area geometry is never
+## "aimed", so the retarget guard and the stealth target-gate stay out by
+## construction). Gates: well-formed hex, within the spec range, inside the
+## arena bounds (a detonation in the void is no declare; a wall hex is legal —
+## the orb bursts against it), and line of sight from the caster (the thrown
+## projectile below the L8 remote-origin rung — the mind_burst precedent;
+## re-checked at resolution, a door closing mid-windup breaks it). The spec's
+## authored poison_type is stamped onto the action so the condition system's
+## soup machinery reads it (fixed below the L6 choose-the-toxin rung — a
+## caller-supplied type is overridden, never trusted).
+func _validate_aoe_blast(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var at_raw: Array = action.get("at", [])
+	if at_raw.size() != 2:
+		return _reject("blast_target_required", {"actor": actor.id})
+	var at := Vector2i(int(at_raw[0]), int(at_raw[1]))
+	var reach: int = int(spec.get("attack_range", 20))
+	if CombatantState.hex_distance(actor.position, at) > reach:
+		return _reject("out_of_range", {"actor": actor.id, "range": reach, "at": [at.x, at.y]})
+	if arena != null and not arena.in_bounds(at):
+		return _reject("out_of_bounds", {"actor": actor.id, "at": [at.x, at.y]})
+	if not Stealth.has_los(arena, actor.position, at):
+		return _reject("no_line_of_sight", {"actor": actor.id, "at": [at.x, at.y]})
+	if spec.has("poison_type"):
+		action["poison_type"] = String(spec["poison_type"])
+	return []
+
+
+## stealth_conceal (camouflage) declare gate: no target (self). Rejects an
+## already-stealthed actor (nothing to conceal twice) and any grapple contact
+## (the stealth command's in_grapple rule — being held IS being found).
+## Deliberately NO sight gate at declare: entering in a distant watcher's
+## sight line is the skill's whole point — the RESOLUTION runs the entry
+## check with the shrunk reveal radius already in place.
+func _validate_stealth_conceal(actor: CombatantState, _action: Dictionary, _spec: Dictionary) -> Array[Dictionary]:
+	if actor.stealthed:
+		return _reject("already_stealthed", {"actor": actor.id})
+	if actor.grappling != "" or actor.grappled_by != "":
+		return _reject("in_grapple", {"actor": actor.id})
+	return []
+
+
+## projection_control (vibe_control) declare gate: a declared mode ("fear" |
+## "charm"), one living HOSTILE target row within the spec range, and the
+## PERCEPTION gate — the target must currently SEE the actor (Stealth.sees
+## with the roles flipped: the TARGET's R30 facing cone, its 2×Mind sight
+## range, LOS, and its ability to act all gate the projection — you cannot
+## strike a pose at something that cannot perceive you; a Mind-0 creature or
+## an enemy you stand behind is immune by blindness, not by will).
+func _validate_projection_control(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var mode := String(action.get("mode", ""))
+	if mode != "fear" and mode != "charm":
+		return _reject("unknown_vibe_mode", {"actor": actor.id, "mode": mode})
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null or not target.alive or target.removed_from_play:
+		return _reject("unknown_target", {"target": String((targets[0] as Dictionary).get("id", ""))})
+	if actor.team == "" or target.team == "" or target.team == actor.team:
+		return _reject("target_not_enemy", {"actor": actor.id, "target": target.id})
+	var reach: int = int(spec.get("attack_range", 3))
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		return _reject("out_of_range", {"target": target.id, "range": reach})
+	if not Stealth.sees(target, actor, arena, clock.tick):
+		return _reject("target_cannot_perceive", {"actor": actor.id, "target": target.id})
+	return []
+
+
+## hype_surge (play_to_the_camera) declare gate: no target (the party is the
+## target). The STACK prime already gated the remaining Camera-Call stacks
+## (_prime_unmet runs first); here: a teamless actor has no party to surge,
+## and ONE surge at a time (the spotlight precedent) — a live window rejects
+## rather than letting a Moment be spent on a guaranteed fizzle.
+func _validate_hype_surge(actor: CombatantState, _action: Dictionary, _spec: Dictionary) -> Array[Dictionary]:
+	if actor.team == "":
+		return _reject("teamless", {"actor": actor.id})
+	if hype != null and not (hype.surge as Dictionary).is_empty():
+		return _reject("surge_active", {"actor": actor.id})
+	return []
+
+
+## Batch D (telekinesis): team-agnostic visibility — the R20 sight components
+## (front arc + 2×Mind range + LOS) without the hostility predicate, so a
+## grip on an ally is as legal as one on an enemy ("Single (object or
+## creature)"; the data gates VISIBILITY, not allegiance). Stealthed HOSTILE
+## targets are already rejected by the generic stealth gate; a stealthed
+## ALLY stays grippable (the party coordinates with its own hidden scout —
+## the documented stealth-gate exemption).
+func _channel_can_see(actor: CombatantState, target: CombatantState) -> bool:
+	if not Stealth.front_arc_contains(actor.position, actor.facing, target.position):
+		return false
+	if CombatantState.hex_distance(actor.position, target.position) > Stealth.sight_range(actor):
+		return false
+	return Stealth.has_los(arena, actor.position, target.position)
+
+
+## sustained_channel (telekinesis) declare gate. GRIP (default): one living
+## target row (never self), the actor free of grapples (R9 contact breaks the
+## concentration before it starts) and not already channeling (one grip), the
+## target not already held by anyone, within grip_range, and VISIBLE
+## (_channel_can_see — "Target must be visible"). SUSTAIN ({"sustain": true}):
+## the actor must be the live channel's owner; an optional "drag_to" must be
+## exactly one hex from the TARGET's position and enterable (walls / bounds /
+## cans / bodies — the movement gates; re-checked at resolution, where a
+## blocked drag fizzles honestly while the sustain still holds).
+func _validate_sustained_channel(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if bool(action.get("sustain", false)):
+		if actor.channeling.is_empty():
+			return _reject("not_channeling", {"actor": actor.id})
+		var held: CombatantState = combatants.get(String(actor.channeling.get("target", "")))
+		if held == null or not held.alive or held.removed_from_play:
+			return _reject("target_gone", {"actor": actor.id})
+		if action.has("drag_to"):
+			var dt: Array = action["drag_to"]
+			if dt.size() != 2:
+				return _reject("invalid_drag_destination", {"actor": actor.id})
+			var to := Vector2i(int(dt[0]), int(dt[1]))
+			if CombatantState.hex_distance(held.position, to) != 1:
+				return _reject("drag_out_of_range", {"actor": actor.id, "to": [to.x, to.y]})
+			var blocked: String = _movement_blocked_reason(held, to)
+			if blocked != "":
+				return _reject(blocked, {"actor": actor.id, "to": [to.x, to.y]})
+		return []
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null or not target.alive or target.removed_from_play:
+		return _reject("unknown_target", {"target": String((targets[0] as Dictionary).get("id", ""))})
+	if target.id == actor.id:
+		return _reject("cannot_target_self", {"actor": actor.id})
+	if actor.grappling != "" or actor.grappled_by != "":
+		return _reject("grappled", {"actor": actor.id})
+	if not actor.channeling.is_empty():
+		return _reject("already_channeling", {"actor": actor.id})
+	if target.held_by != "":
+		return _reject("already_held", {"target": target.id, "by": target.held_by})
+	var reach: int = int(spec.get("grip_range", 10))
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		return _reject("out_of_range", {"target": target.id, "range": reach})
+	if not _channel_can_see(actor, target):
+		return _reject("target_not_visible", {"actor": actor.id, "target": target.id})
+	return []
+
+
+## item_flow (juggling) declare gate: the flow moves ONE item between two
+## DISTINCT combatants, the juggler always one end ("from"/"to", defaulting
+## to the actor — both-other flows are the L6 mass-flow rung, data). The
+## OTHER end must be alive, in play and within pass_range. Item legality:
+## the source must actually hold it; the actor's own DROPPED item cannot be
+## juggled (it is on the ground — the inventory pickup is that path); a
+## HOSTILE source only yields DROPPED items (G8: disarm gated to unwielded/
+## dropped; wielded disarm is the L7 payoff, threshold data) and never a
+## stealthed one (you cannot snatch from what you cannot see); the
+## destination cannot already carry the key (one dict per key — an honest
+## reject, not a silent merge).
+func _validate_item_flow(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var from_id := String(action.get("from", actor.id))
+	var to_id := String(action.get("to", actor.id))
+	if from_id == to_id:
+		return _reject("flow_needs_two_ends", {"actor": actor.id})
+	if from_id != actor.id and to_id != actor.id:
+		return _reject("actor_not_in_flow", {"actor": actor.id})
+	var other_id: String = from_id if from_id != actor.id else to_id
+	var other: CombatantState = combatants.get(other_id)
+	if other == null or not other.alive or other.removed_from_play:
+		return _reject("unknown_target", {"target": other_id})
+	var reach: int = int(spec.get("pass_range", 5))
+	if CombatantState.hex_distance(actor.position, other.position) > reach:
+		return _reject("out_of_range", {"target": other_id, "range": reach})
+	var source: CombatantState = combatants.get(from_id)
+	var item_key := String(action.get("item", ""))
+	var item: Dictionary = source.items.get(item_key, {})
+	if item.is_empty():
+		return _reject("no_such_item", {"actor": actor.id, "item": item_key, "holder": from_id})
+	if from_id == actor.id and bool(item.get("dropped", false)):
+		return _reject("item_dropped", {"actor": actor.id, "item": item_key})
+	if from_id != actor.id and other.team != actor.team:
+		if other.stealthed:
+			return _reject("target_stealthed", {"actor": actor.id, "target": other_id})
+		if not bool(item.get("dropped", false)):
+			return _reject("item_wielded", {"actor": actor.id, "item": item_key, "holder": from_id})
+	var dest: CombatantState = combatants.get(to_id)
+	if dest.items.has(item_key):
+		return _reject("already_carrying", {"target": to_id, "item": item_key})
+	return []
+
+
 func _effective_cost(actor: CombatantState, kind: String, action: Dictionary, uses_strained: bool) -> int:
 	var base: int = _base_cost(actor, kind, action)
 	var eff: int = base
@@ -1405,6 +1654,12 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 		return _reject("helpless", {"actor": actor_id})
 	if actor.grappled_by != "" or actor.grappling != "":
 		return _reject("grappled", {"actor": actor_id})  # R9: no repositioning
+	# Batch D (telekinesis): a held target cannot take movement actions, and a
+	# channeling sustainer is rooted — drop the grip first (the free release).
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor_id, "by": actor.held_by})
+	if not actor.channeling.is_empty():
+		return _reject("channeling", {"actor": actor_id})
 	if actor.windup_pending:
 		return _reject("winding_up", {"actor": actor_id})
 	if actor.moved_this_tick:
@@ -1487,6 +1742,12 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	if actor.grappled_by != "" or actor.grappling != "":
 		return _reject("grappled", {"actor": actor.id})
+	# Batch D (telekinesis): the roll is movement — held targets and rooted
+	# sustainers have none to spend (the move() mirror).
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor.id, "by": actor.held_by})
+	if not actor.channeling.is_empty():
+		return _reject("channeling", {"actor": actor.id})
 	if actor.windup_pending:
 		return _reject("winding_up", {"actor": actor.id})
 	if bool(actor.statuses.get("prone", false)):
@@ -1553,6 +1814,12 @@ func _declare_forced_roll_save(actor: CombatantState, action: Dictionary, spec: 
 		return _reject("already_armed", {"actor": actor.id})
 	if actor.grappled_by != "" or actor.grappling != "":
 		return _reject("grappled", {"actor": actor.id})
+	# Batch D (telekinesis): the arming spends movement — held targets and
+	# rooted sustainers have none to forfeit (the movement-family mirror).
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor.id, "by": actor.held_by})
+	if not actor.channeling.is_empty():
+		return _reject("channeling", {"actor": actor.id})
 	if actor.windup_pending:
 		return _reject("winding_up", {"actor": actor.id})
 	if bool(actor.statuses.get("prone", false)):
@@ -2032,6 +2299,18 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_intel_reveal(actor, entry, spec)
 		"psychic_strike":
 			return _resolve_psychic_strike(actor, entry, snapshot, forced_queue, spec)
+		"aoe_blast":
+			return _resolve_aoe_blast(actor, entry, snapshot, forced_queue, spec)
+		"stealth_conceal":
+			return _resolve_stealth_conceal(actor, entry, forced_queue, spec)
+		"projection_control":
+			return _resolve_projection_control(actor, entry, spec)
+		"hype_surge":
+			return _resolve_hype_surge(actor, entry, spec)
+		"sustained_channel":
+			return _resolve_sustained_channel(actor, entry, spec)
+		"item_flow":
+			return _resolve_item_flow(actor, entry, spec)
 		"forced_roll_save":
 			# Unreachable via declare (the arming routes before scheduling);
 			# defensive so a hand-built entry can never fall into the strike path.
@@ -2894,6 +3173,400 @@ func _resolve_psychic_strike(actor: CombatantState, entry: Dictionary, snapshot:
 	return events
 
 
+# ---------------------------------------------------- batch-D skill resolvers
+
+## aoe_blast (poison_ball / frost_ball / fire_ball, batch D): the ranged
+## detonation at a declared HEX. Windup re-check (R2): line of sight from the
+## caster to the center must still hold (a door closing mid-windup collapses
+## the throw — the psychic_strike precedent; the hex itself cannot move, and
+## a winding-up caster cannot). MEMBERSHIP is computed at resolution over
+## SNAPSHOT positions (R2's tick-start authority: leaving the blast before
+## its resolution tick escapes it; same-tick movement neither dodges nor
+## blocks) — every living, in-play combatant EXCEPT THE CASTER (the valve's
+## exclude-the-source precedent; friendly fire is otherwise ON — "all
+## targets", chaos is content — and stealthed bodies are caught by hex,
+## physicality over information). R25 (G1 refinement): a member whose
+## rolled_this_window marker is live is MISSED entirely — unless the roll's
+## destination hex IS the blast's center (and unlike the boss valve, a
+## declared center hex can genuinely be rolled onto — the exception is live
+## here). The blast is NOT undodgable (R26: only valve blasts carry that
+## flag), so a boss dodge_threshold may roll against its row; ordinary
+## targets have no blast dodge — the per-target row consumes ZERO rng.
+## Each caught member takes one _strike_round row on its torso-line part
+## (the can-blast locus — deterministic; the G8 "one exposed part (torso if
+## none)" rewording): force-vs-robustness, resistances, brace, conditions
+## and the per-target POISON ENTRY GATE all inside the normal machinery.
+## frost_ball's authored Chilled T1 rides as a separate rider on every
+## caught, un-escaped member (not dodged, not surface-blocked — Chilled is
+## not wound-gated, matching the normal path); fire_ball then washes the
+## blast over the arena's trash cans (_ignite_cans_in_blast — the
+## can-ignition family's blast-shaped sibling). An EMPTY blast still
+## resolves (the ground is washed, cans still catch): rounds 0, no collapse.
+func _resolve_aoe_blast(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var at_raw: Array = action.get("at", [])
+	if at_raw.size() != 2:
+		return [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "malformed_blast"}]
+	var center := Vector2i(int(at_raw[0]), int(at_raw[1]))
+	if not Stealth.has_los(arena, actor.position, center):
+		return _collapse_batch_windup(actor, "lost_line_of_sight", forced_queue, "")
+	var radius: int = int(spec.get("blast_radius", 1))
+	var area: Dictionary = HexGeometry.to_set(HexGeometry.blast(center, radius))
+	var condition_id := ConditionEngine.normalize_condition_id(String(spec.get("damage_type", "")))
+	var amount: int = int(spec.get("amount", 0))
+	var events: Array[Dictionary] = []
+	# Membership first (sorted ids, snapshot hexes) — a member's own round
+	# never re-shapes who the detonation already caught.
+	var members: Array[CombatantState] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id:
+			continue
+		var snap: Dictionary = snapshot.get(other.id, {})
+		if not bool(snap.get("alive", false)):
+			continue
+		if not other.alive or other.removed_from_play:
+			continue  # died earlier this batch — no rounds against a corpse
+		var pos_raw: Array = snap.get("position", [other.position.x, other.position.y])
+		if not area.has(Vector2i(int(pos_raw[0]), int(pos_raw[1]))):
+			continue
+		members.append(other)
+	var caught: Array = []
+	for member: CombatantState in members:
+		caught.append(member.id)
+	events.append({
+		"type": "aoe_blast", "actor": actor.id,
+		"key": String(action.get("key", "")),
+		"center": [center.x, center.y], "radius": radius,
+		"caught": caught,
+	})
+	var struck: int = 0
+	for member: CombatantState in members:
+		# R25: the AoE-center rule — a live roller is missed unless standing
+		# on the center itself (live position: the roll already happened).
+		if member.rolled_this_window and member.position != center:
+			events.append({
+				"type": "blast_missed_roller",
+				"combatant": member.id, "by": actor.id,
+				"at": [member.position.x, member.position.y],
+				"center": [center.x, center.y],
+			})
+			continue
+		var part_key: String = ai.torso_line_part(member)
+		if part_key == "":
+			continue  # nothing attackable on this body
+		var member_events: Array[Dictionary] = _strike_round(member, part_key, condition_id, amount, action, actor)
+		events.append_array(member_events)
+		struck += 1
+		# frost_ball's authored rider: Chilled T1 on a caught, un-escaped
+		# member — a dodged or surface-blocked round escaped the frost too.
+		if spec.has("rider_condition") and member.alive:
+			var escaped: bool = false
+			for ev: Dictionary in member_events:
+				var ev_type := String(ev.get("type", ""))
+				if (ev_type == "attack_dodged" or ev_type == "attack_blocked") \
+						and String(ev.get("combatant", "")) == member.id:
+					escaped = true
+			if not escaped:
+				events.append_array(cond.apply(member, part_key, String(spec["rider_condition"]), clock.tick, {
+					"source": "attack",
+					"attacker": actor.id,
+				}))
+	if bool(spec.get("ignites_flammables", false)):
+		events.append_array(_ignite_cans_in_blast(actor, center, radius, amount))
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "")), "result": "ok", "rounds": struck})
+	return events
+
+
+## stealth_conceal (camouflage, batch D): the 3-Moment concealment windup
+## resolves into STEALTH with the shrunken reveal radius. Premise re-checks
+## LIVE (the batch collapse — Forced Tool, the book's invalidated-windup
+## rule): already stealthed (entered via the command mid-windup) or grappled
+## (contact IS detection). Then the modifier is set FIRST and the R20 entry
+## gate runs WITH it — a watcher inside the shrunk radius still catches you
+## (collapse, "in_enemy_sight" + the observer named); a watcher beyond it no
+## longer matters, which is the skill: hiding in plain sight of the distant.
+## Entry emits the substrate's own stealth_entered (additive via/reveal_radius
+## keys) — every existing consumer of the stealth state sees a normal entry.
+func _resolve_stealth_conceal(actor: CombatantState, entry: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	if actor.stealthed:
+		return _collapse_batch_windup(actor, "already_stealthed", forced_queue, "")
+	if actor.grappling != "" or actor.grappled_by != "":
+		return _collapse_batch_windup(actor, "in_grapple", forced_queue, "")
+	var radius: int = maxi(1, int(spec.get("reveal_radius", 6)))
+	actor.conceal = {
+		"radius": radius,
+		"anchor": [actor.position.x, actor.position.y],
+	}
+	var observer: String = Stealth.first_observer_seeing(combatants, actor, arena, clock.tick)
+	if observer != "":
+		actor.conceal = {}
+		var events: Array[Dictionary] = _collapse_batch_windup(actor, "in_enemy_sight", forced_queue, "")
+		events[0]["observer"] = observer
+		return events
+	actor.stealthed = true
+	return [
+		{"type": "stealth_entered", "actor": actor.id, "via": "camouflage",
+			"reveal_radius": radius},
+		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "camouflage")), "result": "ok", "rounds": 0},
+	]
+
+
+## projection_control (vibe_control, batch D): the two projected modes.
+## Instant (cost 1) — live premise re-checks in the batch-C style: the target
+## must still be there and still PERCEIVE the actor (a same-tick earlier
+## resolution can kill it or spin its cone away). FEAR: the 1-hex push
+## directly away (the batch-A knockback helper — wall/bounds/can/body-honest,
+## involuntary: no facing change) + the grudge REDUCTION toward the actor
+## (EnemyAI.reduce_antagonism — floor 0; "less likely to prioritize you",
+## fed straight into the R23 weighted targeting). CHARM: fixation — the
+## grudge INCREASE (add_antagonism), the actor's 1-hex reposition while
+## they're fixed (_free_reposition, reposition_to), then the target FACES
+## the actor's final hex ("can't look away" — the second RULED involuntary
+## facing after the grapple's, an authored addition to the R30 table,
+## documented here as its seam) and is EXPOSED for exposed_ticks: the
+## ladder's "Exposed-from-behind", whose "behind" half is the REAL R30
+## is_behind gate — with the facing locked onto the actor, the rear arc is
+## exactly the fixation's blind side (decapitate's own declare gate reads
+## it). No persistent charm state is stored below the L9 survives-a-hit
+## rung: the fixation is the facing snap + grudge + the bounded Exposed
+## window (PROVISIONAL honest-minimal reading; the data's "ends when hit"
+## has nothing stored to end — revisit if a later rung needs the state).
+func _resolve_projection_control(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var mode := String(action.get("mode", ""))
+	var target: CombatantState = _first_target(action)
+	var events: Array[Dictionary] = []
+	if target == null or not target.alive or target.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	if not Stealth.sees(target, actor, arena, clock.tick):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_cannot_perceive"})
+		return events
+	events.append({"type": "vibe_projected", "actor": actor.id, "target": target.id,
+		"mode": mode, "level": int(action.get("level", 1))})
+	if mode == "fear":
+		events.append_array(_knockback_away(target, actor))
+		events.append_array(EnemyAI.reduce_antagonism(
+			target, actor.id, float(spec.get("fear_calm", 0.0)), "fear"))
+	else:
+		events.append_array(EnemyAI.add_antagonism(
+			target, actor.id, float(spec.get("charm_fixate", 0.0)), "fixation"))
+		events.append_array(_free_reposition(actor, action,
+			int(spec.get("charm_reposition", 1)), "vibe_reposition"))
+		_face_along(target, target.position, actor.position)
+		events.append({"type": "vibe_fixated", "actor": actor.id, "target": target.id,
+			"facing": target.facing})
+		var until: int = clock.tick + int(spec.get("exposed_ticks", 2))
+		target.exposed_until_tick = maxi(target.exposed_until_tick, until)
+		events.append({"type": "vibe_exposed", "actor": actor.id, "target": target.id,
+			"until_tick": until})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "vibe_control")), "result": "ok", "rounds": 0})
+	return events
+
+
+## hype_surge (play_to_the_camera, batch D): spends ONE Camera-Call stack and
+## opens the party-wide surge window. The spend + window live in HypeEngine
+## (open_surge — the same camera_calls_used ledger the spotlight spends); the
+## resolver re-checks the live premise (stacks can be spent and a window can
+## open between declare and resolution — same-tick simultaneity) and reports
+## a fizzle as the honest invalidation: the Moment was spent either way.
+## until_tick = this tick + 1 + the L2-4 duration rows — the window covers
+## event batches through the actor's next Moment at L1 (CombatSim's
+## expire_surge owns the boundary).
+func _resolve_hype_surge(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	if hype == null:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "no_hype_engine"})
+		return events
+	if actor.team == "":
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "teamless"})
+		return events
+	var until_tick: int = clock.tick + 1 + int(spec.get("surge_bonus_moments", 0))
+	var stacks_total: int = int(actor.derived_stats().get("camera_call_stacks", 0))
+	var opened: Array = hype.open_surge(actor.id, actor.team, until_tick,
+		int(spec.get("surge_multiplier", 2)), stacks_total)
+	var started: bool = false
+	for ev: Variant in opened:
+		var event: Dictionary = ev
+		events.append(event)
+		if String(event.get("type", "")) == "hype_surge_started":
+			started = true
+	if started:
+		events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "play_to_the_camera")), "result": "ok", "rounds": 0})
+	else:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill",
+			"reason": String((events[0] as Dictionary).get("reason", "surge_wasted"))})
+	return events
+
+
+## sustained_channel (telekinesis, batch D). GRIP: the channel opens — the
+## actor's channeling record + the target's held_by mirror; the actor is now
+## Exposed (ExposureEngine reads the channel) and rooted, the target
+## movement-locked. SUSTAIN: the per-Moment upkeep — re-checks the premise
+## LIVE (target there, within the GRIP's stored range, LOS — a target yanked
+## out of range or a door closing snaps the grip: release + invalidation),
+## stamps sustained_tick (the lapse authority CombatSim reads at tick end),
+## and optionally DRAGS the target one hex (forced movement: wall/bounds/
+## can/body-honest, re-checked live — a blocked drag fizzles while the
+## sustain holds; the dragged body's facing never changes, R30 involuntary).
+## Ending: release declare (free), abandoning via another scheduled declare,
+## the upkeep lapse, or the CombatSim sweep (actor damaged / grappled /
+## helpless / either side down) — every path funnels through
+## release_channel, so the mirror can never dangle.
+func _resolve_sustained_channel(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var key := String(action.get("key", "telekinesis"))
+	var events: Array[Dictionary] = []
+	if bool(action.get("sustain", false)):
+		if actor.channeling.is_empty():
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "not_channeling"})
+			return events
+		var held: CombatantState = combatants.get(String(actor.channeling.get("target", "")))
+		if held == null or not held.alive or held.removed_from_play:
+			events.append_array(release_channel(actor, "target_gone"))
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+			return events
+		var grip_reach: int = int(actor.channeling.get("range", int(spec.get("grip_range", 10))))
+		if CombatantState.hex_distance(actor.position, held.position) > grip_reach:
+			events.append_array(release_channel(actor, "target_left_range"))
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_left_range"})
+			return events
+		if not Stealth.has_los(arena, actor.position, held.position):
+			events.append_array(release_channel(actor, "lost_line_of_sight"))
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "lost_line_of_sight"})
+			return events
+		actor.channeling["sustained_tick"] = clock.tick
+		events.append({"type": "telekinesis_sustained", "actor": actor.id, "target": held.id})
+		if action.has("drag_to"):
+			var dt: Array = action["drag_to"]
+			var to := Vector2i(int(dt[0]), int(dt[1]))
+			var from: Vector2i = held.position
+			if CombatantState.hex_distance(from, to) == 1 \
+					and _movement_blocked_reason(held, to) == "":
+				held.position = to  # R30: forced movement — facing unchanged
+				events.append({"type": "telekinesis_dragged", "actor": actor.id,
+					"target": held.id, "from": [from.x, from.y], "to": [to.x, to.y]})
+			else:
+				events.append({"type": "telekinesis_drag_blocked", "actor": actor.id,
+					"target": held.id, "to": [to.x, to.y]})
+		events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": key, "result": "ok", "rounds": 0})
+		return events
+	# --- GRIP (instant, cost 1) — live premise re-checks in the batch-C style.
+	var target: CombatantState = _first_target(action)
+	if target == null or not target.alive or target.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	if not actor.channeling.is_empty():
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "already_channeling"})
+		return events
+	if target.held_by != "":
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "already_held"})
+		return events
+	if actor.grappling != "" or actor.grappled_by != "":
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "grappled"})
+		return events
+	var reach: int = int(spec.get("grip_range", 10))
+	if CombatantState.hex_distance(actor.position, target.position) > reach:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_left_range"})
+		return events
+	if not _channel_can_see(actor, target):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_not_visible"})
+		return events
+	actor.channeling = {
+		"key": key,
+		"target": target.id,
+		"range": reach,
+		"sustained_tick": clock.tick,
+	}
+	target.held_by = actor.id
+	events.append({"type": "telekinesis_grip", "actor": actor.id, "target": target.id,
+		"range": reach})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": key, "result": "ok", "rounds": 0})
+	return events
+
+
+## Batch D (telekinesis): the ONE release seam — clears the channel and the
+## held-by mirror together and says why. [] when no channel is live, so every
+## caller (voluntary release, abandon-on-declare, the upkeep lapse, the
+## CombatSim break sweep) can call it unconditionally.
+func release_channel(actor: CombatantState, reason: String) -> Array[Dictionary]:
+	if actor.channeling.is_empty():
+		return []
+	var target_id := String(actor.channeling.get("target", ""))
+	var target: CombatantState = combatants.get(target_id)
+	if target != null and target.held_by == actor.id:
+		target.held_by = ""
+	actor.channeling = {}
+	return [{"type": "telekinesis_released", "actor": actor.id, "target": target_id,
+		"reason": reason}]
+
+
+## True for a sustained_channel skill declare — the one scheduled shape that
+## does NOT abandon a live channel (a second grip already rejected at the
+## validator, so anything reaching the declare mutate IS the sustain).
+func _is_channel_sustain(kind: String, action: Dictionary) -> bool:
+	if kind != "skill":
+		return false
+	var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+	return String(spec.get("archetype", "")) == "sustained_channel"
+
+
+## item_flow (juggling, batch D): the transfer itself. Free-slot instant —
+## live premise re-checks mirror the declare gate (both ends alive, the item
+## still where it was, the G8 disarm gate still true — a same-tick pickup or
+## death makes the flow fizzle honestly). The item DICT moves whole (magazine
+## state and all — it is the same object, re-keyed to the new holder) and
+## lands un-dropped: a caught item is in hand, whatever the floor said.
+func _resolve_item_flow(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	var from_id := String(action.get("from", actor.id))
+	var to_id := String(action.get("to", actor.id))
+	var source: CombatantState = combatants.get(from_id)
+	var dest: CombatantState = combatants.get(to_id)
+	var other: CombatantState = source if from_id != actor.id else dest
+	if source == null or dest == null or not source.alive or source.removed_from_play \
+			or not dest.alive or dest.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	var item_key := String(action.get("item", ""))
+	var item: Dictionary = source.items.get(item_key, {})
+	if item.is_empty():
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "no_such_item"})
+		return events
+	if from_id == actor.id and bool(item.get("dropped", false)):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "item_dropped"})
+		return events
+	var disarm: bool = from_id != actor.id and other != null and other.team != actor.team
+	if disarm and not bool(item.get("dropped", false)):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "item_wielded"})
+		return events
+	if dest.items.has(item_key):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "already_carrying"})
+		return events
+	source.items.erase(item_key)
+	if bool(item.get("dropped", false)):
+		item["dropped"] = false
+	dest.items[item_key] = item
+	events.append({"type": "item_passed", "actor": actor.id, "item": item_key,
+		"from": from_id, "to": to_id, "disarm": disarm,
+		"range": int(spec.get("pass_range", 5))})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "juggling")), "result": "ok", "rounds": 0})
+	return events
+
+
 ## Batch-A knockback (generalized from _dash_knock_aside): shove `target` ONE
 ## hex directly AWAY from `from_actor` (the origin→target ray's nearest fixed
 ## direction; ties break along the canonical order). Wall / bounds / trash-can
@@ -2971,9 +3644,11 @@ func _first_target(action: Dictionary) -> CombatantState:
 ## Free reposition (no Moment cost) up to `max_spaces`. Honours an explicit
 ## `reposition_to` when the caller supplies one; otherwise emits the reposition
 ## event without auto-pathing (deterministic hex pathing toward the target is the
-## content-pass follow-up — see TODO). Never repositions while grappled.
+## content-pass follow-up — see TODO). Never repositions while grappled — or,
+## batch D, while telekinetically held (movement actions are locked).
 func _free_reposition(actor: CombatantState, action: Dictionary, max_spaces: int, event_type: String) -> Array[Dictionary]:
-	if action.has("reposition_to") and actor.grappled_by == "" and actor.grappling == "":
+	if action.has("reposition_to") and actor.grappled_by == "" and actor.grappling == "" \
+			and actor.held_by == "":
 		var rt: Array = action["reposition_to"]
 		var to := Vector2i(int(rt[0]), int(rt[1]))
 		var dist: int = CombatantState.hex_distance(actor.position, to)
@@ -4009,6 +4684,46 @@ func _ignite_cans_in_cone(actor: CombatantState, action: Dictionary, snapshot: D
 		var pos_raw: Array = obj.get("position", [])
 		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
 		if not arc.has(pos):
+			continue
+		if instant:
+			explode_queue.append({"position": pos, "instant": true})
+			continue
+		if amount <= 0:
+			continue  # a 0-burn wash accumulates nothing (and pops nothing)
+		obj["burn"] = int(obj.get("burn", 0)) + amount
+		events.append({
+			"type": "trash_can_burned",
+			"key": String(obj.get("key", "")),
+			"position": [pos.x, pos.y],
+			"added": amount, "burn": int(obj["burn"]),
+			"by": actor.id,
+		})
+		if int(obj["burn"]) >= Arena.TRASH_CAN_EXPLODE_AT:
+			explode_queue.append({"position": pos, "instant": false})
+	events.append_array(_explode_cans(explode_queue, actor.id))
+	return events
+
+
+## Batch D (fire_ball) — the can-ignition family's BLAST-SHAPED sibling: a
+## resolved burn BLAST washes its area over the arena's trash cans exactly
+## like the cone wash (_ignite_cans_in_cone), swapping only the geometry —
+## HexGeometry.blast(center, radius) for the committed arc. Same
+## accumulate-or-pop model (each swept can accumulates the per-round burn
+## amount; >= Arena.TRASH_CAN_EXPLODE_AT explodes through _explode_cans,
+## cascades included), same instant-pop upgrade hook (a contestant never has
+## it — carried for symmetry), same store-order determinism, ZERO rng, and
+## ZERO arena behavior change — the arena still only holds the object state.
+func _ignite_cans_in_blast(actor: CombatantState, center: Vector2i, radius: int, amount: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if arena == null or arena.objects.is_empty() or radius < 0:
+		return events
+	var area: Dictionary = HexGeometry.to_set(HexGeometry.blast(center, radius))
+	var instant: bool = ai.has_upgrade(actor, "cans_pop_instantly")
+	var explode_queue: Array[Dictionary] = []
+	for obj: Dictionary in arena.objects:
+		var pos_raw: Array = obj.get("position", [])
+		var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+		if not area.has(pos):
 			continue
 		if instant:
 			explode_queue.append({"position": pos, "instant": true})

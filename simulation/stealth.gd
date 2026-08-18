@@ -118,6 +118,15 @@ static func is_behind(subject: CombatantState, other_pos: Vector2i) -> bool:
 ## stealth-reveal sweep/entry, herding, and the intel paths — base
 ## targeting/detection stays default-EVERYONE-DETECTED (the R20 slice
 ## discipline: cones gate INFORMATION plays, never the base fight).
+## Batch D (camouflage — the stealth MODIFIER): a target holding a live
+## concealment (CombatantState.conceal, set by the stealth_conceal resolver)
+## carries an override radius that CAPS the observer's effective sight range
+## against THAT target — "revealed only within N spaces" (the authored core;
+## L2-4 shrink N). Every other gate (hostility, can-act, front arc, LOS) is
+## UNCHANGED — camouflage narrows how CLOSE a watcher must be, it never
+## grants sight through walls or over shoulders. Composition is one min():
+## the modifier can only ever shrink the reveal distance, never extend it
+## past the observer's own 2×Mind range.
 static func sees(observer: CombatantState, target: CombatantState, arena: Arena, tick: int) -> bool:
 	if observer.id == target.id or observer.team == "" or observer.team == target.team:
 		return false
@@ -125,7 +134,10 @@ static func sees(observer: CombatantState, target: CombatantState, arena: Arena,
 		return false  # dead/removed/helpless (fainted) keeps no watch
 	if not front_arc_contains(observer.position, observer.facing, target.position):
 		return false  # R30: an observer sees nothing over its shoulder
-	if CombatantState.hex_distance(observer.position, target.position) > sight_range(observer):
+	var reveal_range: int = sight_range(observer)
+	if target.conceal_radius() > 0:
+		reveal_range = mini(reveal_range, target.conceal_radius())
+	if CombatantState.hex_distance(observer.position, target.position) > reveal_range:
 		return false
 	return has_los(arena, observer.position, target.position)
 

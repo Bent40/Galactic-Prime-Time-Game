@@ -220,6 +220,34 @@ var forced_save: Dictionary = {}
 ## enemy pays off when they declare). Serialized ONLY while non-empty (same
 ## compat pin).
 var pattern_reads: Dictionary = {}
+## stealth_conceal (camouflage, batch D): the live concealment modifier —
+## {"radius": int, "anchor": [q, r]} while camouflaged, {} otherwise. The
+## radius CAPS every observer's effective sight range against THIS combatant
+## (Stealth.sees reads it via conceal_radius() — "revealed only within N
+## spaces"); the anchor is the hex the camouflage was woven on — ANY
+## displacement off it (voluntary or involuntary, the iron_stance rule)
+## breaks the camouflage AND the stealth it rides (the CombatSim
+## _stealth_checks sweep). Cleared whenever stealth breaks/reveals for any
+## reason — the modifier never outlives the stealth state it modifies.
+## Serialized ONLY while non-empty (the stealthed compat-pin pattern).
+var conceal: Dictionary = {}
+## sustained_channel (telekinesis, batch D): the live channel on the ACTOR —
+## {"key": String, "target": String, "range": int, "sustained_tick": int}
+## while gripping, {} otherwise. sustained_tick = the last tick a grip or
+## sustain RESOLVED; a completing tick beyond it lapses the grip (the
+## per-Moment upkeep — CombatSim's _advance_tick lapse check). While set:
+## the actor is Exposed (ExposureEngine reads it, the R9-grapple mirror) and
+## rooted (move/tactical roll reject "channeling"); any OTHER scheduled
+## declare abandons the grip first (the sustain occupies the scheduled
+## action). Serialized ONLY while non-empty (same compat pin).
+var channeling: Dictionary = {}
+## sustained_channel: the mirror on the TARGET — the id of the combatant
+## telekinetically holding this one ("" = free). While set the target cannot
+## take movement actions (move / tactical roll / the pounce leap reject
+## "held"; "may still use arms" — attacks and other declares stay legal;
+## involuntary displacement still moves the body and the grip's range
+## re-check governs). Serialized ONLY while non-empty (same compat pin).
+var held_by: String = ""
 
 # Grapple (R9)
 var grappling: String = ""
@@ -560,6 +588,13 @@ func dance_charm_bonus() -> int:
 	return dance_charm if dancing else 0
 
 
+## Batch D (camouflage): the live concealment's reveal radius — 0 when no
+## camouflage is held. Stealth.sees caps the observer's effective sight range
+## at this value when > 0 ("revealed only within N spaces").
+func conceal_radius() -> int:
+	return int(conceal.get("radius", 0))
+
+
 ## Axial hex distance — 1 space = 1 hex (R10/B8).
 static func hex_distance(a: Vector2i, b: Vector2i) -> int:
 	var dq: int = a.x - b.x
@@ -678,6 +713,17 @@ func to_dict() -> Dictionary:
 		out["forced_save"] = forced_save.duplicate(true)
 	if not pattern_reads.is_empty():
 		out["pattern_reads"] = pattern_reads.duplicate(true)
+	# Batch-D compat pins (the same only-when-set pattern): the camouflage
+	# modifier, the telekinetic channel and the held-by mirror exist ONLY
+	# while live — a fight that never uses the casters-&-showfolk batch
+	# serializes byte-identically to the pre-batch engine (hash-covered
+	# whenever any is live).
+	if not conceal.is_empty():
+		out["conceal"] = conceal.duplicate(true)
+	if not channeling.is_empty():
+		out["channeling"] = channeling.duplicate(true)
+	if held_by != "":
+		out["held_by"] = held_by
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -769,4 +815,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	# Pre-batch-C saves lack both keys: {} = no save armed / no live reveals.
 	c.forced_save = (data.get("forced_save", {}) as Dictionary).duplicate(true)
 	c.pattern_reads = (data.get("pattern_reads", {}) as Dictionary).duplicate(true)
+	# Pre-batch-D saves lack all three: no camouflage, no channel, not held.
+	c.conceal = (data.get("conceal", {}) as Dictionary).duplicate(true)
+	c.channeling = (data.get("channeling", {}) as Dictionary).duplicate(true)
+	c.held_by = String(data.get("held_by", ""))
 	return c
