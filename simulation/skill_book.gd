@@ -17,10 +17,11 @@ extends RefCounted
 ##   declared_dodge       — the G1 declared-hex dodge (tactical_roll): spends the
 ##                          actor's MOVEMENT for the Moment, moves at declare
 ##   leap_strike          — leap absorbed into the declare + a landing strike (pounce)
-##   slip_reposition_strike — chained leg strikes + far-side reposition + Exposed
-##                          rider (slip_through; F5 behind-approximation)
-##   head_finisher        — chained bypass-head-gate slash; Head->0 = cinematic
-##                          kill event + spectacle payout (decapitate)
+##   slip_reposition_strike — chained leg strikes + REAR-ARC reposition + Exposed
+##                          rider (slip_through; R30 facing — F5 retired)
+##   head_finisher        — chained bypass-head-gate slash from BEHIND (R30
+##                          rear arc); Head->0 = cinematic kill event +
+##                          spectacle payout (decapitate)
 ##   aoe_cone_strike      — cone Crush to every enemy in the arc + 1-hex knockback
 ##                          + Forced Body on Mobs (shockwave)
 ##   downed_finisher      — chained heavy strike vs Prone/Helpless; Torso adds a
@@ -209,11 +210,12 @@ static func mechanics(key: String, level: int) -> Dictionary:
 			# cost is the authored chained cost 1. Gate: target at least one size
 			# larger (size_rank, the G8 rewording of "Elite or Boss scale").
 			# 1 Bleed to EACH leg at L1 (+1/level, data rows; amount is per leg,
-			# PLACEHOLDER R14) + reposition to the target's far side + target
-			# Exposed until the end of their next Moment.
-			# F5 NOTE (behind is UNMODELED): the engine has no facing, so
-			# "reposition behind" is APPROXIMATED as a far-side reposition plus
-			# the Exposed rider — do NOT read a facing model into this.
+			# PLACEHOLDER R14) + reposition BEHIND the target (the R30 rear
+			# arc against the target's live facing; far-side fallback when no
+			# rear hex is free) + target Exposed until the end of their next
+			# Moment. F5 RETIRED (decision #33 / addendum R30): the facing
+			# primitive is real — "reposition behind" is the actual rear arc
+			# now, no longer the far-side approximation Batch A shipped interim.
 			spec = {
 				"archetype": "slip_reposition_strike",
 				"cost": 1,
@@ -225,9 +227,12 @@ static func mechanics(key: String, level: int) -> Dictionary:
 			}
 		"decapitate":
 			# Batch A (ladder #22). CHAIN finisher after slip_through on the SAME
-			# target (fixed below L9), PLUS the target must be Exposed (declare
-			# validation — the canonical prime carries one predicate, so the
-			# STATE half of "CHAIN + STATE" is enforced by the skill validator).
+			# target (fixed below L9), PLUS the target must be Exposed AND the
+			# actor must stand BEHIND it (declare validation — the canonical
+			# prime carries one predicate, so the STATE half of "CHAIN + STATE"
+			# is enforced by the skill validator; the ladder's "positioned
+			# behind" is the REAL R30 rear-arc gate as of decision #33 —
+			# Stealth.is_behind — retiring Batch A's Exposed-only interim).
 			# Head slash via bypass_head_gate (slip_through created the opening —
 			# the audit's one-line _validate_attack flag, shared shape with the
 			# mind_burst need). 3 Head Bleed at L1, +1/level (PLACEHOLDER R14).

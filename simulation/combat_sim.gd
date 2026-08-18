@@ -277,10 +277,41 @@ func _add_combatant(spec: Dictionary) -> Array[Dictionary]:
 			return [{"type": "command_rejected", "reason": "staging_blocked_hex", "combatant": id, "position": [pos.x, pos.y]}]
 	var c := CombatantState.from_spec(spec, static_data)
 	c.next_action_tick = clock.tick
+	# R30 staging default (decision #33 — deterministic, documented): a fresh
+	# combatant faces its NEAREST opponent at add time (hex distance; an exact
+	# tie keeps the earliest sorted id), else direction 0 (E). Applies to every
+	# add — staged rosters and mid-fight summons alike (a brood spawn faces the
+	# fight it joins). The update table (ActionResolver) owns every later change.
+	c.facing = _staging_facing(c)
 	combatants[id] = c
 	tick_snapshot[id] = _snapshot_entry(c)
 	var events: Array[Dictionary] = [{"type": "combatant_added", "combatant": id}]
 	return events
+
+
+## The R30 staging default: the HexGeometry direction index toward the nearest
+## living, in-play OPPONENT (the _opponents hostility predicate: a different
+## team, where teamless-vs-teamless is not hostile), else 0. Sorted-id
+## iteration + first-wins ties keep it deterministic; pure over current state.
+func _staging_facing(c: CombatantState) -> int:
+	var best: CombatantState = null
+	var best_d: int = 0
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.team == c.team:
+			continue  # covers teamless-vs-teamless ("" == "") too
+		if not other.alive or other.removed_from_play:
+			continue
+		var d: int = CombatantState.hex_distance(c.position, other.position)
+		if best == null or d < best_d:
+			best = other
+			best_d = d
+	if best == null:
+		return 0
+	var idx: int = HexGeometry.direction_index(c.position, best.position)
+	return idx if idx >= 0 else 0
 
 
 ## R15 — multi-character combined action: a set of LINKED declarations resolving

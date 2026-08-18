@@ -71,9 +71,11 @@ extends RefCounted
 ##     No arena, no open door, or no legal step toward it -> fall back to the
 ##     normal chase, honest and simple (widest-gap inference is future work).
 ##   * R20 HONESTY: a herder herds only prey it can SEE right now
-##     (Stealth.sees — sight 2 x Mind, LOS, hostile): the war hound's Mind 1
-##     = sight 2, so the funnel is CLOSE-QUARTERS behavior (blocked corridors,
-##     bodies in the way), thematically the hound snapping at heels. A
+##     (Stealth.sees — sight 2 x Mind, the R30 FRONT-ARC vision cone, LOS,
+##     hostile): the war hound's Mind 1 = sight 2, so the funnel is
+##     CLOSE-QUARTERS behavior (blocked corridors, bodies in the way),
+##     thematically the hound snapping at heels — and prey behind the hound's
+##     back (its rear arc) is chased, never herded (decision #33 cones). A
 ##     stealthed quarry never reaches herding at all (_opponents excludes it).
 ##   * The cut-off move routes via Pathing.next_steps to the cut-off hex
 ##     (stop_range 0 — standing ON the open door denies it); a herder already

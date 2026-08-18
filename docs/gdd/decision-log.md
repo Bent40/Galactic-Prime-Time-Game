@@ -393,7 +393,11 @@
       gates (decapitate / slip_through / vibe_control) read the rear arc instead of the
       Exposed approximation Batch A ships interim; R20 sight upgrades from 360° to
       facing cones. Lands as its own story between content batches (all sim files
-      collide); Batch A's approximation is explicitly interim.
+      collide); Batch A's approximation is explicitly interim. **SHIPPED same day —
+      contract of record: rules-addendum R30** (state + staging default + update
+      table + arcs + the v1 no-facing-command limitation; `sees()` front-arc gated;
+      the Batch-A slip_through/decapitate retrofit landed — vibe_control reads the
+      same gate when its content pass lands).
     - **NO exclusive skills — G7 binds the sim.** The `exclusive_to` field is RETIRED
       (validator now rejects it); acquisition-requirement gates replace it
       (`acquisition` string on the row). reversion's `exclusive_to: nikita` converted

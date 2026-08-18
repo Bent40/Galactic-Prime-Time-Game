@@ -509,7 +509,8 @@ overturning one is a code change, not a rewrite.
     comes into reach. **R20 honesty: a herder herds only prey it can SEE**
     (`Stealth.sees` — the war hound's Mind 1 = sight 2, so the funnel is
     close-quarters: blocked corridors, bodies in the way; a stealthed quarry
-    never reaches herding at all). A decided cut-off move emits
+    never reaches herding at all, and since R30 a quarry in the hound's REAR
+    ARC is chased, never herded — the vision cone gates the funnel too). A decided cut-off move emits
     `pack_herding {herder, quarry, cutoff_hex}` once the step really
     resolves (the pack_synergy honesty pattern). **No new serialized
     state** — roles and cut-off hexes re-derive from sorted state every
@@ -766,7 +767,8 @@ in implementation (§ "Phasing" below); the design is settled.
 sight/hearing model on the existing hex positions with a simple facing/cone; **full cover
 geometry (heights, sized gaps, skill-by-gap-size interactions) and true vision-cone
 facing are KAN-5-era** (they need positional facing + sized terrain the sim doesn't model
-yet). The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or on move")
+yet). *(2026-08-18: positional facing now EXISTS — the R30 facing primitive, decision
+#33 — and true vision-cone facing shipped with it; sized terrain still doesn't.)* The Camouflage skill (data id 44: "hides you; revealed within 6 spaces or on move")
 is the seed of the sight rule; Shock-T1 Shout ("breaks stealth") is the noise seed. This
 ruling supersedes the review-1 B10 gap ("stealth referenced, no rules"). Q58 CLOSED.
 
@@ -783,11 +785,16 @@ authors no detection roll, so no stream is ever touched.
 
 - **SHIPPED — sight:** seen iff a hostile observer (alive, in play, not helpless — a
   fainted guard keeps no watch; allies are exempt: you hide WITH your party FROM the
-  enemy) has the target within **exactly 2 × Mind** ("roughly 2×" resolved to exactly —
+  enemy) has the target within **its FRONT ARC** (the R30 vision cone — decision #33
+  upgraded sight from the wave-4c 360° to the ±60° facing wedge; see R30), within
+  **exactly 2 × Mind** ("roughly 2×" resolved to exactly —
   PROVISIONAL number, R14 family) **and** line-of-sight: the hex line with walls +
   **CLOSED doors** + out-of-bounds blocking — the one R29 query LOS was promised to
   read; an OPEN door blocks nothing. "Mind sufficient" IS the range: Mind 0 sees
-  nothing, even adjacent (the roach_dog). Entry requires being UNSEEN (rejected
+  nothing, even adjacent (the roach_dog). **Keeping out of the front arc is real
+  concealment now:** a stealthed contestant behind an observer's back stays hidden at
+  any range, and an observer that TURNS (any facing update — R30's table) re-opens its
+  cone on the very command (the sweep runs per command as ever). Entry requires being UNSEEN (rejected
   `in_enemy_sight`, observer named) and un-grappled (`in_grapple` — physical contact is
   detection). Detection re-checks after **every command** (either side moving, a door
   opening, an observer recovering — the `_stealth_checks` sweep in `_post`); breaks emit
@@ -815,8 +822,11 @@ authors no detection roll, so no stream is ever touched.
   (RunState carry) and never touches hype (nothing scored, nothing suppressed).
 - **DOWNSCOPED — flagged loudly, not silently dropped** (each needs a system that does
   not exist yet):
-  * **vision cones/facing** — no positional facing exists (this section's own phasing
-    defers true cones); v1 sight is 360°;
+  * ~~**vision cones/facing** — no positional facing exists (this section's own
+    phasing defers true cones); v1 sight is 360°~~ **RETIRED — cones are REAL**
+    (decision #33, 2026-08-18): the R30 facing primitive landed and `sees()` is
+    front-arc gated; see **R30** below for the facing contract (state, staging
+    default, the update table, arcs, the v1 no-command limitation);
   * **hearing beyond the Shout** — no noise-propagation substrate: the
     investigate/ignore personality reactions, the per-creature smart threshold, and the
     **ALERTED-but-unlocated** state (the scapegoating/illusion/decoy design space) all
@@ -837,7 +847,9 @@ Mind-0 blindness, ally exemption, wall/door LOS both states with the mid-fight d
 reveal, the Shout wire + the quiet-damage negative, AI exclusion/honest loss/
 re-acquisition with rng pins, every hostile-surface gate, windup collapse vs. instant
 no-re-check, cone-burns-the-hidden-body, serialization round-trip mid-stealth,
-lockstep, determinism, zero-rng discipline, carry reset, and the legacy hash pins).
+lockstep, determinism, zero-rng discipline, carry reset, and the legacy hash pins) +
+`tests/test_facing.gd` for the R30 front-arc gate on `sees()` (rear-arc concealment,
+the turning observer, herding's cone).
 
 ## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
 
@@ -1211,14 +1223,16 @@ encounter block mirrors.
   (`simulation/pathing.gd`, the AI-steps bullet above); ~~rooms/dungeon FLOW
   (corridors, doors, multi-room exploration)~~ SHIPPED wave 4b (R29 below);
   ~~stealth/detection/cover (R20, wave 4c)~~ SHIPPED wave 4c — the v1
-  binary-sight slice (`simulation/stealth.gd` + the `stealth` command; the
-  R20 IMPLEMENTED marker lists what stays downscoped: cones/facing, hearing
+  binary-sight slice (`simulation/stealth.gd` + the `stealth` command;
+  vision CONES upgraded to REAL by the R30 facing primitive, decision #33 —
+  the R20 IMPLEMENTED marker lists what still stays downscoped: hearing
   beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever);
   ~~the hound maze-funnel herding (`corner_the_prey`, wave 4d)~~ SHIPPED
   wave 4d — the herder chase/cut-off role split, R11 #21 (the KAN-5
   capstone: `pack_herding`, the kennel gate, tests/test_herding.gd).
-  Remaining: hearing/facing per R20's own phasing (the investigate/ALERTED
-  reactions a fuller funnel would lean on), environment objects beyond the
+  Remaining: hearing per R20's own phasing (the investigate/ALERTED
+  reactions a fuller funnel would lean on — facing itself SHIPPED as R30,
+  decision #33), environment objects beyond the
   trash can, and owner-authored room layouts (every authored wall/can/door
   position is PLACEHOLDER — the owner redesigns rooms with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in
@@ -1292,6 +1306,87 @@ an exits-less encounter list behave (and serialize) byte-identically to wave
   owner-authored maps still pending.**
   Tests: `tests/test_doors.gd` + `tests/test_dungeon_flow.gd` (+ the updated
   run-engine pins in `tests/test_run_state.gd` / `tests/test_run_persistence.gd`).
+
+## R30 — The facing primitive & R20 vision cones (decision #33, 2026-08-18)
+
+**RULED & IMPLEMENTED.** Owner (decision-log #33): *"a FACING primitive is RULED IN —
+'for sure needed', and it belongs to the stealth engine too: R20's deferred vision
+CONES build on it."* This section is the facing CONTRACT the sim implements.
+
+- **The state.** `CombatantState.facing: int` — an axial hex-direction index 0..5 into
+  `HexGeometry.DIRECTIONS` / `EnemyAI.HEX_NEIGHBORS` (0=E, 1=NE, 2=NW, 3=W, 4=SW,
+  5=SE). **Staging default (deterministic):** a fresh combatant faces its NEAREST
+  opponent at add time (hex distance; an exact tie keeps the earliest sorted id), else
+  direction 0 — mid-fight summons included (a brood spawn faces the fight it joins).
+- **The update table (automatic, deterministic — the complete v1 list).** Facing
+  changes ONLY at these seams, all inside `ActionResolver`:
+  * every **targeted DECLARE** faces the (first) target's direction at declare —
+    **windups face at declare and HOLD through the windup** (a strike's RESOLUTION
+    never re-faces, so a committed boss can honestly be flanked mid-windup — the AI
+    honesty consequence: the table applies to every combatant, boss and mob included,
+    through their own `ai_decide` declares);
+  * every **resolved MOVE / reposition / leap** (free move, scheduled move,
+    skill repositions, the pounce leap, the tactical roll's declare-time move) faces
+    the movement direction — the from→to ray's nearest axial direction (the sim's
+    move is a from→to hop, so the ray IS the last step; a roll away turns your back —
+    no dodge exception);
+  * a **dash charge** faces the LANE direction at the dasher's final hex (the segment
+    it ended on, bent/bounced corridors included; stopped-short charges too);
+  * a **grapple** faces BOTH parties toward each other when the hold lands — the held
+    victim included (the one involuntary facing, ruled explicitly);
+  * **knockback / knock-aside / sidestep / fling / drag do NOT change facing**
+    (involuntary displacement never spins you); reactions and out-of-schedule strikes
+    never re-face either (not in the table — documented v1 line).
+  **NO facing command exists in v1** — a contestant cannot deliberately guard their
+  back yet (turning is a side effect of acting; a deliberate "face this way" free
+  action is future work, priced when it lands). Facing emits NO events — it rides
+  `view_combatants().facing` additively (presentation orients sprites/cones off it).
+- **Arcs (the hex resolution of R20's ±60° cone).** FRONT arc = the 3 directions
+  `{facing-1, facing, facing+1}` (mod 6); REAR arc = the opposite 3. For facing 0 (E):
+
+  ```
+        rear | front
+      NW  NE          FRONT = {SE, E, NE}   (indices 5, 0, 1)
+     W   S-->  E      REAR  = {NW, W, SW}   (indices 2, 3, 4)
+      SW  SE
+        rear | front
+  ```
+
+  Membership is by `HexGeometry.direction_index` (unbounded wedges — range is a
+  separate gate), so an exact-diagonal boundary hex ties toward the EARLIER
+  `DIRECTIONS` entry (deterministic, pinned in `tests/test_facing.gd`).
+  `Stealth.is_behind(subject, other_pos)` = other_pos in the subject's REAR arc at
+  distance >= 1 (adjacent included) — the "positioned behind" gate.
+- **R20 vision cones (the upgrade this primitive existed for).** `Stealth.sees()` now
+  requires the target inside the observer's FRONT arc, on top of the wave-4c gates
+  (hostile, can-act, 2×Mind range, LOS). **The default-detected discipline is
+  UNCHANGED:** `sees()` is consulted only on the stealth entry gate + reveal sweep,
+  herding, and the intel paths (aura_reading/read_the_pattern when they land) — base
+  targeting/detection never reads it, so a stealth-free fight is behavior-identical
+  to the pre-facing engine (both CI harnesses byte-diff clean). The feature: a
+  stealthed contestant now STAYS hidden by keeping out of the front arc, and an
+  observer that turns (any table update) re-opens its cone on that very command.
+- **Batch-A retrofit (the interim F5 approximations upgraded in place).**
+  slip_through's "reposition behind" targets a REAL rear-arc hex of the target
+  (directly-behind first, then the facing+2 / facing+4 flanks; far-side fallback when
+  no rear hex is free); decapitate's declare gate adds `is_behind` (rejects
+  `not_behind_target`) on top of the unchanged CHAIN + Exposed gates — the ladder's
+  "positioned behind", real. vibe_control's Exposed-from-behind reads the same gate
+  when its content pass lands.
+- **Serialization (compat pin).** `facing` serializes ONLY while != 0 (the
+  stealthed/last_action_target only-when-set pattern; documented default 0 = E), and
+  the tick snapshot never carries it. A facing-untouched fight serializes
+  byte-identically to the pre-facing engine; the two recorded legacy-fight hashes in
+  `tests/test_stealth.gd` were re-pinned honestly (base-engine reproduction + a
+  canonical-serialize diff proving the staged `facing` key is the only delta). Facing
+  is in-combat posture: the encounter carry re-derives it from the next room's
+  staging (GameController splice — the staging facing wins, like position).
+
+Tests: `tests/test_facing.gd` (arcs ASCII-pinned for all six facings + the boundary
+diagonals, is_behind edges, the staging default, the update table case by case,
+windup hold + flanking a committed boss, involuntary no-change, the sees() cone,
+herding's cone fallback, only-when-set serialization, round-trip/lockstep/
+determinism, the additive view) + the retrofit pins in `tests/test_skills_batch_a.gd`.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
