@@ -910,7 +910,20 @@
     "unlock_requirements": {
       "achievement": "Apply Bleed to 3 different body parts on the same enemy in a single Clock."
     },
-    "effects": []
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Bleed per cut (PROVISIONAL — L2-4 authored at implementation per R19 data-hygiene #3; numbers PLACEHOLDER R14)"
+      },
+      {
+        "level": 3,
+        "text": "+2 Bleed per cut (PROVISIONAL)"
+      },
+      {
+        "level": 4,
+        "text": "+3 Bleed per cut (PROVISIONAL)"
+      }
+    ]
   },
   {
     "id": 29,

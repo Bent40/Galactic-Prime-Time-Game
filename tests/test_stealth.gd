@@ -48,7 +48,14 @@ extends SimTestBase
 ## (the honest one): the 9f0638c BASELINE engine + the new data produced
 ## these values, and the wave-4d engine reproduces them byte-identically —
 ## the engine change itself is proven byte-compatible; only the data moved.
-const LEGACY_HASH_PLAIN: String = "f772da32ebec177ca96f0243e1aad7b5cfaa25e09b80d46255d4fa2930db50bf"
+## PLAIN RE-PINNED content-pass batch A (2026-08-18): the CHAIN same-target
+## gate records last_action_target on every resolved TARGETED action (its own
+## compat pin: absent while ""), and sequence A resolves h1's attack on the
+## mob — one honest new serialized field, so the PLAIN hash legitimately
+## moved. Sequence B resolves no targeted action, so ARENA_DOOR still proves
+## byte-identity with the pre-stealth format, and the structural
+## no-stealthed-key assertions below are untouched.
+const LEGACY_HASH_PLAIN: String = "17b40bcc2e247e15d7a4a1c529c7251f73a0ddbd99c859163d2016423273b3b9"
 const LEGACY_HASH_ARENA_DOOR: String = "aa9257b0081cc5687053044601349e198b21e6156d2ccc051375bb351474f35e"
 
 

@@ -344,6 +344,13 @@ func test_three_way_merged_force_one_gate_one_hit_hand_computed() -> void:
 	add_recruit(sim, "nikita_headliner", [1, -1])
 	var nikita: CombatantState = sim.combatants["nikita"]
 	assert_eq(nikita.skill_level("strong_strike"), 2, "Nikita's granted level came off the recruit file")
+	# F4 (ladder pass): pressure_strike gates on its declare-time CHAIN prime —
+	# Dario's own feint on the boss resolves first (L3: threshold 7 vs boss
+	# Mind 1 + d4 max 5 — read impossible, zero rng; Mind 1 is below the
+	# mock-sensitive gate, so no grudge enters the hand-computed shares).
+	declare(sim, "dario", {"kind": "skill", "key": "feint", "level": 3, "attack_range": 1,
+		"targets": [{"id": "boss", "part": "right_leg"}]})
+	advance(sim, 1)
 	var combo: Array[Dictionary] = sim.apply_command({"type": "combined_action", "combo_id": "trio_combo", "members": [
 		{"actor": "imani", "action": {"kind": "skill", "key": "strong_strike", "level": 1,
 			"attack_range": 2, "targets": [{"id": "boss", "part": "left_hand"}]}},

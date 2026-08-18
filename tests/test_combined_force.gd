@@ -160,10 +160,14 @@ func test_solo_strikes_unchanged() -> void:
 ## (f) THE ACCEPTANCE — the real F5 slice staged exactly as the HUD stages it:
 ## the Incinedile + Imani + Dario, their REAL skills via kind:"skill", one
 ## combined_action ("party_combo") of Imani's strong_strike + Dario's
-## pressure_strike on the flamethrower arm. Merged: Imani Force 6 + floor(5/2)
-## = 8, Dario Force 2 + floor(2/2) = 3 → 11 − Robustness 3 = net 8 ≥ 7 →
-## BREACH. The human path exists again. (dodge_threshold stripped exactly as
-## the engine's own breach tests do — tests/test_incinedile.gd.)
+## pressure_strike on the flamethrower arm. F4 (ladder pass): pressure_strike
+## now gates on its declare-time CHAIN prime, so Dario opens honestly — his own
+## Feint on the boss resolves FIRST, then the combo declares. (Feint L3:
+## threshold 7 vs the boss's Mind 1 + d4 max = 5 — the read is impossible, zero
+## rng, the stream is untouched.) Merged: Imani Force 6 + floor(5/2) = 8,
+## Dario Force 2 + floor(2/2) = 3 → 11 − Robustness 3 = net 8 ≥ 7 → BREACH.
+## The human path exists again. (dodge_threshold stripped exactly as the
+## engine's own breach tests do — tests/test_incinedile.gd.)
 func test_acceptance_real_slice_combined_skills_open_the_breach() -> void:
 	var sim: CombatSim = make_sim(14)
 	sim.apply_command({"type": "add_combatant", "combatant": {
@@ -174,6 +178,10 @@ func test_acceptance_real_slice_combined_skills_open_the_breach() -> void:
 		"traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}})
 	add_human(sim, "dario", {"team": "party", "position": [0, 1],
 		"traits": {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}})
+	# tick 0: Dario's chain opener (cost 1, resolves this tick on advance).
+	declare(sim, "dario", {"kind": "skill", "key": "feint", "level": 3, "attack_range": 1,
+		"targets": [{"id": "boss", "part": "right_leg"}]})
+	advance(sim, 1)
 	var combo: Array[Dictionary] = sim.apply_command({"type": "combined_action", "combo_id": "party_combo", "members": [
 		{"actor": "imani", "action": {"kind": "skill", "key": "strong_strike", "level": 1,
 			"attack_range": 2, "targets": [{"id": "boss", "part": "left_hand"}]}},
@@ -182,7 +190,7 @@ func test_acceptance_real_slice_combined_skills_open_the_breach() -> void:
 	]})
 	assert_event(combo, "combined_action_declared", "the linked declaration set is accepted")
 	assert_eq(events_of(combo, "action_declared").size(), 2, "both members pay their own cost-2 windup")
-	# Both skills are cost-2 windups: declared at tick 0, they resolve on tick 2.
+	# Both skills are cost-2 windups: declared at tick 1, they resolve on tick 3.
 	var events: Array[Dictionary] = advance(sim, 3)
 	var cf: Dictionary = assert_event(events, "combined_force", "the merged gate fires on the resolve tick")
 	assert_eq(String(cf.get("combo_id", "")), "party_combo", "the caller-named combo id links the strikes")
@@ -222,6 +230,10 @@ func test_merged_force_determinism_roundtrip() -> void:
 	assert_true(bool((resumed.combatants["boss"] as CombatantState).breached), "the resumed run still breaches")
 
 
+## F4: the staged slice opens the pressure_strike chain honestly — Dario's
+## feint resolves on tick 0, the combo declares on tick 1 (windups resolve
+## tick 3, so the callers' advance counts still bracket declare/mid-windup/
+## resolution exactly as before, one tick later).
 func _staged_slice_sim() -> CombatSim:
 	var sim: CombatSim = make_sim(777)
 	sim.apply_command({"type": "add_combatant", "combatant": {
@@ -232,6 +244,9 @@ func _staged_slice_sim() -> CombatSim:
 		"traits": {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}})
 	add_human(sim, "dario", {"team": "party", "position": [0, 1],
 		"traits": {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}})
+	declare(sim, "dario", {"kind": "skill", "key": "feint", "level": 3, "attack_range": 1,
+		"targets": [{"id": "boss", "part": "right_leg"}]})
+	advance(sim, 1)
 	sim.apply_command({"type": "combined_action", "combo_id": "party_combo", "members": [
 		{"actor": "imani", "action": {"kind": "skill", "key": "strong_strike", "level": 1,
 			"attack_range": 2, "targets": [{"id": "boss", "part": "left_hand"}]}},

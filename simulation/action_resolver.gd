@@ -13,6 +13,15 @@ extends RefCounted
 
 const STAT_REQUIREMENT_KEYS: Array[String] = ["physique", "reflexes", "mind", "charm"]
 
+## Content pass batch A: the encoded strike-shaped skill archetypes. They all
+## deal damage (the dance-end trigger) and all carry declare-time validation
+## (_validate_skill_declare) — the pre-batch archetypes keep their surfaces.
+const BATCH_A_STRIKE_ARCHETYPES: Array[String] = [
+	"leap_strike", "slip_reposition_strike", "head_finisher", "aoe_cone_strike",
+	"downed_finisher", "multi_part_flurry", "adjacent_mob_sweep",
+	"crossing_arc_strike", "pow_strike",
+]
+
 # Shared context, wired by CombatSim (no back-reference to the sim itself).
 var clock: Clock
 var combatants: Dictionary = {}
@@ -92,10 +101,17 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	# the actor's MOVEMENT for the Moment — not a Moment, not the free-action
 	# slot — and moves IMMEDIATELY at declare. Routed before the R3 slot caps
 	# because its economy is the movement allowance, not the action slots.
+	# Batch A: the encoded content-pass archetypes carry declare-time skill
+	# validation (_validate_skill_declare) — targets, gates, and shape checks a
+	# generic skill declare never had. Un-encoded keys (the `strike` fallback)
+	# and the pre-batch archetypes keep their exact declare surface.
 	if kind == "skill":
-		var dodge_spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
-		if String(dodge_spec.get("archetype", "")) == "declared_dodge":
-			return _declare_tactical_roll(actor, action, dodge_spec)
+		var skill_spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
+		if String(skill_spec.get("archetype", "")) == "declared_dodge":
+			return _declare_tactical_roll(actor, action, skill_spec)
+		var skill_gate: Array[Dictionary] = _validate_skill_declare(actor, action, skill_spec)
+		if not skill_gate.is_empty():
+			return skill_gate
 
 	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
 	var eff_cost: int = _effective_cost(actor, kind, action, uses_strained)
@@ -161,7 +177,8 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 	if kind == "skill":
 		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
 		var arch := String(spec.get("archetype", ""))
-		if arch == "committed_strike" or arch == "conditional_followup":
+		if arch == "committed_strike" or arch == "conditional_followup" \
+				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
 		if arch == "strike":
 			return not (action.get("targets", []) as Array).is_empty()
@@ -186,6 +203,9 @@ func _effective_prime(action: Dictionary) -> Dictionary:
 ## shaped primes. Returns "" when satisfied (or the action carries no prime),
 ## else a short unmet reason. Evaluated at DECLARE against live state.
 ##   CHAIN          {"type":"chain","after":k}                — actor's last resolved key == k
+##                  + optional "same_target": true (batch A) — the chained
+##                  action's first target must equal the actor's
+##                  last_action_target (the FINAL default #4 "same target" gate)
 ##   STANCE         {"type":"stance","stance":s}              — actor holds stance s
 ##   STACK          {"type":"stack","resource":r,"count":n}   — actor has >= n of r
 ##   STATE-POSITION {"type":"state","who":"self|target","status":s} — subject has status s
@@ -199,6 +219,13 @@ func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
 			var after := String(prime.get("after", ""))
 			if actor.last_action_key != after:
 				return "chain_after:%s" % after
+			if bool(prime.get("same_target", false)):
+				var chain_target := ""
+				var chain_targets: Array = action.get("targets", [])
+				if not chain_targets.is_empty():
+					chain_target = String((chain_targets[0] as Dictionary).get("id", ""))
+				if chain_target == "" or chain_target != actor.last_action_target:
+					return "chain_same_target:%s" % after
 		"stance":
 			var want := String(prime.get("stance", ""))
 			if actor.stance != want:
@@ -629,7 +656,12 @@ func _validate_attack(actor: CombatantState, action: Dictionary) -> Array[Dictio
 		if Resistance.part_blocked_by_surface_immunity(target, part_key):
 			return _reject("part_hidden", {"target": target.id, "part": part_key})
 		# Head targeting gate (book rule, kept — acceptance criterion 15).
-		if part_key.contains("head") and not _head_targetable_live(target):
+		# bypass_head_gate (batch A, the audit's one-line flag): an action whose
+		# fiction created its own opening (decapitate via slip_through; the
+		# mind_burst content pass later) declares against the Head regardless —
+		# a data-driven action flag like R26's undodgable.
+		if part_key.contains("head") and not bool(action.get("bypass_head_gate", false)) \
+				and not _head_targetable_live(target):
 			return _reject("head_not_targetable", {"target": target.id})
 		var reach: int = _attack_range(action, item)
 		if CombatantState.hex_distance(actor.position, target.position) > reach:
@@ -732,6 +764,330 @@ func _validate_reload(actor: CombatantState, action: Dictionary) -> Array[Dictio
 	if actor.usable_hands(clock.tick) < 2:
 		return _reject("needs_both_hands", {"actor": actor.id})  # R8: 2 Moments, both hands
 	return []
+
+
+# --------------------------------------------- batch-A skill declare gates
+
+## Declare-time validation for the encoded batch-A skill archetypes (content
+## pass "Chains & Strikes"). Pre-batch archetypes and un-encoded fallback keys
+## return [] untouched — their declare surface is unchanged. Validators may
+## NORMALIZE the action in place (rebuild target rows, stamp rpm/area_shape)
+## BEFORE declare() stores its deep copy, so the stored command is complete and
+## serializes with everything its resolution needs. All reads are LIVE state
+## (declares validate live, R2). Runs AFTER the prime gate, so chain rejects
+## always surface as prime_unmet first.
+func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	match String(spec.get("archetype", "")):
+		"leap_strike":
+			return _validate_leap_strike(actor, action, spec)
+		"slip_reposition_strike":
+			return _validate_slip_reposition_strike(actor, action, spec)
+		"head_finisher":
+			return _validate_head_finisher(actor, action, spec)
+		"aoe_cone_strike":
+			return _validate_aoe_cone_strike(actor, action, spec)
+		"downed_finisher":
+			return _validate_downed_finisher(actor, action, spec)
+		"multi_part_flurry":
+			return _validate_multi_part_flurry(actor, action, spec)
+		"adjacent_mob_sweep":
+			return _validate_adjacent_mob_sweep(actor, action, spec)
+		"crossing_arc_strike":
+			return _validate_crossing_arc_strike(actor, action, spec)
+		"pow_strike":
+			return _validate_pow_strike(actor, action, spec)
+	return []
+
+
+## Shared batch-A strike gate: the SAME target legality _validate_attack
+## enforces for attacks (existence, alive, part, surface immunity, head gate
+## incl. bypass_head_gate, reach) with the spec's reach/bypass injected — a
+## skill declare must not aim at what an attack could not. reach_override > 0
+## replaces the spec reach (the pounce leap's extended envelope).
+func _batch_strike_gate(actor: CombatantState, action: Dictionary, spec: Dictionary, reach_override: int = 0) -> Array[Dictionary]:
+	var probe: Dictionary = action.duplicate(true)
+	if reach_override > 0:
+		probe["attack_range"] = reach_override
+	elif spec.has("attack_range") and not probe.has("attack_range"):
+		probe["attack_range"] = int(spec["attack_range"])
+	if bool(spec.get("bypass_head_gate", false)):
+		probe["bypass_head_gate"] = true
+	return _validate_attack(actor, probe)
+
+
+## Movement legality for a skill-absorbed step (leap landing / knockback /
+## far-side slip): arena bounds/walls/cans + living-body occupancy — the same
+## gates move() and the tactical roll enforce. "" = free to enter.
+func _movement_blocked_reason(mover: CombatantState, to: Vector2i) -> String:
+	if arena != null:
+		if not arena.in_bounds(to):
+			return "out_of_bounds"
+		if arena.is_wall(to) or arena.object_index_at(to) >= 0:
+			return "hex_blocked"
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id != mover.id and other.alive and not other.removed_from_play and other.position == to:
+			return "hex_occupied"
+	return ""
+
+
+## Batch A: is the combatant "downed" for the execution finisher — Prone OR
+## Helpless (the ladder's L1 window; the L9 widening stays threshold data).
+func _target_downed(c: CombatantState) -> bool:
+	return bool(c.statuses.get("prone", false)) or c.is_helpless(clock.tick)
+
+
+## leap_strike (pounce) declare gate: single torso row; landing declared as
+## `leap_to` (validated within leap_range, adjacent to the target, and through
+## the movement gates) — REQUIRED when the actor is not already adjacent
+## (explicit command-stream movement; no auto-pathing, matching the
+## _free_reposition convention).
+func _validate_leap_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var t: Dictionary = targets[0]
+	if not String(t.get("part", "")).contains("torso"):
+		return _reject("torso_only", {"actor": actor.id, "part": String(t.get("part", ""))})
+	var leap_range: int = int(spec.get("leap_range", 3))
+	var gate: Array[Dictionary] = _batch_strike_gate(actor, action, spec, leap_range + 1)
+	if not gate.is_empty():
+		return gate
+	var target: CombatantState = combatants.get(String(t.get("id", "")))
+	if action.has("leap_to"):
+		var lt: Array = action["leap_to"]
+		if lt.size() != 2:
+			return _reject("invalid_leap_destination", {"actor": actor.id})
+		var to := Vector2i(int(lt[0]), int(lt[1]))
+		if to != actor.position:
+			var spaces: int = CombatantState.hex_distance(actor.position, to)
+			if spaces > leap_range:
+				return _reject("leap_out_of_range", {"actor": actor.id, "range": leap_range, "spaces": spaces})
+			if CombatantState.hex_distance(to, target.position) > 1:
+				return _reject("landing_not_adjacent", {"actor": actor.id, "target": target.id})
+			var blocked: String = _movement_blocked_reason(actor, to)
+			if blocked != "":
+				return _reject(blocked, {"actor": actor.id, "to": [to.x, to.y]})
+	elif CombatantState.hex_distance(actor.position, target.position) > 1:
+		return _reject("leap_required", {"actor": actor.id, "target": target.id})
+	return []
+
+
+## slip_reposition_strike (slip_through) declare gate: adjacency, the size gap
+## (G8 rewording — size_rank, at least one size larger; never category), and
+## the row REBUILD: the authored effect cuts "each of their legs", so the rows
+## become every leg part of the chain target, sorted.
+func _validate_slip_reposition_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.is_empty():
+		return _reject("target_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if target == null or not target.alive:
+		return _reject("unknown_target", {"target": String((targets[0] as Dictionary).get("id", ""))})
+	if target.size_rank() - actor.size_rank() < 1:
+		return _reject("target_not_larger", {"actor": actor.id, "target": target.id})
+	var legs: Array = []
+	var part_keys: Array = target.parts.keys()
+	part_keys.sort()
+	for pk: Variant in part_keys:
+		if String(pk).contains("leg"):
+			legs.append({"id": target.id, "part": String(pk)})
+	if legs.is_empty():
+		return _reject("no_leg_parts", {"target": target.id})
+	action["targets"] = legs
+	action["rpm"] = legs.size()
+	action["rounds"] = legs.size()
+	return _batch_strike_gate(actor, action, spec)
+
+
+## head_finisher (decapitate) declare gate: single Head row on an EXPOSED
+## target — the STATE half of the ladder's "CHAIN + STATE" gate lives here
+## (the canonical R3 prime carries exactly one predicate; the chain half
+## already rejected in _prime_unmet). The head gate itself is bypassed
+## (bypass_head_gate) — the exposure requirement here is what keeps that
+## honest: no free head shots outside the carved opening.
+func _validate_head_finisher(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var t: Dictionary = targets[0]
+	if not String(t.get("part", "")).contains("head"):
+		return _reject("head_only", {"actor": actor.id, "part": String(t.get("part", ""))})
+	var target: CombatantState = combatants.get(String(t.get("id", "")))
+	if target == null or not target.alive:
+		return _reject("unknown_target", {"target": String(t.get("id", ""))})
+	if not target.exposed_cache:
+		return _reject("target_not_exposed", {"target": target.id})
+	return _batch_strike_gate(actor, action, spec)
+
+
+## aoe_cone_strike (shockwave) declare gate: a well-formed cone direction
+## (area_shape.toward, RELATIVE to the actor — the _recheck_cone_targets
+## convention); the stored shape is normalized to kind "cone" at the AUTHORED
+## size (a hand-built oversized arc cannot out-range the spec). Membership is
+## computed at resolution — the wave targets whoever is really in the arc.
+func _validate_aoe_cone_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var shape: Dictionary = action.get("area_shape", {})
+	var toward_raw: Array = shape.get("toward", [])
+	if toward_raw.size() != 2:
+		return _reject("cone_direction_required", {"actor": actor.id})
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	if HexGeometry.direction_index(actor.position, actor.position + dir) < 0:
+		return _reject("cone_direction_required", {"actor": actor.id})
+	shape["kind"] = "cone"
+	shape["size"] = int(spec.get("cone_size", 3))
+	action["area_shape"] = shape
+	return []
+
+
+## downed_finisher (execution) declare gate: single Head-or-Torso row on an
+## adjacent Prone/Helpless target (re-checked again at resolution — standing
+## up mid-windup escapes the finisher). Prone/Helpless imply Exposed, so the
+## normal head gate already passes for the Head variant — no bypass flag.
+func _validate_downed_finisher(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var t: Dictionary = targets[0]
+	var part := String(t.get("part", ""))
+	if not (part.contains("head") or part.contains("torso")):
+		return _reject("head_or_torso_only", {"actor": actor.id, "part": part})
+	var target: CombatantState = combatants.get(String(t.get("id", "")))
+	if target == null or not target.alive:
+		return _reject("unknown_target", {"target": String(t.get("id", ""))})
+	if not _target_downed(target):
+		return _reject("target_not_downed", {"target": target.id})
+	return _batch_strike_gate(actor, action, spec)
+
+
+## multi_part_flurry (thousand_cuts) declare gate: exactly parts_required
+## DISTINCT part rows, all on the chain target (targets[] carries part rows —
+## the multi-part declare shape the audit mapped).
+func _validate_multi_part_flurry(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	var need: int = int(spec.get("parts_required", 3))
+	if targets.size() != need:
+		return _reject("three_parts_required", {"actor": actor.id, "declared": targets.size(), "required": need})
+	var first_id := String((targets[0] as Dictionary).get("id", ""))
+	var seen: Dictionary = {}
+	for row: Variant in targets:
+		var t: Dictionary = row
+		if String(t.get("id", "")) != first_id:
+			return _reject("single_target_required", {"actor": actor.id})
+		var part := String(t.get("part", ""))
+		if seen.has(part):
+			return _reject("distinct_parts_required", {"actor": actor.id, "part": part})
+		seen[part] = true
+	action["rpm"] = need
+	action["rounds"] = need
+	return _batch_strike_gate(actor, action, spec)
+
+
+## adjacent_mob_sweep (controlled_sweep) declare gate. The ">= 2 Mobs adjacent"
+## floor is DECLARE VALIDATION by design — not a STATE-prime extension (the
+## canonical STATE predicate reads one subject's status; a counted-adjacency
+## predicate would widen the R3 prime vocabulary mid-batch — revisit only if a
+## second skill needs one). Every declared row must be a distinct, adjacent
+## Mob; damage is inherited from the action/item ("a single target attack on
+## each"); sweeps never merge (R15) — separate strikes by design.
+func _validate_adjacent_mob_sweep(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if String(action.get("combo_id", "")) != "":
+		return _reject("sweep_cannot_merge", {"actor": actor.id})
+	var adjacent_mobs: int = 0
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or not other.alive or other.removed_from_play:
+			continue
+		if other.team == actor.team or other.category != "Mob":
+			continue
+		if CombatantState.hex_distance(actor.position, other.position) <= 1:
+			adjacent_mobs += 1
+	if adjacent_mobs < 2:
+		return _reject("needs_two_adjacent_mobs", {"actor": actor.id, "adjacent_mobs": adjacent_mobs})
+	var targets: Array = action.get("targets", [])
+	if targets.is_empty():
+		return _reject("target_required", {"actor": actor.id})
+	var limit: int = int(spec.get("mob_limit", 3))
+	if targets.size() > limit:
+		return _reject("too_many_targets", {"actor": actor.id, "declared": targets.size(), "limit": limit})
+	var seen: Dictionary = {}
+	for row: Variant in targets:
+		var t: Dictionary = row
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		if target == null:
+			return _reject("unknown_target", {"target": String(t.get("id", ""))})
+		if seen.has(target.id):
+			return _reject("distinct_targets_required", {"target": target.id})
+		seen[target.id] = true
+		if target.category != "Mob":
+			return _reject("target_not_mob", {"target": target.id})
+	var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+	if (action.get("damage", {}) as Dictionary).is_empty() and not item.has("damage_type"):
+		return _reject("no_damage_source", {"actor": actor.id})
+	action["rpm"] = targets.size()
+	action["rounds"] = targets.size()
+	return _batch_strike_gate(actor, action, spec)
+
+
+## crossing_arc_strike (slice_n_dice) declare gate: the rows must form one of
+## the four G8 modes; the classified mode is stamped onto the action so the
+## resolver tunes the per-mode Bleed without re-deriving.
+func _validate_crossing_arc_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	var mode: String = _crossing_arc_mode(targets)
+	if mode == "":
+		return _reject("invalid_arc_shape", {"actor": actor.id})
+	action["slice_mode"] = mode
+	action["rpm"] = targets.size()
+	action["rounds"] = targets.size()
+	return _batch_strike_gate(actor, action, spec)
+
+
+## The G8 mode off the declared rows ("" = not a legal crossing-arc shape):
+##   single_limbs — one target, two DISTINCT limb rows
+##   single_torso — one target, one torso row
+##   pair_limbs   — two targets, one limb row each
+##   pair_torsos  — two targets, one torso row each
+static func _crossing_arc_mode(targets: Array) -> String:
+	if targets.size() == 1:
+		return "single_torso" if String((targets[0] as Dictionary).get("part", "")).contains("torso") else ""
+	if targets.size() != 2:
+		return ""
+	var a: Dictionary = targets[0]
+	var b: Dictionary = targets[1]
+	var a_part := String(a.get("part", ""))
+	var b_part := String(b.get("part", ""))
+	if String(a.get("id", "")) == String(b.get("id", "")):
+		if _is_limb_part(a_part) and _is_limb_part(b_part) and a_part != b_part:
+			return "single_limbs"
+		return ""
+	if _is_limb_part(a_part) and _is_limb_part(b_part):
+		return "pair_limbs"
+	if a_part.contains("torso") and b_part.contains("torso"):
+		return "pair_torsos"
+	return ""
+
+
+## A "limb" for the crossing arc: arms/legs/hands (forepaws read as arms via
+## the part plan's keys — the G8 forepaw note is a data concern, not an engine
+## vocabulary).
+static func _is_limb_part(part_key: String) -> bool:
+	return part_key.contains("arm") or part_key.contains("leg") \
+		or part_key.contains("hand") or part_key.contains("limb")
+
+
+## pow_strike (heroic_punch) declare gate: one row through the shared gate —
+## notably the UN-bypassed head gate (Exposed/Helpless/Overwhelmed open the
+## Head as usual; the Shock rider then asks Exposed specifically at resolve).
+func _validate_pow_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	return _batch_strike_gate(actor, action, spec)
 
 
 func _effective_cost(actor: CombatantState, kind: String, action: Dictionary, uses_strained: bool) -> int:
@@ -1289,7 +1645,13 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 	# action's identity becomes the actor's last_action_key (a different action's
 	# key overwrites it, so a non-matching action "clears" a pending chain). A
 	# PREP-CHANNEL prime is CONSUMED here — using the armed action spends it.
+	# Batch A: the first target id is recorded alongside for the CHAIN
+	# same-target gate ("" for target-less actions — which therefore also clear
+	# a pending same-target chain, mirroring the key rule).
 	actor.last_action_key = String(action.get("key", String(action.get("item", ""))))
+	var resolved_targets: Array = action.get("targets", [])
+	actor.last_action_target = "" if resolved_targets.is_empty() \
+		else String((resolved_targets[0] as Dictionary).get("id", ""))
 	var eff_prime: Dictionary = _effective_prime(action)
 	if String(eff_prime.get("type", "")) == "prep":
 		actor.armed_primes.erase(String(eff_prime.get("key", "")))
@@ -1316,6 +1678,24 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_conditional_followup(actor, entry, snapshot, forced_queue, spec)
 		"self_stance":
 			return _resolve_self_stance(actor, action, spec)
+		"leap_strike":
+			return _resolve_leap_strike(actor, entry, snapshot, forced_queue, spec)
+		"slip_reposition_strike":
+			return _resolve_slip_reposition_strike(actor, entry, snapshot, forced_queue, spec)
+		"head_finisher":
+			return _resolve_head_finisher(actor, entry, snapshot, forced_queue, spec)
+		"aoe_cone_strike":
+			return _resolve_aoe_cone_strike(actor, entry, snapshot, forced_queue, spec)
+		"downed_finisher":
+			return _resolve_downed_finisher(actor, entry, snapshot, forced_queue, spec)
+		"multi_part_flurry":
+			return _resolve_multi_part_flurry(actor, entry, snapshot, forced_queue, spec)
+		"adjacent_mob_sweep":
+			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+		"crossing_arc_strike":
+			return _resolve_crossing_arc_strike(actor, entry, snapshot, forced_queue, spec)
+		"pow_strike":
+			return _resolve_pow_strike(actor, entry, snapshot, forced_queue, spec)
 		_:
 			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
 
@@ -1330,6 +1710,10 @@ func _strike_via_spec(actor: CombatantState, entry: Dictionary, snapshot: Dictio
 		action["damage"] = {"type": String(spec["damage_type"]), "amount": int(spec.get("amount", 1))}
 	if spec.has("attack_range") and not action.has("attack_range"):
 		action["attack_range"] = int(spec["attack_range"])
+	# Batch A: a spec-carried head-gate bypass (decapitate) rides the action so
+	# the windup/cone re-checks honor it exactly like the declare gate did.
+	if bool(spec.get("bypass_head_gate", false)):
+		action["bypass_head_gate"] = true
 	var synth_entry: Dictionary = {"actor": actor.id, "action": action, "window": entry["window"]}
 	return _resolve_strike(actor, synth_entry, snapshot, forced_queue)
 
@@ -1451,6 +1835,315 @@ func _resolve_self_stance(actor: CombatantState, action: Dictionary, spec: Dicti
 		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
 			"key": String(action.get("key", "dance")), "result": "ok", "rounds": 0},
 	]
+
+
+# ---------------------------------------------------- batch-A skill resolvers
+
+## Shared collapse for a batch-A premise that broke between declare and
+## resolution — the standard invalidated-windup shape (event + Forced Tool),
+## with the escaped target excluded from Collateral exactly like the generic
+## windup path does.
+func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue: Array[Dictionary], original_target: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": reason}]
+	var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
+	events.append(ForcedAction.make_event(actor.id, collapse, "invalidated_windup"))
+	forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {
+		"part": actor.acting_part(clock.tick), "target": original_target,
+	}})
+	return events
+
+
+## leap_strike (pounce): the leap lands and the strike resolves in ONE action.
+## The landing re-validates LIVE at resolution — a body/wall now on the hex
+## collapses the windup ("leap_blocked"), and a target whose snapshot hex left
+## the landing's reach dodged it ("target_left_landing") — both the standard
+## invalidation. R20 holds: a target that slipped into stealth during the
+## windup vanished from the pouncer's fiction. The leap consumes NO move
+## allowance (absorbed into the action — R3 untouched). The strike then rides
+## the normal path with window 0: this resolver's own checks REPLACE the
+## generic windup re-check (the stored reach is the leap envelope, leap+1 —
+## re-running the generic check would let a landing-adjacency miss through).
+func _resolve_leap_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var targets: Array = action.get("targets", [])
+	var target_id: String = "" if targets.is_empty() else String((targets[0] as Dictionary).get("id", ""))
+	var target: CombatantState = combatants.get(target_id)
+	var target_snap: Dictionary = snapshot.get(target_id, {})
+	if target == null or not bool(target_snap.get("alive", false)):
+		return _collapse_batch_windup(actor, "target_dead", forced_queue, target_id)
+	if bool(target_snap.get("stealthed", false)) and target.team != actor.team:
+		return _collapse_batch_windup(actor, "target_stealthed", forced_queue, target_id)
+	var to: Vector2i = actor.position
+	if action.has("leap_to"):
+		var lt: Array = action["leap_to"]
+		to = Vector2i(int(lt[0]), int(lt[1]))
+	var target_pos_raw: Array = target_snap.get("position", [target.position.x, target.position.y])
+	var target_pos := Vector2i(int(target_pos_raw[0]), int(target_pos_raw[1]))
+	if CombatantState.hex_distance(to, target_pos) > 1:
+		return _collapse_batch_windup(actor, "target_left_landing", forced_queue, target_id)
+	var events: Array[Dictionary] = []
+	if to != actor.position:
+		if _movement_blocked_reason(actor, to) != "":
+			return _collapse_batch_windup(actor, "leap_blocked", forced_queue, target_id)
+		var from: Vector2i = actor.position
+		actor.position = to
+		events.append({"type": "pounce_leap", "actor": actor.id,
+			"from": [from.x, from.y], "to": [to.x, to.y],
+			"spaces": CombatantState.hex_distance(from, to)})
+	var synth: Dictionary = {"actor": actor.id, "action": action, "window": 0}
+	events.append_array(_strike_via_spec(actor, synth, snapshot, forced_queue, spec))
+	return events
+
+
+## slip_reposition_strike (slip_through): the leg cuts (rows rebuilt at
+## declare), then the far-side reposition, then the Exposed rider. Cost 1 =
+## instant (R2): no windup re-checks. F5 (of record in the SkillBook spec):
+## "behind" is UNMODELED — far-side hex + Exposed rider approximate it, and no
+## facing is invented.
+func _resolve_slip_reposition_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target != null and target.alive:
+		# Far side: the hex directly across the target from the actor; blocked,
+		# the first free neighbor of the target (fixed order) that is not the
+		# actor's own hex; nowhere free = hold position (the wall rule).
+		var from: Vector2i = actor.position
+		var far: Vector2i = target.position + (target.position - from)
+		var to: Vector2i = from
+		if _movement_blocked_reason(actor, far) == "":
+			to = far
+		else:
+			for neighbor: Vector2i in EnemyAI.HEX_NEIGHBORS:
+				var candidate: Vector2i = target.position + neighbor
+				if candidate == from:
+					continue
+				if _movement_blocked_reason(actor, candidate) == "":
+					to = candidate
+					break
+		if to != from:
+			actor.position = to
+		events.append({"type": "slip_through_reposition", "actor": actor.id,
+			"from": [from.x, from.y], "to": [to.x, to.y], "moved": to != from})
+		var until: int = clock.tick + int(spec.get("exposed_ticks", 2))
+		target.exposed_until_tick = maxi(target.exposed_until_tick, until)
+		events.append({"type": "slip_through_exposed", "actor": actor.id,
+			"target": target.id, "until_tick": until})
+	return events
+
+
+## head_finisher (decapitate): the bypass-gated Head strike, then — when the
+## Head kill really happened (the normal lethal path emitted combatant_died off
+## THIS strike) — the cinematic_kill beat: attributed to the killer and
+## carrying the authored spectacle payout for the HypeEngine
+## spectacle_points hook (PLACEHOLDER R14).
+func _resolve_head_finisher(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target != null and not target.alive:
+		for event: Dictionary in events:
+			if String(event.get("type", "")) == "combatant_died" and String(event.get("combatant", "")) == target.id:
+				events.append({
+					"type": "cinematic_kill", "actor": actor.id, "target": target.id,
+					"skill_key": String(action.get("key", "decapitate")),
+					"spectacle_points": int(spec.get("cinematic_spectacle", 0)),
+				})
+				break
+	return events
+
+
+## aoe_cone_strike (shockwave): membership computed LIVE at resolution (cost 1
+## = instant, R2 — no escape window): every living, in-play combatant on the
+## OTHER team whose hex is in the declared cone — stealthed bodies included
+## (the R20 physicality rule for area geometry) — EXCLUDING the actor's
+## last_action_target (the Overhead Slam victim, the authored L1 core; read
+## here BEFORE _resolve_entry overwrites the chain bookkeeping — load-bearing:
+## shoving the downed victim would break Execution's adjacency). Per member in
+## sorted-id order: one strike round to the first usable leg part (torso-line
+## fallback), the 1-hex knockback away from the actor on a CONNECTED hit, and
+## — Mob category only — Forced Action – Body off the existing rng stream.
+func _resolve_aoe_cone_strike(actor: CombatantState, entry: Dictionary, _snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	var shape: Dictionary = action.get("area_shape", {})
+	var toward_raw: Array = shape.get("toward", [])
+	var size: int = int(shape.get("size", int(spec.get("cone_size", 3))))
+	if toward_raw.size() != 2 or size <= 0:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "malformed_cone"})
+		return events
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	var arc: Dictionary = HexGeometry.to_set(HexGeometry.cone(actor.position, actor.position + dir, size))
+	var excluded: String = actor.last_action_target
+	# Membership FIRST (sorted ids, live positions), then the per-member rounds
+	# — a member's knockback never re-shapes who the wave already caught.
+	var members: Array[CombatantState] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or other.team == actor.team:
+			continue
+		if not other.alive or other.removed_from_play:
+			continue
+		if other.id == excluded or not arc.has(other.position):
+			continue
+		members.append(other)
+	var amount: int = int(spec.get("amount", 1))
+	var condition_id := ConditionEngine.normalize_condition_id(String(spec.get("damage_type", "crushed")))
+	for member: CombatantState in members:
+		var part_key: String = _first_leg_part(member)
+		if part_key == "":
+			continue  # nothing attackable on this body
+		var member_events: Array[Dictionary] = _strike_round(member, part_key, condition_id, amount, action, actor)
+		events.append_array(member_events)
+		if not _hit_landed(member_events, member.id):
+			continue
+		events.append_array(_knockback_away(member, actor))
+		if member.category == "Mob":
+			var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
+			events.append(ForcedAction.make_event(member.id, body_roll, "shockwave"))
+			forced_queue.append({"actor": member.id, "rolled": body_roll, "ctx": {"part": member.acting_part(clock.tick)}})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "shockwave")), "result": "ok", "rounds": members.size()})
+	return events
+
+
+## downed_finisher (execution): re-checks the downed premise LIVE at
+## resolution (standing up mid-windup escapes the finisher — the standard
+## collapse), then the strike through the normal windup path; a landed Torso
+## hit adds the authored Shock T3 (Faint); a Head kill is the normal lethal
+## path (no cinematic beat — that is decapitate's).
+func _resolve_downed_finisher(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var target_id: String = "" if target == null else target.id
+	if target == null or not target.alive:
+		return _collapse_batch_windup(actor, "target_dead", forced_queue, target_id)
+	if not _target_downed(target):
+		return _collapse_batch_windup(actor, "target_not_downed", forced_queue, target_id)
+	var part := String(((action.get("targets", [])[0]) as Dictionary).get("part", ""))
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if part.contains("torso") and target.alive and _hit_landed(events, target.id):
+		var tier: int = int(spec.get("torso_shock_tier", 3))
+		events.append({"type": "execution_shock", "actor": actor.id, "target": target.id, "tier": tier})
+		events.append_array(cond.apply_shock(target, tier, clock.tick, part))
+	return events
+
+
+## multi_part_flurry (thousand_cuts): capture which declared parts ALREADY
+## bled (pre-strike, at resolution — "already had active Bleed" when the cuts
+## land), run the flurry (each landed cut applies/reapplies Bleed through the
+## normal R4 path), then — ALL parts pre-bleeding AND all cuts landed (net
+## damage > 0, the Physical-path landed equivalence) — the authored payoff
+## advances each part one MORE tier on top of the standard reapply advance
+## (the SkillBook note of record), then the free reposition.
+func _resolve_multi_part_flurry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var rows: Array = action.get("targets", [])
+	var pre_bleeding: bool = target != null and not rows.is_empty()
+	if target != null:
+		for row: Variant in rows:
+			if target.condition_tier(String((row as Dictionary).get("part", "")), "bleeding") <= 0:
+				pre_bleeding = false
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target != null and target.alive and pre_bleeding:
+		var landed_count: int = 0
+		for event: Dictionary in events:
+			if String(event.get("type", "")) == "damage_applied" \
+					and String(event.get("combatant", "")) == target.id \
+					and int(event.get("amount", 0)) > 0:
+				landed_count += 1
+		if landed_count >= rows.size():
+			var parts: Array = []
+			for row: Variant in rows:
+				parts.append(String((row as Dictionary).get("part", "")))
+			events.append({"type": "thousand_cuts_tier_advance", "actor": actor.id,
+				"target": target.id, "parts": parts})
+			for pk: Variant in parts:
+				events.append_array(cond.advance(target, String(pk), "bleeding", 1, clock.tick, "thousand_cuts_flurry"))
+	events.append_array(_free_reposition(actor, action, int(spec.get("reposition", 2)), "thousand_cuts_reposition"))
+	return events
+
+
+## crossing_arc_strike (slice_n_dice): every G8 mode strikes ALL its rows at
+## ONE amount (limbs share the limb value; each torso mode its own), so the
+## mode — stamped at declare — just retunes the spec amount and the normal
+## strike path (windup re-checks included) does the rest.
+func _resolve_crossing_arc_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var mode := String(action.get("slice_mode", _crossing_arc_mode(action.get("targets", []))))
+	var tuned: Dictionary = spec.duplicate(true)
+	match mode:
+		"single_torso":
+			tuned["amount"] = int(spec.get("torso_bleed", 3))
+		"pair_torsos":
+			tuned["amount"] = int(spec.get("pair_torso_bleed", 1))
+		_:
+			tuned["amount"] = int(spec.get("limb_bleed", 2))
+	return _strike_via_spec(actor, entry, snapshot, forced_queue, tuned)
+
+
+## pow_strike (heroic_punch): capture the target's Exposed state BEFORE the
+## strike, resolve the committed Crush normally, then the riders on a LANDED
+## Head hit: the crowd POW beat (heroic_punch_pow, carrying the authored
+## spectacle payout through the HypeEngine hook — PLACEHOLDER R14) and — when
+## the target was EXPOSED specifically — the Shock rattle.
+func _resolve_pow_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var was_exposed: bool = target != null and target.exposed_cache
+	var rows: Array = action.get("targets", [])
+	var part: String = "" if rows.is_empty() else String((rows[0] as Dictionary).get("part", ""))
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target != null and part.contains("head") and _hit_landed(events, target.id):
+		events.append({
+			"type": "heroic_punch_pow", "actor": actor.id, "target": target.id,
+			"part": part, "spectacle_points": int(spec.get("pow_spectacle", 0)),
+		})
+		if was_exposed and target.alive:
+			var tier: int = int(spec.get("head_shock_tier", 1))
+			events.append({"type": "heroic_punch_shock", "actor": actor.id, "target": target.id, "tier": tier})
+			events.append_array(cond.apply_shock(target, tier, clock.tick, part))
+	return events
+
+
+## Batch-A knockback (generalized from _dash_knock_aside): shove `target` ONE
+## hex directly AWAY from `from_actor` (the origin→target ray's nearest fixed
+## direction; ties break along the canonical order). Wall / bounds / trash-can
+## / living-body blocked = no displacement (the shove stops honestly) — and NO
+## prone is implied: unlike the dash's knock-aside, a plain knockback only
+## displaces unless a ladder explicitly says otherwise.
+func _knockback_away(target: CombatantState, from_actor: CombatantState) -> Array[Dictionary]:
+	if not target.alive or target.removed_from_play:
+		return []
+	var idx: int = HexGeometry.direction_index(from_actor.position, target.position)
+	if idx < 0:
+		return []  # same hex — no direction to push along
+	var from: Vector2i = target.position
+	var to: Vector2i = from + HexGeometry.DIRECTIONS[idx]
+	var displaced: bool = _movement_blocked_reason(target, to) == ""
+	if displaced:
+		target.position = to
+	return [{
+		"type": "knocked_back", "combatant": target.id, "by": from_actor.id,
+		"from": [from.x, from.y],
+		"to": [to.x, to.y] if displaced else [from.x, from.y],
+		"displaced": displaced,
+	}]
+
+
+## The deterministic "legs" part for the shockwave's low sweep: first
+## non-destroyed part key (sorted) containing "leg"; a legless body takes the
+## wave on its torso line.
+func _first_leg_part(c: CombatantState) -> String:
+	var keys: Array = c.parts.keys()
+	keys.sort()
+	for pk: Variant in keys:
+		if String(pk).contains("leg") and not bool((c.parts[pk] as Dictionary).get("destroyed", false)):
+			return String(pk)
+	return ai.torso_line_part(c)
 
 
 ## The feinted actor's next scheduled action collapses: it is invalidated and
@@ -1753,7 +2446,7 @@ func _windup_invalid_reason(actor: CombatantState, action: Dictionary, item: Dic
 			if CombatantState.hex_distance(a, b) > reach:
 				return "out_of_range"
 		var part_key := String(t.get("part", ""))
-		if part_key.contains("head"):
+		if part_key.contains("head") and not bool(action.get("bypass_head_gate", false)):
 			var targetable: bool = bool(snap.get("exposed", false)) \
 				or bool(snap.get("helpless", false)) \
 				or bool(snap.get("overwhelmed", false))
@@ -1795,7 +2488,9 @@ func _recheck_cone_targets(actor: CombatantState, action: Dictionary, snapshot: 
 				reason = "target_dead"
 			elif not arc.has(Vector2i(int(target_pos[0]), int(target_pos[1]))):
 				reason = "left_area"
-			elif String(t.get("part", "")).contains("head") and not (bool(snap.get("exposed", false))
+			elif String(t.get("part", "")).contains("head") \
+					and not bool(action.get("bypass_head_gate", false)) \
+					and not (bool(snap.get("exposed", false))
 					or bool(snap.get("helpless", false)) or bool(snap.get("overwhelmed", false))):
 				reason = "head_not_targetable"
 		if reason == "":

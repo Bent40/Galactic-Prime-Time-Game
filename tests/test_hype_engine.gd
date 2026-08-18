@@ -41,6 +41,23 @@ func test_kill_raises_hype_and_spikes() -> void:
 	assert_true(int(sim.hype.ledger.get("b", 0)) > 0, "the victim's drama is credited to their ledger")
 
 
+## Batch A: the cinematic_kill beat (decapitate's Head kill) scores through the
+## generic spectacle_points injection hook and credits the KILLER (the event's
+## actor), not the victim. Payout PLACEHOLDER (R14).
+func test_cinematic_kill_scores_through_spectacle_hook() -> void:
+	var sim: CombatSim = make_sim()
+	add_human(sim, "a")
+	add_human(sim, "b", {"position": [1, 0]})
+	var out: Array[Dictionary] = sim.hype.ingest([{
+		"type": "cinematic_kill", "actor": "a", "target": "b", "spectacle_points": 45,
+	}])
+	assert_eq(sim.hype.meter, 45, "the authored payout lands on the meter via the hook")
+	assert_eq(int(sim.hype.ledger.get("a", 0)), 45, "credited to the killer (event actor)")
+	assert_eq(int(sim.hype.ledger.get("b", 0)), 0, "never to the victim")
+	assert_true(out.is_empty() or not has_event(out, "hype_spike"),
+		"45 < the 50 spike threshold — no spike off the base payout alone")
+
+
 func test_zero_damage_scores_nothing() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a")
