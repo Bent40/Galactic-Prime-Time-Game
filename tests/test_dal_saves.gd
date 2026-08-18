@@ -22,7 +22,10 @@ func test_dal_counts_match_validator() -> void:
 
 func test_dal_by_key_lookups() -> void:
 	var dal: Dal = Dal.new()
-	assert_eq(String(dal.skill("reversion").get("exclusive_to", "")), "nikita", "reversion is Nikita's")
+	# G7 RULED (decision #33): no exclusive skills — exclusive_to is retired; reversion
+	# carries an acquisition gate instead (anyone COULD earn it).
+	assert_true(not dal.skill("reversion").has("exclusive_to"), "exclusive_to retired (G7)")
+	assert_true(String(dal.skill("reversion").get("acquisition", "")).length() > 0, "reversion carries an acquisition gate")
 	assert_eq(String(dal.enemy("incinedile").get("category", "")), "Boss", "incinedile lookup")
 	assert_true(dal.item("kunai").has("description"), "kunai lookup (dev chat intact)")
 	assert_true(dal.by_key("skills", "nope").is_empty(), "unknown key -> {}")
