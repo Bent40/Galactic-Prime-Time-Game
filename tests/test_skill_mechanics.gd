@@ -144,20 +144,40 @@ func test_pressure_strike_shock_when_feinted() -> void:
 	assert_true(int(mark.parts["torso"]["hp"]) < 50, "the Bleed strike also landed (50 -> 48)")
 
 
-func test_pressure_strike_no_shock_without_feint() -> void:
+## F4 (ladder pass): pressure_strike's declare-time CHAIN prime is encoded —
+## below the authored L8 release it must follow YOUR OWN Feint on the SAME
+## target (FINAL default #4). The old contract ("declares fine, just no bonus
+## Shock") is retired; the declare now REJECTS out of sequence.
+func test_pressure_strike_rejects_without_feint_chain() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "duelist", {"position": [0, 0]})
 	add_dummy(sim, "mark", [1, 0])
-	declare(sim, "duelist", {
+	add_dummy(sim, "other", [0, 1])
+	var strike: Dictionary = {
 		"kind": "skill", "key": "pressure_strike", "level": 1, "attack_range": 1,
 		"targets": [{"id": "mark", "part": "torso"}],
-	})
-	advance(sim, 2)
-	var ev: Array[Dictionary] = advance(sim)
-	assert_no_event(ev, "pressure_bonus_shock", "no bonus without a pending feint")
+	}
+	# No feint resolved yet -> the chain is unmet at declare.
+	assert_rejected(declare(sim, "duelist", strike.duplicate(true)), "prime_unmet",
+		"pressure_strike without a preceding feint rejects at declare (F4)")
 	var mark: CombatantState = sim.combatants["mark"]
-	assert_eq(mark.shock, 0, "no Shock applied")
-	assert_true(int(mark.parts["torso"]["hp"]) < 50, "the Bleed strike still landed")
+	assert_eq(int(mark.parts["torso"]["hp"]), 50, "no strike happened — the declare never entered the clock")
+	# A feint on a DIFFERENT target does not open the chain (same-target gate).
+	declare(sim, "duelist", {
+		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
+		"targets": [{"id": "other", "part": "torso"}],
+	})
+	advance(sim)
+	assert_rejected(declare(sim, "duelist", strike.duplicate(true)), "prime_unmet",
+		"a feint on another target leaves the mark's chain unmet")
+	# Feinting the mark itself opens it.
+	declare(sim, "duelist", {
+		"kind": "skill", "key": "feint", "level": 1, "attack_range": 1,
+		"targets": [{"id": "mark", "part": "torso"}],
+	})
+	advance(sim)
+	assert_event(declare(sim, "duelist", strike.duplicate(true)), "action_declared",
+		"the chained declare goes through after your own feint on the same target")
 
 
 # ------------------------------------------------------------------ dance (self_stance)

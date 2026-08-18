@@ -122,6 +122,13 @@ var combo_hits_this_tick: Dictionary = {}  # combo_id -> accumulated damage this
 ## CHAIN: the key of this actor's LAST resolved action ("" = none / cleared by a
 ## non-matching action). A chain prime {"after": k} is met when this equals k.
 var last_action_key: String = ""
+## CHAIN same-target gate (content pass batch A): the first target id of this
+## actor's LAST resolved action ("" = none / a target-less action clears it).
+## A chain prime {"after": k, "same_target": true} additionally requires the
+## chained action's first target to equal this. Serialized ONLY while non-empty
+## (the stealthed compat-pin pattern) so a fight that never resolves a targeted
+## action hashes byte-identically to the pre-batch engine.
+var last_action_target: String = ""
 ## STANCE: the stance the actor currently holds ("" = none). Set/cleared by the
 ## sim's set_stance command; a stance prime {"stance": s} is met when this == s.
 var stance: String = ""
@@ -578,6 +585,10 @@ func to_dict() -> Dictionary:
 	# pre-stealth engine (state_hash covered either way).
 	if stealthed:
 		out["stealthed"] = true
+	# Batch-A compat pin (same pattern): the chain same-target key exists ONLY
+	# while a targeted action has resolved — hash-covered whenever it matters.
+	if last_action_target != "":
+		out["last_action_target"] = last_action_target
 	return out
 
 
@@ -631,6 +642,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.largest_single_hit_this_tick = int(data.get("largest_single_hit_this_tick", 0))
 	c.combo_hits_this_tick = (data.get("combo_hits_this_tick", {}) as Dictionary).duplicate(true)
 	c.last_action_key = String(data.get("last_action_key", ""))
+	# Pre-batch-A saves lack the key: "" = no targeted action resolved yet.
+	c.last_action_target = String(data.get("last_action_target", ""))
 	c.stance = String(data.get("stance", ""))
 	c.armed_primes = (data.get("armed_primes", {}) as Dictionary).duplicate(true)
 	c.charges = (data.get("charges", {}) as Dictionary).duplicate(true)

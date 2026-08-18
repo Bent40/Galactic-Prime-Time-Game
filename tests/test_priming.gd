@@ -41,6 +41,42 @@ func test_chain_prime_requires_prior_action_key() -> void:
 	assert_rejected(stale, "prime_unmet", "the chain no longer points at 'opener'")
 
 
+## Batch A: the CHAIN prime's optional same-target gate — {"same_target": true}
+## additionally requires the chained action's first target to equal the actor's
+## last_action_target (FINAL default #4's "must follow ... on the same target").
+func test_chain_prime_same_target_gate() -> void:
+	var sim: CombatSim = make_sim(106)
+	add_human(sim, "a", {"position": [0, 0]})
+	add_human(sim, "b", {"position": [1, 0]})
+	add_human(sim, "c", {"position": [0, 1]})
+	declare(sim, "a", {"kind": "skill", "cost": 1, "key": "opener", "attack_range": 1,
+		"damage": {"type": "crushed", "amount": 1}, "targets": [{"id": "b", "part": "torso"}]})
+	advance(sim)
+	var a: CombatantState = sim.combatants["a"]
+	assert_eq(a.last_action_key, "opener", "the resolved opener records its key")
+	assert_eq(a.last_action_target, "b", "…and its first target id")
+	var chained: Dictionary = {
+		"kind": "skill", "cost": 1, "key": "follow_up",
+		"prime": {"type": "chain", "after": "opener", "same_target": true},
+		"attack_range": 1, "damage": {"type": "crushed", "amount": 1},
+		"targets": [{"id": "c", "part": "torso"}],
+	}
+	assert_rejected(declare(sim, "a", chained.duplicate(true)), "prime_unmet",
+		"a different target leaves the same-target chain unmet")
+	var targetless: Dictionary = chained.duplicate(true)
+	targetless.erase("targets")
+	assert_rejected(declare(sim, "a", targetless), "prime_unmet",
+		"no target at all cannot satisfy a same-target chain")
+	var on_b: Dictionary = chained.duplicate(true)
+	on_b["targets"] = [{"id": "b", "part": "torso"}]
+	assert_event(declare(sim, "a", on_b), "action_declared", "the same target satisfies the gate")
+	# Serialization: the same-target field rides to_dict/from_dict (compat-pinned
+	# — present only while non-empty).
+	var restored: CombatSim = CombatSim.from_dict(sim.to_dict())
+	assert_eq(restored.state_hash(), sim.state_hash(), "hash covers last_action_target")
+	assert_eq((restored.combatants["a"] as CombatantState).last_action_target, "b", "field preserved")
+
+
 # ------------------------------------------------------------------ STANCE
 
 func test_stance_prime_requires_held_stance() -> void:
