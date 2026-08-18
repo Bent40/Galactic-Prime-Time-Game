@@ -676,3 +676,11 @@ NOT yet pinned for two: Vibe Control (→ Presence / Hold the Room), Heroic Punc
 existing sim keys (vibe_control, heroic_punch, slice_n_dice, play_to_the_camera) and
 keeps display names data-sourced — never baked into flavor strings — until the owner
 pins the four.
+
+**Stale-point annotation (2026-08-18, content-pass scoping):** data-hygiene #1/#2's
+"re-express Tactical Roll / Acrobatic Save cooldowns as primes" is SUPERSEDED by the
+later G1 ruling (owner 2026-07-23, addendum R25): both carry the movement-forfeit
+cost, explicitly NO prime. The engine implements G1. Also noted for the 6-10 band
+(does not affect L1-4 implementation): R1's "Intercept/Iron Stance fold into Brace
+L8/L9" conflicts with the later G6-round-3 Gemstone merge (Intercept Lv5 + Brace
+Lv3 -> Iron Stance, parents consumed) — OWNER CALL needed before any L6+ authoring.
