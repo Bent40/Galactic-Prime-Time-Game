@@ -5,9 +5,21 @@
 
 ## Done
 
-- **Suite: 570 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
-  gate (seeds · import · suite · slice smoke · balance WIN); branch
-  `claude/session-continuation-next-steps-mpycyj` and `main` in lockstep at `927fd0e`.
+- **Suite: 698 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+  gate; branches in lockstep at `dc63b07`.
+- **THE CONTENT PASS IS COMPLETE (2026-08-18):** 28 skills implemented across four
+  batches (A Chains&Strikes · B Guardians&Grapplers + the passover import ids 46-50 ·
+  C Medics&Minds · D Casters&Showfolk — both slip candidates landed), on 11 new
+  archetypes; 35 skills now in SkillBook; the 13 deferred each name their unblock
+  (terrain/water/locks/hearing/crafting/zones/telepathy-ladder/reversion). The
+  FACING primitive shipped between A and B (decision #33/R30: arcs, R20 vision
+  cones, true behind). **Skill TIERS ruled + enabled (decisions #34/#35, R31):**
+  Tier 1 = L1-5; past 5 = MERGE/ABSORB/LINEAR per skill; 9 recipes authored
+  (M1 shipped + M2-M8 + M8's twin), 4 absorptions (flat L6-8 unlock, per-absorb
+  min fodder), 3 Mod-Center broad-only offers (phantom_grasp BLESSED + renamed;
+  the_unseen + the_long_con awaiting blessing); tier-3 openness test-proven;
+  v2 delta assessed — nothing touched the skill canon (Camera-Call supersession
+  recorded R11 #13, engine swap KAN-7).
 - **Wave 4 — KAN-5 proper (2026-08-11):** deterministic A* pathfinding
   (`pathing.gd` — concave-wall stranding retired, open-space greedy byte-compat);
   doors + the room GRAPH (R29 — exploration beats, choose_exit, DAG v1, the demo

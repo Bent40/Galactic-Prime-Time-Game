@@ -32,8 +32,16 @@ directly to `main` — fetch + merge origin/main before pushing.
   Still open there: R20's own deferred phases (facing cones, hearing/alert,
   disguise), objects beyond trash cans, owner-authored room layouts (all
   wall/can/door positions PLACEHOLDER).
-- **Content pass:** the ~37 unimplemented skills (incl. aura_reading on the new
-  stance substrate, Intercept, Iron Stance's retarget-guard archetype).
+- ~~Content pass~~ **DONE 2026-08-18 at `dc63b07`** (28 implemented, 13 deferred
+  with named unblocks; facing primitive + tier machinery shipped alongside).
+  Follow-ups queued: **tier-2 rung authoring** (the merged skills' own L1-5 —
+  the 15 re-mapped threshold rows await placement); the two unblessed Mod-Center
+  offers; the run_state carry-sanitizer gap for the new combat fields
+  (guard/forced_save/conceal/channeling/held_by — self-healing sweeps cover it,
+  a small dedicated story closes it properly, run_state was story-frozen);
+  owner R14 glances flagged in Batch C/D notes (field_triage L3 range, frost's
+  Crushed coupling, poison impact + vibe grudge magnitudes, intercept guard
+  expiry).
 - **KAN-7 (parked — needs owner pricing):** threshold-dice upgrade economy,
   Gemstone Bronze pricing, R6 XP, patron-roster migration, cap enforcement.
 
