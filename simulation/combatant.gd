@@ -187,6 +187,22 @@ var feint_by: String = ""
 var dancing: bool = false
 ## The Charm-effect bonus granted while dancing (per the dance level table).
 var dance_charm: int = 0
+## retarget_guard reaction form (intercept, batch B): the ARMED guard —
+## {"ally": String, "range": int, "reduction": int}, recorded when the guard
+## declare resolves (alongside armed_primes["intercept"], the PREP substrate).
+## {} = no guard. While armed, a hit AIMED at the guarded ally within `range`
+## retargets to this combatant at the top of _strike_round, costing the
+## reaction slot per hit. Serialized ONLY while non-empty (the stealthed
+## compat-pin pattern) so a guard-free fight hashes byte-identically.
+var guard: Dictionary = {}
+## retarget_guard stance form (iron_stance, batch B): the held stance —
+## {"anchor": [q, r], "radius": int, "reduction": int, "types": [condition ids]}.
+## {} = not held. While held (position == anchor, not Prone — the CombatSim
+## _guard_checks sweep enforces the dance-exit pattern), hits AIMED at ANY
+## adjacent ally retarget to this combatant (no reaction cost — the stance's
+## value) and the NON-consumed flat reduction applies to covered-type damage
+## this combatant takes. Serialized ONLY while non-empty (same compat pin).
+var iron_stance: Dictionary = {}
 
 # Grapple (R9)
 var grappling: String = ""
@@ -300,6 +316,14 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 		# automatically through parts.duplicate(true) in to_dict/from_dict.
 		if p.has("armor"):
 			c.parts[key]["armor"] = int(p["armor"])
+		# Batch B (death_grip_jaws — the R9 grip gate parameterized): a
+		# bite-capable part substitutes for hands in the skill-grapple grip
+		# check (data-driven, seed/race layout). Added only when the seed
+		# specifies it (the `armor` only-when-present idiom), so existing part
+		# dicts and their serialized hashes are unchanged; round-trips through
+		# parts.duplicate(true) automatically.
+		if p.has("bite_capable"):
+			c.parts[key]["bite_capable"] = bool(p["bite_capable"])
 
 	for item_spec: Variant in spec.get("items", []) as Array:
 		var item: Dictionary = {}
@@ -467,6 +491,19 @@ func usable_hands(tick: int) -> int:
 	return count
 
 
+## Batch B (death_grip_jaws): the first usable bite-capable part in sorted key
+## order, "" when none. The jaws-variant grip gate reads this instead of
+## usable_hands — a bite-capable head substitutes for hands (R9 parameterized).
+func bite_part(tick: int) -> String:
+	var keys: Array = parts.keys()
+	keys.sort()
+	for part_key: Variant in keys:
+		var key := String(part_key)
+		if bool((parts[key] as Dictionary).get("bite_capable", false)) and part_usable(key, tick):
+			return key
+	return ""
+
+
 ## Deterministic "acting part" for an action: first usable hand, else first part.
 func acting_part(tick: int) -> String:
 	var keys: Array = parts.keys()
@@ -602,6 +639,14 @@ func to_dict() -> Dictionary:
 	# while a targeted action has resolved — hash-covered whenever it matters.
 	if last_action_target != "":
 		out["last_action_target"] = last_action_target
+	# Batch-B compat pins (the same only-when-set pattern): the intercept guard
+	# and the iron stance exist ONLY while armed/held — a fight that never uses
+	# the retarget_guard family serializes byte-identically to the pre-batch
+	# engine (hash-covered whenever either is live).
+	if not guard.is_empty():
+		out["guard"] = guard.duplicate(true)
+	if not iron_stance.is_empty():
+		out["iron_stance"] = iron_stance.duplicate(true)
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -687,4 +732,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.stealthed = bool(data.get("stealthed", false))
 	# Pre-facing saves lack the key: 0 (E) is the documented R30 default.
 	c.facing = int(data.get("facing", 0))
+	# Pre-batch-B saves lack both keys: {} = no guard armed / no stance held.
+	c.guard = (data.get("guard", {}) as Dictionary).duplicate(true)
+	c.iron_stance = (data.get("iron_stance", {}) as Dictionary).duplicate(true)
 	return c

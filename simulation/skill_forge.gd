@@ -12,13 +12,14 @@ extends RefCounted
 ## implementation is deliberately NOT required: from_spec normalizes any
 ## {key, level} row with no KNOWN_KEYS gate (simulation/combatant.gd — proven
 ## by test_loadout_skills' un-catalogued "mystery_move" grant), so a roster
-## can own an unimplemented skill as data. That is load-bearing here: neither
-## intercept (G6-approved, content pass pending) nor iron_stance (the mutation
-## result) is implemented today. NOTE the seed-data files (recruit_loadouts
-## _meta) restrict THEIR rows to implemented keys — an authoring policy, not
-## an engine constraint. Duplicate keys are already illegal upstream
-## (Creation / validate_seeds); the first row with a key is the grant read,
-## mirroring CombatantState.skill_level().
+## can own an unimplemented skill as data. (Batch B: intercept AND iron_stance
+## are now IMPLEMENTED — the retarget_guard archetype — so the shipped recipe
+## yields a REAL result; the keys-and-levels-only contract stays, unchanged,
+## for future recipes whose results land before their content pass.) NOTE the
+## seed-data files (recruit_loadouts _meta) restrict THEIR rows to implemented
+## keys — an authoring policy, not an engine constraint. Duplicate keys are
+## already illegal upstream (Creation / validate_seeds); the first row with a
+## key is the grant read, mirroring CombatantState.skill_level().
 ##
 ## RECIPE SHAPE (data/skill_mutations.json "mutations" rows):
 ##   { "key": String, "name": String,

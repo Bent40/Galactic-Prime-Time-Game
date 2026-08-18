@@ -209,6 +209,13 @@ func _post(events: Array[Dictionary]) -> void:
 	# hype/tags/evidence see stealth_broken too. No-op (no events, no rng, no
 	# state) while nobody is stealthed — the legacy compat pin.
 	events.append_array(_stealth_checks(events))
+	# Batch B (retarget_guard) — the guard sweep: every command re-checks every
+	# held iron stance (moved off the anchor / Prone / downed breaks it — the
+	# dance-exit pattern) and every armed intercept guard (guardian or guarded
+	# ally down clears it). Runs BEFORE the broadcast plane ingests so
+	# hype/tags/evidence see the break events too. No-op (no events, no rng,
+	# no state) while nobody holds either — the legacy compat pin.
+	events.append_array(_guard_checks())
 	events.append_array(hype.ingest(events))
 	# Tag detection runs AFTER hype so Scene Stealer sees hype_goal_completed /
 	# hype_camera_call_started. Its tag_* outputs are system events (no
@@ -832,6 +839,50 @@ func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 		if observer != "":
 			c.stealthed = false
 			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "seen", "observer": observer})
+	return out
+
+
+## Batch B (retarget_guard) — the per-command guard sweep. IRON STANCE breaks
+## the moment its holder is off the anchor hex (ANY displacement — a voluntary
+## step and an involuntary knockback both end "holding your ground"), Prone,
+## or down: iron_stance_ended carries the reason (moved / prone / downed).
+## The INTERCEPT guard clears when the guardian or the guarded ally goes down
+## (guard_ended, reason downed / ally_downed) — the armed_primes entry clears
+## with it, keeping the PREP substrate in sync. Deterministic sorted-id order;
+## zero rng; a single pass is complete (breaking one guard never changes
+## another's premise).
+func _guard_checks() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not c.iron_stance.is_empty():
+			var reason: String = ""
+			if not c.alive or c.removed_from_play:
+				reason = "downed"
+			elif bool(c.statuses.get("prone", false)):
+				reason = "prone"
+			else:
+				var anchor_raw: Array = c.iron_stance.get("anchor", [])
+				if anchor_raw.size() != 2 \
+						or c.position != Vector2i(int(anchor_raw[0]), int(anchor_raw[1])):
+					reason = "moved"
+			if reason != "":
+				c.iron_stance = {}
+				out.append({"type": "iron_stance_ended", "combatant": c.id, "reason": reason})
+		if not c.guard.is_empty():
+			var guard_reason: String = ""
+			if not c.alive or c.removed_from_play:
+				guard_reason = "downed"
+			else:
+				var ally: CombatantState = combatants.get(String(c.guard.get("ally", "")))
+				if ally == null or not ally.alive or ally.removed_from_play:
+					guard_reason = "ally_downed"
+			if guard_reason != "":
+				c.guard = {}
+				c.armed_primes.erase("intercept")
+				out.append({"type": "guard_ended", "guardian": c.id, "reason": guard_reason})
 	return out
 
 

@@ -1420,5 +1420,166 @@
     "unlock_requirements": {},
     "effects": [],
     "acquisition": "G7 acquisition gate (no exclusive skills, owner 2026-08-18): survive being the subject of the experiment the song commemorates - anyone COULD earn it; historically nikita's. PROVISIONAL wording, owner may rephrase."
+  },
+  {
+    "id": 46,
+    "key": "intercept",
+    "name": "Intercept",
+    "description": "Not on my watch.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 4. Prime: at the start of a Clock, declare a guard on one adjacent ally.",
+    "range": "1",
+    "target": "Ally",
+    "effect": "When your guarded ally would be hit while within your guard range (base: adjacent), you take the hit instead — your resistances apply and any conditions land on you.",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 guard range"
+      },
+      {
+        "level": 3,
+        "text": "-1 physical damage taken when intercepting"
+      },
+      {
+        "level": 4,
+        "text": "+2 guard range"
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "key": "death_grip_jaws",
+    "name": "Death Grip Jaws",
+    "description": "No hands? No problem.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 3. A bite-capable head. No hands needed.",
+    "range": "1",
+    "target": "Single Target",
+    "effect": "Bite-grapple: grapple with your jaws using the standard grapple rules (automatic if your Physique ≥ theirs, otherwise Forced Action — Body). This is how a body without hands grapples.",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "The initial bite deals 1 Bleed"
+      },
+      {
+        "level": 3,
+        "text": "May drag the hold 1 space per Moment"
+      },
+      {
+        "level": 4,
+        "text": "The initial bite deals 2 Bleed"
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "key": "field_triage",
+    "name": "Field Triage",
+    "description": "Walk it off. I'll make sure you can.",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Mind 3. Consumes a bandage or kit charge. Adjacent ally.",
+    "range": "1",
+    "target": "Ally",
+    "effect": "Treat an adjacent ally's condition: delay one advancement.",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Clock of delay"
+      },
+      {
+        "level": 3,
+        "text": "Treat at 1 space of range"
+      },
+      {
+        "level": 4,
+        "text": "+2 Clocks of delay"
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "key": "iron_stance",
+    "name": "Iron Stance",
+    "description": "The bodyguard stopped moving. Start worrying.",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Physique 5. Declare at the start of a Moment; the stance ends the instant you move or fall Prone.",
+    "range": "1",
+    "target": "Self",
+    "effect": "Hold your ground: any attack targeting an ally adjacent to you retargets to you instead, and your bracing persists — reduce Crush or Burn damage taken in the stance by 1.",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Stance damage reduction -2 (Crush/Burn)"
+      },
+      {
+        "level": 3,
+        "text": "+1 protected radius"
+      },
+      {
+        "level": 4,
+        "text": "The reduction extends to Bleed and Chill"
+      }
+    ],
+    "acquisition": "Gemstone mutation (G6 owner ruling 2026-07-23; book §4.5 canonical example): merge Intercept Lv 5 + Brace Lv 3 at the Skill Gemstone — both parents consumed, arrives at Lv 1 (data/skill_mutations.json 'iron_stance'). Not learnable directly."
+  },
+  {
+    "id": 50,
+    "key": "play_to_the_camera",
+    "name": "Play to the Camera",
+    "description": "Smile, everyone — we're live.",
+    "primary_stat": "charm",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Charm 3. Prime: spend a Camera Call stack.",
+    "range": "Self",
+    "target": "All allies",
+    "effect": "Turn your spotlight on the whole team: every party member's audience gains count double until your next Moment (the camera pans across the team).",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "+1 Moment of surge duration"
+      },
+      {
+        "level": 3,
+        "text": "+2 Moments of surge duration"
+      },
+      {
+        "level": 4,
+        "text": "+3 Moments of surge duration"
+      }
+    ]
   }
 ]
