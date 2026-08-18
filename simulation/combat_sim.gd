@@ -409,6 +409,7 @@ func _advance_tick() -> Array[Dictionary]:
 		for id: Variant in ids:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
 		events.append_array(_antagonism_decay())
+		events.append_array(_pattern_read_expiry())
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
 	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
@@ -456,6 +457,27 @@ func _antagonism_decay() -> Array[Dictionary]:
 			"type": "antagonism_changed", "actor": c.id, "source": "decay",
 			"factor": decay, "scores": c.antagonism.duplicate(true),
 		})
+	return events
+
+
+## Batch C (read_the_pattern): the reveal lives "until the next Clock reset"
+## verbatim — this reset sweep clears every live reveal and says so (one
+## pattern_read_expired per actor->target pair, sorted both ways —
+## deterministic). No-op (no events, no state) while nobody holds a reveal —
+## the legacy compat pin, mirroring the stealth/guard sweeps.
+func _pattern_read_expiry() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.pattern_reads.is_empty():
+			continue
+		var targets: Array = c.pattern_reads.keys()
+		targets.sort()
+		for target_id: Variant in targets:
+			events.append({"type": "pattern_read_expired", "actor": c.id, "target": String(target_id)})
+		c.pattern_reads = {}
 	return events
 
 

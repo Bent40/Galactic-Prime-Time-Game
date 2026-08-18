@@ -28,6 +28,31 @@ const TOOL_TABLE: Array[String] = [
 	"overextension",   # next scheduled action delayed +1 Moment
 ]
 
+## Batch C (acrobatic_save — the forced_roll_save choose rule): the AUTHORED
+## severity ranking over the BODY table, higher = worse. The save keeps the
+## LOWEST-severity roll; a tie keeps the original (earliest) die. Ordering
+## rationale (PLACEHOLDER-family judgment, R14 — pinned so the choose rule is
+## deterministic and documented, revisit with the numbers pass):
+## tear_something (permanent HP loss / condition escalation) > condition_surge
+## (a real tier advance) > shock_spike (climbs the R13 ladder) > lock_up (a
+## part gone 3 Moments) > drop (an item, recoverable) > stumble (Exposed one
+## beat). Tool consequences are deliberately unranked — the save is BODY-only
+## below the L6 "any fumble" threshold rung.
+const BODY_SEVERITY: Dictionary = {
+	"tear_something": 6,
+	"condition_surge": 5,
+	"shock_spike": 4,
+	"lock_up": 3,
+	"drop": 2,
+	"stumble": 1,
+}
+
+
+## Severity of a rolled BODY consequence for the save's choose rule; unknown
+## consequences rank hardest (never silently preferred).
+static func save_severity(rolled: Dictionary) -> int:
+	return int(BODY_SEVERITY.get(String(rolled.get("consequence", "")), 100))
+
 
 ## Rolls the d6 on the named table. The caller emits the event (with reason)
 ## and defers apply_consequence() until after all resolutions this tick (R1).

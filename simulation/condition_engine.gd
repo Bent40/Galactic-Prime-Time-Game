@@ -340,17 +340,31 @@ func resolve(c: CombatantState, part_key: String, condition_id: String, reason: 
 	return events
 
 
-func delay(c: CombatantState, part_key: String, condition_id: String) -> Array[Dictionary]:
+## Delay a condition's advancement `clocks` Clock resets (default 1 — every
+## pre-batch-C caller keeps the exact legacy behavior AND serialization: the
+## multi-Clock surplus rides an only-when-set "delay_clocks" key on the
+## instance, consumed one reset at a time by on_clock_reset; timers already
+## carry an integer "delay" that stacks naturally). Batch C's ally_treatment
+## (seal_the_wound / field_triage L2+ ladders) is the first multi-Clock caller.
+func delay(c: CombatantState, part_key: String, condition_id: String, clocks: int = 1) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	clocks = maxi(1, clocks)
 	var instance: Dictionary = c.condition_instance(part_key, condition_id)
 	var found: bool = false
 	if not instance.is_empty():
 		instance["delayed"] = true
+		if clocks > 1:
+			# Only-when-set (the armor/bite_capable idiom): a single-Clock delay
+			# never grows the key, so legacy hashes stand.
+			instance["delay_clocks"] = int(instance.get("delay_clocks", 0)) + (clocks - 1)
 		found = true
-		events.append({"type": "condition_delayed", "combatant": c.id, "part": part_key, "condition": condition_id})
+		var delayed_event: Dictionary = {"type": "condition_delayed", "combatant": c.id, "part": part_key, "condition": condition_id}
+		if clocks > 1:
+			delayed_event["clocks"] = clocks  # only-when-set: legacy event shape stands
+		events.append(delayed_event)
 	for timer: Dictionary in c.timers:
 		if String(timer.get("condition", "")) == condition_id and String(timer.get("kind", "")) != "bleed_out":
-			timer["delay"] = int(timer.get("delay", 0)) + 1
+			timer["delay"] = int(timer.get("delay", 0)) + clocks
 			found = true
 			events.append({"type": "timer_delayed", "combatant": c.id, "kind": String(timer.get("kind", ""))})
 	if not found:
@@ -566,8 +580,19 @@ func on_clock_reset(c: CombatantState, tick: int) -> Array[Dictionary]:
 				instance["activation_delay"] = int(instance["activation_delay"]) - 1
 				continue
 			if bool(instance.get("delayed", false)):
-				# A Delayed condition skips exactly one advancement (R4).
-				instance["delayed"] = false
+				# A Delayed condition skips exactly one advancement (R4). A
+				# multi-Clock delay (batch C ally_treatment) banks the surplus in
+				# the only-when-set "delay_clocks" counter: each reset consumes
+				# one skip, and the key is erased at zero so the instance shape
+				# returns to the legacy single-delay form.
+				var extra_delay: int = int(instance.get("delay_clocks", 0))
+				if extra_delay > 0:
+					if extra_delay - 1 <= 0:
+						instance.erase("delay_clocks")
+					else:
+						instance["delay_clocks"] = extra_delay - 1
+				else:
+					instance["delayed"] = false
 				events.append({"type": "condition_delay_consumed", "combatant": c.id, "part": String(part_key), "condition": condition_id})
 				continue
 			if bool(spread.get("resolves_if_not_reapplied", false)):
