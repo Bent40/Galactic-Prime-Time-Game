@@ -89,6 +89,41 @@ func has_windup_for(actor_id: String) -> bool:
 	return false
 
 
+## Batch B (counter_surge — the interrupt cut): the actor's FIRST pending
+## windup entry (window > 0), deep-copied; {} when none. The action-cap rule
+## (one scheduled action at a time) makes "first" unambiguous in practice.
+func windup_entry_for(actor_id: String) -> Dictionary:
+	for entry: Dictionary in queue:
+		if String(entry["actor"]) == actor_id and int(entry["window"]) > 0:
+			return entry.duplicate(true)
+	return {}
+
+
+## Batch B (counter_surge): RESCHEDULE the actor's first pending windup entry
+## to `new_tick` (the remaining-cost cut, R2 timeline intact — the entry keeps
+## its seq, window and action; only the due tick moves). Mechanical only — the
+## caller owns the game-rule arithmetic. Returns true when an entry moved.
+## Serialized-consistent for free: queue entries are plain dicts in to_dict.
+func reschedule_windup_for(actor_id: String, new_tick: int) -> bool:
+	for entry: Dictionary in queue:
+		if String(entry["actor"]) == actor_id and int(entry["window"]) > 0:
+			entry["tick"] = new_tick
+			return true
+	return false
+
+
+## Batch B (counter_surge — the full collapse): remove and return the actor's
+## first pending windup entry ({} when none). Targeted, unlike cancel_for —
+## a same-tick 0-cost entry of the same actor is never collateral.
+func cancel_windup_for(actor_id: String) -> Dictionary:
+	for i: int in range(queue.size()):
+		var entry: Dictionary = queue[i]
+		if String(entry["actor"]) == actor_id and int(entry["window"]) > 0:
+			queue.remove_at(i)
+			return entry
+	return {}
+
+
 func to_dict() -> Dictionary:
 	return {
 		"tick": tick,

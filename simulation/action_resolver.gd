@@ -214,6 +214,7 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
 		var arch := String(spec.get("archetype", ""))
 		if arch == "committed_strike" or arch == "conditional_followup" \
+				or arch == "interrupt_counter" \
 				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
 		if arch == "strike":
@@ -296,12 +297,16 @@ func _stack_count(actor: CombatantState, resource: String) -> int:
 
 
 ## STATE-POSITION status read: "exposed"/"helpless" use the live caches the rest
-## of the resolver reads; everything else is a plain statuses flag.
+## of the resolver reads; "winding_up" (batch B — counter_surge's gate) asks the
+## Clock for a pending windup entry (the data row's "currently executing a 2+
+## Moment cost action"); everything else is a plain statuses flag.
 func _has_status(c: CombatantState, status: String) -> bool:
 	if status == "exposed":
 		return c.exposed_cache
 	if status == "helpless":
 		return c.is_helpless(clock.tick)
+	if status == "winding_up":
+		return clock.has_windup_for(c.id)
 	return bool(c.statuses.get(status, false))
 
 
@@ -717,8 +722,9 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 		return _reject("invalid_grapple_target", {"actor": actor.id})
 	if actor.grappling != "":
 		return _reject("already_grappling", {"actor": actor.id})
-	if actor.usable_hands(clock.tick) < 1:
-		return _reject("no_free_hand", {"actor": actor.id})
+	var grip_reason: String = _grip_unmet(actor, "hands")
+	if grip_reason != "":
+		return _reject(grip_reason, {"actor": actor.id})
 	# Wave 2b: a death-spin grab names its grabbing hand (the boss's
 	# non-flamethrower hand — EnemyAI.grab_hand_part). A disabled grab hand
 	# blocks the grab OUTRIGHT, even when the R9 "any free hand" gate above
@@ -745,6 +751,23 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 			and _pull_hex_blocked(actor, target):
 		return _reject("pull_blocked", {"actor": actor.id, "target": target.id})
 	return []
+
+
+## The R9 grip gate, PARAMETERIZED (batch B — death_grip_jaws): "" when the
+## actor can hold with the named grip, else the rejection reason. "hands" is
+## the unchanged R9 free-hand gate (the base grapple kind and pressure_hold);
+## "bite" substitutes a usable bite-capable part (data-driven `bite_capable`
+## on the part — carried additively by CombatantState.from_spec, only when the
+## seed/spec declares it) — this is what unlocks grappling for HANDLESS
+## layouts. NOTE: the shipped races.json animal TEMPLATE keeps arm-keyed
+## forelimbs (they already pass the hands gate) and is deliberately unstamped
+## — static_data is hash-covered, so stamping the template would move every
+## legacy fight hash (the test_stealth pins); an authored handless layout
+## declares the flag on its own part plan.
+func _grip_unmet(actor: CombatantState, grip: String) -> String:
+	if grip == "bite":
+		return "" if actor.bite_part(clock.tick) != "" else "no_bite_part"
+	return "" if actor.usable_hands(clock.tick) >= 1 else "no_free_hand"
 
 
 ## Is the range-2 grab's drag destination (EnemyAI.grab_pull_hex) occupied by
@@ -832,6 +855,12 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_crossing_arc_strike(actor, action, spec)
 		"pow_strike":
 			return _validate_pow_strike(actor, action, spec)
+		"retarget_guard":
+			return _validate_retarget_guard(actor, action, spec)
+		"skill_grapple":
+			return _validate_skill_grapple(actor, action, spec)
+		"interrupt_counter":
+			return _validate_interrupt_counter(actor, action, spec)
 	return []
 
 
@@ -1127,6 +1156,92 @@ func _validate_pow_strike(actor: CombatantState, action: Dictionary, spec: Dicti
 	var targets: Array = action.get("targets", [])
 	if targets.size() != 1:
 		return _reject("single_target_required", {"actor": actor.id})
+	return _batch_strike_gate(actor, action, spec)
+
+
+# --------------------------------------------- batch-B skill declare gates
+
+## retarget_guard declare gate (batch B). Reaction form (intercept): exactly one
+## target row naming a living ALLY (same NON-EMPTY team — teamless combatants
+## have no allies to guard, mirroring the _opponents hostility predicate) other
+## than the actor, ADJACENT at declare ("declare a guard on one adjacent ally";
+## guard_range then governs the interception distance per hit). Stance form
+## (iron_stance): no target; declaring while Prone rejects — the stance would
+## break the instant it started ("ends the instant you move or fall Prone").
+func _validate_retarget_guard(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if String(spec.get("form", "")) == "stance":
+		if bool(actor.statuses.get("prone", false)):
+			return _reject("prone", {"actor": actor.id})
+		return []
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var ally: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if ally == null or not ally.alive or ally.removed_from_play:
+		return _reject("unknown_target", {"target": String((targets[0] as Dictionary).get("id", ""))})
+	if ally.id == actor.id:
+		return _reject("cannot_guard_self", {"actor": actor.id})
+	if actor.team == "" or ally.team != actor.team:
+		return _reject("target_not_ally", {"actor": actor.id, "target": ally.id})
+	if CombatantState.hex_distance(actor.position, ally.position) > 1:
+		return _reject("ally_not_adjacent", {"actor": actor.id, "target": ally.id})
+	return []
+
+
+## skill_grapple declare gate (batch B — pressure_hold / death_grip_jaws).
+## HOLD mode (default): the R9 grapple gates with the grip PARAMETERIZED
+## (spec "grip": "hands" = the unchanged free-hand gate, "bite" = a usable
+## bite-capable part — death_grip_jaws' unlock for handless layouts), the R9
+## size gate (<= 1 size larger) and the spec reach. DRAG mode (the action
+## carries "drag_to" while ALREADY holding the target): the L2+ drag ladder —
+## destination within the level's drag distance; the cost is NORMALIZED to 1
+## (the data rows' "N spaces per Moment": one Moment moves the pair up to N
+## hexes), stamped before declare() stores its deep copy.
+func _validate_skill_grapple(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var target: CombatantState = combatants.get(String(action.get("target", "")))
+	if action.has("drag_to"):
+		if target == null or not target.alive or actor.grappling != target.id:
+			return _reject("not_holding_target", {"actor": actor.id})
+		var limit: int = int(spec.get("drag", 0))
+		if limit <= 0:
+			return _reject("drag_not_available", {"actor": actor.id, "level": int(action.get("level", 1))})
+		var dt: Array = action["drag_to"]
+		if dt.size() != 2:
+			return _reject("invalid_drag_destination", {"actor": actor.id})
+		var to := Vector2i(int(dt[0]), int(dt[1]))
+		var spaces: int = CombatantState.hex_distance(actor.position, to)
+		if spaces < 1 or spaces > limit:
+			return _reject("drag_out_of_range", {"actor": actor.id, "limit": limit, "spaces": spaces})
+		action["cost"] = 1  # normalized: the drag is a 1-Moment action (data rows)
+		return []
+	if target == null or not target.alive:
+		return _reject("invalid_grapple_target", {"actor": actor.id})
+	if actor.grappling != "":
+		return _reject("already_grappling", {"actor": actor.id})
+	var grip_reason: String = _grip_unmet(actor, String(spec.get("grip", "hands")))
+	if grip_reason != "":
+		return _reject(grip_reason, {"actor": actor.id})
+	# R9: target no more than one size larger (the base grapple's gate, kept).
+	if target.size_rank() - actor.size_rank() > 1:
+		return _reject("target_too_large", {"actor": actor.id, "target": target.id})
+	if CombatantState.hex_distance(actor.position, target.position) > int(spec.get("attack_range", 1)):
+		return _reject("out_of_range", {"target": target.id, "range": int(spec.get("attack_range", 1))})
+	return []
+
+
+## interrupt_counter declare gate (batch B — counter_surge): one target row
+## through the shared strike gate (reach 1, part legality, head gate). The
+## mid-windup STATE prime already rejected in _prime_unmet (runs first). The
+## strike inherits the action/item damage; with neither supplied the basic
+## unarmed strike (crushed 1 — the _dash_counter convention) is stamped at
+## declare so the stored command is complete.
+func _validate_interrupt_counter(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+	if (action.get("damage", {}) as Dictionary).is_empty() and not item.has("damage_type"):
+		action["damage"] = {"type": "crushed", "amount": 1}
 	return _batch_strike_gate(actor, action, spec)
 
 
@@ -1564,6 +1679,25 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 		"combatant": target.id, "part": part_key,
 		"actors": actors, "force": sum_force, "robustness": robustness, "net": reduced,
 	})
+	# retarget_guard stance (iron_stance, batch B): the merged hit is ONE wound
+	# — a covered-type component lets the persistent (NON-consumed) stance
+	# reduction apply once, exactly like the brace below. Applied before brace
+	# (the solo-path order), while the stance genuinely holds.
+	if reduced > 0 and _iron_stance_live(target):
+		var stance_types: Array = target.iron_stance.get("types", [])
+		var stance_covered: bool = false
+		for m: Variant in connected:
+			if stance_types.has(String((m as Dictionary)["condition"])):
+				stance_covered = true
+		var stance_red: int = int(target.iron_stance.get("reduction", 0))
+		if stance_covered and stance_red > 0:
+			var before_stance: int = reduced
+			reduced = maxi(0, reduced - stance_red)
+			events.append({
+				"type": "iron_stance_reduced", "combatant": target.id, "part": part_key,
+				"reduction": stance_red, "condition": String((connected[0] as Dictionary)["condition"]),
+				"damage_before": before_stance, "damage_after": reduced,
+			})
 	# self_guard (brace): the merged hit is ONE wound — a Crush/Burn component
 	# lets the buffered guard absorb it once, exactly like a solo hit.
 	var crush_or_burn: bool = false
@@ -1580,6 +1714,11 @@ func _merge_apply(group: Dictionary, target: CombatantState) -> Array[Dictionary
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
+	# intercept L3+ (batch B): the INTERCEPTED merged hit is ONE hit — the
+	# per-interception flat reduction applies once (all merged members are
+	# Physical by construction, matching the solo path's Physical-only rule).
+	if reduced > 0 and int(group.get("intercept_reduction", 0)) > 0:
+		reduced = maxi(0, reduced - int(group["intercept_reduction"]))
 	# R11 #14 v2: the merged hit is ONE blow; its author is the LAST member whose
 	# strike actually CONNECTED (the closing hit of the merged wound — a member
 	# who missed never authored it). Single credit, matching the ruling's
@@ -1746,6 +1885,12 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_crossing_arc_strike(actor, entry, snapshot, forced_queue, spec)
 		"pow_strike":
 			return _resolve_pow_strike(actor, entry, snapshot, forced_queue, spec)
+		"retarget_guard":
+			return _resolve_retarget_guard(actor, action, spec)
+		"skill_grapple":
+			return _resolve_skill_grapple(actor, entry, snapshot, forced_queue, spec)
+		"interrupt_counter":
+			return _resolve_interrupt_counter(actor, entry, snapshot, forced_queue, spec)
 		_:
 			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
 
@@ -1889,14 +2034,18 @@ func _resolve_self_stance(actor: CombatantState, action: Dictionary, spec: Dicti
 
 # ---------------------------------------------------- batch-A skill resolvers
 
-## Shared collapse for a batch-A premise that broke between declare and
-## resolution — the standard invalidated-windup shape (event + Forced Tool),
+## Shared collapse for a windup premise that broke between declare and
+## resolution — the standard invalidated-windup shape (event + Forced roll),
 ## with the escaped target excluded from Collateral exactly like the generic
-## windup path does.
-func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue: Array[Dictionary], original_target: String) -> Array[Dictionary]:
+## windup path does. F3 (batch B): the collapse TABLE is a parameter — the
+## self-broken batch-A premises and the feint path keep the default Tool;
+## counter_surge's inflicted windup cut rolls BODY (its spec's
+## collapse_table), with the roll reason naming the cut. Never silently reuse
+## Tool for a new collapse source — pass the authored table.
+func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue: Array[Dictionary], original_target: String, table: String = ForcedAction.TABLE_TOOL, roll_reason: String = "invalidated_windup") -> Array[Dictionary]:
 	var events: Array[Dictionary] = [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": reason}]
-	var collapse: Dictionary = ForcedAction.roll(ForcedAction.TABLE_TOOL, rng)
-	events.append(ForcedAction.make_event(actor.id, collapse, "invalidated_windup"))
+	var collapse: Dictionary = ForcedAction.roll(table, rng)
+	events.append(ForcedAction.make_event(actor.id, collapse, roll_reason))
 	forced_queue.append({"actor": actor.id, "rolled": collapse, "ctx": {
 		"part": actor.acting_part(clock.tick), "target": original_target,
 	}})
@@ -2180,6 +2329,223 @@ func _resolve_pow_strike(actor: CombatantState, entry: Dictionary, snapshot: Dic
 	return events
 
 
+# ---------------------------------------------------- batch-B skill resolvers
+
+## retarget_guard (batch B). Reaction form (intercept): the guard declare
+## resolves by ARMING the guard — armed_primes["intercept"] (the PREP
+## substrate) + the guard record {ally, range, reduction} on the guardian. The
+## interception itself is never a declared action: nothing consumes the prime,
+## so the guard persists across hits (the per-hit price is the reaction slot,
+## paid in _strike_round) until replaced by a new guard declare or cleared by
+## the CombatSim sweep (guardian or ally down). Re-declaring on another ally
+## REPLACES the guard (one guarded ally below the L6 threshold). Stance form
+## (iron_stance): enters the stance — anchor = the hex held; the CombatSim
+## _guard_checks sweep breaks it on movement/Prone/down (the dance-exit
+## pattern). Both are cost-0 instants; the premise is re-checked live at
+## resolution (same-tick state can change between declare and resolve).
+func _resolve_retarget_guard(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if String(spec.get("form", "")) == "stance":
+		if bool(actor.statuses.get("prone", false)):
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "prone"})
+			return events
+		actor.iron_stance = {
+			"anchor": [actor.position.x, actor.position.y],
+			"radius": int(spec.get("guard_radius", 1)),
+			"reduction": int(spec.get("stance_reduction", 1)),
+			"types": (spec.get("stance_types", ["crushed", "burn"]) as Array).duplicate(),
+		}
+		events.append({"type": "iron_stance_started", "combatant": actor.id,
+			"anchor": [actor.position.x, actor.position.y],
+			"radius": int(actor.iron_stance["radius"]),
+			"reduction": int(actor.iron_stance["reduction"]),
+			"types": (actor.iron_stance["types"] as Array).duplicate()})
+		events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "iron_stance")), "result": "ok", "rounds": 0})
+		return events
+	var ally: CombatantState = _first_target(action)
+	if ally == null or not ally.alive or ally.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "ally_downed"})
+		return events
+	actor.guard = {
+		"ally": ally.id,
+		"range": int(spec.get("guard_range", 1)),
+		"reduction": int(spec.get("intercept_reduction", 0)),
+	}
+	actor.armed_primes["intercept"] = true
+	events.append({"type": "guard_set", "guardian": actor.id, "ally": ally.id,
+		"range": int(actor.guard["range"]), "reduction": int(actor.guard["reduction"])})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "intercept")), "result": "ok", "rounds": 0})
+	return events
+
+
+## skill_grapple (batch B — pressure_hold / death_grip_jaws). HOLD mode: the
+## R9 grapple through the skill surface — grappling/grappled_by set (neither
+## repositions and BOTH are Exposed via the existing R9/ExposureEngine
+## substrate, nothing re-authored), the R30 mutual facing, and the R9 Physique
+## gate (grappler Physique < target's = Forced Action – Body off the action
+## rng; the hold still lands). A windup hold (pressure_hold, cost 2) re-checks
+## its premise at resolution — target alive/in-reach against the R2 snapshot,
+## grip + not-already-holding LIVE (the reload re-verify family) — and
+## collapses into the standard invalidation otherwise. The jaws variant then
+## delivers the L2+ initial-bite Bleed rider through the HONEST R14 strike
+## gate (_strike_round on the victim's torso-line part — deterministic locus,
+## documented; R26 undodgable: the bite rides a hold that already landed, so
+## no dodge-shaped escape and ZERO rng consumed by the skip). DRAG mode
+## ("drag_to" while holding): the pair walks the hex line 1 hex at a time (the
+## grab_pull idiom) — the holder steps into the next free hex, the victim is
+## pulled into the hex just vacated (adjacency preserved by construction) —
+## stopping early at walls/bounds/cans/bodies (the victim's own body blocks a
+## drag straight through them, deterministically). R30: the holder's drag is
+## voluntary movement (faces the step direction); the dragged victim's facing
+## NEVER changes (drag is on the update table's involuntary exclusion list).
+func _resolve_skill_grapple(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var key := String(action.get("key", "pressure_hold"))
+	var target: CombatantState = combatants.get(String(action.get("target", "")))
+	var events: Array[Dictionary] = []
+	if action.has("drag_to"):
+		if target == null or not target.alive or target.removed_from_play \
+				or actor.grappling != target.id or target.grappled_by != actor.id:
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "grip_lost"})
+			return events
+		var dt: Array = action["drag_to"]
+		var to := Vector2i(int(dt[0]), int(dt[1]))
+		var limit: int = int(spec.get("drag", 0))
+		var actor_from: Vector2i = actor.position
+		var victim_from: Vector2i = target.position
+		var steps: int = 0
+		while steps < limit and actor.position != to:
+			var lane: Array[Vector2i] = HexGeometry.line(actor.position, to)
+			if lane.size() < 2:
+				break
+			var next: Vector2i = lane[1]
+			if _movement_blocked_reason(actor, next) != "":
+				break  # walls/bounds/cans/bodies stop the drag honestly (victim included)
+			var vacated: Vector2i = actor.position
+			actor.position = next
+			target.position = vacated
+			_face_along(actor, vacated, next)  # R30: the holder's step is voluntary
+			steps += 1
+		events.append({"type": "grapple_dragged", "actor": actor.id, "target": target.id,
+			"from": [actor_from.x, actor_from.y], "to": [actor.position.x, actor.position.y],
+			"target_from": [victim_from.x, victim_from.y],
+			"target_to": [target.position.x, target.position.y],
+			"spaces": steps, "limit": limit})
+		events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": key, "result": "ok", "rounds": 0})
+		return events
+	# --- HOLD mode ---
+	var is_windup: bool = int(entry["window"]) > 0
+	var target_id: String = String(action.get("target", ""))
+	if target == null or not target.alive or target.removed_from_play:
+		if is_windup:
+			return _collapse_batch_windup(actor, "target_dead", forced_queue, target_id)
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "invalid_target"})
+		return events
+	if is_windup:
+		# R2 snapshot re-checks: an escaped/stealthed target dodges the windup.
+		var target_snap: Dictionary = snapshot.get(target.id, {})
+		if not bool(target_snap.get("alive", false)):
+			return _collapse_batch_windup(actor, "target_dead", forced_queue, target_id)
+		if bool(target_snap.get("stealthed", false)) and target.team != actor.team:
+			return _collapse_batch_windup(actor, "target_stealthed", forced_queue, target_id)
+		var actor_snap: Dictionary = snapshot.get(actor.id, {})
+		var a_pos: Array = actor_snap.get("position", [actor.position.x, actor.position.y])
+		var t_pos: Array = target_snap.get("position", [target.position.x, target.position.y])
+		if CombatantState.hex_distance(Vector2i(int(a_pos[0]), int(a_pos[1])),
+				Vector2i(int(t_pos[0]), int(t_pos[1]))) > int(spec.get("attack_range", 1)):
+			return _collapse_batch_windup(actor, "out_of_range", forced_queue, target_id)
+	# LIVE re-verifies (the reload needs-both-hands family).
+	if actor.grappling != "":
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "already_grappling"})
+		return events
+	var grip := String(spec.get("grip", "hands"))
+	var grip_reason: String = _grip_unmet(actor, grip)
+	if grip_reason != "":
+		if is_windup:
+			return _collapse_batch_windup(actor, grip_reason, forced_queue, target_id)
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": grip_reason})
+		return events
+	actor.grappling = target.id
+	target.grappled_by = actor.id
+	# R30: a grapple faces BOTH parties toward each other (the table's one
+	# involuntary facing) — same rule as the base grapple kind, verified there.
+	_face_along(actor, actor.position, target.position)
+	_face_along(target, target.position, actor.position)
+	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id, "skill": key})
+	# R9: automatic when grappler Physique >= target's; otherwise Forced
+	# Action – Body — always allowed, consequences apply, hold lands.
+	var acting: String = actor.bite_part(clock.tick) if grip == "bite" else actor.acting_part(clock.tick)
+	if actor.trait_total("physique") < target.trait_total("physique"):
+		var body_roll: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
+		events.append(ForcedAction.make_event(actor.id, body_roll, "grapple_above_weight"))
+		forced_queue.append({"actor": actor.id, "rolled": body_roll, "ctx": {"part": acting, "target": target.id}})
+	# death_grip_jaws L2+: the initial-bite Bleed rider on close.
+	var bite: int = int(spec.get("bite_bleed", 0))
+	if bite > 0 and target.alive:
+		var bite_part: String = ai.torso_line_part(target)
+		if bite_part != "":
+			events.append({"type": "bite_rider", "actor": actor.id, "target": target.id,
+				"part": bite_part, "amount": bite})
+			events.append_array(_strike_round(target, bite_part, "bleeding", bite,
+				{"kind": "skill", "key": key, "undodgable": true}, actor))
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": key, "result": "ok", "rounds": 0})
+	return events
+
+
+## interrupt_counter (batch B — counter_surge): the cost-1 strike rides the
+## normal path (the winding-up victim is Exposed through its windup, so the
+## R22 dodge never fires — the punish window, no special casing); then a
+## CONNECTED hit (damage_applied — the knock-aside convention: a robustness-
+## blocked 0 still connected) CUTS the victim's remaining windup cost by the
+## level's cost_cut. Cut < remaining: the entry is RESCHEDULED cut ticks
+## earlier (Clock.reschedule_windup_for — "reducing their action's remaining
+## cost" literally: the shortened windup also pulls next_action_tick in sync)
+## and windup_cut reports the arithmetic. Cut >= remaining: the action
+## COLLAPSES — the entry is cancelled (Clock.cancel_windup_for), the victim's
+## windup_pending re-derives, and the victim rolls Forced Action – BODY
+## through the PARAMETERIZED collapse helper (F3: the table is a parameter;
+## the feint path keeps Tool) on the same action rng stream every Forced
+## Action rides. A victim whose windup already left the queue (it resolves
+## this very tick — R2 simultaneity: same-tick means already firing) takes
+## the hit but no cut: windup_cut_missed says so.
+func _resolve_interrupt_counter(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var target: CombatantState = _first_target(action)
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target == null or not _hit_landed(events, target.id):
+		return events
+	var windup: Dictionary = clock.windup_entry_for(target.id)
+	if windup.is_empty():
+		events.append({"type": "windup_cut_missed", "actor": actor.id, "target": target.id})
+		return events
+	var remaining: int = int(windup["tick"]) - clock.tick
+	var cut: int = int(spec.get("cost_cut", 1))
+	if cut >= remaining:
+		var cancelled: Dictionary = clock.cancel_windup_for(target.id)
+		target.windup_pending = clock.has_windup_for(target.id)
+		var victim_action: Dictionary = cancelled.get("action", {})
+		var victim_targets: Array = victim_action.get("targets", [])
+		var victim_target: String = "" if victim_targets.is_empty() \
+			else String((victim_targets[0] as Dictionary).get("id", ""))
+		events.append({"type": "windup_collapsed", "actor": actor.id, "victim": target.id,
+			"cut": cut, "remaining_before": remaining,
+			"key": String(victim_action.get("key", String(victim_action.get("item", ""))))})
+		events.append_array(_collapse_batch_windup(target, "windup_cut", forced_queue,
+			victim_target, String(spec.get("collapse_table", ForcedAction.TABLE_BODY)), "windup_cut"))
+	else:
+		var new_tick: int = int(windup["tick"]) - cut
+		clock.reschedule_windup_for(target.id, new_tick)
+		target.next_action_tick = mini(target.next_action_tick, new_tick)
+		events.append({"type": "windup_cut", "actor": actor.id, "victim": target.id,
+			"cut": cut, "remaining_before": remaining, "remaining_after": remaining - cut,
+			"resolve_tick": new_tick})
+	return events
+
+
 ## Batch-A knockback (generalized from _dash_knock_aside): shove `target` ONE
 ## hex directly AWAY from `from_actor` (the origin→target ray's nearest fixed
 ## direction; ties break along the canonical order). Wall / bounds / trash-can
@@ -2222,6 +2588,9 @@ func _first_leg_part(c: CombatantState) -> String:
 ## The feinted actor's next scheduled action collapses: it is invalidated and
 ## replaced by a Forced Action – Tool (rolled, emitted, queued), exactly like an
 ## invalidated windup. Clears the flag so only the NEXT action is affected.
+## F3 (batch B): the collapse TABLE is parameterized at the shared helper —
+## this feint path DELIBERATELY keeps Tool (the fumbled-response fiction);
+## counter_surge's windup cut is the Body-table collapse.
 ## Skill-feel pass: the payoff moment also emits an ATTRIBUTED feint_fallout
 ## event ("actor" = the feinter who set it up, "victim" = whose action just
 ## crumbled, "kind"/"key" = what failed) so the HUD can announce the payoff
@@ -2770,6 +3139,120 @@ func _requirements_unmet(actor: CombatantState, requirements: Dictionary, provid
 	return false
 
 
+# ------------------------------------------------ retarget guard (batch B)
+
+## Does the action AIM at this combatant — i.e. name it in its declared target
+## rows ("targets" for attack/skill shapes, the single "target" field for the
+## grapple/reaction shapes)? Area geometry (cones, charge lanes, blasts),
+## death-spin chew rounds and environment hits carry no row naming the victim
+## — physicality over information: you are hit where you stand, and a
+## bodyguard answers AIMED strikes only (documented v1 line).
+static func _action_aims_at(action: Dictionary, combatant_id: String) -> bool:
+	for row: Variant in action.get("targets", []) as Array:
+		if String((row as Dictionary).get("id", "")) == combatant_id:
+			return true
+	return String(action.get("target", "")) == combatant_id
+
+
+## Is the iron stance GENUINELY held right now — anchored on the declared hex
+## and not Prone? The CombatSim _guard_checks sweep breaks a moved/prone/downed
+## stance after every command; this live re-check keeps mid-resolution honesty
+## (a knockback earlier in the same resolve batch already broke the ground
+## hold, even before the sweep runs).
+static func _iron_stance_live(c: CombatantState) -> bool:
+	if c.iron_stance.is_empty():
+		return false
+	if bool(c.statuses.get("prone", false)):
+		return false
+	var anchor_raw: Array = c.iron_stance.get("anchor", [])
+	return anchor_raw.size() == 2 \
+		and c.position == Vector2i(int(anchor_raw[0]), int(anchor_raw[1]))
+
+
+## The FIRST eligible guardian for a hit aimed at `ally` (sorted-id scan —
+## deterministic; within one candidate the stance form is checked before the
+## reaction form). {} when nobody qualifies. Eligibility, both forms: alive,
+## in play, not Helpless (R7: cannot react), on the ally's NON-EMPTY team, not
+## the ally, not the attacker, with an attackable torso line. Stance form
+## (iron_stance): the stance live (anchored, not Prone) + the ally within its
+## radius — NO reaction cost (the stance's value). Reaction form (intercept):
+## the guard armed on THIS ally (armed_primes + the guard record), the ally
+## within guard range, and the guardian's reaction slot FREE — the existing
+## one-reaction-per-tick rule prices every interception.
+func _find_guardian(ally: CombatantState, attacker: CombatantState) -> Dictionary:
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.id == ally.id or c.id == attacker.id:
+			continue
+		if not c.alive or c.removed_from_play or c.is_helpless(clock.tick):
+			continue
+		if c.team == "" or c.team != ally.team:
+			continue
+		if ai.torso_line_part(c) == "":
+			continue  # nothing attackable — no body to put in the way
+		if _iron_stance_live(c) \
+				and CombatantState.hex_distance(c.position, ally.position) <= int(c.iron_stance.get("radius", 1)):
+			return {"guardian": c, "mode": "stance"}
+		if not c.guard.is_empty() and String(c.guard.get("ally", "")) == ally.id \
+				and bool(c.armed_primes.get("intercept", false)) \
+				and not c.reaction_used \
+				and CombatantState.hex_distance(c.position, ally.position) <= int(c.guard.get("range", 1)):
+			return {"guardian": c, "mode": "reaction"}
+	return {}
+
+
+## The interception decision for one strike round ({} = the hit proceeds
+## unmoved). Solo rounds decide fresh per hit; a MERGED (R15) group decides
+## ONCE — the first member's check-in stores the verdict on the group
+## (intercept_decided / intercept_to / intercept_part / intercept_reduction,
+## plus the retargeted target_id/part for _merge_apply and the flush path) and
+## later members follow it without paying again. The intercepted hit lands on
+## the guardian's TORSO-LINE part (deterministic locus — the body thrown in
+## the way; never the guardian's Head, so the interception can never bypass
+## the guardian's own head gate). The reaction form pays the guardian's
+## reaction slot AT the decision; the stance form pays nothing.
+func _intercept_hit(group: Dictionary, target: CombatantState, part_key: String, action: Dictionary, attacker: CombatantState) -> Dictionary:
+	if attacker == null or attacker.id == target.id:
+		return {}
+	if not group.is_empty() and bool(group.get("intercept_decided", false)):
+		var stored_id := String(group.get("intercept_to", ""))
+		if stored_id == "":
+			return {}
+		var stored: CombatantState = combatants.get(stored_id)
+		if stored == null:
+			return {}
+		return {"guardian": stored, "part": String(group.get("intercept_part", "")),
+			"reduction": int(group.get("intercept_reduction", 0)), "event": {}}
+	if not _action_aims_at(action, target.id):
+		return {}
+	var pick: Dictionary = _find_guardian(target, attacker)
+	if not group.is_empty():
+		group["intercept_decided"] = true
+		group["intercept_to"] = "" if pick.is_empty() else (pick["guardian"] as CombatantState).id
+	if pick.is_empty():
+		return {}
+	var guardian: CombatantState = pick["guardian"]
+	var mode := String(pick["mode"])
+	var landing_part: String = ai.torso_line_part(guardian)
+	var reduction: int = 0
+	if mode == "reaction":
+		guardian.reaction_used = true  # the per-hit price (one reaction per tick)
+		reduction = int(guardian.guard.get("reduction", 0))
+	var event: Dictionary = {
+		"type": "hit_intercepted", "guardian": guardian.id, "ally": target.id,
+		"attacker": attacker.id, "mode": mode,
+		"part": landing_part, "original_part": part_key, "reduction": reduction,
+	}
+	if not group.is_empty():
+		group["intercept_part"] = landing_part
+		group["intercept_reduction"] = reduction
+		group["target_id"] = guardian.id
+		group["part"] = landing_part
+	return {"guardian": guardian, "part": landing_part, "reduction": reduction, "event": event}
+
+
 ## One round of typed damage + condition delivery with boss hooks (R6).
 ## R14 (rules-addendum R14, decision-log #22): the force-vs-robustness gate IS the
 ## damage — `damage = max(0, Force − Robustness)` on the Physical path. `attacker`
@@ -2781,7 +3264,42 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		return events
 	# R15 merged force: is this strike a member of a same-tick merged group?
 	# ({} on the solo path — the overwhelming default — and outside resolve_due.)
+	# Looked up by the ORIGINAL declared target/part — an interception below
+	# never changes the group's key, only where the merged hit lands.
 	var group: Dictionary = _merge_group_for(action, target, part_key)
+	# Batch B (retarget_guard — intercept / iron_stance): a hit AIMED at a
+	# guarded ally (the action names them in its declared target rows — area
+	# geometry, chews and environment hits are never "aimed") retargets to the
+	# guardian HERE, at the TOP of the round. COMPOSITION (the batch's ruled
+	# lines, documented verbatim):
+	#  * the ORIGINAL target's dodge never rolls — the hit was taken before it;
+	#  * the GUARDIAN does not dodge a hit it chose to take — the intercepted
+	#    round skips every dodge-shaped escape, consuming ZERO rng (the R26
+	#    skip discipline: the ai_rng stream is byte-identical to a fight where
+	#    the check never existed);
+	#  * an R26 UNDODGABLE hit may still be intercepted — interception is not
+	#    a dodge (R26 forbids dodge-shaped ESCAPES; taking the hit on another
+	#    body escapes nothing);
+	#  * a MERGED (R15) hit retargets WHOLE — the group decides once at its
+	#    first member's check-in (one reaction slot, one hit_intercepted
+	#    event), later members follow the stored decision, and the ONE merged
+	#    gate evaluates against the guardian.
+	# The guardian's own robustness/resistances/immunities then apply and any
+	# conditions land on the guardian — the round simply continues against the
+	# new body. R30: the interception is involuntary-adjacent — the guardian's
+	# facing NEVER changes (reactions/out-of-schedule strikes are off the
+	# update table).
+	var intercepted: bool = false
+	var intercept_reduction: int = 0
+	var interception: Dictionary = _intercept_hit(group, target, part_key, action, attacker)
+	if not interception.is_empty():
+		var intercept_event: Dictionary = interception.get("event", {})
+		if not intercept_event.is_empty():
+			events.append(intercept_event)
+		target = interception["guardian"]
+		part_key = String(interception["part"])
+		intercepted = true
+		intercept_reduction = int(interception.get("reduction", 0))
 	var cond_def: Dictionary = cond.def_for(condition_id)
 	var is_physical: bool = String(cond_def.get("resistance_type", "")) == "Physical"
 	# Boss hook: fire heals (Incinedile) — Burn damage restores the part. EXCEPT a
@@ -2815,7 +3333,10 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# is byte-identical to a fight where the check never existed). Movement/
 	# windup re-checks (leaving the arc/lane/radius) are elsewhere and stay the
 	# honest counterplay.
-	if not bool(action.get("counter", false)) and not bool(action.get("undodgable", false)):
+	# Batch B: an INTERCEPTED round skips the whole dodge ladder — the guardian
+	# chose to take this hit (composition rules at the interception seam above);
+	# like the R26 skip, ZERO rng is consumed.
+	if not intercepted and not bool(action.get("counter", false)) and not bool(action.get("undodgable", false)):
 		var boss_threshold: int = int(target.boss_traits.get("dodge_threshold", 0))
 		var ability_dodge: Dictionary = action.get("dodge", {})
 		var dodge: Dictionary = {}
@@ -2879,6 +3400,24 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 		reduced = maxi(0, force - robustness)
 	else:
 		reduced = Resistance.reduce_damage(amount, target, cond_def, condition_id)
+	# retarget_guard stance (iron_stance, batch B): the PERSISTENT, NON-consumed
+	# flat reduction on covered-type damage the stancer takes — intercepted or
+	# aimed at the stancer directly. Applied while the stance genuinely holds
+	# (live anchor/prone re-check — mid-batch displacement is honest before the
+	# CombatSim sweep runs), BEFORE brace so both stack: the stance is the
+	# posture, the brace the flinch on top (order affects event numbers only —
+	# both are flat).
+	if reduced > 0 and _iron_stance_live(target) \
+			and (target.iron_stance.get("types", []) as Array).has(condition_id):
+		var stance_red: int = int(target.iron_stance.get("reduction", 0))
+		if stance_red > 0:
+			var before_stance: int = reduced
+			reduced = maxi(0, reduced - stance_red)
+			events.append({
+				"type": "iron_stance_reduced", "combatant": target.id, "part": part_key,
+				"reduction": stance_red, "condition": condition_id,
+				"damage_before": before_stance, "damage_after": reduced,
+			})
 	# self_guard (brace): the buffered next Crush/Burn hit is reduced by the guard
 	# (floor 0), AFTER normal resistance, then the guard is consumed regardless of
 	# whether damage remained. Only Crush/Burn consume it; other types pass through.
@@ -2891,6 +3430,11 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 			"damage_before": before_guard, "damage_after": reduced,
 		})
 		target.brace_guard = 0
+	# intercept L3+ (batch B): the per-interception flat reduction — "-N
+	# PHYSICAL damage taken when intercepting" (Physical path only; the number
+	# already rode the hit_intercepted event).
+	if intercepted and intercept_reduction > 0 and is_physical and reduced > 0:
+		reduced = maxi(0, reduced - intercept_reduction)
 	events.append_array(cond.damage_part(target, part_key, reduced, "weapon", condition_id, clock.tick,
 			attacker.id if attacker != null else ""))
 	# self_stance (dance): the stance ends when its owner is hit (takes damage).

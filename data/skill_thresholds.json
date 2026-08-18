@@ -700,5 +700,95 @@
     "description": "- 4 Reveal Space,  Can move one space without break effect.",
     "stat_requirements": {},
     "effects": []
+  },
+  {
+    "id": 83,
+    "skill_id": 46,
+    "level": 5,
+    "threshold_name": "-2 physical damage taken when intercepting",
+    "description": "-2 physical damage taken when intercepting",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 84,
+    "skill_id": 46,
+    "level": 6,
+    "threshold_name": "Guard two allies.",
+    "description": "Guard two allies.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 85,
+    "skill_id": 47,
+    "level": 5,
+    "threshold_name": "May drag the hold 2 spaces per Moment",
+    "description": "May drag the hold 2 spaces per Moment",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 86,
+    "skill_id": 47,
+    "level": 6,
+    "threshold_name": "While held, the bitten part takes 1 Bleed at each Clock reset.",
+    "description": "While held, the bitten part takes 1 Bleed at each Clock reset.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 87,
+    "skill_id": 48,
+    "level": 5,
+    "threshold_name": "Treat at 2 spaces of range",
+    "description": "Treat at 2 spaces of range",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 88,
+    "skill_id": 48,
+    "level": 6,
+    "threshold_name": "Once per combat, fully resolve the condition instead of delaying.",
+    "description": "Once per combat, fully resolve the condition instead of delaying.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 89,
+    "skill_id": 49,
+    "level": 5,
+    "threshold_name": "Stance damage reduction -3",
+    "description": "Stance damage reduction -3",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 90,
+    "skill_id": 49,
+    "level": 6,
+    "threshold_name": "Enemies must spend +1 Moment on any action that tries to move past you.",
+    "description": "Enemies must spend +1 Moment on any action that tries to move past you.",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 91,
+    "skill_id": 50,
+    "level": 5,
+    "threshold_name": "+3 Moments; the surge persists even if you are hit",
+    "description": "+3 Moments; the surge persists even if you are hit",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 92,
+    "skill_id": 50,
+    "level": 6,
+    "threshold_name": "Losses no longer double during your surge - the editors cut the embarrassing parts.",
+    "description": "Losses no longer double during your surge - the editors cut the embarrassing parts.",
+    "stat_requirements": {},
+    "effects": []
   }
 ]

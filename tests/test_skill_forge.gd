@@ -203,11 +203,13 @@ func test_apply_is_pure_and_deterministic() -> void:
 # ------------------------------------------------------- round-trip + the sim
 
 func test_mutated_roster_round_trips_from_spec_and_hash() -> void:
-	# The mutated array IS a from_spec "skills" grant list — including the
-	# UNIMPLEMENTED iron_stance key: from_spec normalizes any {key, level} row
-	# with no KNOWN_KEYS gate (simulation/combatant.gd; the mystery_move
-	# precedent in test_loadout_skills). That is what makes owning a mutation
-	# result legal as data before its content pass (R27).
+	# The mutated array IS a from_spec "skills" grant list: from_spec
+	# normalizes any {key, level} row with no KNOWN_KEYS gate
+	# (simulation/combatant.gd; the mystery_move precedent in
+	# test_loadout_skills). That contract made owning the result legal as data
+	# BEFORE its content pass (R27); as of batch B iron_stance is IMPLEMENTED
+	# — the full forge -> grant -> usable-stance chain is pinned in
+	# tests/test_skills_batch_b.gd.
 	var mutated: Array[Dictionary] = SkillForge.apply_mutation(
 		ready_roster(), iron_stance_recipe(), keywords())
 	var sim: CombatSim = make_sim(77)

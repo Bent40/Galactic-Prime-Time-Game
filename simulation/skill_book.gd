@@ -34,6 +34,22 @@ extends RefCounted
 ##                          adjacent targets (slice_n_dice)
 ##   pow_strike           — committed unarmed Crush; Exposed-Head hit adds a Shock
 ##                          rider + the crowd POW beat (heroic_punch)
+##   retarget_guard       — batch B "Guardians & Grapplers": hits AIMED at a
+##                          guarded ally retarget to the guardian at the top of
+##                          _strike_round. Two forms via spec "form":
+##                          "reaction" (intercept — one declared ally, costs the
+##                          reaction slot per hit) and "stance" (iron_stance —
+##                          ANY adjacent ally, no reaction cost, persistent
+##                          flat reduction; breaks on movement/Prone)
+##   skill_grapple        — batch B: the R9 grapple as a skill — hold (neither
+##                          repositions, both Exposed) + the L2-4 drag ladder;
+##                          spec "grip" parameterizes the R9 hands gate
+##                          ("hands" = pressure_hold, "bite" = death_grip_jaws)
+##   interrupt_counter    — batch B: strike an adjacent winding-up enemy; a
+##                          connected hit CUTS the remaining windup cost (Clock
+##                          reschedule); a full cut collapses the action into
+##                          Forced Action – BODY (the parameterized collapse
+##                          table — the feint path keeps Tool, F3)
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
@@ -41,10 +57,14 @@ extends RefCounted
 ## PLACEHOLDER-R14 base range. Content pass batch A ("Chains & Strikes",
 ## docs/design/skills-r19-ladders-FINAL.md) encodes nine more skills below —
 ## every batch-A magnitude is PLACEHOLDER (R14) and follows the FINAL ladder's
-## authored L1 core + the data rows' L2-4 scaling; L5+ stays threshold DATA. The
-## remaining skills in data/skills.json are the fill-in-later content pass; until
-## encoded they resolve through the generic `strike` fallback so an unknown key
-## still does a real, honest thing.
+## authored L1 core + the data rows' L2-4 scaling; L5+ stays threshold DATA.
+## Content pass batch B ("Guardians & Grapplers") encodes five more the same
+## way: intercept + iron_stance (retarget_guard), pressure_hold +
+## death_grip_jaws (skill_grapple), counter_surge (interrupt_counter) — all
+## magnitudes PLACEHOLDER (R14), L1 core + data-row L2-4, L5+ threshold DATA.
+## The remaining skills in data/skills.json are the fill-in-later content pass;
+## until encoded they resolve through the generic `strike` fallback so an
+## unknown key still does a real, honest thing.
 ##
 ## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
 ## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
@@ -68,14 +88,18 @@ extends RefCounted
 ##     (G1: "Acrobatic Save gets the same movement-forfeit cost in place of its
 ##     cooldown"). Cost model RULED; the skill's effect (die manipulation) stays
 ##     UNIMPLEMENTED content — do not encode a stance prime when it lands (R25).
-##   - intercept (G6-approved 2026-07-23) + iron_stance (its Gemstone MUTATION
-##     result with brace, data/skill_mutations.json — R27): NOT implemented,
-##     content pass. Iron Stance's ruled effect (stance: attacks on adjacent
-##     allies retarget to you + persistent Crush/Burn reduction) needs a
-##     retarget-guard archetype in ActionResolver before an honest encode —
-##     until then both are DATA-ONLY grants (from_spec accepts any {key, level}
-##     row). The merge machinery (simulation/skill_forge.gd + skill_keywords.gd)
-##     validates on keys+levels and never requires a SkillBook entry.
+##   - intercept + iron_stance: IMPLEMENTED (batch B — the retarget_guard
+##     archetype landed; the R27 "DATA-ONLY grant" interim is RETIRED). The
+##     Gemstone recipe (data/skill_mutations.json: Intercept Lv5 + Brace Lv3 →
+##     Iron Stance Lv1, both parents consumed) now yields a REAL implemented
+##     result. The merge machinery (simulation/skill_forge.gd +
+##     skill_keywords.gd) still validates on keys+levels only — a SkillBook
+##     entry remains deliberately un-required for granting.
+##   - intercept's guard declare ARMS the PREP substrate (armed_primes
+##     ["intercept"] + the guard record on the combatant); the interception
+##     itself is not a declared action, so nothing consumes the prime — the
+##     guard persists across hits (one interception per tick: the reaction
+##     slot) until replaced or a party goes down (the CombatSim sweep).
 
 const KNOWN_KEYS: Array[String] = [
 	"strong_strike", "overhead_slam", "brace", "feint", "pressure_strike", "dance",
@@ -83,6 +107,10 @@ const KNOWN_KEYS: Array[String] = [
 	# Content pass batch A — chains & strikes (skills-r19-ladders-FINAL.md).
 	"pounce", "slip_through", "decapitate", "shockwave", "execution",
 	"thousand_cuts", "controlled_sweep", "slice_n_dice", "heroic_punch",
+	# Content pass batch B — guardians & grapplers (ladders #5/#7 + the G6
+	# passover NEW_SKILLS; skills.json ids 5, 7, 46, 47, 49).
+	"intercept", "iron_stance", "pressure_hold", "death_grip_jaws",
+	"counter_surge",
 ]
 
 ## Generic fallback for any un-encoded skill: a plain single-target strike so the
@@ -101,9 +129,14 @@ static func is_known(key: String) -> bool:
 
 
 ## Self-targeted skills (no enemy target) — the HUD asks the model rather than
-## re-authoring the target/self split itself.
+## re-authoring the target/self split itself. The retarget_guard STANCE form
+## (iron_stance) is self-targeted too; the reaction form (intercept) declares
+## on an ALLY, so it stays out.
 static func is_self_skill(key: String) -> bool:
-	var arch := String(mechanics(key, 1).get("archetype", ""))
+	var spec: Dictionary = mechanics(key, 1)
+	var arch := String(spec.get("archetype", ""))
+	if arch == "retarget_guard":
+		return String(spec.get("form", "")) == "stance"
 	return arch == "self_guard" or arch == "self_stance"
 
 
@@ -367,6 +400,97 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"attack_range": 1,
 				"head_shock_tier": 1,
 				"pow_spectacle": 20,
+			}
+		"intercept":
+			# Batch B (G6 passover row, skills.json id 46). Cost 0 (the free
+			# slot) — the guard DECLARE: names ONE adjacent ally, resolution
+			# ARMS the guard (armed_primes["intercept"] + the guard record).
+			# While armed, a hit AIMED at that ally within guard_range
+			# retargets to the guardian at the top of _strike_round (before
+			# any dodge), costing the guardian's reaction slot per hit. The
+			# L2-5 zig-zag (data rows): range +1 at L2, -1 physical damage
+			# when intercepting at L3, range +2 (total) at L4; L5+ threshold
+			# DATA. All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "retarget_guard",
+				"form": "reaction",
+				"cost": 0,
+				"guard_range": [1, 2, 2, 3][lv - 1],
+				"intercept_reduction": [0, 0, 1, 1][lv - 1],
+			}
+		"iron_stance":
+			# Batch B (the Gemstone mutation result — Intercept Lv5 + Brace
+			# Lv3, data/skill_mutations.json; skills.json id 49, acquisition-
+			# gated). Cost 0 (the free slot) — a STANCE: while held, hits
+			# AIMED at ANY adjacent ally (radius, L3 widens) retarget to the
+			# stancer with NO reaction cost (the stance's value vs intercept's
+			# one-per-tick reaction), plus a PERSISTENT (non-consumed) flat
+			# reduction on covered-type damage the stancer takes — Crush/Burn
+			# at L1 (-1), -2 at L2, Bleed/Chill join at L4. Breaks on the
+			# stancer's movement or Prone (the dance-exit pattern; the
+			# CombatSim _guard_checks sweep owns the break). PLACEHOLDER (R14).
+			spec = {
+				"archetype": "retarget_guard",
+				"form": "stance",
+				"cost": 0,
+				"guard_radius": [1, 1, 2, 2][lv - 1],
+				"stance_reduction": [1, 2, 2, 2][lv - 1],
+				"stance_types": [["crushed", "burn"], ["crushed", "burn"],
+					["crushed", "burn"], ["crushed", "burn", "bleeding", "chilled"]][lv - 1],
+			}
+		"pressure_hold":
+			# Batch B (ladder #7). Cost 2 (windup — the committed clinch). The
+			# R9 grapple as a skill: hold lands at resolution (grappling/
+			# grappled_by — neither repositions, both Exposed via the existing
+			# R9/ExposureEngine substrate; Physique < target's = Forced Body,
+			# hold still lands). grip "hands" = the R9 free-hand gate. L2-4
+			# scale the drag-while-holding distance (data rows: 1/2/3 spaces
+			# per Moment — a cost-1 re-declare with "drag_to" while holding
+			# walks the pair 1 hex at a time, the grab_pull idiom). L5+
+			# threshold DATA. All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "skill_grapple",
+				"cost": 2,
+				"attack_range": 1,
+				"grip": "hands",
+				"drag": [0, 1, 2, 3][lv - 1],
+			}
+		"death_grip_jaws":
+			# Batch B (G6 passover row, skills.json id 47 — approved WITHOUT a
+			# prime). Cost 1 (instant). The jaws variant: grip "bite"
+			# parameterizes the R9 hands gate — a bite-capable part
+			# (data-driven `bite_capable` on the part plan; spec-declared,
+			# additive) substitutes for hands; this is what unlocks grappling
+			# for handless animal layouts. L2/L4 add the initial-bite Bleed
+			# rider on close (1/2 Bleed through the honest R14 strike gate);
+			# L3 adds the 1-space drag. L5+ threshold DATA. PLACEHOLDER (R14).
+			spec = {
+				"archetype": "skill_grapple",
+				"cost": 1,
+				"attack_range": 1,
+				"grip": "bite",
+				"drag": [0, 0, 1, 1][lv - 1],
+				"bite_bleed": [0, 1, 1, 2][lv - 1],
+			}
+		"counter_surge":
+			# Batch B (ladder #5). Cost 1 (instant). STATE prime: the target
+			# must be mid-windup (the "winding_up" STATE predicate reads
+			# Clock.has_windup_for — the data row's "currently executing a 2+
+			# Moment cost action"). The strike inherits the action/item damage
+			# (declare defaults the basic unarmed Crush 1 when none supplied);
+			# a CONNECTED hit (damage_applied — a robustness-blocked 0 still
+			# connected) CUTS the remaining windup cost by cost_cut (Clock
+			# reschedule); a cut >= the remaining cost COLLAPSES the action —
+			# the victim rolls Forced Action – BODY (the parameterized
+			# collapse table, F3 — the feint path keeps Tool). L2-4 scale the
+			# cut (data rows -2/-3/-4); L5+ threshold DATA. PLACEHOLDER (R14).
+			spec = {
+				"archetype": "interrupt_counter",
+				"cost": 1,
+				"attack_range": 1,
+				"cost_cut": lv,
+				"collapse_table": "body",
+				"prime": {"type": "state", "who": "target", "status": "winding_up"},
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the
