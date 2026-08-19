@@ -1,10 +1,9 @@
 # Tier-2 Skills — Their Own L1–5 Ladders (the nine unauthored results)
 
-**Status: PROPOSAL — PROVISIONAL, awaiting the owner's by-number pass.** Nothing here is
-implemented: no `data/` row, no sim edit. **Implementation follows blessing** — after the
-owner's pass, the blessed ladders become the results' `skills.json` rows + threshold rows
-in a content-pass story (the results stay DATA-DECLARED until then; the forge already
-grants each at Lv 1 via the proven iron_stance interim).
+**Status: BLESSED (owner 2026-08-18: "Bless all ladders") — S1–S10 all approved as
+written, with OQ1/OQ2 ruled in place.** The implementation wave is OPEN: the ladders
+become `skills.json` rows + threshold rows and the [NEEDS] machinery lands in
+dependency-ordered stories (names stay PROVISIONAL pending the owner's rename pass).
 **How to answer: by number.** Skills are **S1–S10**; each skill's five rungs are lettered
 **a–e** (a = L1 … e = L5). "S1–S7 yes, S8-c reword, S10 hold for OQ1" is a complete
 answer. All names stay PROVISIONAL pending the owner's rename pass.
