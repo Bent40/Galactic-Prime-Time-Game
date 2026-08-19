@@ -600,6 +600,37 @@ def main() -> int:
         if not (0 <= s.get("default_cap", -1) <= 10):
             fail("skills.json", f"{k}: default_cap outside 0..10 (schema CHECK)")
 
+    # ---- Tier-2 wave 1 (docs/design/tier2-rungs-proposal.md, BLESSED owner
+    # 2026-08-18) — ADDITIVE checks on the imported ladder rows: the ten
+    # recipe/offer RESULT keys own skills.json rows (ids 51-60), each capped
+    # at 5 (decision #35 Q3), acquisition-gated (merge/offer results — never
+    # learnable directly), and each carries its L5 mastery threshold row.
+    # phantom_grasp is pinned mundane-psionic per OQ1 (owner 2026-08-18):
+    # is_magic must stay 0 — no magic privileges ever on that band.
+    TIER2_WAVE1_KEYS = (
+        "counterscript", "predators_arc", "earthbreaker", "vivisection",
+        "perfect_evasion", "combat_medic", "vice_grip", "the_unseen",
+        "the_long_con", "phantom_grasp",
+    )
+    tier2_by_key = {s.get("key"): s for s in skills}
+    for k in TIER2_WAVE1_KEYS:
+        row = tier2_by_key.get(k)
+        if row is None:
+            fail("skills.json", f"tier-2 wave 1: BLESSED ladder row {k!r} missing (ids 51-60 import)")
+            continue
+        if row.get("default_cap") != 5:
+            fail("skills.json", f"{k}: tier-2 cap must be 5 (decision #35 Q3)")
+        if not isinstance(row.get("acquisition"), str) or not row.get("acquisition"):
+            fail("skills.json", f"{k}: tier-2 result needs an 'acquisition' gate "
+                                "(recipe/offer — never learnable directly)")
+        if not any(t.get("skill_id") == row.get("id") and t.get("level") == 5
+                   for t in thresholds):
+            fail("skill_thresholds.json", f"{k}: tier-2 L5 mastery rung missing "
+                                          f"(skill_id {row.get('id')}, level 5)")
+    pg_row = tier2_by_key.get("phantom_grasp")
+    if pg_row is not None and pg_row.get("is_magic") != 0:
+        fail("skills.json", "phantom_grasp: OQ1 RULED mundane-psionic — is_magic must be 0")
+
     # ---- Wave 3b: G3 keyword tree + Gemstone mutation recipes ----------------
     # skill_keywords.json — the RULED per-skill Gemstone keywords (G3, owner
     # 2026-07-23; book §4.5 taxonomy; verbatim port of the char-sheet repo's

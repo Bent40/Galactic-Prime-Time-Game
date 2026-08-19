@@ -4,6 +4,34 @@
 written, with OQ1/OQ2 ruled in place.** The implementation wave is OPEN: the ladders
 become `skills.json` rows + threshold rows and the [NEEDS] machinery lands in
 dependency-ordered stories (names stay PROVISIONAL pending the owner's rename pass).
+
+> **[IMPLEMENTATION STATUS — wave 1 landed 2026-08-19.]** The data import is DONE:
+> all ten ladders are `skills.json` rows ids **51–60** (L1 = a-rung core, L2–4 =
+> b–d `effects[]`, acquisition = the recipe/offer) + `skill_thresholds.json` L5 rows
+> ids **93–102**; [NEEDS]-blocked rung content imported as authored text. Three
+> ladders are ENCODED in `SkillBook`/`ActionResolver` (deliberately NOT in
+> KNOWN_KEYS — acquisition-gated, keyword rulings pending):
+> **S5 perfect_evasion** — a IMPLEMENTED (the `fused_evasion` arming: one forfeit,
+> both defenses) · b IMPLEMENTED (both halves scale) · c IMPLEMENTED per OQ2 (the
+> serialized `evasion` window record; same-attack re-roll rejected) · d IMPLEMENTED
+> (the once-per-Clock negate beside save_severity, `negate_used_clock` serialized)
+> · e DATA (threshold row 97).
+> **S7 vice_grip** — a IMPLEMENTED (grip "any": hands OR bite through `_grip_unmet`;
+> hold + the drag override) · b PARTIAL (the grip closes with a real Bleed wound on
+> the held part + the standing per-Clock condition advancement carries it; the
+> literal while-held per-reset re-application still [NEEDS] the Clock-reset rider —
+> combat_sim's sweep, outside wave 1's footprint) · c DATA ([NEEDS] multi-hold) ·
+> d IMPLEMENTED (drag 5 + grapple-Suffocation via the existing kind; a full jaw
+> grip substitutes for both-hands at L4+, R9 caps uncut) · e DATA (row 99).
+> **S10 phantom_grasp** — a IMPLEMENTED (the `sustained_channel` hold with grip
+> "psychic"; R9 escape actions against it, contest = target Physique vs holder
+> MIND per OQ1, `escape_holder_stat`; Exposed/drag/break-on-damage kept) · b
+> IMPLEMENTED (range/drag rows) · c DATA ([NEEDS] collision damage) · d DATA
+> ([NEEDS] multi-hold) · e DATA (row 102; [NEEDS] the suffocation hook for a
+> channel hold).
+> **S1–S4, S6, S8–S9: DATA-ONLY this wave** — rows carry the blessed content with
+> [NEEDS] flags; undeclared keys resolve through the honest `strike` fallback.
+> Tests: `tests/test_tier2_wave1.gd`.
 **How to answer: by number.** Skills are **S1–S10**; each skill's five rungs are lettered
 **a–e** (a = L1 … e = L5). "S1–S7 yes, S8-c reword, S10 hold for OQ1" is a complete
 answer. All names stay PROVISIONAL pending the owner's rename pass.

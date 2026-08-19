@@ -241,6 +241,23 @@ var conceal: Dictionary = {}
 ## declare abandons the grip first (the sustain occupies the scheduled
 ## action). Serialized ONLY while non-empty (same compat pin).
 var channeling: Dictionary = {}
+## fused_evasion (perfect_evasion, tier-2 wave 1 — S5-c, OQ2 RULED): the live
+## evasion-window record — {"answered": [entry seqs], "second_used": bool}
+## while a L3+ fused arming is live this window, {} otherwise. "answered" =
+## the Clock-queue seqs of every pending attack aimed at this combatant when
+## a roll was declared (what that roll already dodged); the OQ2 second roll
+## must name a pending attack NOT in the set — a same-attack re-roll rejects.
+## Cleared with the other window markers at the tick advance
+## (reset_tick_flags — the rolled_this_window lifetime). Serialized ONLY
+## while non-empty (the stealthed compat-pin pattern).
+var evasion: Dictionary = {}
+## fused_evasion (perfect_evasion — S5-d, [FROM row 68]): the per-Clock
+## negate gate — the Clock INDEX (tick / Clock.TICKS_PER_CLOCK) in which the
+## armed save last negated a Forced Action – Body outright; -1 = never. The
+## negate fires only while the current Clock index differs — a second negate
+## in the same Clock falls back to the dice-softening path until the reset.
+## Serialized ONLY while >= 0 (same compat pin).
+var negate_used_clock: int = -1
 ## sustained_channel: the mirror on the TARGET — the id of the combatant
 ## telekinetically holding this one ("" = free). While set the target cannot
 ## take movement actions (move / tactical roll / the pounce leap reject
@@ -607,6 +624,7 @@ func reset_tick_flags() -> void:
 	reaction_used = false
 	moved_this_tick = false
 	rolled_this_window = false
+	evasion = {}  # the fused-evasion window record shares the roll marker's lifetime
 	damage_taken_this_tick = 0
 	largest_single_hit_this_tick = 0
 	combo_hits_this_tick.clear()
@@ -724,6 +742,14 @@ func to_dict() -> Dictionary:
 		out["channeling"] = channeling.duplicate(true)
 	if held_by != "":
 		out["held_by"] = held_by
+	# Tier-2 wave 1 compat pins (the same only-when-set pattern): the fused-
+	# evasion window record and the per-Clock negate marker exist ONLY while
+	# live/used — a fight that never uses perfect_evasion serializes
+	# byte-identically to the pre-wave engine (hash-covered when either is).
+	if not evasion.is_empty():
+		out["evasion"] = evasion.duplicate(true)
+	if negate_used_clock >= 0:
+		out["negate_used_clock"] = negate_used_clock
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -819,4 +845,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.conceal = (data.get("conceal", {}) as Dictionary).duplicate(true)
 	c.channeling = (data.get("channeling", {}) as Dictionary).duplicate(true)
 	c.held_by = String(data.get("held_by", ""))
+	# Pre-tier-2-wave-1 saves lack both: no live evasion window, never negated.
+	c.evasion = (data.get("evasion", {}) as Dictionary).duplicate(true)
+	c.negate_used_clock = int(data.get("negate_used_clock", -1))
 	return c
