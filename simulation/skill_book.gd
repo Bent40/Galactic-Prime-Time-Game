@@ -187,6 +187,58 @@ extends RefCounted
 ##                          per-source immunity window (counter_immunities —
 ##                          the source cannot affect the counter-actor for
 ##                          immunity_moments Moments; others still affected)
+##   fused_leap_finisher  — tier-2 wave 3 (predators_arc, S2 — BLESSED
+##                          2026-08-18): the fused leap→conditional finisher.
+##                          One declare: the pounce leap (leap_to + the
+##                          landing contract, the shared _leap_phase) and a
+##                          landing strike that ADAPTS at resolution — vs an
+##                          Exposed target struck from the REAR ARC (R30
+##                          is_behind, judged from the landing hex) the
+##                          strike targets the HEAD with decapitate's
+##                          bypass_head_gate (Head→0 = the cinematic_kill
+##                          beat + spectacle payout); otherwise it is
+##                          pounce's torso Bleed. Chain seat (ruling #4,
+##                          authored at L1): spec "chain_as": "pounce" —
+##                          the CHAIN predicate consults it, so Slip Through
+##                          accepts Predator's Arc as its opener. L2+
+##                          (S2-b, [FROM row 40]): +Bleed and the resolve
+##                          sets the actor's chain_open_key — the follow-up
+##                          Slip Through's same-target gate is waived for
+##                          one chained declare ("may chain into another
+##                          Slip Through if a target is adjacent")
+##   state_forked_strike  — tier-2 wave 3 (earthbreaker, S3): one declared
+##                          gravity arc, forked at RESOLUTION on the
+##                          target's state — vs a STANDING target the slam
+##                          payload + knock Prone (overhead_slam's authored
+##                          knockdown); vs an already Prone/Helpless target
+##                          the execution payload (heavy Crush; a landed
+##                          Torso hit adds Shock T3; a Head kill rides the
+##                          normal lethal path — no bypass: Prone/Helpless
+##                          already open the head gate). Actor Exposed
+##                          during the windup (the committed_strike rider).
+##                          Chain seat (ruling #4, L1): "chain_as":
+##                          "overhead_slam" — Shockwave accepts Earthbreaker
+##                          as its opener (and its cone still excludes the
+##                          arc's victim via last_action_target). L3+
+##                          (S3-c, the buildable half): "close_to" — close
+##                          up to close_range hexes into the arc (movement
+##                          absorbed, the leap plumbing). L4+ (S3-d, [FROM
+##                          row 46]): a CONNECTED impact triggers the free
+##                          tremor — the shockwave-shaped rider centered on
+##                          the target (_earthbreaker_tremor)
+##   fused_arc_flurry     — tier-2 wave 3 (vivisection, S4): the fused
+##                          crossing_arc + multi_part flurry — 3..parts_max
+##                          distinct part rows across up to targets_max
+##                          adjacent targets, per-row Bleed stamped at
+##                          declare by the inherited G8 crossing math (limb /
+##                          torso / pair-torso-when-spanning / head values);
+##                          EVERY hit landing on an already-Bleeding part
+##                          advances that Bleed one tier ON TOP of the R4
+##                          reapply advance (the thousand_cuts payoff made
+##                          per-hit and unconditional — the all-3 gate is
+##                          DROPPED by the blessed fusion); L3+ (S4-c,
+##                          [FROM row 80]) fresh wounds apply Bleed T2
+##                          instead (T1 + the resolver's tier step)
 ##   terrain_stride       — Round 3a (quick_step): a 0-Moment, SLOT-FREE
 ##                          IMMEDIATE self declare (the arming-declare
 ##                          pattern; it rides the movement it modifies —
@@ -317,6 +369,41 @@ extends RefCounted
 ## [NEEDS] boss win-condition telegraph exposure). Both stay OUT of
 ## KNOWN_KEYS for wave 1's two reasons (acquisition-gated; keyword rulings
 ## pending). All magnitudes PLACEHOLDER (R14).
+##
+## TIER-2 WAVE 3 — the strike fusions (same proposal doc, S2/S3/S4 BLESSED):
+## **predators_arc** (S2, M3: Pounce Lv5 + Decapitate Lv3 —
+## fused_leap_finisher): a IMPLEMENTED (leap + the adaptive landing strike +
+## the L1 chain seat "chain_as": "pounce" — see the archetype note) · b
+## IMPLEMENTED ([FROM row 40]: +Bleed and the post-landing chain-open into a
+## second Slip Through — the chain_open_key marker, serialized only-when-set)
+## · c DATA ([NEEDS] vertical/boosted origin vocabulary + R15 hooks — the
+## wall/ally-boost origins have no sim substrate) · d DATA ([FROM row 36];
+## [NEEDS] self-chaining support on the chain field — the ×4-at-1-Moment
+## cost override and its reset window are unauthored machinery; the audit
+## already flags this for the source row; only row 36's "+2 space" rides
+## the L4 leap_range) · e DATA (threshold row 94).
+## **earthbreaker** (S3, M4: Overhead Slam Lv5 + Execution Lv3 —
+## state_forked_strike): a IMPLEMENTED (the resolution fork + the L1 chain
+## seat "chain_as": "overhead_slam") · b IMPLEMENTED ([FROM row 42,
+## re-expressed per default #2]: +4 Crush as FORCE through the R14
+## force-vs-robustness gate — no resistance bypass anywhere on the spec) ·
+## c PARTIAL (the close-into-the-arc half is IMPLEMENTED via the leap
+## plumbing at L3+; the improvised-heavy-object half stays DATA — equipment
+## vocabulary) · d IMPLEMENTED ([FROM row 46, audit-reworded]: a connected
+## impact triggers the free shockwave-shaped tremor centered on the target
+## — the action-triggers-action rider composing _strike_round / knockback /
+## Mob Forced Body, victim + allies excluded) · e DATA (threshold row 95).
+## **vivisection** (S4, M5: Slice n' Dice Lv5 + Thousand Cuts Lv3 —
+## fused_arc_flurry): a IMPLEMENTED (the fused many-parts/many-targets
+## flurry, per-row G8 amounts, per-hit tier advance — no all-3 gate) · b
+## IMPLEMENTED (+parts, three targets at L2+ — the 180° wrap is the
+## targets_max widening; adjacency stays the reach gate) · c IMPLEMENTED
+## ([FROM row 80]: the magnitude rise + Bleed T2 on fresh wounds) · d DATA
+## ([NEEDS] melee poison-rider spec field — the choose-a-wound declare
+## shape and its entry-condition ruling deserve their own pass) · e DATA
+## (threshold row 96). All three stay OUT of KNOWN_KEYS for waves 1/2's two
+## reasons (acquisition-gated; keyword rulings pending). All magnitudes
+## PLACEHOLDER (R14), anchored >= the consumed parents' values.
 ##
 ## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
 ## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
@@ -1231,6 +1318,113 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"cost_cut": [5, 6, 6, 7][lv - 1],
 				"collapse_table": "body",
 				"immunity_moments": [0, 3, 3, 3][lv - 1],
+			}
+		"predators_arc":
+			# Tier-2 wave 3 (S2, M3: Pounce Lv5 + Decapitate Lv3 — BLESSED
+			# 2026-08-18; [CHAIN: opener]). Physique/Reflexes, cost 2 (the
+			# 2-3 [PH] header's low end — pounce's own windup). ONE declare:
+			# leap up to leap_range (L1 >= the consumed Pounce's mastery
+			# reach; L4 carries row 36's "+2 Space") and strike on landing.
+			# The strike ADAPTS at resolution: vs an Exposed target struck
+			# from the REAR ARC (R30 is_behind, judged from the landing hex)
+			# it targets the HEAD with decapitate's bypass — head_amount
+			# Bleed (L1 >= Decapitate Lv3's 5), Head->0 = cinematic_kill +
+			# the authored spectacle payout; otherwise pounce's torso Bleed
+			# (amount — L2 carries row 40's "+4 Bleed" as a total, L4 row
+			# 36's "+2"). chain_as: the ruling-#4 chain seat, authored at L1
+			# — Predator's Arc COUNTS AS Pounce for Slip Through's chain
+			# gate (the CHAIN predicate consults the last action's spec).
+			# chain_open (S2-b, L2+): resolving opens the chain to ANY
+			# adjacent target — the actor's chain_open_key waives Slip
+			# Through's same-target half for one chained declare. S2-c
+			# (wall/boost origins) and S2-d's self-chain stay DATA
+			# ([NEEDS] — see the wave-3 note). L5 stays threshold DATA.
+			# All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "fused_leap_finisher",
+				"cost": 2,
+				"damage_type": "bleeding",
+				"amount": [6, 10, 10, 12][lv - 1],
+				"head_amount": [5, 6, 6, 7][lv - 1],
+				"leap_range": [6, 6, 6, 8][lv - 1],
+				"cinematic_spectacle": 45,
+				"chain_as": "pounce",
+				"chain_open": lv >= 2,
+			}
+		"earthbreaker":
+			# Tier-2 wave 3 (S3, M4: Overhead Slam Lv5 + Execution Lv3 —
+			# BLESSED 2026-08-18; [CHAIN: opener]). Physique, cost 2 (the
+			# 2-3 [PH] header's low end — the slam's own windup; Exposed
+			# through it, the committed_strike rider). One declare, forked
+			# at RESOLUTION: a STANDING target takes slam_amount Crush (L1
+			# >= the consumed Slam's mastery output) + knock Prone; an
+			# already Prone/Helpless target takes exec_amount instead (L1
+			# >= Execution Lv3's 8) — a landed Torso hit adds Shock T3, a
+			# Head hit rides the normal lethal path (Prone/Helpless already
+			# open the head gate; no bypass flag, execution's own precedent).
+			# L2 (S3-b, [FROM row 42 re-expressed per default #2]): +4 Crush
+			# as FORCE through the R14 gate — both faces of the arc rise;
+			# NO resistance bypass anywhere on this spec. close_range (S3-c,
+			# L3+, the buildable half): close 1-2 hexes into the arc via
+			# "close_to" (movement absorbed — the leap plumbing); the
+			# improvised-weapon half stays DATA. tremor (S3-d, L4+, [FROM
+			# row 46 audit-reworded]): a CONNECTED impact triggers the free
+			# shockwave-shaped tremor centered on the target (tremor_amount /
+			# tremor_radius anchored to shockwave's authored L1 payload).
+			# chain_as: the ruling-#4 seat — Earthbreaker COUNTS AS Overhead
+			# Slam for Shockwave's chain gate (and the wave's cone still
+			# excludes the arc's victim via last_action_target). L5 stays
+			# threshold DATA. All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "state_forked_strike",
+				"cost": 2,
+				"damage_type": "crushed",
+				"amount": [7, 11, 11, 11][lv - 1],
+				"exec_amount": [8, 12, 12, 12][lv - 1],
+				"attack_range": 1,
+				"torso_shock_tier": 3,
+				"close_range": [0, 0, 2, 2][lv - 1],
+				"tremor": lv >= 4,
+				"tremor_amount": 1,
+				"tremor_radius": 3,
+				"chain_as": "overhead_slam",
+			}
+		"vivisection":
+			# Tier-2 wave 3 (S4, M5: Slice n' Dice Lv5 + Thousand Cuts Lv3
+			# — BLESSED 2026-08-18; rename caution: the primary parent is a
+			# v2 display-rename skill — this spec and its events carry only
+			# the sim key). Physique/Reflexes, cost 3 (the authored [PH]
+			# header). ONE crossing flurry: choose parts_min..parts_max
+			# DISTINCT part rows across up to targets_max ADJACENT targets
+			# (2 at L1; S4-b widens to 3 — the 180° wrap read as the
+			# target-count rise). Per-row Bleed is stamped at declare by the
+			# inherited G8 crossing math: limbs take limb_bleed, a torso
+			# takes torso_bleed on a single-target flurry and
+			# pair_torso_bleed when the flurry spans targets (the pair
+			# discipline), a head row (Exposure-gated as ever) takes
+			# head_bleed — row 80's "+2 Torso / +1 limbs / 2-on-Head" lands
+			# the L3 rise. EVERY hit landing on an already-Bleeding part
+			# advances that Bleed one tier ON TOP of the R4 reapply advance
+			# (the thousand_cuts payoff made per-hit and unconditional — the
+			# all-3 gate is DROPPED by the blessed fusion). bleed_tier
+			# (S4-c, [FROM row 80], L3+): fresh wounds apply Bleed T2
+			# instead. S4-d (venom coat) stays DATA ([NEEDS] the melee
+			# poison-rider spec field). L5 stays threshold DATA. All numbers
+			# PLACEHOLDER (R14), anchored >= the consumed parents' values.
+			spec = {
+				"archetype": "fused_arc_flurry",
+				"cost": 3,
+				"damage_type": "bleeding",
+				"amount": [4, 4, 5, 5][lv - 1],  # limb value = the representative amount
+				"limb_bleed": [4, 4, 5, 5][lv - 1],
+				"torso_bleed": [6, 6, 8, 8][lv - 1],
+				"pair_torso_bleed": [4, 4, 5, 5][lv - 1],
+				"head_bleed": [1, 1, 2, 2][lv - 1],
+				"bleed_tier": [1, 1, 2, 2][lv - 1],
+				"parts_min": 3,
+				"parts_max": [4, 5, 5, 5][lv - 1],
+				"targets_max": [2, 3, 3, 3][lv - 1],
+				"attack_range": 1,
 			}
 		"quick_step":
 			# Round 3a (ladder #2). Reflexes, cost 0 — and SLOT-FREE (design

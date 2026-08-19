@@ -63,6 +63,50 @@ dependency-ordered stories (names stay PROVISIONAL pending the owner's rename pa
 > + row 10's deeper queue reveal) · d DATA ([NEEDS] R15 combined-action hooks —
 > cross-footprint) · e DATA (row 93; [NEEDS] boss win-condition telegraph
 > exposure). Tests: `tests/test_tier2_wave2.gd`.
+> **[IMPLEMENTATION STATUS — wave 3 (the strike fusions) landed 2026-08-19.]** The three
+> strike ladders are ENCODED in `SkillBook`/`ActionResolver` (same conventions: not in
+> KNOWN_KEYS, magnitudes PLACEHOLDER R14 anchored ≥ the consumed parents' values):
+> **S2 predators_arc** (fused_leap_finisher) — a IMPLEMENTED (the pounce landing contract
+> + the ADAPTIVE strike: Exposed + rear arc (R30 `is_behind` from the landing hex) →
+> Head with decapitate's bypass, Head→0 = cinematic_kill + spectacle; otherwise the
+> torso Bleed. **The ruling-#4 chain seat is a spec field consulted by the CHAIN
+> predicate**: `"chain_as": "pounce"` — `last_action_key` keeps the REAL key, the
+> predicate asks the last action's spec whether it counts as the gate's parent) · b
+> IMPLEMENTED ([FROM row 40]: +Bleed + the post-landing chain-open — the resolver sets
+> the serialized-only-when-set `chain_open_key` marker, which waives the SAME-TARGET
+> half of a chain gate the last action satisfies until any other action resolves; Slip
+> Through then opens onto any adjacent target) · c DATA ([NEEDS] vertical/boosted
+> origin vocabulary + R15 hooks — no sim substrate) · d DATA ([FROM row 36; NEEDS
+> self-chaining support on the chain field] — the ×4-at-1-Moment cost override and its
+> reset window are unauthored machinery; row 36's "+2 space" rides the L4 leap row) ·
+> e DATA (threshold row 94).
+> **S3 earthbreaker** (state_forked_strike) — a IMPLEMENTED (one declare forked at
+> resolution: standing → slam + knock Prone; Prone/Helpless → the execution payload,
+> Torso→Shock T3, Head per the lethal path; Exposed during the wind-up; chain seat
+> `"chain_as": "overhead_slam"` — Shockwave accepts it, and its cone still excludes
+> the arc's victim through `last_action_target`) · b IMPLEMENTED ([FROM row 42
+> re-expressed per default #2]: the rise is FORCE through the R14 gate — no bypass
+> vocabulary anywhere on the spec, test-pinned) · c PARTIAL (the close-into-the-arc
+> half IMPLEMENTED at L3+ via the shared leap plumbing (`close_to`, movement
+> absorbed); the improvised-heavy-object half stays DATA — equipment vocabulary) · d
+> IMPLEMENTED ([FROM row 46, audit-reworded]: a CONNECTED impact triggers the free
+> shockwave-shaped tremor CENTERED ON THE TARGET — a rider composing the cone
+> resolver's own per-member primitives: leg-line strike round, knockback away from
+> the center, Mob Forced Body off the existing stream; victim + allies excluded) · e
+> DATA (threshold row 95 — the guaranteed chain / wide stagger / double-arc [NEEDS]
+> the multi-target finisher spec).
+> **S4 vivisection** (fused_arc_flurry) — a IMPLEMENTED (3..parts_max distinct part
+> rows across one or two adjacent targets; per-row amounts stamped at declare by the
+> inherited G8 crossing math — limb / torso / pair-torso-when-spanning / head; EVERY
+> hit landing on an already-Bleeding part advances one tier on top of the R4 reapply
+> — the all-3 gate DROPPED, contrast-pinned against thousand_cuts) · b IMPLEMENTED
+> (+parts and the three-target wrap as the targets_max rise; adjacency stays the
+> reach gate) · c IMPLEMENTED ([FROM row 80]: magnitudes rise + fresh wounds apply
+> Bleed T2) · d DATA ([NEEDS] melee poison-rider spec field — the choose-a-wound
+> declare shape and its entry-condition ruling deserve their own pass) · e DATA
+> (threshold row 96). Tests: `tests/test_strike_fusions.gd`. S8–S9 remain the only
+> DATA-ONLY ladders.
+
 **How to answer: by number.** Skills are **S1–S10**; each skill's five rungs are lettered
 **a–e** (a = L1 … e = L5). "S1–S7 yes, S8-c reword, S10 hold for OQ1" is a complete
 answer. All names stay PROVISIONAL pending the owner's rename pass.

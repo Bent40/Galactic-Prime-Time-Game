@@ -105,6 +105,16 @@ of the next Clock. Order of operations at each tick:
   by R25's movement forfeit instead); per-skill prime tags for the other ~37 ride the R19
   ladder finalization. (Tactical Roll's engine implementation landed with R25; Acrobatic
   Save stays unimplemented content.)
+- **Tier-2 chain-seat aliasing (wave 3, 2026-08-19 — ruling #4's authored seats,
+  PROVISIONAL like every tier-2 placement):** a skill spec may carry **`chain_as`** — the
+  parent key it COUNTS AS for downstream CHAIN gates (Predator's Arc counts as Pounce
+  for Slip Through; Earthbreaker counts as Overhead Slam for Shockwave). The alias is
+  consulted by the CHAIN predicate itself (`ActionResolver._chain_counts_as`);
+  `last_action_key` keeps the REAL resolved key, so events and attribution never lie.
+  Companion marker: **`chain_open_key`** (serialized only-when-set) — a chain-opening
+  rung (Predator's Arc L2+) may open its chain to ANY legal target by waiving the
+  same-target half until any other action resolves. The prime vocabulary itself is
+  unchanged — both are properties of how the CHAIN predicate reads existing state.
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 
@@ -1516,6 +1526,14 @@ is a legal future parent (pinned in `tests/test_tier2_enablement.gd`).
 **Economy stays KAN-7:** merge/absorb/offer pricing, when offers appear in the Lounge
 flow, and who pays what to level an unlocked L6–8 band are all deliberately unpriced
 here (the R27 discipline, unchanged).
+
+**Implementation status (2026-08-19):** eight of the ten blessed tier-2 ladders are
+ENCODED — wave 1 (S5 perfect_evasion, S7 vice_grip, S10 phantom_grasp), wave 2 (S1
+counterscript, S6 combat_medic), wave 3 the strike fusions (S2 predators_arc, S3
+earthbreaker, S4 vivisection — incl. the ruling-#4 chain-seat aliasing `chain_as` +
+the S2-b chain-open marker; see the R3 note above). S8–S9 stay DATA-ONLY. Per-rung
+implemented-vs-data maps: `docs/design/tier2-rungs-proposal.md` status blocks; tests:
+`tests/test_tier2_wave1.gd` / `test_tier2_wave2.gd` / `test_strike_fusions.gd`.
 
 ## R32 — Zones/fields: the area-effect substrate (KAN-5 remainder K1, 2026-08-19 — PROVISIONAL)
 
