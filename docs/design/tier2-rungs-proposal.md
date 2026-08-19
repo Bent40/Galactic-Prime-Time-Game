@@ -201,12 +201,13 @@ fused; both halves stay R25 movement-forfeit-gated.
 - **b (L2) — farther, luckier.** `+[PH]` roll range, `+[PH]` save dice — the suite
   scales both halves together (the parents' L2–4 rows continued).
 - **c (L3) — the second evasion.** [FROM row 16 — **⚠ re-expressed per R25**: the
-  row's chain/cooldown wording is dead per G1/R3] `+[PH]` roll range (the row's "+2
-  Space" kept), and **once per Clock you may evade even though your movement is
-  already spent this Moment** — the forfeit is waived once, the honest R25 re-reading
-  of "can be used twice per chain". *(the R25 plumbing exists;* [NEEDS: a small
-  once-per-Clock forfeit-waiver marker — serialized, hash-covered like
-  `rolled_this_window`] *)*
+  row's chain/cooldown wording is dead per G1/R3; **reading RULED by OQ2 (owner
+  2026-08-18: "2nd roll 2nd attack")**] `+[PH]` roll range (the row's "+2 Space"
+  kept), and **one movement forfeit now covers a SECOND roll: when a second
+  distinct attack resolves against you in the same window, you may declare the
+  hex-roll again against it** — two dodges from one forfeit, never two forfeits
+  waived. *(the R25 plumbing exists;* [NEEDS: a small second-roll-this-window
+  marker — serialized, hash-covered like `rolled_this_window`] *)*
 - **d (L4) — the negation.** [FROM row 68] Once per Clock, **negate a Forced Action —
   Body outright** — the save stops softening the roll and vetoes it. *(a per-Clock
   gate, R3-legal — ForcedAction interception exists;* [NEEDS: negate path beside
@@ -350,18 +351,19 @@ skill; no old display name appears in any rung text.)*
 ### S10 — Phantom Grasp · mind · 1 Moment + sustain · cap 5 · [TIER-2 OFFER: Telekinesis Lv 5 + Pressure Hold Lv 3 — broad-only `control`, blessed 2026-08-18]
 **Identity.** The hold without the hands: the grapple discipline projected through
 psychic force — a pin at range. R9's boss/size Suffocation caps ride along uncut. *(No
-inherited rows — authored fresh. See **OQ1** before blessing: is_magic + the escape
-contest.)*
+inherited rows — authored fresh. **OQ1 RULED (owner 2026-08-18): mundane-PSIONIC,
+not magic — no magic privileges ever on this band; escape contest = target's
+Physique vs the holder's MIND.**)*
 **PROPOSED L1–5:**
 - **a (L1) — the merged core: the phantom hold.** Grip one visible target at `[PH — ≥
   Telekinesis' L5 range]`: the grip is a **hold**, not just a lift — the target cannot
-  reposition (R9's lock at range), escape per R9's escape actions `[PH — contest stat:
-  see OQ1]`. The sustain occupies your scheduled action each Moment and may drag the
+  reposition (R9's lock at range), escape per R9's escape actions — **contest: target's
+  Physique vs the holder's MIND (OQ1 ruled)**. The sustain occupies your scheduled action each Moment and may drag the
   target `[PH]` spaces (the trained hold replaces raw lifting). You are Exposed while
   sustaining (the parent's base; its L6 un-Exposed row stays linear on Telekinesis —
   not inherited here). *(sustained_channel shipped with held_by movement-lock — most
-  of this rung exists;* [NEEDS: a "psychic" grip value on the R9 gate set + the OQ1
-  escape-contest ruling] *)*
+  of this rung exists;* [NEEDS: a "psychic" grip value on the R9 gate set — the
+  escape contest is ruled (Physique-vs-Mind), only the gate plumbing remains] *)*
 - **b (L2) — longer reach, harder grip.** `+[PH]` range, `+[PH]` drag — the parents'
   L2–4 rows continued.
 - **c (L3) — constrict and hurl.** While held: Crush-over-time to a chosen part
@@ -376,8 +378,9 @@ contest.)*
   `[PH]`, and the phantom grip may **begin grapple-Suffocation** — the "both grappler
   hands + coverable airway" requirement met by the two-handed phantom grip `[PH
   gate]`; **R9's caps uncut: bosses and anything ≥2 sizes larger are immune** — no
-  hold, phantom or physical, chokes out a boss. *(*[NEEDS: the OQ1
-  psychic-suffocation reading + S7-d's suffocation start hook] *)*
+  hold, phantom or physical, chokes out a boss. *(psionic per OQ1 — the phantom
+  two-handed grip satisfies the requirement mundanely, no magic reading needed;*
+  [NEEDS: S7-d's suffocation start hook] *)*
 **1–4 scales underneath:** range and drag `[PH]`.
 
 ---
@@ -422,8 +425,8 @@ offer is the build choice, exclusive with walking their own bands).
    rung touches HP or a lethal state (default #8). The resolve rungs (S6-d/e) carry
    the ruled row content faithfully with the boundary stated in place.
 3. **Perfect Evasion stays R25-gated**: every use of either half is priced by the
-   movement forfeit; the one waiver (S5-c) is the authored re-expression of the dead
-   cooldown wording, once per Clock, flagged.
+   movement forfeit; S5-c (RULED by OQ2) stretches one forfeit to a second roll
+   against a second attack in the same window — the forfeit itself is never waived.
 4. **Vice Grip keeps R9's caps at every rung** — suffocation gates apply at S7-d and
    the size caps bound S7-e; Phantom Grasp repeats them verbatim at S10-e.
 5. **No lore invented**: every identity line is the ruled proposal's / the blessed
@@ -447,14 +450,13 @@ call within ruling #4's discipline — the owner can move them by letter.
 
 ## 4. Open questions for the owner (only what the data cannot decide)
 
-- **OQ1 — Phantom Grasp's nature.** Telekinesis is `is_magic`; Pressure Hold is not.
-  Is the offer result **magic** (counts for magic-only rules; its deferred L6+ band
-  could one day carry a source-gated transcending tier) or **mundane-psionic** (no
-  magic privileges, ever)? And the escape contest: R9's escape/initiate contests read
-  **Physique vs Physique** — a psychic hold needs a ruled stat pairing (target
-  Physique vs your Mind is the natural reading; un-ruled either way). Both answers
-  shape S10-a/e before implementation.
-- **OQ2 — Perfect Evasion S5-c's re-expression.** Row 16's dead "twice per chain"
-  wording is re-expressed here as a once-per-Clock **forfeit waiver** (evade though
-  you already moved). The other faithful reading is a **second roll against a second
-  attack in the same window**. Confirm the waiver reading, or name the other.
+- **OQ1 — RULED (owner 2026-08-18: "psionic, not exactly magic. Your read is
+  correct.").** Phantom Grasp is **mundane-psionic** — no magic privileges, no
+  source-gated transcending tier ever on its band. The escape contest is the
+  confirmed natural reading: **target's Physique vs the holder's MIND** (the R9
+  contest shape with the holder's stat swapped). S10-a/e implement accordingly.
+- **OQ2 — RULED (owner 2026-08-18: "2nd roll 2nd attack").** Row 16 re-expresses as
+  a **second roll against a second attack in the same window** — one movement
+  forfeit arms the defenses; when a second distinct attack resolves against you in
+  the same window, you may roll the declared-hex dodge a second time against it.
+  The forfeit-waiver draft reading is retired; S5-c is re-authored to this ruling.
