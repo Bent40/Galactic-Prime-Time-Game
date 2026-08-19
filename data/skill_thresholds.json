@@ -790,5 +790,95 @@
     "description": "Losses no longer double during your surge - the editors cut the embarrassing parts.",
     "stat_requirements": {},
     "effects": []
+  },
+  {
+    "id": 93,
+    "skill_id": 51,
+    "level": 5,
+    "threshold_name": "The whole fight is scripted",
+    "description": "Read a boss's discoverable win-condition telegraphs, not just scheduled actions (the anti-damage-race tool), and a fully collapsed counter refunds the collapsed action's Moments to you as tempo [PH]. Mundane. [NEEDS: boss win-condition telegraph exposure — must stay consistent with authored boss win conditions]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 94,
+    "skill_id": 52,
+    "level": 5,
+    "threshold_name": "The highlight-reel takedown",
+    "description": "Off the leap, behead/tear ANY lethal part of a non-boss Exposed target for a max Viewer spike [PH] — mundane lethality (the Cinematic-Kill fantasy, never an HP-bypass; boss bound kept). [NEEDS: any-lethal-part widening — spec-level]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 95,
+    "skill_id": 53,
+    "level": 5,
+    "threshold_name": "Fault-line",
+    "description": "The arc guarantees the Shockwave chain, the knockback becomes a wide stagger [PH], and one arc may take two adjacent downed targets. Mundane throughout. [NEEDS: multi-target finisher spec]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 96,
+    "skill_id": 54,
+    "level": 5,
+    "threshold_name": "The bleed-out clock",
+    "description": "Against an Exposed target, guarantee multi-part Bleed T2 — an unignorable bleed-out + Viewer spike [PH]. Mundane. [expressible with today's condition machinery]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 97,
+    "skill_id": 55,
+    "level": 5,
+    "threshold_name": "Untouchable",
+    "description": "Once per encounter, declare the perfect Moment: every attack targeting you this tick is dodged AND a Forced Action that would end the fight is auto-passed [PH]. Still movement-forfeit-priced, still mundane. [NEEDS: tick-wide dodge window — a widened rolled_this_window]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 98,
+    "skill_id": 56,
+    "level": 5,
+    "threshold_name": "Triage supremacy",
+    "description": "[FROM row 88] Once per combat, fully resolve ANY one condition instead of delaying — the fused medic's signature. The stabilize texture rides with it: delaying a downed ally's lethal condition returns them 0-HP-stabilized per R5 — alive, held, not healed (no HP restored, the lethal state is held, not cured). [NEEDS: the condition-resolve path in ally_treatment — same as L4]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 99,
+    "skill_id": 57,
+    "level": 5,
+    "threshold_name": "The apex hold",
+    "description": "Initiate on targets up to Elite scale the base Physique gate forbade [PH] (still bounded by R9's size caps for Suffocation), and any hold may end in the body-slam finisher: release for Crush to Head/Torso + knock Prone (Exposed) — a Cinematic-Kill candidate [PH]. [NEEDS: end-hold strike spec]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 100,
+    "skill_id": 58,
+    "level": 5,
+    "threshold_name": "Simply not there",
+    "description": "Once per scene, choose: vanish in place (effectively invisible until you act, even at adjacency) or be already gone (declared relocation to any known opening you've sensed) [PH]. Mundane stealth — no radiant/psychic tier. [NEEDS: relocation toggle; the vanish half is the conceal override at radius 0]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 101,
+    "skill_id": 59,
+    "level": 5,
+    "threshold_name": "The reveal",
+    "description": "Spoof one target's whole next-Clock plan — they act as if you're where you aren't [PH] (total misdirection, mundane) — and when you break the con with a strike, the reveal IS the show: a Viewer spike scaled by Charm [PH]. [NEEDS: AI misdirection hook — the spoofed-position plan; the spike half is HypeEngine]",
+    "stat_requirements": {},
+    "effects": []
+  },
+  {
+    "id": 102,
+    "skill_id": 60,
+    "level": 5,
+    "threshold_name": "Close the airway",
+    "description": "Initiate on targets up to Elite scale [PH], and the phantom grip may begin grapple-Suffocation — the 'both grappler hands + coverable airway' requirement met by the two-handed phantom grip [PH gate]; R9's caps uncut: bosses and anything >= 2 sizes larger are immune — no hold, phantom or physical, chokes out a boss. Psionic per OQ1 — mundane, no magic reading. [NEEDS: the grapple-suffocation start hook for a channel hold]",
+    "stat_requirements": {},
+    "effects": []
   }
 ]

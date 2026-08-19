@@ -134,6 +134,21 @@ extends RefCounted
 ##                          stream and keeps the LOWEST-severity result
 ##                          (ForcedAction.save_severity — tie keeps the
 ##                          original); the arming is consumed per roll
+##   fused_evasion        — tier-2 wave 1 (perfect_evasion, S5 — BLESSED
+##                          2026-08-18): ONE R25 movement-forfeit declare arms
+##                          BOTH parents' defenses at once — the declared-hex
+##                          roll (moves at declare, rolled_this_window set, the
+##                          AoE-center rule applies) AND the armed save
+##                          (forced_save, the acrobatic_save consume path). L3+
+##                          (S5-c, OQ2 RULED "2nd roll 2nd attack"): the same
+##                          forfeit covers a SECOND declared-hex roll against a
+##                          second DISTINCT attack resolving in the same window
+##                          ({"second_roll": true, "against": attacker} — the
+##                          serialized `evasion` window record enforces
+##                          distinctness; the forfeit is never waived). L4+
+##                          (S5-d, row 68): the armed save NEGATES a Forced
+##                          Action – Body outright once per Clock
+##                          (negate_used_clock, serialized only-when-set)
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
@@ -168,6 +183,25 @@ extends RefCounted
 ## The remaining skills in data/skills.json are the fill-in-later content pass;
 ## until encoded they resolve through the generic `strike` fallback so an
 ## unknown key still does a real, honest thing.
+##
+## TIER-2 WAVE 1 (docs/design/tier2-rungs-proposal.md, BLESSED owner
+## 2026-08-18): the three low-machinery ladders are ENCODED below —
+## perfect_evasion (S5, fused_evasion), vice_grip (S7, skill_grapple grip
+## "any") and phantom_grasp (S10, sustained_channel grip "psychic" —
+## OQ1 RULED mundane-psionic, escape contest Physique-vs-holder-MIND).
+## They are deliberately NOT in KNOWN_KEYS: (a) tier-2 results are
+## acquisition-gated — merge/offer results, never learnable directly — and
+## the creation surface draws from KNOWN_KEYS (nothing aspirational), so
+## listing them would open a wrong door; (b) KNOWN_KEYS membership requires
+## a ruled skill_keywords.json entry (validate_seeds + test_keywords), and
+## the tier-2 keyword rulings are the keyword pass's scope, not this
+## story's. mechanics() is the encoding authority either way — the forge/
+## offer grant (or a roster `skills` row) yields a REAL implemented skill.
+## The other seven tier-2 ladders (S1-S4, S6, S8-S9) are DATA-ONLY this
+## wave: their skills.json rows carry the blessed rung content with [NEEDS]
+## flags, and an undeclared key resolves through the `strike` fallback.
+## L2-4 magnitudes below are PLACEHOLDER (R14), anchored per the blessed
+## ladders' [PH] guidance (L1 >= the consumed parent's L5 value).
 ##
 ## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
 ## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
@@ -251,8 +285,10 @@ static func is_self_skill(key: String) -> bool:
 		return String(spec.get("form", "")) == "stance"
 	# Batch C: the save arming names no target (the movement forfeit is the
 	# whole declare); the passive aura is never declared at all but reads
-	# self-shaped for any HUD affordance that asks.
-	if arch == "forced_roll_save":
+	# self-shaped for any HUD affordance that asks. Tier-2 wave 1: the fused
+	# evasion arming is the same shape — a self-declare naming a hex, never
+	# a combatant.
+	if arch == "forced_roll_save" or arch == "fused_evasion":
 		return true
 	if arch == "intel_reveal":
 		return String(spec.get("form", "")) == "passive_aura"
@@ -934,6 +970,85 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"archetype": "item_flow",
 				"cost": 0,
 				"pass_range": [5, 8, 11, 14][lv - 1],
+			}
+		"perfect_evasion":
+			# Tier-2 wave 1 (S5, M6: Tactical Roll Lv5 + Acrobatic Save Lv3 —
+			# BLESSED 2026-08-18). Reflexes, 0 Moments — the R25 MOVEMENT
+			# FORFEIT is the whole price (no stance, no charges, no cooldown;
+			# both parents already priced by it). ONE declare arms BOTH
+			# defenses: the declared-hex roll (roll_range hexes, moves at
+			# declare, the AoE-center rule applies) AND the armed save
+			# (extra_dice on the next Forced Body, keep the lowest severity).
+			# L1 anchors >= the parents' L5 values (roll L5 = 8 spaces, save
+			# L5 = 5 dice — PLACEHOLDER R14, threshold rows 15/67 read as
+			# totals); L2-4 scale both halves together (S5-b). second_roll
+			# gates S5-c (OQ2 RULED: a second distinct attack in the same
+			# window may be answered by a second declared-hex roll — the
+			# forfeit is never waived, and never re-charged). negate gates
+			# S5-d ([FROM row 68]: once per Clock the armed save negates a
+			# Forced Action – Body outright). L5 stays threshold DATA.
+			spec = {
+				"archetype": "fused_evasion",
+				"cost": 0,
+				"roll_range": [8, 9, 10, 11][lv - 1],
+				"extra_dice": [5, 6, 7, 8][lv - 1],
+				"second_roll": lv >= 3,
+				"negate": lv >= 4,
+			}
+		"vice_grip":
+			# Tier-2 wave 1 (S7, M8: Pressure Hold Lv5 + Death Grip Jaws Lv3
+			# — AND the mirrored twin vice_grip_animal: Jaws Lv5 + Hold Lv3,
+			# SAME result key; BLESSED 2026-08-18). Cost 1 (the R9 initiate —
+			# the ladder header). GRIP-NEUTRAL: grip "any" satisfies the R9
+			# grip gate with hands OR a bite-capable part — one skill for
+			# every body plan (_grip_unmet's third value). While held: the
+			# standard R9 hold (no reposition, both Exposed) + drag up to
+			# `drag` spaces per Moment (L1 >= the Hold's L5 drag 4; L4 = row
+			# 12's 5 — PLACEHOLDER R14; the R11.7 drag override). grip_bleed
+			# (S7-b, [FROM row 86], L2+): the grip closes with a real 1-Bleed
+			# wound on the held part through the honest R14 strike gate — the
+			# standing per-Clock condition advancement carries the wound
+			# forward; the literal while-held per-reset re-application NEEDS
+			# the Clock-reset rider (combat_sim's sweep — outside this
+			# story's footprint, rung content carried as data). S7-c
+			# (multi-hold/limb-pin) stays DATA ([NEEDS]); S7-d's
+			# grapple-Suffocation rides the EXISTING grapple_suffocate kind —
+			# at L4+ a full jaw grip substitutes for the both-hands gate
+			# (_validate_grapple_suffocate; R9 boss/size caps uncut). L5
+			# stays threshold DATA.
+			spec = {
+				"archetype": "skill_grapple",
+				"cost": 1,
+				"attack_range": 1,
+				"grip": "any",
+				"drag": [4, 4, 4, 5][lv - 1],
+				"grip_bleed": [0, 1, 1, 1][lv - 1],
+			}
+		"phantom_grasp":
+			# Tier-2 wave 1 (S10, OFFER: Telekinesis Lv5 + Pressure Hold Lv3
+			# — broad-only `control`, BLESSED 2026-08-18; OQ1 RULED:
+			# mundane-PSIONIC, not magic — is_magic 0 on the data row, no
+			# magic privileges ever on this band). Mind, cost 1 + sustain.
+			# The sustained_channel substrate with HOLD semantics: grip one
+			# visible target at range (target movement-locked via held_by —
+			# R9's lock at range), actor Exposed + rooted while sustaining,
+			# upkeep/lapse/break-on-damage all shipped. The grip "psychic"
+			# value marks the channel as a trained HOLD on the R9 gate set:
+			# the target may escape per R9's escape ACTIONS, and the escape
+			# contest swaps the holder's stat — target's Physique vs the
+			# holder's MIND (OQ1 ruled; ActionResolver.escape_holder_stat).
+			# Drag per sustain walks up to `drag` hexes (the trained hold
+			# replaces raw lifting; telekinesis keeps its 1). L1 range >= the
+			# parent's L5 range 22 (PLACEHOLDER R14, threshold row 31 read
+			# as a total). S10-c (collision damage), S10-d (multi-hold) and
+			# S10-e (suffocation for a channel hold) stay DATA ([NEEDS] —
+			# cross-footprint or unbuilt). L5 stays threshold DATA.
+			spec = {
+				"archetype": "sustained_channel",
+				"cost": 1,
+				"grip_range": [22, 24, 26, 28][lv - 1],
+				"drag": [2, 3, 3, 4][lv - 1],
+				"grip": "psychic",
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the

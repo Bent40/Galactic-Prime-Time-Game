@@ -158,6 +158,12 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 		# a Moment or the free slot — so it routes before the R3 slot caps too.
 		if String(skill_spec.get("archetype", "")) == "forced_roll_save":
 			return _declare_forced_roll_save(actor, action, skill_spec)
+		# Tier-2 wave 1 (perfect_evasion — S5): the fused arming is BOTH R25
+		# movement-forfeit declares in one — it routes before the slot caps
+		# for the same reason its parents do (the economy is the movement
+		# allowance, not a Moment or the free slot).
+		if String(skill_spec.get("archetype", "")) == "fused_evasion":
+			return _declare_fused_evasion(actor, action, skill_spec)
 		# Batch D (telekinesis): a voluntary release is FREE and immediate —
 		# abandoning a state is not an act (the stealth-reveal precedent), so
 		# it touches neither the Moment economy nor the free-action slot.
@@ -679,7 +685,10 @@ func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> 
 		"grapple":
 			return _validate_grapple(actor, action)
 		"grapple_escape":
-			if actor.grappled_by == "":
+			# Tier-2 wave 1 (phantom_grasp — S10-a, OQ1): a psychic HOLD is
+			# escapable per R9's escape actions too; a plain telekinesis lift
+			# (no grip value on the channel) keeps the legacy rejection.
+			if actor.grappled_by == "" and _hold_holder_of(actor) == null:
 				return _reject("not_grappled", {"actor": actor.id})
 		"grapple_suffocate":
 			return _validate_grapple_suffocate(actor, action)
@@ -805,14 +814,21 @@ func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dicti
 ## "bite" substitutes a usable bite-capable part (data-driven `bite_capable`
 ## on the part — carried additively by CombatantState.from_spec, only when the
 ## seed/spec declares it) — this is what unlocks grappling for HANDLESS
-## layouts. NOTE: the shipped races.json animal TEMPLATE keeps arm-keyed
-## forelimbs (they already pass the hands gate) and is deliberately unstamped
-## — static_data is hash-covered, so stamping the template would move every
-## legacy fight hash (the test_stealth pins); an authored handless layout
-## declares the flag on its own part plan.
+## layouts. Tier-2 wave 1 (vice_grip — S7-a, the M8 fusion): "any" accepts
+## EITHER anatomy — a usable hand OR a bite-capable part satisfies the gate,
+## one skill for every body plan (the grip-neutral ladder; both recipes'
+## twin yields this one key). NOTE: the shipped races.json animal TEMPLATE
+## keeps arm-keyed forelimbs (they already pass the hands gate) and is
+## deliberately unstamped — static_data is hash-covered, so stamping the
+## template would move every legacy fight hash (the test_stealth pins); an
+## authored handless layout declares the flag on its own part plan.
 func _grip_unmet(actor: CombatantState, grip: String) -> String:
 	if grip == "bite":
 		return "" if actor.bite_part(clock.tick) != "" else "no_bite_part"
+	if grip == "any":
+		if actor.usable_hands(clock.tick) >= 1 or actor.bite_part(clock.tick) != "":
+			return ""
+		return "no_grip"
 	return "" if actor.usable_hands(clock.tick) >= 1 else "no_free_hand"
 
 
@@ -846,7 +862,14 @@ func _validate_grapple_suffocate(actor: CombatantState, action: Dictionary) -> A
 		return _reject("boss_immune_to_grapple_suffocation", {"target": target_id})
 	if target.size_rank() - actor.size_rank() >= 2:
 		return _reject("too_large_for_suffocation", {"target": target_id})
-	if actor.usable_hands(clock.tick) < 2:
+	# Tier-2 wave 1 (vice_grip — S7-d, [FROM row 12, audit reword]): "both
+	# grappler hands / a FULL JAW GRIP and a coverable airway" — at Vice Grip
+	# L4+ a usable bite-capable part substitutes for the both-hands gate (the
+	# grip-neutral ladder's authored substitution; every other holder keeps
+	# the unchanged R9 both-hands requirement — death_grip_jaws alone never
+	# unlocked suffocation). R9's boss/size caps above stay uncut.
+	if actor.usable_hands(clock.tick) < 2 \
+			and not (actor.skill_level("vice_grip") >= 4 and actor.bite_part(clock.tick) != ""):
 		return _reject("needs_both_hands", {"actor": actor.id})
 	if bool(target.boss_traits.get("no_airway", false)) or not _has_head(target):
 		return _reject("no_coverable_airway", {"target": target_id})
@@ -1523,8 +1546,14 @@ func _validate_sustained_channel(actor: CombatantState, action: Dictionary, spec
 			if dt.size() != 2:
 				return _reject("invalid_drag_destination", {"actor": actor.id})
 			var to := Vector2i(int(dt[0]), int(dt[1]))
-			if CombatantState.hex_distance(held.position, to) != 1:
-				return _reject("drag_out_of_range", {"actor": actor.id, "to": [to.x, to.y]})
+			# Tier-2 wave 1 (phantom_grasp — S10-a): the drag limit is the
+			# spec's `drag` (telekinesis keeps its authored 1 — behavior
+			# unchanged; the phantom hold walks farther, the trained hold
+			# replacing raw lifting). Resolution walks the hex line honestly.
+			var limit: int = maxi(1, int(spec.get("drag", 1)))
+			var spaces: int = CombatantState.hex_distance(held.position, to)
+			if spaces < 1 or spaces > limit:
+				return _reject("drag_out_of_range", {"actor": actor.id, "to": [to.x, to.y], "limit": limit})
 			var blocked: String = _movement_blocked_reason(held, to)
 			if blocked != "":
 				return _reject(blocked, {"actor": actor.id, "to": [to.x, to.y]})
@@ -1610,9 +1639,21 @@ func _base_cost(actor: CombatantState, kind: String, action: Dictionary) -> int:
 		"grapple", "grapple_suffocate", "stand":
 			return int(action.get("cost", 1))
 		"grapple_escape":
-			# R9: 2 Moments automatic; 1 Moment if Physique >= grappler's.
+			# R9: 2 Moments automatic; 1 Moment if Physique >= the holder's
+			# CONTEST stat — the grappler's Physique for a mundane grip, the
+			# holder's MIND for a psychic hold (tier-2 wave 1, phantom_grasp
+			# — OQ1 RULED: escape contest = target Physique vs holder Mind;
+			# escape_holder_stat parameterizes the stat by grip type).
 			var grappler: CombatantState = combatants.get(actor.grappled_by)
-			var quick: bool = grappler != null and actor.trait_total("physique") >= grappler.trait_total("physique")
+			var quick: bool = false
+			if grappler != null:
+				quick = actor.trait_total("physique") \
+					>= grappler.trait_total(escape_holder_stat("hands"))
+			else:
+				var holder: CombatantState = _hold_holder_of(actor)
+				if holder != null:
+					quick = actor.trait_total("physique") \
+						>= holder.trait_total(escape_holder_stat(String(holder.channeling.get("grip", ""))))
 			return int(action.get("cost", 1 if quick else 2))
 		"reload":
 			return int(action.get("cost", 2))  # R8
@@ -1833,6 +1874,189 @@ func _declare_forced_roll_save(actor: CombatantState, action: Dictionary, spec: 
 		"type": "acrobatic_save_armed", "actor": actor.id,
 		"dice": int(actor.forced_save["dice"]), "level": int(action.get("level", 1)),
 	}]
+
+
+# ------------------------------------- perfect evasion (tier-2 wave 1, S5)
+
+## The fused arming (perfect_evasion — M6, BLESSED 2026-08-18): ONE R25
+## movement forfeit arms BOTH parents' defenses — the declared-hex roll
+## (moves IMMEDIATELY at declare, rolled_this_window set: the AoE-center rule
+## and the R2 snapshot dodge semantics apply exactly as for tactical_roll)
+## AND the armed save (forced_save — consumed by the next Forced Action –
+## BODY roll through _forced_body_roll; at L4+ the arming carries the S5-d
+## negate flag, gated once per Clock by negate_used_clock). Gates are the
+## UNION of both parents' declares (they were already identical). At L3+
+## the declare records the `evasion` window record so the OQ2 second roll
+## can prove distinctness. Zero rng — the arming is pure movement + state.
+func _declare_fused_evasion(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	# S5-c (OQ2 RULED "2nd roll 2nd attack"): the second declared-hex roll —
+	# a separate shape that never re-charges the forfeit.
+	if bool(action.get("second_roll", false)):
+		return _declare_evasion_second_roll(actor, action, spec)
+	# already_armed FIRST (the acrobatic_save rule): an armed save makes the
+	# declare pointless whatever the movement state.
+	if not actor.forced_save.is_empty():
+		return _reject("already_armed", {"actor": actor.id})
+	if actor.grappled_by != "" or actor.grappling != "":
+		return _reject("grappled", {"actor": actor.id})
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor.id, "by": actor.held_by})
+	if not actor.channeling.is_empty():
+		return _reject("channeling", {"actor": actor.id})
+	if actor.windup_pending:
+		return _reject("winding_up", {"actor": actor.id})
+	if bool(actor.statuses.get("prone", false)):
+		return _reject("prone", {"actor": actor.id})
+	if actor.moved_this_tick:
+		return _reject("movement_spent", {"actor": actor.id})
+	var roll_range: int = int(spec.get("roll_range", 2))
+	var to_reason: String = _evasion_destination_unmet(actor, action, roll_range)
+	if to_reason != "":
+		return _reject(to_reason, {"actor": actor.id, "range": roll_range})
+	var to_raw: Array = action.get("to", [])
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	# --- all checks passed; mutate (ONE forfeit, both armings) ---
+	actor.moved_this_tick = true
+	actor.rolled_this_window = true
+	actor.forced_save = {"dice": maxi(1, int(spec.get("extra_dice", 1)))}
+	if bool(spec.get("negate", false)):
+		actor.forced_save["negate"] = true
+	if bool(spec.get("second_roll", false)):
+		actor.evasion = {"answered": _pending_attack_seqs_on(actor), "second_used": false}
+	var from: Vector2i = actor.position
+	var spaces: int = CombatantState.hex_distance(from, to)
+	actor.position = to
+	# R30: the roll is VOLUNTARY movement (the tactical_roll rule, unchanged).
+	_face_along(actor, from, to)
+	return [{
+		"type": "perfect_evasion", "actor": actor.id,
+		"from": [from.x, from.y], "to": [to.x, to.y], "spaces": spaces,
+		"range": roll_range, "dice": int(actor.forced_save["dice"]),
+		"negate_armed": bool(actor.forced_save.get("negate", false)),
+		"second_roll_available": bool(spec.get("second_roll", false)),
+		"level": int(action.get("level", 1)),
+	}]
+
+
+## S5-c per the OQ2 RULING (owner 2026-08-18: "2nd roll 2nd attack"): one
+## movement forfeit covers a SECOND declared-hex roll when a second DISTINCT
+## attack resolves against the roller in the same window. Mechanized against
+## the Clock queue: the declare names the attacker ("against"); its pending
+## entry aimed at the roller must exist and must NOT be in the window
+## record's answered set (what the first roll already dodged) — a same-attack
+## re-roll rejects. The forfeit is never waived and never re-charged:
+## moved_this_tick stays spent, no new movement is charged, and the second
+## roll is once per window (second_used). Zero rng — pure movement.
+func _declare_evasion_second_roll(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if not bool(spec.get("second_roll", false)):
+		return _reject("second_roll_locked", {"actor": actor.id, "level": int(action.get("level", 1))})
+	if actor.evasion.is_empty():
+		return _reject("no_first_roll", {"actor": actor.id})
+	if bool(actor.evasion.get("second_used", false)):
+		return _reject("second_roll_used", {"actor": actor.id})
+	if actor.grappled_by != "" or actor.grappling != "":
+		return _reject("grappled", {"actor": actor.id})
+	if actor.held_by != "":
+		return _reject("held", {"actor": actor.id, "by": actor.held_by})
+	if not actor.channeling.is_empty():
+		return _reject("channeling", {"actor": actor.id})
+	if actor.windup_pending:
+		return _reject("winding_up", {"actor": actor.id})
+	if bool(actor.statuses.get("prone", false)):
+		return _reject("prone", {"actor": actor.id})
+	var against := String(action.get("against", ""))
+	if against == "":
+		return _reject("against_required", {"actor": actor.id})
+	var seq: int = _pending_attack_seq_from(actor, against)
+	if seq < 0:
+		return _reject("no_second_attack", {"actor": actor.id, "against": against})
+	var answered: Array = actor.evasion.get("answered", [])
+	if answered.has(seq):
+		return _reject("same_attack", {"actor": actor.id, "against": against})
+	var roll_range: int = int(spec.get("roll_range", 2))
+	var to_reason: String = _evasion_destination_unmet(actor, action, roll_range)
+	if to_reason != "":
+		return _reject(to_reason, {"actor": actor.id, "range": roll_range})
+	var to_raw: Array = action.get("to", [])
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	# --- all checks passed; mutate (no new forfeit — the first one pays) ---
+	answered.append(seq)
+	actor.evasion["answered"] = answered
+	actor.evasion["second_used"] = true
+	actor.rolled_this_window = true
+	var from: Vector2i = actor.position
+	var spaces: int = CombatantState.hex_distance(from, to)
+	actor.position = to
+	_face_along(actor, from, to)
+	return [{
+		"type": "perfect_evasion_second_roll", "actor": actor.id,
+		"against": against, "from": [from.x, from.y], "to": [to.x, to.y],
+		"spaces": spaces, "range": roll_range, "level": int(action.get("level", 1)),
+	}]
+
+
+## Shared destination legality for both evasion rolls — the tactical_roll
+## gates verbatim (well-formed hex, real move, within range, arena-legal,
+## unoccupied). "" = legal, else the rejection reason.
+func _evasion_destination_unmet(actor: CombatantState, action: Dictionary, roll_range: int) -> String:
+	var to_raw: Array = action.get("to", [])
+	if to_raw.size() != 2:
+		return "invalid_destination"
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	var spaces: int = CombatantState.hex_distance(actor.position, to)
+	if spaces <= 0:
+		return "no_move"
+	if spaces > roll_range:
+		return "roll_out_of_range"
+	if arena != null:
+		if not arena.in_bounds(to):
+			return "out_of_bounds"
+		if arena.is_wall(to) or arena.object_index_at(to) >= 0:
+			return "hex_blocked"
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id != actor.id and other.alive and not other.removed_from_play and other.position == to:
+			return "hex_occupied"
+	return ""
+
+
+## Every pending Clock-queue entry aimed at `victim` (attack/skill "targets"
+## rows or the grapple family's "target"), as a sorted list of entry seqs —
+## the attack identities a roll declared NOW is answering. Deterministic
+## (seq order), zero mutation.
+func _pending_attack_seqs_on(victim: CombatantState) -> Array:
+	var seqs: Array = []
+	for entry: Dictionary in clock.scheduled_entries():
+		if String(entry.get("actor", "")) == victim.id:
+			continue
+		if _entry_targets(entry.get("action", {})).has(victim.id):
+			seqs.append(int(entry.get("seq", -1)))
+	return seqs
+
+
+## The seq of `attacker`'s pending entry aimed at `victim`, -1 when none —
+## the OQ2 second roll's "a second distinct attack resolving against you".
+func _pending_attack_seq_from(victim: CombatantState, attacker: String) -> int:
+	for entry: Dictionary in clock.scheduled_entries():
+		if String(entry.get("actor", "")) != attacker:
+			continue
+		if _entry_targets(entry.get("action", {})).has(victim.id):
+			return int(entry.get("seq", -1))
+	return -1
+
+
+## The combatant ids a stored action is aimed at ("targets" rows + the
+## grapple family's single "target" field).
+func _entry_targets(action: Dictionary) -> Array:
+	var out: Array = []
+	for t: Variant in action.get("targets", []) as Array:
+		out.append(String((t as Dictionary).get("id", "")))
+	var single := String(action.get("target", ""))
+	if single != "":
+		out.append(single)
+	return out
 
 
 # ------------------------------------------------------------------ inventory
@@ -2311,8 +2535,8 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_sustained_channel(actor, entry, spec)
 		"item_flow":
 			return _resolve_item_flow(actor, entry, spec)
-		"forced_roll_save":
-			# Unreachable via declare (the arming routes before scheduling);
+		"forced_roll_save", "fused_evasion":
+			# Unreachable via declare (both armings route before scheduling);
 			# defensive so a hand-built entry can never fall into the strike path.
 			return [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "not_schedulable"}]
 		_:
@@ -2475,6 +2699,10 @@ func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue:
 		var body: Dictionary = _forced_body_roll(actor, roll_reason)
 		collapse = body["rolled"]
 		events.append_array(body["events"])
+		# Tier-2 wave 1 (S5-d): a NEGATED Body roll queues no consequence —
+		# the windup still collapsed; the Forced Action was vetoed outright.
+		if bool(body.get("negated", false)):
+			return events
 	else:
 		collapse = ForcedAction.roll(table, rng)
 		events.append(ForcedAction.make_event(actor.id, collapse, roll_reason))
@@ -2496,9 +2724,33 @@ func _collapse_batch_windup(actor: CombatantState, reason: String, forced_queue:
 ## severity tie keeps the EARLIEST roll, i.e. the original). The
 ## forced_action_triggered event then carries the CHOSEN roll — the one whose
 ## consequence actually applies. Returns {"rolled": chosen, "events": [...]}.
+##
+## Tier-2 wave 1 (perfect_evasion — S5-d, [FROM row 68]): an arming carrying
+## the "negate" flag VETOES the Forced Action – Body outright, once per Clock
+## (negate_used_clock — the Clock INDEX gate: open again after the reset, no
+## sweep needed). The base die is still drawn first (stream discipline: the
+## unarmed/armed/negated paths all consume the same base draw), the arming is
+## consumed, the vetoed roll is emitted in forced_body_negated, and NO
+## forced_action_triggered fires — callers skip queueing via "negated". A
+## same-Clock second negate falls back to the dice-softening path (the save
+## still softens; "second negate rejected until reset"). Scope honesty: this
+## chokepoint covers every RESOLVER-side Body roll; condition-timer rolls
+## outside the resolver are outside this story's footprint.
 func _forced_body_roll(victim: CombatantState, reason: String) -> Dictionary:
 	var events: Array[Dictionary] = []
 	var rolled: Dictionary = ForcedAction.roll(ForcedAction.TABLE_BODY, rng)
+	if not victim.forced_save.is_empty() and bool(victim.forced_save.get("negate", false)):
+		var clock_index: int = clock.tick / Clock.TICKS_PER_CLOCK
+		if victim.negate_used_clock != clock_index:
+			victim.forced_save = {}  # consumed — the negate IS the save's use
+			victim.negate_used_clock = clock_index
+			events.append({
+				"type": "forced_body_negated", "actor": victim.id, "reason": reason,
+				"vetoed_roll": int(rolled["roll"]),
+				"vetoed_consequence": String(rolled["consequence"]),
+				"clock_index": clock_index,
+			})
+			return {"rolled": rolled, "events": events, "negated": true}
 	if not victim.forced_save.is_empty():
 		var dice: int = maxi(1, int(victim.forced_save.get("dice", 1)))
 		victim.forced_save = {}  # consumed per roll — armed for THAT roll only
@@ -2692,7 +2944,8 @@ func _resolve_aoe_cone_strike(actor: CombatantState, entry: Dictionary, _snapsho
 		if member.category == "Mob":
 			var body: Dictionary = _forced_body_roll(member, "shockwave")
 			events.append_array(body["events"])
-			forced_queue.append({"actor": member.id, "rolled": body["rolled"], "ctx": {"part": member.acting_part(clock.tick)}})
+			if not bool(body.get("negated", false)):  # S5-d veto queues nothing
+				forced_queue.append({"actor": member.id, "rolled": body["rolled"], "ctx": {"part": member.acting_part(clock.tick)}})
 	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
 		"key": String(action.get("key", "shockwave")), "result": "ok", "rounds": members.size()})
 	return events
@@ -2946,17 +3199,32 @@ func _resolve_skill_grapple(actor: CombatantState, entry: Dictionary, snapshot: 
 	events.append({"type": "grapple_started", "grappler": actor.id, "target": target.id, "skill": key})
 	# R9: automatic when grappler Physique >= target's; otherwise Forced
 	# Action – Body — always allowed, consequences apply, hold lands.
-	var acting: String = actor.bite_part(clock.tick) if grip == "bite" else actor.acting_part(clock.tick)
+	# Grip-neutral acting part (vice_grip's "any"): the hand when one is
+	# usable, else the bite part — whichever anatomy actually holds.
+	var acting: String = actor.acting_part(clock.tick)
+	if grip == "bite":
+		acting = actor.bite_part(clock.tick)
+	elif grip == "any" and actor.usable_hands(clock.tick) < 1:
+		acting = actor.bite_part(clock.tick)
 	if actor.trait_total("physique") < target.trait_total("physique"):
 		var body: Dictionary = _forced_body_roll(actor, "grapple_above_weight")
 		events.append_array(body["events"])
-		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting, "target": target.id}})
-	# death_grip_jaws L2+: the initial-bite Bleed rider on close.
-	var bite: int = int(spec.get("bite_bleed", 0))
+		if not bool(body.get("negated", false)):  # S5-d veto queues nothing
+			forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting, "target": target.id}})
+	# death_grip_jaws L2+: the initial-bite Bleed rider on close. Tier-2 wave
+	# 1 (vice_grip — S7-b, [FROM row 86]): the grip-neutral sibling
+	# `grip_bleed` rides the SAME honest strike gate — the grip closes with a
+	# real Bleed wound on the held part (deterministic torso-line locus, the
+	# bite-rider convention); the standing per-Clock condition advancement
+	# then carries the wound forward. The literal while-held per-reset
+	# re-application needs the Clock-reset rider (combat_sim's sweep — outside
+	# this story's footprint; the rung content stays data-flagged).
+	var bite: int = int(spec.get("grip_bleed", spec.get("bite_bleed", 0)))
 	if bite > 0 and target.alive:
 		var bite_part: String = ai.torso_line_part(target)
 		if bite_part != "":
-			events.append({"type": "bite_rider", "actor": actor.id, "target": target.id,
+			var rider_type: String = "grip_bleed_rider" if spec.has("grip_bleed") else "bite_rider"
+			events.append({"type": rider_type, "actor": actor.id, "target": target.id,
 				"part": bite_part, "amount": bite})
 			events.append_array(_strike_round(target, bite_part, "bleeding", bite,
 				{"kind": "skill", "key": key, "undodgable": true}, actor))
@@ -3450,11 +3718,26 @@ func _resolve_sustained_channel(actor: CombatantState, entry: Dictionary, spec: 
 			var dt: Array = action["drag_to"]
 			var to := Vector2i(int(dt[0]), int(dt[1]))
 			var from: Vector2i = held.position
-			if CombatantState.hex_distance(from, to) == 1 \
-					and _movement_blocked_reason(held, to) == "":
-				held.position = to  # R30: forced movement — facing unchanged
+			# Tier-2 wave 1 (phantom_grasp): the drag walks the hex line one
+			# hex at a time up to the spec limit, stopping early at walls/
+			# bounds/cans/bodies (the grapple-drag walk); telekinesis' limit
+			# is 1, so its single-step behavior is byte-identical. R30:
+			# forced movement — the dragged body's facing never changes.
+			var limit: int = maxi(1, int(spec.get("drag", 1)))
+			var steps: int = 0
+			while steps < limit and held.position != to:
+				var lane: Array[Vector2i] = HexGeometry.line(held.position, to)
+				if lane.size() < 2:
+					break
+				var next: Vector2i = lane[1]
+				if _movement_blocked_reason(held, next) != "":
+					break
+				held.position = next
+				steps += 1
+			if steps > 0:
 				events.append({"type": "telekinesis_dragged", "actor": actor.id,
-					"target": held.id, "from": [from.x, from.y], "to": [to.x, to.y]})
+					"target": held.id, "from": [from.x, from.y],
+					"to": [held.position.x, held.position.y]})
 			else:
 				events.append({"type": "telekinesis_drag_blocked", "actor": actor.id,
 					"target": held.id, "to": [to.x, to.y]})
@@ -3488,6 +3771,13 @@ func _resolve_sustained_channel(actor: CombatantState, entry: Dictionary, spec: 
 		"range": reach,
 		"sustained_tick": clock.tick,
 	}
+	# Tier-2 wave 1 (phantom_grasp — S10-a, OQ1 RULED): a spec-declared grip
+	# type marks the channel as a trained HOLD on the R9 gate set — the
+	# "psychic" value routes the escape contest to the holder's MIND
+	# (escape_holder_stat). Only-when-set: telekinesis' channel record (and
+	# every legacy hash over it) is byte-identical without the key.
+	if spec.has("grip"):
+		actor.channeling["grip"] = String(spec["grip"])
 	target.held_by = actor.id
 	events.append({"type": "telekinesis_grip", "actor": actor.id, "target": target.id,
 		"range": reach})
@@ -3747,7 +4037,8 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 	if cond.forced_body_required(actor, acting_part):
 		var body: Dictionary = _forced_body_roll(actor, "condition_forced_body")
 		events.append_array(body["events"])
-		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting_part}})
+		if not bool(body.get("negated", false)):  # S5-d veto queues nothing
+			forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": acting_part}})
 
 	# Requirements gate (R10): unmet -> still allowed, but effect magnitude is
 	# halved (round down) AND the Tool d6 table triggers.
@@ -5024,14 +5315,24 @@ func _resolve_grapple(actor: CombatantState, action: Dictionary, forced_queue: A
 	if actor.trait_total("physique") < target.trait_total("physique"):
 		var body: Dictionary = _forced_body_roll(actor, "grapple_above_weight")
 		events.append_array(body["events"])
-		forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": actor.acting_part(clock.tick), "target": target.id}})
+		if not bool(body.get("negated", false)):  # S5-d veto queues nothing
+			forced_queue.append({"actor": actor.id, "rolled": body["rolled"], "ctx": {"part": actor.acting_part(clock.tick), "target": target.id}})
 	return events
 
 
 func _resolve_grapple_escape(actor: CombatantState) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if actor.grappled_by == "":
-		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple_escape", "reason": "not_grappled"})
+		# Tier-2 wave 1 (phantom_grasp — S10-a): the R9 escape action also
+		# breaks a psychic HOLD — the paid escape releases the holder's
+		# channel through the one release seam (the held_by mirror clears
+		# with it). A hold that lapsed/broke mid-windup invalidates honestly.
+		var holder: CombatantState = _hold_holder_of(actor)
+		if holder == null:
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "grapple_escape", "reason": "not_grappled"})
+			return events
+		events.append({"type": "hold_escaped", "holder": holder.id, "target": actor.id})
+		events.append_array(release_channel(holder, "escaped"))
 		return events
 	var grappler: CombatantState = combatants.get(actor.grappled_by)
 	if grappler != null:
@@ -5039,6 +5340,30 @@ func _resolve_grapple_escape(actor: CombatantState) -> Array[Dictionary]:
 	events.append({"type": "grapple_ended", "grappler": actor.grappled_by, "target": actor.id, "reason": "escaped"})
 	actor.grappled_by = ""
 	return events
+
+
+## Tier-2 wave 1 (phantom_grasp — S10-a): the combatant HOLDING `victim`
+## through a channel whose grip value marks a trained hold ("psychic" — the
+## R9 gate set's third grip), or null when the victim is not hold-held. A
+## plain telekinesis lift (no grip on the channel) is NOT a hold — its
+## counterplay stays break-on-damage/lapse, never the R9 escape.
+func _hold_holder_of(victim: CombatantState) -> CombatantState:
+	if victim.held_by == "":
+		return null
+	var holder: CombatantState = combatants.get(victim.held_by)
+	if holder == null or String(holder.channeling.get("target", "")) != victim.id:
+		return null
+	if String(holder.channeling.get("grip", "")) == "psychic":
+		return holder
+	return null
+
+
+## The R9 escape contest's HOLDER stat, parameterized by grip type (OQ1
+## RULED, owner 2026-08-18): a mundane grip (hands/bite/any) contests
+## Physique-vs-Physique; the psychic grip contests target Physique vs the
+## holder's MIND — mundane-psionic, no magic reading, no is_magic anywhere.
+static func escape_holder_stat(grip: String) -> String:
+	return "mind" if grip == "psychic" else "physique"
 
 
 func _resolve_grapple_suffocate(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:

@@ -1581,5 +1581,335 @@
         "text": "+3 Moments of surge duration"
       }
     ]
+  },
+  {
+    "id": 51,
+    "key": "counterscript",
+    "name": "Counterscript",
+    "description": "You don't read the pattern and then counter — every declared action near you is already an opening you answer. [TIER-2 · M2 — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "physique",
+    "secondary_stat": "mind",
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "A visible enemy for the read; the counter strikes an adjacent enemy who is your read target.",
+    "range": "Read 3 / Counter adjacent",
+    "target": "Single",
+    "effect": "One skill, two uses that feed each other: hold the read on one visible enemy (their scheduled action(s) until the Clock reset), and against your read target the counter's gate widens — any declared action with remaining cost can be countered, not only a 2+ Moment windup. A connected counter cuts the remaining cost by [PH — >= the parent's L5 cut]; collapse -> Forced Action — Body. [NEEDS: read-linked counter gate — interrupt_counter requires an executing 2+ Moment action today] [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "[FROM row 8] The cut deepens to [PH — row 8's 5], and even if the countered action doesn't collapse, it cannot affect you for the next 3 Moments [PH] — you already answered it, so it simply misses you. [NEEDS: per-source immunity window on the actor]"
+      },
+      {
+        "level": 3,
+        "text": "[FROM row 10] The read holds on a second enemy at once, foreseeing more of their queue (+[PH] actions — row 10's +4); the counter answers either read target. [NEEDS: second concurrent read — spec extension]"
+      },
+      {
+        "level": 4,
+        "text": "Share the script: allies you tell gain position/first-strike against a revealed action (R15) — the read stops being private. [NEEDS: R15 combined-action hooks for the first-strike half]"
+      }
+    ],
+    "acquisition": "Gemstone mutation M2 (decision #35; data/skill_mutations.json 'counterscript'): merge Counter-Surge Lv 5 + Read The Pattern Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 52,
+    "key": "predators_arc",
+    "name": "Predator's Arc",
+    "description": "The leap and the kill are one motion — the apex-predator takedown that still opens/loops through Slip Through. [TIER-2 · M3 — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Light Small Weapon (Claws or Knife type). CHAIN opener: counts as Pounce for Slip Through's chain gate (ruling #4, seat at L1).",
+    "range": "[PH — >= Pounce's L5 reach]",
+    "target": "Single",
+    "effect": "Leap up to [PH — >= Pounce's L5 reach] spaces and strike on landing. The strike adapts to the opening: against an Exposed target struck from the rear arc (R30 is_behind) it targets the Head with Decapitate's bypass (Head -> 0 = Cinematic Kill + Viewer spike); otherwise it is Pounce's torso Bleed [PH]. Ruling-#4 authored chain seat, placed at L1: Predator's Arc counts as Pounce for Slip Through's chain gate (-1 Moment, same target). [NEEDS: fused leap->conditional-finisher spec — one skill composing the two archetypes] [Moment cost 2-3 PH; numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "[FROM row 40] +[PH] Bleed (row 40's +4), and after the landing strike you may chain into another Slip Through if a target is adjacent — the takedown feeds the next takedown. [NEEDS: post-resolve chain-open into a second target — the audit's self-chain plumbing]"
+      },
+      {
+        "level": 3,
+        "text": "Ambush from anywhere: the leap may originate off a wall, an ally boost (R15), or from cover/concealment, and ignores difficult terrain and gaps under the arc. [NEEDS: vertical/boosted origin vocabulary; R15 hooks for the boost]"
+      },
+      {
+        "level": 4,
+        "text": "[FROM row 36] +[PH] damage, +[PH] space (row 36's +2/+2), and the Arc may chain into itself up to 4 times at 1 Moment each [PH] — the predator ricochets through the pack. [NEEDS: self-chaining support on the chain field]"
+      }
+    ],
+    "acquisition": "Gemstone mutation M3 (decision #35; data/skill_mutations.json 'predators_arc'): merge Pounce Lv 5 + Decapitate Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 53,
+    "key": "earthbreaker",
+    "name": "Earthbreaker",
+    "description": "Down them and end them in a single gravity arc. [TIER-2 · M4 — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "physique",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 2,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Heavy Large Weapon equipped. CHAIN opener: counts as Overhead Slam for Shockwave's chain gate (ruling #4, seat at L1).",
+    "range": "Adjacent",
+    "target": "Single",
+    "effect": "One gravity arc: bring the full arc down for heavy Crush [PH — >= the Slam's L5 output]. The arc adapts to what it lands on: a standing target is knocked Prone (Exposed); a target already Prone/Helpless takes the execution payload instead (Torso -> Shock T3; Head -> instant death at 0 — Execution's authored core). You are Exposed during the wind-up. Ruling-#4 authored chain seat, placed at L1: Earthbreaker counts as Overhead Slam for Shockwave's chain gate. [NEEDS: state-forked strike spec — one declare forking on the target's standing/downed state] [Moment cost 2-3 PH; numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "[FROM row 42 — re-expressed per default #2] The mass tells: +[PH] Crush delivered as added force through the R14 force-vs-robustness gate — the row's 'ignores 3 Resistance' is a non-magic resistance-bypass and re-maps as force, not bypass (content kept, wording fixed)."
+      },
+      {
+        "level": 3,
+        "text": "The arc closes in: close 1-2 spaces into the arc (movement absorbed), and any improvised heavy object serves as the weapon — the gravity arc opens from range and from scavenge. [absorbed-move per the leap_strike precedent; the equipment-gate widening is data]"
+      },
+      {
+        "level": 4,
+        "text": "[FROM row 46 — audit rewording rides along] The ground answers: Earthbreaker's impact triggers a free Shockwave centered on the target. [NEEDS: action-triggers-action hook — a resolve-time free cast]"
+      }
+    ],
+    "acquisition": "Gemstone mutation M4 (decision #35; data/skill_mutations.json 'earthbreaker'): merge Overhead Slam Lv 5 + Execution Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 54,
+    "key": "vivisection",
+    "name": "Vivisection",
+    "description": "The complete shredder — many wounds on many parts, every wound worsening; the bleed-out clock made a skill. [TIER-2 · M5 — name PROVISIONAL; rename caution: the primary parent is a v2 display-rename skill — mechanics under sim keys, display names data-sourced]",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Natural claws or equipped light blades in both hands. One or two adjacent targets.",
+    "range": "Adjacent",
+    "target": "Single or two adjacent targets",
+    "effect": "The shredding arc: one crossing flurry — choose [PH — 3-4] body parts across one or two adjacent targets, deal Bleed [PH] to each; any hit landing on an already-Bleeding part advances that Bleed one tier (both parents' bleed-advance identity, fused and unconditional — no all-3 gate). [NEEDS: one fused many-parts/many-targets spec — a parameterized union of crossing_arc_strike + multi_part_flurry] [Moment cost 3 PH; numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Wider arc: +[PH] parts and a 180° wrap — three targets stand in the arc. [target-count scaling — spec-level]"
+      },
+      {
+        "level": 3,
+        "text": "[FROM row 80] Tier-2 bleeds: the flurry's magnitudes rise [PH — row 80's +2 Torso / +1 limbs / 2-on-Head] and its wounds apply Bleed Tier 2 instead. [expressible with today's condition machinery]"
+      },
+      {
+        "level": 4,
+        "text": "Venom coat: a poison rider — each Vivisection wound counts as an entry condition, and a chosen wound seeds Poison T1 [PH]. [NEEDS: melee poison-rider spec field]"
+      }
+    ],
+    "acquisition": "Gemstone mutation M5 (decision #35; data/skill_mutations.json 'vivisection'): merge Slice n' Dice Lv 5 + Thousand Cuts Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 55,
+    "key": "perfect_evasion",
+    "name": "Perfect Evasion",
+    "description": "The whole evasion suite in one stance — dodge-move and forced-action save fused; both halves stay R25 movement-forfeit-gated. [TIER-2 · M6 — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "reflexes",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 0,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Movement forfeit (R25): forfeiting your movement for the Moment is the whole price — no stance, no charges, no cooldown. Must not be Prone, grappled, held, channeling or winding up.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "One forfeit, both defenses: forfeiting your movement for the Moment (R25) arms BOTH halves at once — the declared-hex roll ([PH — >= the Roll's L5 range] hexes; the R25 AoE-center rule applies) AND the armed save (your next Forced Action — Body draws +[PH — >= the Save's L5 dice] dice, keep the lowest severity). One price, the full suite. [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Farther, luckier: +[PH] roll range, +[PH] save dice — the suite scales both halves together."
+      },
+      {
+        "level": 3,
+        "text": "[FROM row 16 — re-expressed per R25 (the row's chain/cooldown wording is dead per G1/R3); OQ2 RULED (owner 2026-08-18: '2nd roll 2nd attack')] The second evasion: +[PH] roll range (the row's +2 Space kept), and one movement forfeit now covers a SECOND roll — when a second distinct attack resolves against you in the same window, you may declare the hex-roll again against it. Two dodges from one forfeit; the forfeit itself is never waived."
+      },
+      {
+        "level": 4,
+        "text": "[FROM row 68] The negation: once per Clock, negate a Forced Action — Body outright — the save stops softening the roll and vetoes it."
+      }
+    ],
+    "acquisition": "Gemstone mutation M6 (decision #35; data/skill_mutations.json 'perfect_evasion'): merge Tactical Roll Lv 5 + Acrobatic Save Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 56,
+    "key": "combat_medic",
+    "name": "Combat Medic",
+    "description": "The arena medic: anyone, anywhere, conditions held — delay/arrest/stabilize only, never HP, never a full cure of a lethal state (default #8, kept at every rung). [TIER-2 · M7 — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "An active condition on yourself or an ally in range. Ally treatment consumes a bandage/kit charge.",
+    "range": "[PH — 2 spaces, Triage's L5 reach]",
+    "target": "Self or ally",
+    "effect": "One medic, whole party: treat yourself or any ally within [PH — 2 spaces, Triage's L5 reach] — delay ANY condition's advancement by [PH — >= Seal's L5 Clocks] Clocks (Seal's self+Bleeding/Infection lane and Triage's ally+any-condition lane, fused into one skill); ally treatment still consumes a bandage/kit charge (Triage's economy kept). Never HP, never a full cure of a lethal state (default #8). [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Deeper reserves: +[PH] Clocks of delay, +[PH] range — the parents' rows continued."
+      },
+      {
+        "level": 3,
+        "text": "Arrest, don't cure: hold one condition frozen (no advancement) for [PH] duration rather than only delaying its next tick — deeper management, still not a cure and never HP. [NEEDS: freeze/arrest mode in ConditionEngine — delay exists, hold-open doesn't]"
+      },
+      {
+        "level": 4,
+        "text": "[FROM row 6 — audit fix rides along: Crush dropped (Crushed is structural damage, not a treatable condition)] Resolve the treatable: fully resolve one active Infection or Bleeding condition [PH — once per Clock]. Boundary kept honest: this clears a condition instance — it never restores HP and never touches a lethal state. [NEEDS: condition-resolve path in ally_treatment — the shipped resolver mode is DELAY ONLY by design]"
+      }
+    ],
+    "acquisition": "Gemstone mutation M7 (decision #35; data/skill_mutations.json 'combat_medic'): merge Seal The Wound Lv 5 + Field Triage Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 57,
+    "key": "vice_grip",
+    "name": "Vice Grip",
+    "description": "The perfected hold regardless of anatomy — hands, jaws, whatever you have (R9 size/boss caps uncut). One ladder, both recipes: the animal-side twin yields the SAME skill; every rung is grip-neutral. [TIER-2 · M8 + twin — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "physique",
+    "secondary_stat": "reflexes",
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Adjacent target. A usable hand OR a bite-capable part — either anatomy satisfies the R9 grip gate.",
+    "range": "Adjacent",
+    "target": "Single",
+    "effect": "The grip that fits the body: grapple with hands OR jaws — the R9 grip gate is satisfied by either anatomy, one skill for every body plan. While held: the standard R9 hold (no reposition, both Exposed) plus drag up to [PH — >= the Hold's L5 drag] spaces per Moment (the deliberate R11.7 override: the drag overrides the grapple movement lock). [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "[FROM row 86] The grip wounds: the held part takes 1 Bleed at each Clock reset [PH] — the grip itself is a weapon now, whichever anatomy holds. [NEEDS: Clock-reset held-part rider — the grip-close Bleed wound + the standing per-Clock condition advancement carry the identity today; the literal while-held per-reset re-application awaits the reset hook]"
+      },
+      {
+        "level": 3,
+        "text": "Control two, or pin a limb: hold two adjacent targets at once, or lock a single target's chosen limb (disabling its actions) [PH]. [NEEDS: multi-hold / limb-pin state — the hold links are single-link today]"
+      },
+      {
+        "level": 4,
+        "text": "[FROM row 12 — audit reword rides along: no 1-Clock kill promise] The squeeze: drag rises to [PH — the row's 5] spaces per Moment, or the grip may begin grapple-Suffocation (R9 gates apply) — both grappler hands / a full jaw grip and a coverable airway required; bosses and anything >= 2 sizes larger stay immune (R9 uncut — boss wins are discovered, not choked)."
+      }
+    ],
+    "acquisition": "Gemstone mutation M8 (decision #35; data/skill_mutations.json 'vice_grip'): merge Pressure Hold Lv 5 + Death Grip Jaws Lv 3 — or the mirrored animal-side twin 'vice_grip_animal' (Jaws Lv 5 + Hold Lv 3), SAME result. Both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 58,
+    "key": "the_unseen",
+    "name": "The Unseen",
+    "description": "The ghost and the prowler fuse: not hidden-in-place, not moving-unseen — simply not there until it chooses to be. [TIER-2 OFFER — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "reflexes",
+    "secondary_stat": "mind",
+    "stat_requirements": {},
+    "base_moment_cost": 3,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Look like or be concealed in the environment around you.",
+    "range": "Self",
+    "target": "Self",
+    "effect": "Concealment that moves: enter concealment (the R20 substrate — an override reveal radius [PH — <= the parent's L5 radius] capping every observer's sight) — and slow movement no longer breaks it (only fast movement or attacking does). The prowler's sense rides along always-on: you know the nearest exit/gap/vent in any room, and squeeze through Small-plausible gaps without a Forced Action. [NEEDS: moving concealment — stealth_conceal is hex-anchored today, any displacement breaks it] [NEEDS: nightlurking's awareness/squeeze passive — not in SkillBook yet] [Moment cost 3 PH; numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Harder to find: -[PH] reveal radius, +[PH] awareness range — both parents' rows continued."
+      },
+      {
+        "level": 3,
+        "text": "Vanish through: use a detected gap/vent without breaking concealment — enter and leave rooms unseen; emerging from a gap onto an unaware target Exposes them [PH]. [NEEDS: concealment-preserving room transition]"
+      },
+      {
+        "level": 4,
+        "text": "The second shadow: conceal one adjacent ally under your cover, or leave an afterimage/decoy at your last position when you move [PH] — the room watches the wrong shape. [NEEDS: ally-conceal link; decoy entity]"
+      }
+    ],
+    "acquisition": "Mod-Center special offer (broad-only 'infiltration', BLESSED 2026-08-18; data/mod_center_offers.json 'the_unseen'): consume Camouflage Lv 5 + Nightlurking Lv 3 — arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 59,
+    "key": "the_long_con",
+    "name": "The Long Con",
+    "description": "The combat misdirection and the crowd's mood fuse into one sustained deception: the fight you show them was never the fight you were having. [TIER-2 OFFER — name PROVISIONAL; rename caution: the secondary parent is a v2 display-rename skill — no old display name in any rung text]",
+    "primary_stat": "reflexes",
+    "secondary_stat": "charm",
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Targets must be able to perceive you (R30 cone).",
+    "range": "[PH]",
+    "target": "[PH — 1-2] targets",
+    "effect": "Declare the con: project a false read of your intent at [PH — 1-2] targets who can perceive you (the perception gate, R30 cone). While the con holds, each affected target's next action against you becomes a Forced Action — Tool (the inflicted fumble, made ambient), and each time it fires you may reposition 1 space at no cost [PH]. [NEEDS: a sustained multi-target misdirection status — the con as a serialized state, not a one-shot debuff] [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Sell it wider: +[PH] targets, +[PH] range, +[PH] die manipulation on the inflicted roll — the parents' rows continued."
+      },
+      {
+        "level": 3,
+        "text": "Pick the fumble: choose the inflicted result per target — Tool (the fumble) or Body (the stumble — Exposed) [PH]. [the parameterized collapse table exists — expressible at implementation]"
+      },
+      {
+        "level": 4,
+        "text": "The con pays the crowd: while the con holds, the deception is also a performance — hype ticks accrue and Charm scales the payoff [PH] (R18 — presentability as the audience economy). [NEEDS: a con-duration hype hook]"
+      }
+    ],
+    "acquisition": "Mod-Center special offer (broad-only 'performance', BLESSED 2026-08-18; data/mod_center_offers.json 'the_long_con'): consume Feint Lv 5 + Vibe Control Lv 3 — arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
+  },
+  {
+    "id": 60,
+    "key": "phantom_grasp",
+    "name": "Phantom Grasp",
+    "description": "The hold without the hands: the grapple discipline projected through psychic force — a pin at range. OQ1 RULED (owner 2026-08-18): mundane-PSIONIC, not magic — no magic privileges ever on this band. [TIER-2 OFFER — name PROVISIONAL pending the owner's rename pass]",
+    "primary_stat": "mind",
+    "secondary_stat": null,
+    "stat_requirements": {},
+    "base_moment_cost": 1,
+    "default_cap": 5,
+    "is_magic": 0,
+    "is_passive": 0,
+    "requirements": "Target must be visible. The sustain occupies your scheduled action each Moment.",
+    "range": "[PH — >= Telekinesis' L5 range]",
+    "target": "Single",
+    "effect": "The phantom hold: grip one visible target at [PH — >= Telekinesis' L5 range]. The grip is a HOLD, not just a lift — the target cannot reposition (R9's lock at range); escape per R9's escape actions — contest: target's Physique vs the holder's MIND (OQ1 ruled). The sustain occupies your scheduled action each Moment and may drag the target [PH] spaces (the trained hold replaces raw lifting). You are Exposed while sustaining (the parent's base; its L6 un-Exposed row stays linear on Telekinesis — not inherited here). [numbers PLACEHOLDER R14]",
+    "unlock_requirements": {},
+    "effects": [
+      {
+        "level": 2,
+        "text": "Longer reach, harder grip: +[PH] range, +[PH] drag — the parents' rows continued."
+      },
+      {
+        "level": 3,
+        "text": "Constrict and hurl: while held — Crush-over-time to a chosen part [PH] (the squeeze, at range), or hurl the held target [PH] spaces: collision Crush to them and anything they hit. [NEEDS: forced-movement collision damage — the standing forced-movement need]"
+      },
+      {
+        "level": 4,
+        "text": "Many hands: hold two targets at once at reduced drag, or pin a single target's chosen limb [PH]. [NEEDS: multi-hold / limb-pin state — same as Vice Grip L3]"
+      }
+    ],
+    "acquisition": "Mod-Center special offer (broad-only 'control', BLESSED 2026-08-18; data/mod_center_offers.json 'phantom_grasp'): consume Telekinesis Lv 5 + Pressure Hold Lv 3 — arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
   }
 ]
