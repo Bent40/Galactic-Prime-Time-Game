@@ -518,6 +518,12 @@ func view_encounter() -> Dictionary:
 ##   objects: [{"key", "position": [q, r], "burn"}, ...] in store order —
 ##            a destroyed can simply disappears from the list (its hex
 ##            unblocks); "burn" is the live accumulation toward the pop at 5.
+##   doors:   [{"key", "position", "state", "lock"?: {"tier", "state"}}, ...]
+##            ONLY when authored (wave 4b; lock K2) — "state" and the lock's
+##            "state" are LIVE (a flipped door / picked lock shows through).
+##   terrain: [{"type", "hexes": [[q, r], ...] sorted}, ...] ONLY when
+##            authored (K2) — canonical rows (type order fixed, hexes sorted)
+##            so a renderer can tint difficult/water/rough ground.
 func view_arena() -> Dictionary:
 	if sim == null or sim.arena == null:
 		return {}

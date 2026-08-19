@@ -21,7 +21,41 @@ extends RefCounted
 ##    "walls":   [[q, r], ...],                                   blocked hexes
 ##    "objects": [{"key": "trash_can", "position": [q, r], "burn"?: int}, ...],
 ##    "doors":   [{"key": String (unique), "position": [q, r],
-##                 "state": "open"|"closed"}, ...]}               KAN-5 wave 4b
+##                 "state": "open"|"closed",                      KAN-5 wave 4b
+##                 "lock"?: {"tier": "simple"|"moderate"|"complex"|"magical",
+##                           "state": "locked"|"unlocked"}}, ...],  KAN-5 K2
+##    "terrain": [{"type": "difficult"|"water"|"rough",
+##                 "hexes": [[q, r], ...]}, ...]}                 KAN-5 K2
+##
+## TERRAIN LAYER (KAN-5 remainder K2 — the substrate for quick_step / swim /
+## acrobatics next story): an authored PER-HEX terrain typing. Untyped hexes
+## are "normal"; TERRAIN_TYPES is an extensible enum (the validator and
+## from_config gate it — an unknown type is an authoring error, never a silent
+## normal). Terrain never BLOCKS anything (walls/doors/objects own blocking);
+## it prices movement: move_cost(hex) is the entry cost of stepping ONTO a
+## hex (TERRAIN_MOVE_COST — PLACEHOLDER R14). The substrate is deliberately
+## SKILL-AGNOSTIC: per-combatant modifiers (quick_step ignoring difficult
+## terrain, swim's "water is not difficult terrain for you" L6, acrobatics'
+## rough-terrain immunity) apply at the CONSUMER — the caller that walks a
+## route bills terrain via move_cost and overlays its own modifier there
+## (a callback/parameter on the consumer's seam, next story) — so this query
+## never learns skills. Consumers this story: Pathing/EnemyAI._step_toward
+## (the AI free-move budget). The resolver's player-move pricing is the NEXT
+## story (documented asymmetry — rules-addendum R33). SPAWNING ON TERRAIN IS
+## LEGAL, water included (a contestant can be staged mid-pool; nothing in the
+## rules forbids it and staging never prices movement) — the Clock-reset
+## in_water marker (CombatSim._advance_tick) is water's only substrate effect.
+##
+## DOOR LOCKS (KAN-5 K2 — the lockpicking substrate): a door may author
+## "lock": {tier, state}; absent = no lock (an unlocked door key never
+## serializes — wave-4b byte-compat). A LOCKED door only exists CLOSED
+## (from_config rejects a locked-open door — an open door blocks nothing, so
+## its lock would be fiction) and the `door` command cannot open it
+## (door_locked rejection). LOCK_PICK_MOMENTS is the tier -> Moments-to-pick
+## table (PLACEHOLDER R14; "magical" additionally needs the special
+## capability — the lockpicking L9 rung — enforced by CombatSim.pick_lock's
+## `special` flag). No re-lock path exists in v1 (pick is one-way; a lock
+## command is future work, priced when it lands).
 ## The axial rect covers q0 <= q < q0+W, r0 <= r < r0+H (an axial
 ## parallelogram — PROVISIONAL room shape; the owner redesigns rooms with the
 ## front). Default origin centers it: [-floor(W/2), -floor(H/2)], so the
@@ -105,6 +139,23 @@ const TRASH_CAN_BLAST_RADIUS: int = 3
 const TRASH_CAN_BLAST_BURN: int = 2
 ## "dash bounces between walls up to 2 bounces" — canon (phase-3 upgrade string).
 const MAX_DASH_BOUNCES: int = 2
+## KAN-5 K2 — the terrain-type enum (extensible; from_config + the seed
+## validator gate against it) and the per-hex movement ENTRY cost table.
+## Costs are PLACEHOLDER (R14): normal 1 (untyped — never in the table),
+## difficult/rough/water 2. Keep costs single-digit: Pathing's packed
+## frontier key re-derives its field bounds off a max step cost of
+## TERRAIN_COST_MAX (see pathing.gd — headroom to ~2^19 exists, but the
+## documented contract is small integer costs).
+const TERRAIN_TYPES: Array[String] = ["difficult", "water", "rough"]
+const TERRAIN_MOVE_COST: Dictionary = {"difficult": 2, "water": 2, "rough": 2}
+## The largest cost in TERRAIN_MOVE_COST — pathing's field-bound input.
+const TERRAIN_COST_MAX: int = 2
+## KAN-5 K2 — the lock-tier enum (the lockpicking ladder's Simple -> Magical
+## scale) and the Moments-to-pick table (PLACEHOLDER R14: simple 1 /
+## moderate 2 / complex 3 / magical 3 + the special capability — the L9
+## "open magical/keycard analogues" rung; CombatSim.pick_lock enforces it).
+const LOCK_TIERS: Array[String] = ["simple", "moderate", "complex", "magical"]
+const LOCK_PICK_MOMENTS: Dictionary = {"simple": 1, "moderate": 2, "complex": 3, "magical": 3}
 
 ## Bounds: "rect" (axial parallelogram) or "hexes" (explicit set).
 var bounds_kind: String = "rect"
@@ -135,9 +186,17 @@ var zones: Zones = null
 ## the array IS command-stream state): [{"key", "position": [q, r], "burn": int}].
 var objects: Array[Dictionary] = []
 ## Doors (KAN-5 wave 4b), in authored order (the array IS command-stream
-## state — `state` is the only mutable field, flipped by the door command):
-## [{"key": String, "position": [q, r], "state": "open"|"closed"}].
+## state — `state` is a mutable field, flipped by the door command; K2 adds
+## the optional "lock" sub-dict whose own `state` CombatSim.pick_lock flips):
+## [{"key": String, "position": [q, r], "state": "open"|"closed",
+##   "lock"?: {"tier": String, "state": "locked"|"unlocked"}}].
 var doors: Array[Dictionary] = []
+## KAN-5 K2 — the terrain layer: {Vector2i: String type}. Untyped hexes are
+## absent (= "normal"); ONE type per hex (from_config gates duplicates).
+## Never blocks; prices movement via move_cost. Serialized with the arena
+## (canonical rows — terrain_rows) ONLY when authored: a terrain-less arena's
+## to_dict/view stay byte-identical to the pre-terrain engine.
+var terrain: Dictionary = {}
 
 
 ## Parses the authored config block. Returns null when the shape is invalid
@@ -205,11 +264,43 @@ static func from_config(cfg_variant: Variant) -> Arena:
 				or (state != "open" and state != "closed"):
 			return null
 		door_keys[door_key] = true
-		arena.doors.append({
+		var door_row: Dictionary = {
 			"key": door_key,
 			"position": [(door_pos as Vector2i).x, (door_pos as Vector2i).y],
 			"state": state,
-		})
+		}
+		# K2 locks: optional; tier in the enum, state locked|unlocked, and a
+		# LOCKED lock only exists on a CLOSED door (a locked-open door is a
+		# contradiction — an open door blocks nothing). The "lock" key rides
+		# the row ONLY when authored (wave-4b byte-compat for lockless doors).
+		if door.has("lock"):
+			var lock: Variant = door.get("lock")
+			if not (lock is Dictionary):
+				return null
+			var tier := String((lock as Dictionary).get("tier", ""))
+			var lock_state := String((lock as Dictionary).get("state", ""))
+			if not LOCK_TIERS.has(tier) \
+					or (lock_state != "locked" and lock_state != "unlocked") \
+					or (lock_state == "locked" and state != "closed"):
+				return null
+			door_row["lock"] = {"tier": tier, "state": lock_state}
+		arena.doors.append(door_row)
+	# Terrain (K2): shape gates here (known type, non-empty hex-pair list, ONE
+	# type per hex); PLACEMENT gates (bounds/walls/objects) in _set_arena.
+	for entry: Variant in cfg.get("terrain", []) as Array:
+		if not (entry is Dictionary):
+			return null
+		var patch: Dictionary = entry
+		var terrain_type := String(patch.get("type", ""))
+		var raw_patch: Variant = patch.get("hexes", [])
+		if not TERRAIN_TYPES.has(terrain_type) \
+				or not (raw_patch is Array) or (raw_patch as Array).is_empty():
+			return null
+		for pair: Variant in raw_patch as Array:
+			var hex: Variant = _parse_hex(pair)
+			if hex == null or arena.terrain.has(hex):
+				return null
+			arena.terrain[hex] = terrain_type
 	return arena
 
 
@@ -262,6 +353,25 @@ func door_index_for(key: String) -> int:
 	return -1
 
 
+## K2 — true when a door row carries a lock whose state is "locked".
+static func door_locked(door: Dictionary) -> bool:
+	return String((door.get("lock", {}) as Dictionary).get("state", "")) == "locked"
+
+
+## K2 — the terrain type of `hex`: an authored TERRAIN_TYPES entry, else
+## "normal" (untyped). Never blocks — pure typing; costs ride move_cost.
+func terrain_at(hex: Vector2i) -> String:
+	return String(terrain.get(hex, "normal"))
+
+
+## K2 — the movement ENTRY cost of stepping ONTO `hex` (normal 1; typed hexes
+## per TERRAIN_MOVE_COST — PLACEHOLDER R14). SKILL-AGNOSTIC by contract:
+## per-combatant modifiers (quick_step/swim/acrobatics) overlay this at the
+## CONSUMER (the route walker's seam), never here — see the class header.
+func move_cost(hex: Vector2i) -> int:
+	return int(TERRAIN_MOVE_COST.get(terrain.get(hex, ""), 1))
+
+
 ## LANE blocking (dash geometry + the Stealth.has_los sight walk): walls +
 ## out-of-bounds — a charge smashes THROUGH trash cans, so cans never end (or
 ## bounce) a lane. KAN-5 K1: blocks_los zones compose here (the zones var's
@@ -294,6 +404,35 @@ func sorted_walls() -> Array[Vector2i]:
 		out.append(hex)
 	out.sort()
 	return out
+
+
+## K2 — sorted typed-hex list (deterministic placement-validation order).
+func sorted_terrain_hexes() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for hex: Variant in terrain:
+		out.append(hex)
+	out.sort()
+	return out
+
+
+## K2 — the CANONICAL terrain rows (view + serialization): one row per type
+## present, in TERRAIN_TYPES order, hexes sorted — the per-hex dict never
+## leaks its iteration order, so identical terrain always prints identically.
+func terrain_rows() -> Array:
+	var rows: Array = []
+	for terrain_type: String in TERRAIN_TYPES:
+		var typed: Array[Vector2i] = []
+		for hex: Variant in terrain:
+			if String(terrain[hex]) == terrain_type:
+				typed.append(hex)
+		if typed.is_empty():
+			continue
+		typed.sort()
+		var hex_rows: Array = []
+		for hex: Vector2i in typed:
+			hex_rows.append([hex.x, hex.y])
+		rows.append({"type": terrain_type, "hexes": hex_rows})
+	return rows
 
 
 # ------------------------------------------------------------------ bounce walk
@@ -383,12 +522,21 @@ func view() -> Dictionary:
 	if not doors.is_empty():
 		var door_rows: Array = []
 		for door: Dictionary in doors:
-			door_rows.append({
+			var row: Dictionary = {
 				"key": String(door.get("key", "")),
 				"position": (door.get("position", []) as Array).duplicate(),
 				"state": String(door.get("state", "")),
-			})
+			}
+			# K2 compat pin: "lock" rides the row ONLY when authored — the
+			# live lock state included (a picked lock shows "unlocked").
+			if door.has("lock"):
+				row["lock"] = (door.get("lock", {}) as Dictionary).duplicate(true)
+			door_rows.append(row)
 		out["doors"] = door_rows
+	# K2 compat pin: the "terrain" key appears ONLY on a terrain-carrying
+	# arena (canonical rows) — pre-terrain arena views keep their exact shape.
+	if not terrain.is_empty():
+		out["terrain"] = terrain_rows()
 	return out
 
 
@@ -419,8 +567,15 @@ func to_dict() -> Dictionary:
 	out["objects"] = objects.duplicate(true)
 	# Wave 4b compat pin: "doors" serializes ONLY when authored — a door-less
 	# arena's to_dict (and every hash over it) is byte-identical to wave 3d.
+	# K2: an authored "lock" sub-dict rides each row for free (deep duplicate),
+	# live state included — lock state is hash-covered.
 	if not doors.is_empty():
 		out["doors"] = doors.duplicate(true)
+	# K2 compat pin: "terrain" serializes ONLY when authored (canonical rows —
+	# the per-hex dict's iteration order never leaks); a terrain-less arena's
+	# to_dict is byte-identical to the pre-terrain engine.
+	if not terrain.is_empty():
+		out["terrain"] = terrain_rows()
 	return out
 
 
@@ -445,4 +600,14 @@ static func from_dict(data: Dictionary) -> Arena:
 		arena.objects.append((entry as Dictionary).duplicate(true))
 	for entry: Variant in data.get("doors", []) as Array:
 		arena.doors.append((entry as Dictionary).duplicate(true))
+	# K2 terrain rows (the terrain_rows canonical shape; lenient like walls —
+	# malformed entries are skipped, a valid save never contains any).
+	for entry: Variant in data.get("terrain", []) as Array:
+		if not (entry is Dictionary):
+			continue
+		var terrain_type := String((entry as Dictionary).get("type", ""))
+		for pair: Variant in (entry as Dictionary).get("hexes", []) as Array:
+			var hex: Variant = _parse_hex(pair)
+			if hex != null and terrain_type != "":
+				arena.terrain[hex] = terrain_type
 	return arena
