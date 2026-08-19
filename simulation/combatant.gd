@@ -265,6 +265,25 @@ var negate_used_clock: int = -1
 ## involuntary displacement still moves the body and the grip's range
 ## re-check governs). Serialized ONLY while non-empty (same compat pin).
 var held_by: String = ""
+## fused_counter (counterscript, tier-2 wave 2 — S1-b, [FROM row 8]): the
+## per-source counter-immunity windows — source_id -> until_tick. Armed when
+## this combatant's counter CUT a source's windup without collapsing it ("you
+## already answered it"); while clock.tick < until_tick, ANY strike-shaped
+## effect FROM that source aimed at this combatant simply misses
+## (ActionResolver._strike_round's top-of-round exclusion + the psychic seam
+## — the immune actor is excluded from the effect against THEM only, others
+## are still affected). Records persist past expiry and gate by comparison
+## (the exposed_until_tick precedent — no sweep needed). Serialized ONLY
+## while non-empty (the stealthed compat-pin pattern).
+var counter_immunities: Dictionary = {}
+## ally_treatment resolve mode (combat_medic, tier-2 wave 2 — S6-d, [FROM
+## row 6]): the per-Clock resolve gate — the Clock INDEX (tick /
+## Clock.TICKS_PER_CLOCK) in which this medic last fully RESOLVED a
+## condition through the S6-d path; -1 = never (the negate_used_clock
+## precedent). A second resolve in the same Clock rejects at declare (and
+## re-checks at resolution); the gate re-opens at the reset, no sweep
+## needed. Serialized ONLY while >= 0 (same compat pin).
+var treat_resolve_used_clock: int = -1
 
 # Grapple (R9)
 var grappling: String = ""
@@ -750,6 +769,15 @@ func to_dict() -> Dictionary:
 		out["evasion"] = evasion.duplicate(true)
 	if negate_used_clock >= 0:
 		out["negate_used_clock"] = negate_used_clock
+	# Tier-2 wave 2 compat pins (the same only-when-set pattern): the
+	# counter-immunity windows and the medic's per-Clock resolve marker exist
+	# ONLY while armed/used — a fight that never uses counterscript or the
+	# combat_medic resolve serializes byte-identically to the pre-wave engine
+	# (hash-covered when either is live).
+	if not counter_immunities.is_empty():
+		out["counter_immunities"] = counter_immunities.duplicate(true)
+	if treat_resolve_used_clock >= 0:
+		out["treat_resolve_used_clock"] = treat_resolve_used_clock
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -848,4 +876,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	# Pre-tier-2-wave-1 saves lack both: no live evasion window, never negated.
 	c.evasion = (data.get("evasion", {}) as Dictionary).duplicate(true)
 	c.negate_used_clock = int(data.get("negate_used_clock", -1))
+	# Pre-tier-2-wave-2 saves lack both: no immunity windows, never resolved.
+	c.counter_immunities = (data.get("counter_immunities", {}) as Dictionary).duplicate(true)
+	c.treat_resolve_used_clock = int(data.get("treat_resolve_used_clock", -1))
 	return c
