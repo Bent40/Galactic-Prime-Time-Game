@@ -631,6 +631,45 @@ def main() -> int:
     if pg_row is not None and pg_row.get("is_magic") != 0:
         fail("skills.json", "phantom_grasp: OQ1 RULED mundane-psionic — is_magic must be 0")
 
+    # ---- Round 3a (the unblocked KAN-5 skills, 2026-08-19) — ADDITIVE
+    # engine/data coherence pins for the seven skills now IMPLEMENTED on the
+    # R32/R33 substrates (SkillBook Round-3a specs; deliberately OUT of
+    # KNOWN_KEYS until their skill_keywords.json rulings land — the keyword
+    # pass owns that, and the non-fatal catalog NOTE below already flags each).
+    # The engine reads these row fields at its seams; drift here would change
+    # runtime behavior silently, so it fails loudly instead.
+    ROUND3A_CHECKS = {
+        # key: (is_passive, is_magic, base_moment_cost)
+        "quick_step": (0, 0, 0),   # slot-free immediate declare (rides the move)
+        "swim": (1, 0, 0),         # passive — never declarable
+        "acrobatics": (1, 0, 0),   # passive — never declarable
+        "lockpicking": (0, 0, 2),  # scheduled pick (tier table prices declares)
+        "poison_wall": (0, 1, 2),  # wall conjure (windup)
+        "frost_wall": (0, 1, 2),   # wall conjure (windup)
+        "fire_wall": (0, 1, 3),    # wall conjure (the authored 3-Moment windup)
+    }
+    for k, (want_passive, want_magic, want_cost) in ROUND3A_CHECKS.items():
+        row = tier2_by_key.get(k)
+        if row is None:
+            fail("skills.json", f"Round 3a: implemented skill row {k!r} missing")
+            continue
+        if row.get("is_passive") != want_passive:
+            fail("skills.json", f"{k}: is_passive must be {want_passive} "
+                                "(the Round-3a engine seam reads it)")
+        if row.get("is_magic") != want_magic:
+            fail("skills.json", f"{k}: is_magic must be {want_magic} (Round 3a)")
+        if row.get("base_moment_cost") != want_cost:
+            fail("skills.json", f"{k}: base_moment_cost must be {want_cost} "
+                                "(the SkillBook Round-3a spec mirrors it)")
+    # Data-hygiene #8 (FINAL ladders doc) CLOSED at implementation: frost_wall's
+    # garbled "destroys deals" phrasing was cleaned — keep it clean (the canon
+    # sync must not resurrect it).
+    fw_row = tier2_by_key.get("frost_wall")
+    if fw_row is not None and "destroys deals" in str(fw_row.get("effect", "")):
+        fail("skills.json", "frost_wall: the garbled 'Burn damage destroys deals' "
+                            "text is back — data-hygiene #8 was cleaned at "
+                            "implementation (Round 3a)")
+
     # ---- Wave 3b: G3 keyword tree + Gemstone mutation recipes ----------------
     # skill_keywords.json — the RULED per-skill Gemstone keywords (G3, owner
     # 2026-07-23; book §4.5 taxonomy; verbatim port of the char-sheet repo's

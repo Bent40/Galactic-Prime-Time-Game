@@ -289,6 +289,14 @@ var held_by: String = ""
 ## (the exposed_until_tick precedent — no sweep needed). Serialized ONLY
 ## while non-empty (the stealthed compat-pin pattern).
 var counter_immunities: Dictionary = {}
+## terrain_stride (quick_step, Round 3a): the live stride window — while
+## clock.tick < this, difficult/rough hexes price as normal ground for this
+## combatant in the R33 cost overlay (ActionResolver._move_cost_for). Set by
+## the immediate quick_step declare (tick + stride_moments); 0 = never
+## declared. Gates by comparison, no sweep (the exposed_until_tick
+## precedent). Serialized ONLY while > 0 (the negate_used_clock compat-pin
+## pattern) so a stride-free fight hashes byte-identically.
+var quick_step_until_tick: int = 0
 ## ally_treatment resolve mode (combat_medic, tier-2 wave 2 — S6-d, [FROM
 ## row 6]): the per-Clock resolve gate — the Clock INDEX (tick /
 ## Clock.TICKS_PER_CLOCK) in which this medic last fully RESOLVED a
@@ -797,6 +805,11 @@ func to_dict() -> Dictionary:
 		out["counter_immunities"] = counter_immunities.duplicate(true)
 	if treat_resolve_used_clock >= 0:
 		out["treat_resolve_used_clock"] = treat_resolve_used_clock
+	# Round 3a compat pin (the same only-when-set pattern): the quick_step
+	# stride window exists ONLY once declared — a fight that never strides
+	# serializes byte-identically to the pre-round engine.
+	if quick_step_until_tick > 0:
+		out["quick_step_until_tick"] = quick_step_until_tick
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -900,4 +913,6 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	# Pre-tier-2-wave-2 saves lack both: no immunity windows, never resolved.
 	c.counter_immunities = (data.get("counter_immunities", {}) as Dictionary).duplicate(true)
 	c.treat_resolve_used_clock = int(data.get("treat_resolve_used_clock", -1))
+	# Pre-Round-3a saves lack the key: 0 = no stride window ever opened.
+	c.quick_step_until_tick = int(data.get("quick_step_until_tick", 0))
 	return c

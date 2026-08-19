@@ -409,7 +409,7 @@
     "requirements": "Mind 3. ",
     "range": "5",
     "target": "Area (line, up to 5 spaces)",
-    "effect": "Raise a barrier of solid ice up to 6 spaces long and 2 spaces tall. Blocks movement and projectiles. Any creature that strikes or collides with the wall takes Chilled Tier 1 to the striking limb. Wall has 3 HP. Lasts until destroyed or 2 Clocks pass. Burn damage destroys deals twice as much.",
+    "effect": "Raise a barrier of solid ice up to 5 spaces long and 2 spaces tall. Blocks movement and projectiles. Any creature that strikes or collides with the wall takes Chilled Tier 1 to the striking limb. Wall has 3 HP. Lasts until destroyed or 2 Clocks pass. Burn damage deals twice as much to the wall. [data-hygiene #8 cleaned at implementation, Round 3a: length follows the target line's 5 (text said 6); the garbled burn phrasing reads as the x2-vs-wall rule the engine implements]",
     "unlock_requirements": {
       "achievement": "Block a direct attack using the environment or an object, OR obtain via Loot Box or Wizard's Tower."
     },
@@ -511,7 +511,7 @@
     "requirements": "Mind 4. Poison Ball Lv 5, Frost Ball Lv 5, Fire Ball Lv 5 — all three are consumed on unlock.",
     "range": "20",
     "target": "Area (5-space radius)",
-    "effect": "Conjure a zone of shifting elemental chaos lasting 2 Clocks. At the start of each Clock choose one effect for all creatures inside (not you): Toxic Surge — advance all active Poison conditions by 1 tier. Deep Freeze — apply Chilled Tier 2 to a body part of your choice on each creature. Immolation — apply Burn Tier 1 to each creature's torso; already-Burning creatures advance to Tier 2. You are Exposed while casting.",
+    "effect": "Conjure a zone of shifting elemental chaos lasting 2 Clocks. At the start of each Clock choose one effect for all creatures inside (not you): Toxic Surge — advance all active Poison conditions by 1 tier. Deep Freeze — apply Chilled Tier 2 to a body part of your choice on each creature. Immolation — apply Burn Tier 1 to each creature's torso; already-Burning creatures advance to Tier 2. You are Exposed while casting. [DATA-ONLY, Round 3a annotation: the R32 zone substrate now covers this skill's placement mechanics end-to-end — create/remove for the zone + redeploy, the affects selector for 'not you', and the effect vocabulary's conditions/advance ops (Toxic Surge is the advance op's own authored example). ONLY the consume-unlock economics (Skill Gemstone consumption, KAN-7; off-ladder per FINAL default #5) still blocks it.]",
     "unlock_requirements": {
       "achievement": "Consume Poison Ball Lv 5, Frost Ball Lv 5, and Fire Ball Lv 5 at the Skill Gemstone. No other method."
     },

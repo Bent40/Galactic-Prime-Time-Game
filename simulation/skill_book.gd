@@ -187,6 +187,45 @@ extends RefCounted
 ##                          per-source immunity window (counter_immunities —
 ##                          the source cannot affect the counter-actor for
 ##                          immunity_moments Moments; others still affected)
+##   terrain_stride       — Round 3a (quick_step): a 0-Moment, SLOT-FREE
+##                          IMMEDIATE self declare (the arming-declare
+##                          pattern; it rides the movement it modifies —
+##                          the design call is documented at the declare)
+##                          that opens a timed window
+##                          (quick_step_until_tick) in which difficult/rough
+##                          terrain prices as normal ground for the strider —
+##                          the R33 consumer-overlay seam's first active
+##                          consumer. Requires movement remaining (the data's
+##                          own gate); duration = stride_moments ticks
+##                          (L1 "this Moment" + the +1/+2/+3 Duration rows)
+##   terrain_affinity     — Round 3a (swim / acrobatics): PASSIVE — never
+##                          declarable (the aura_reading pattern: OWNING the
+##                          skill is the mechanic). The R33 cost overlay reads
+##                          the grant: swim prices water 1, acrobatics prices
+##                          rough 1; swim's grace delays the submersion
+##                          suffocation track (CombatSim's water sweep);
+##                          acrobatics' L2-4 movement rows extend the declared
+##                          roll range (the sim's acrobatic maneuver —
+##                          PROVISIONAL reading, documented at the seam)
+##   scheduled_pick       — Round 3a (lockpicking): the SCHEDULED pick the R33
+##                          downscope deferred here — declare adjacent to a
+##                          locked door ("door": key), Moments from the
+##                          substrate tier table minus the authored -1 rows
+##                          (floor 1), through the standard declare/windup
+##                          machinery (feint-able; premise breaks collapse
+##                          into Forced Action – Tool — the data's own failure
+##                          path); resolve calls CombatSim.pick_lock
+##   wall_conjure         — Round 3a (poison_wall / frost_wall / fire_wall):
+##                          placed-LINE zone creation on the R32 substrate —
+##                          the declare names "from"/"to" hexes (a straight
+##                          hex line, length/range per ladder, LOS per the
+##                          aoe_blast precedent), the resolve calls
+##                          CombatSim.create_zone with the spec's DATA-shaped
+##                          zone payload (owner = the caster: attribution).
+##                          A rejected create at resolution collapses the
+##                          windup (Forced Tool — the invalidated-windup
+##                          rule); frost's strike-chill + the zone-attack
+##                          path live in ActionResolver (_resolve_zone_attack)
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
@@ -218,6 +257,22 @@ extends RefCounted
 ## mind_burst/execution/slice precedent). Display names for vibe_control and
 ## play_to_the_camera are NOT pinned (v2 Group E rename caution) —
 ## data-sourced only; specs and events carry only the sim keys.
+## Content pass Round 3a ("the unblocked KAN-5 skills") encodes seven more the
+## same way on the R32/R33 substrates: quick_step (terrain_stride), swim +
+## acrobatics (terrain_affinity), lockpicking (scheduled_pick), poison_wall +
+## frost_wall + fire_wall (wall_conjure) — all magnitudes PLACEHOLDER (R14),
+## L1 core + data-row L2-4, L5+ threshold DATA (incl. quick_step L6 physical-
+## terrain effects, swim L6 "+2 Clocks total" grace, lockpicking L5 complex /
+## L6 magical, poison L6 choose-the-toxin, frost L6 chill-heal, fire L6
+## Shock-passers). elemental_confluence stays DATA-ONLY: the R32 zone
+## substrate covers its placement mechanics (create/remove/advance — the
+## Toxic Surge shape is the vocabulary's own example); ONLY the consume-unlock
+## economics (KAN-7, off-ladder per FINAL default #5) blocks it. These seven
+## stay OUT of KNOWN_KEYS for the tier-2 wave's reason (b): KNOWN_KEYS
+## membership requires a ruled skill_keywords.json entry (validate_seeds +
+## test_keywords) and none of the seven has one yet — the keyword pass owns
+## that ruling; mechanics() is the encoding authority either way, so a
+## granted key resolves as a REAL implemented skill today.
 ## The remaining skills in data/skills.json are the fill-in-later content pass;
 ## until encoded they resolve through the generic `strike` fallback so an
 ## unknown key still does a real, honest thing.
@@ -355,6 +410,12 @@ static func is_self_skill(key: String) -> bool:
 	# Batch D: the camouflage windup and the surge name no target (the blast
 	# names a HEX, not a combatant — it stays out so the HUD asks for an aim).
 	if arch == "stealth_conceal" or arch == "hype_surge":
+		return true
+	# Round 3a: the stride window is a pure self-declare; the passives read
+	# self-shaped for any HUD affordance that asks (the aura pattern). The
+	# pick names a DOOR and the walls name HEXES — both stay out so the HUD
+	# asks for an aim, exactly like the blast.
+	if arch == "terrain_stride" or arch == "terrain_affinity":
 		return true
 	return arch == "self_guard" or arch == "self_stance"
 
@@ -1170,6 +1231,223 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"cost_cut": [5, 6, 6, 7][lv - 1],
 				"collapse_table": "body",
 				"immunity_moments": [0, 3, 3, 3][lv - 1],
+			}
+		"quick_step":
+			# Round 3a (ladder #2). Reflexes, cost 0 — and SLOT-FREE (design
+			# call, documented at _declare_terrain_stride: the stride rides
+			# the movement it modifies; charging the R3 slot would price the
+			# L1 window out of its own payload — the free move needs that
+			# slot the same Moment). An IMMEDIATE self-declare (the arming
+			# pattern — the window must exist before this tick's move, so
+			# nothing schedules): opens a timed window in
+			# which the R33 cost overlay prices difficult AND rough hexes as
+			# normal ground for the strider (the story's ruling: both
+			# slow-ground types read 1; WATER stays priced — that lane is
+			# swim's). Duration in Moments: 1 at L1 ("for this moment") +1/+2/
+			# +3 (data rows) — PLACEHOLDER (R14). Gate: "Must have movement
+			# remaining" (the data requirement) — declaring after this tick's
+			# movement rejects movement_spent. The L5 "+4 Duration" and L6
+			# "Ignore Physical terrain effects" rows stay threshold DATA.
+			spec = {
+				"archetype": "terrain_stride",
+				"cost": 0,
+				"stride_moments": lv,
+				"stride_types": ["difficult", "rough"],
+			}
+		"swim":
+			# Round 3a (ladder #30). Physique, PASSIVE, cost 0 — no declare
+			# exists (declaring rejects passive_skill): OWNING the skill is
+			# the mechanic. Two lanes off the R33/R9 substrates:
+			#  * the cost overlay: water prices 1 for a swim owner. Honesty
+			#    note (the destination-cost contract): a priced move enters
+			#    exactly ONE terrain hex — its destination — so the L1 "+1
+			#    space of movement when swimming" exactly cancels the single
+			#    water surcharge; the L2-4 "+1 Movement" rows have no further
+			#    bite under this model and stay data-annotated until a
+			#    per-step pricing model exists (documented coarseness).
+			#  * the drowning track: CombatSim's Clock-reset water sweep reads
+			#    the grant — a swim owner's submersion suffocation timer
+			#    starts with suffocation_grace_clocks of delay ("extends the
+			#    Suffocation timer by 1 Clock before it begins" — the L1
+			#    core; constant through L1-4: the L2-4 rows author movement,
+			#    and the L6 "+2 Clocks total" rung stays threshold DATA).
+			#    Surfacing within the grace never advances the track — the
+			#    L1 swimmer is exempt in every short dip. PLACEHOLDER (R14).
+			spec = {
+				"archetype": "terrain_affinity",
+				"cost": 0,
+				"water_affinity": true,
+				"suffocation_grace_clocks": 1,
+			}
+		"acrobatics":
+			# Round 3a (ladder #42). Reflexes, PASSIVE, cost 0 — never
+			# declarable (the aura pattern). Rough-terrain immunity via the
+			# R33 cost overlay: rough prices 1 for an acrobatics owner
+			# (difficult stays priced — that lane is quick_step's; water is
+			# swim's). The L2-4 "+1 Movement when performing an acrobatic
+			# maneuver" rows extend the DECLARED ROLL range (+1/+2/+3 on
+			# tactical_roll / the fused evasion's roll half) — the sim's
+			# acrobatic maneuver ("Do a barrel roll!"); PROVISIONAL reading,
+			# documented at the seam. Falls do not exist in the sim: every
+			# safe-fall clause ("Safe falling distance +1", L9's fall
+			# immunity) stays data-annotated; balance/jump/climb prose has no
+			# substrate either — data. L6 3D traversal stays threshold DATA.
+			# All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "terrain_affinity",
+				"cost": 0,
+				"rough_affinity": true,
+				"acrobatic_move_bonus": lv - 1,
+			}
+		"lockpicking":
+			# Round 3a (ladder #41). Reflexes, the SCHEDULED pick the R33
+			# downscope deferred to this story. Declare adjacent to a LOCKED
+			# door ("door": key); the validator prices the attempt off the
+			# substrate tier table (Arena.LOCK_PICK_MOMENTS: simple 1 /
+			# moderate 2) minus the authored "-1 Moment" rows (discount_tiers;
+			# floor 1 — a scheduled act costs at least 1 Moment, PLACEHOLDER
+			# R14) and stamps action.cost, so the Moments flow through the
+			# normal schedule (a cost-2 moderate pick is a real windup:
+			# feint-able, and a premise break at resolution collapses into
+			# Forced Action – Tool — the data's own failure path). Tier
+			# access: simple at L1+, moderate at L3+ (data rows); complex is
+			# the L5 threshold and magical the L6 (+ the special capability,
+			# the L9 rung) — BOTH stay threshold DATA, so an L1-4 declare
+			# against them rejects (magical rejects magical_lock_needs_special
+			# — the substrate's own vocabulary — without the flag). Resolve
+			# calls CombatSim.pick_lock (the R33 API), reporting the Moments
+			# actually charged. The data's "thin tool" requirement and
+			# "Reflexes 3" stay un-modeled like every other skill's
+			# requirements prose (unlock/acquisition scope — documented).
+			spec = {
+				"archetype": "scheduled_pick",
+				"cost": 2,
+				"pick_tiers": [["simple"], ["simple"],
+					["simple", "moderate"], ["simple", "moderate"]][lv - 1],
+				"discount_tiers": [[], ["simple"],
+					["simple"], ["simple", "moderate"]][lv - 1],
+			}
+		"poison_wall":
+			# Round 3a (ladder #11). [MAGIC] Mind, cost 2 (windup). A placed
+			# LINE of toxic vapor on the R32 zone substrate: length 5 at L1
+			# (+1/+2/+3 Space — data rows), range 5 (the data's range; every
+			# wall hex within reach + LOS), persists 1 Clock. The authored
+			# effect — "passes through or starts their Moment inside takes
+			# Tier 1 Poison (Pneumotoxin)" — maps onto the substrate's three
+			# triggers verbatim: on_enter (stepping in) / on_pass (a dash
+			# crossing) / on_occupy_clock (starting inside at the reset — the
+			# substrate's occupancy granularity, documented). The Poison rows
+			# ride source "attack", so the ENTRY-CONDITION gate applies per
+			# victim inside the condition system itself (an unwounded walker
+			# is condition_ignored / no_entry_condition — the honest gate;
+			# the L9-family "applies without entry conditions" stays data).
+			# affects "all" — the caster's own wall poisons the caster too
+			# (the R32 fire-wall precedent; ally-safe is the L9 rung, data).
+			# poison_type pneumo (the authored toxin; L6 choose-the-toxin
+			# stays threshold DATA). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "wall_conjure",
+				"cost": 2,
+				"attack_range": 5,
+				"wall_length": [5, 6, 7, 8][lv - 1],
+				"zone": {
+					"key": "poison_wall",
+					"duration_clocks": 1,
+					"hp": -1,
+					"blocks_movement": false,
+					"blocks_los": false,
+					"effects": {
+						"on_enter": {"affects": "all", "conditions": [
+							{"condition": "poison", "tier": 1, "part": "torso",
+								"poison_type": "pneumo", "source": "attack"}]},
+						"on_pass": {"affects": "all", "conditions": [
+							{"condition": "poison", "tier": 1, "part": "torso",
+								"poison_type": "pneumo", "source": "attack"}]},
+						"on_occupy_clock": {"affects": "all", "conditions": [
+							{"condition": "poison", "tier": 1, "part": "torso",
+								"poison_type": "pneumo", "source": "attack"}]},
+					},
+				},
+			}
+		"frost_wall":
+			# Round 3a (ladder #13). [MAGIC] Mind, cost 2 (windup). A placed
+			# LINE of solid ice: length 5 (data-hygiene #8 CLEANED at
+			# implementation — the target line's 5 wins over the garbled
+			# text's 6), range 5, persists 2 Clocks or until destroyed. The
+			# zone BLOCKS movement (Arena.is_wall parity — moves, dash lanes
+			# and bounces, staging, pathing) AND projectiles/sight
+			# (blocks_los — the lane channel; a solid ice wall is honestly
+			# lane-solid, so the R32 shared-choke-point caveat is a feature
+			# here, not a debt). Wall HP 3 at L1 (+2/+4/+6 — data rows),
+			# worn down ONLY through the zone-attack path
+			# (ActionResolver._resolve_zone_attack -> CombatSim.damage_zone:
+			# the R14 gate vs Zones.WALL_ROBUSTNESS, burn-typed damage x2 —
+			# the authored "Burn damage deals twice as much"); destroyed at 0
+			# unblocks the hexes (zone_expired "destroyed"). The chill
+			# semantics — "strikes or collides ... Chilled Tier 1 to the
+			# striking limb" — land on ADJACENT strikers at the zone-attack
+			# seam (strike_chill_tier; a ranged striker's limb never touches
+			# the ice; dash-collision chill has no collision seam this story
+			# — documented honest gap). No enter/occupy effects: a blocking
+			# wall cannot be stood in. L6 chill-heal stays threshold DATA;
+			# raise-under-a-target is the L8 rung (zone_blocked_by_body holds
+			# — the R32 door-close precedent). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "wall_conjure",
+				"cost": 2,
+				"attack_range": 5,
+				"wall_length": 5,
+				"strike_chill_tier": 1,
+				"zone": {
+					"key": "frost_wall",
+					"duration_clocks": 2,
+					"hp": [3, 5, 7, 9][lv - 1],
+					"blocks_movement": true,
+					"blocks_los": true,
+					"effects": {},
+				},
+			}
+		"fire_wall":
+			# Round 3a (ladder #15). [MAGIC] Mind, cost 3 (the authored
+			# windup). A placed LINE of fire: length 5 at L1 (+1/+2/+3 Space
+			# — data rows), range 5, persists 1 Clock, indestructible (hp -1
+			# — "cannot be destroyed, only outlasted": the zone-attack
+			# validator rejects it as a target). The authored effect maps
+			# onto the triggers: passing through (on_enter / on_pass) = Burn
+			# T1; starting inside (on_occupy_clock — the substrate's
+			# Clock-reset occupancy bite, its own granularity for "starts
+			# their Moment inside", documented) = Burn T2. Burn rows ride
+			# source "attack" (the once-per-tick advance cap; Burn carries no
+			# entry gate) on the torso — the "all exposed body parts" breadth
+			# is a magnitude-family detail deferred with R14 (multi-part rows
+			# would remap onto non-human plans dishonestly — documented
+			# coarseness). affects "all": the caster burns in their own wall
+			# (R32's words). The L6 "passers take tier 2 Shock" rung stays
+			# threshold DATA (the vocabulary already carries it — R32's own
+			# example). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "wall_conjure",
+				"cost": 3,
+				"attack_range": 5,
+				"wall_length": [5, 6, 7, 8][lv - 1],
+				"zone": {
+					"key": "fire_wall",
+					"duration_clocks": 1,
+					"hp": -1,
+					"blocks_movement": false,
+					"blocks_los": false,
+					"effects": {
+						"on_enter": {"affects": "all", "conditions": [
+							{"condition": "burn", "tier": 1, "part": "torso",
+								"source": "attack"}]},
+						"on_pass": {"affects": "all", "conditions": [
+							{"condition": "burn", "tier": 1, "part": "torso",
+								"source": "attack"}]},
+						"on_occupy_clock": {"affects": "all", "conditions": [
+							{"condition": "burn", "tier": 2, "part": "torso",
+								"source": "attack"}]},
+					},
+				},
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the

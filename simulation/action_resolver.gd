@@ -40,6 +40,16 @@ var hype = null
 ## from_dict (serialized on CombatSim, never here). null = unbounded legacy —
 ## every arena check in the movement/lane paths below is guarded on it.
 var arena: Arena = null
+## Round 3a: the sim facade back-ref (WeakRef — RefCounted must not cycle),
+## wired by CombatSim via wire_sim on both construction paths. The R33/R32
+## downscopes routed pick_lock and the zone lifecycle through INTERNAL
+## CombatSim APIs so store lifecycle + serialization stay the facade's; the
+## skill resolvers that now exist (lockpicking's pick, the wall conjures, the
+## frost-wall zone attack) reach those exact APIs through this ref — the
+## documented "resolver hook widens the API" seam. null (an unwired
+## resolver-only unit context) makes the dependent resolvers invalidate
+## honestly instead of crashing.
+var sim_ref: WeakRef = null
 
 ## R15 merged-force groups for the CURRENT resolve_due batch ONLY (never across
 ## commands — built by _prescan_merge_groups, flushed + cleared before resolve_due
@@ -78,6 +88,27 @@ func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngi
 ## call sites and resolver-only unit contexts stay untouched.
 func wire_hype(hype_ref) -> void:
 	hype = hype_ref
+
+
+## Round 3a: the CombatSim back-ref (see the sim_ref field note). WeakRef so
+## the sim -> resolver -> sim pair never forms a RefCounted leak cycle.
+func wire_sim(sim) -> void:
+	sim_ref = weakref(sim)
+
+
+## The wired sim facade, null when unwired or gone (resolver-only contexts).
+func _sim():
+	return sim_ref.get_ref() if sim_ref != null else null
+
+
+## The live zone store: the sim's own field first (authoritative — zones can
+## exist without an arena), the arena composition second (a restored-arena
+## unit context), null when no zone has ever been created.
+func _zone_store() -> Zones:
+	var sim = _sim()
+	if sim != null:
+		return sim.zones
+	return arena.zones if arena != null else null
 
 
 static func _reject(reason: String, detail: Dictionary = {}) -> Array[Dictionary]:
@@ -181,6 +212,13 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 		# allowance, not a Moment or the free slot).
 		if String(skill_spec.get("archetype", "")) == "fused_evasion":
 			return _declare_fused_evasion(actor, action, skill_spec)
+		# Round 3a (quick_step): the stride window is an IMMEDIATE declare —
+		# the window must exist BEFORE this tick's move, and a scheduled
+		# resolution would land after it (the arming-declare pattern). It is
+		# SLOT-FREE (the declare's own doc carries the design call): it rides
+		# the movement it modifies, so it routes here before the R3 caps.
+		if String(skill_spec.get("archetype", "")) == "terrain_stride":
+			return _declare_terrain_stride(actor, action, skill_spec)
 		# Batch D (telekinesis): a voluntary release is FREE and immediate —
 		# abandoning a state is not an act (the stealth-reveal precedent), so
 		# it touches neither the Moment economy nor the free-action slot.
@@ -277,7 +315,7 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		var arch := String(spec.get("archetype", ""))
 		if arch == "committed_strike" or arch == "conditional_followup" \
 				or arch == "interrupt_counter" or arch == "psychic_strike" \
-				or arch == "aoe_blast" \
+				or arch == "aoe_blast" or arch == "wall_conjure" \
 				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
 		# Tier-2 wave 2 (counterscript): the counter mode is a strike; the
@@ -722,6 +760,12 @@ func _validate_kind(actor: CombatantState, kind: String, action: Dictionary) -> 
 
 
 func _validate_attack(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	# Round 3a (frost_wall attackability — the R32 deferral closed): an attack
+	# may target a ZONE by id instead of combatant rows — the ADDITIVE target
+	# shape ("zone_target": int). Routed first: a zone attack carries no
+	# body-target rows, no area shape, no head gate.
+	if action.has("zone_target"):
+		return _validate_zone_attack(actor, action)
 	# Wave 2d — "dash can change direction mid-run" (phase 4+): a BENT charge
 	# lane (area_shape carrying a bend point) is phase-gated at the command
 	# surface too, so a hand-built bent dash below phase 4 rejects exactly like
@@ -790,6 +834,50 @@ func _head_targetable_live(target: CombatantState) -> bool:
 	return target.exposed_cache \
 		or target.is_helpless(clock.tick) \
 		or bool(target.statuses.get("overwhelmed", false))
+
+
+## Round 3a — the zone-attack declare gate (frost_wall attackability): the
+## zone must exist and be DESTRUCTIBLE (hp >= 1 — fire walls "cannot be
+## destroyed, only outlasted" and reject as targets), the item gates mirror
+## the body-attack path, and the actor must reach the zone's NEAREST hex
+## (_attack_range — the same reach authority). No dodge, no head gate, no
+## surface immunity: a wall is not a body.
+func _validate_zone_attack(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
+	var store: Zones = _zone_store()
+	var zone_id: int = int(action.get("zone_target", 0))
+	var zone: Dictionary = store.zone_by_id(zone_id) if store != null else {}
+	if zone.is_empty():
+		return _reject("zone_unknown", {"actor": actor.id, "zone": zone_id})
+	if int(zone.get("hp", -1)) < 0:
+		return _reject("zone_indestructible", {"actor": actor.id, "zone": zone_id})
+	var item: Dictionary = {}
+	var item_key := String(action.get("item", ""))
+	if item_key != "":
+		item = actor.items.get(item_key, {})
+		if item.is_empty():
+			return _reject("no_such_item", {"actor": actor.id, "item": item_key})
+		if bool(item.get("dropped", false)):
+			return _reject("item_dropped", {"actor": actor.id, "item": item_key})
+		if actor.unarmed_until_tick > clock.tick:
+			return _reject("unarmed", {"actor": actor.id})
+		if item.has("magazine") and int(item.get("magazine_loaded", 0)) <= 0:
+			return _reject("reload_required", {"actor": actor.id, "item": item_key})
+	var reach: int = _attack_range(action, item)
+	if _zone_min_distance(actor.position, zone) > reach:
+		return _reject("out_of_range", {"actor": actor.id, "zone": zone_id, "range": reach})
+	return []
+
+
+## Hex distance from `from` to the NEAREST hex of a live zone row (a wall is
+## a line — you strike the segment you can reach). Deterministic: hexes are
+## stored sorted; INF-guard 9999 for a malformed row.
+static func _zone_min_distance(from: Vector2i, zone: Dictionary) -> int:
+	var best: int = 9999
+	for pair: Variant in zone.get("hexes", []) as Array:
+		if pair is Array and (pair as Array).size() == 2:
+			var hex := Vector2i(int((pair as Array)[0]), int((pair as Array)[1]))
+			best = mini(best, CombatantState.hex_distance(from, hex))
+	return best
 
 
 func _validate_grapple(actor: CombatantState, action: Dictionary) -> Array[Dictionary]:
@@ -971,6 +1059,14 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_sustained_channel(actor, action, spec)
 		"item_flow":
 			return _validate_item_flow(actor, action, spec)
+		"terrain_affinity":
+			# Round 3a (swim / acrobatics): PASSIVE — owning the skill is the
+			# mechanic (the aura_reading rule); declaring one rejects.
+			return _reject("passive_skill", {"actor": actor.id, "key": String(action.get("key", ""))})
+		"scheduled_pick":
+			return _validate_scheduled_pick(actor, action, spec)
+		"wall_conjure":
+			return _validate_wall_conjure(actor, action, spec)
 	return []
 
 
@@ -1772,9 +1868,79 @@ func _attack_range(action: Dictionary, item: Dictionary) -> int:
 
 # ------------------------------------------------------------------ movement
 
+## Round 3a — the CONTESTANT TERRAIN-PRICING CONTRACT (closes R33's honest
+## asymmetry; the addendum R33 annotation is the rule of record):
+##
+##   A player move keeps its DESTINATION-ONLY geometry (the standing wall
+##   contract: only the destination hex is validated — interior hexes are
+##   never walked, for walls or terrain alike) and pays the DESTINATION
+##   hex's entry cost against its budget: priced spaces = hex distance +
+##   (move_cost(destination) − 1). The free move's allowance (3; 1 while
+##   Prone/Slowed) and the scheduled conversion (ceil((spaces − 3) / 4)
+##   Moments, Slowed ×2) both read the PRICED spaces — a 3-allowance move
+##   ENDING on difficult ground covers at most 2 hexes; a Prone/Slowed
+##   budget-1 crawler cannot afford an adjacent cost-2 hex (the EnemyAI
+##   budget walker's exact rule, mirrored) — Prone rejects
+##   prone_can_only_crawl, Slowed spills into a (doubled) scheduled Moment.
+##
+##   WHY destination-cost (the honesty argument, documented): the hop's only
+##   FACTUAL hex entry is the destination — charging an interior line the
+##   command never walked would price a route the player never chose (and be
+##   stricter than the wall contract, which lets a hop clear an interior
+##   wall). Known coarseness, stated: interior terrain is crossed free (a
+##   3-space hop OVER a 1-hex-deep patch pays nothing while the per-step AI
+##   pays double) — the model cannot be gamed on what matters (you can never
+##   END deep on ground you cannot afford), and the asymmetry closes for
+##   real when player movement gains a per-step route (future work).
+##
+##   Consumers of this contract: move() below (free + scheduled),
+##   _declare_tactical_roll / _evasion_destination_unmet (a roll IS
+##   movement — it pays the same destination surcharge). LEAPS do not pay:
+##   the pounce leap is airborne — an arc over the ground is not an entry
+##   (the ladder's own texture: #20 L9 "pounce from bad ground / ignores
+##   difficult terrain" generalizes the fiction; the on_pass rule's "an arc
+##   OVER the ground is not a crossing" is the same physics). Skill-absorbed
+##   repositions/knockbacks/drags/slips stay unpriced — absorbed movement is
+##   part of the skill's own action economy and forced movement has no
+##   payer (documented, not hidden). All costs PLACEHOLDER (R14).
+##
+## The per-combatant overlay (the R33 consumer seam, first real consumer):
+## quick_step's live stride window prices difficult AND rough as normal;
+## swim owners price water as normal; acrobatics owners price rough as
+## normal. The arena stays skill-agnostic — the overlay lives here.
+func _move_cost_for(mover: CombatantState, hex: Vector2i) -> int:
+	if arena == null:
+		return 1
+	var cost: int = arena.move_cost(hex)
+	if cost <= 1:
+		return cost
+	var terrain_type: String = arena.terrain_at(hex)
+	if (terrain_type == "difficult" or terrain_type == "rough") \
+			and clock.tick < mover.quick_step_until_tick:
+		return 1
+	if terrain_type == "water" and mover.skill_level("swim") >= 1:
+		return 1
+	if terrain_type == "rough" and mover.skill_level("acrobatics") >= 1:
+		return 1
+	return cost
+
+
+## Round 3a (acrobatics L2-4 — "+1 Movement when performing an acrobatic
+## maneuver"): the declared roll IS the sim's acrobatic maneuver ("Do a
+## barrel roll!"), so the rows extend the roll range (+1/+2/+3 — PROVISIONAL
+## reading, PLACEHOLDER R14). Consumed by _declare_tactical_roll and the
+## fused evasion's roll half; the pounce leap keeps its OWN ladder's range
+## rows (cross-skill scaling would collide with #20's authored numbers).
+func _acrobatic_move_bonus(mover: CombatantState) -> int:
+	return clampi(mover.skill_level("acrobatics") - 1, 0, 3)
+
+
 ## R3: 1–3 spaces free (consumes the free slot), once per tick; longer moves
 ## cost ceil((spaces - 3) / 4) Moments as a scheduled action. Slowed (R7):
 ## allowance 1, Moment costs double. Prone (R7): crawl 1 space only.
+## Round 3a: both paths read the PRICED spaces (the destination-cost
+## terrain contract above) — a terrain-less arena prices every hex 1, so
+## the pre-round behavior and events are byte-identical (the compat pin).
 func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	var actor: CombatantState = combatants.get(actor_id)
 	if actor == null:
@@ -1810,7 +1976,10 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	var prone: bool = bool(actor.statuses.get("prone", false))
 	var slowed: bool = bool(actor.statuses.get("slowed", false))
 	var allowance: int = 1 if (prone or slowed) else 3
-	if spaces <= allowance:
+	# Round 3a: the destination hex's terrain entry cost counts against the
+	# budget (the destination-cost contract in the section header).
+	var priced_spaces: int = spaces + (_move_cost_for(actor, to) - 1)
+	if priced_spaces <= allowance:
 		if actor.free_action_used:
 			return _reject("free_action_used", {"actor": actor_id})
 		actor.free_action_used = true
@@ -1826,7 +1995,7 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 		return events
 	if prone:
 		return _reject("prone_can_only_crawl", {"actor": actor_id})
-	var cost: int = maxi(1, ceili((spaces - 3) / 4.0))
+	var cost: int = maxi(1, ceili((priced_spaces - 3) / 4.0))
 	if slowed:
 		cost *= 2
 	if clock.tick < actor.next_action_tick:
@@ -1892,9 +2061,15 @@ func _declare_tactical_roll(actor: CombatantState, action: Dictionary, spec: Dic
 	var spaces: int = CombatantState.hex_distance(actor.position, to)
 	if spaces <= 0:
 		return _reject("no_move", {"actor": actor.id})
-	var roll_range: int = int(spec.get("roll_range", 2))
-	if spaces > roll_range:
-		return _reject("roll_out_of_range", {"actor": actor.id, "range": roll_range, "spaces": spaces})
+	# Round 3a: acrobatics' authored movement rows extend the roll (the sim's
+	# acrobatic maneuver — _acrobatic_move_bonus), and the roll PAYS the
+	# destination-cost terrain contract (a roll IS movement; the section
+	# header above is the rule of record). Terrain-less fights: bonus 0 /
+	# surcharge 0 — the pre-round check verbatim.
+	var roll_range: int = int(spec.get("roll_range", 2)) + _acrobatic_move_bonus(actor)
+	var priced_spaces: int = spaces + (_move_cost_for(actor, to) - 1)
+	if priced_spaces > roll_range:
+		return _reject("roll_out_of_range", {"actor": actor.id, "range": roll_range, "spaces": priced_spaces})
 	# KAN-5: a roll destination obeys the arena like any movement — in bounds,
 	# off walls and off trash cans (the occupied-hex check below already ran
 	# for bodies; walls/cans compose with it).
@@ -2087,7 +2262,10 @@ func _declare_evasion_second_roll(actor: CombatantState, action: Dictionary, spe
 
 ## Shared destination legality for both evasion rolls — the tactical_roll
 ## gates verbatim (well-formed hex, real move, within range, arena-legal,
-## unoccupied). "" = legal, else the rejection reason.
+## unoccupied). "" = legal, else the rejection reason. Round 3a: the roll is
+## MOVEMENT — the acrobatics bonus and the destination-cost terrain
+## surcharge apply exactly as in _declare_tactical_roll (the contract at the
+## movement section header).
 func _evasion_destination_unmet(actor: CombatantState, action: Dictionary, roll_range: int) -> String:
 	var to_raw: Array = action.get("to", [])
 	if to_raw.size() != 2:
@@ -2096,7 +2274,7 @@ func _evasion_destination_unmet(actor: CombatantState, action: Dictionary, roll_
 	var spaces: int = CombatantState.hex_distance(actor.position, to)
 	if spaces <= 0:
 		return "no_move"
-	if spaces > roll_range:
+	if spaces + (_move_cost_for(actor, to) - 1) > roll_range + _acrobatic_move_bonus(actor):
 		return "roll_out_of_range"
 	if arena != null:
 		if not arena.in_bounds(to):
@@ -2147,6 +2325,286 @@ func _entry_targets(action: Dictionary) -> Array:
 	if single != "":
 		out.append(single)
 	return out
+
+
+# -------------------------- Round 3a: the unblocked KAN-5 skills (R32/R33)
+
+## quick_step (terrain_stride) — the IMMEDIATE stride declare: opens the
+## window the cost overlay reads (quick_step_until_tick = tick +
+## stride_moments; active while clock.tick < it, the exposed_until_tick
+## idiom — L1's one Moment covers exactly this tick). ECONOMY (design call,
+## documented): the declare is SLOT-FREE — it rides the movement it
+## modifies, like the R25 armings ride the movement they forfeit. Charging
+## R3's free-action slot would price the skill out of its own L1 payload
+## (the free MOVE needs that same slot in the same Moment), and the window
+## has no effect except through a move the actor still has to afford —
+## PROVISIONAL pricing, revisit with R14. Gates: an already-open window
+## rejects (no stacking model is authored); "Must have movement remaining"
+## (the data requirement) rejects after this tick's movement.
+func _declare_terrain_stride(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if clock.tick < actor.quick_step_until_tick:
+		return _reject("already_active", {"actor": actor.id})
+	if actor.moved_this_tick:
+		return _reject("movement_spent", {"actor": actor.id})
+	# --- all checks passed; mutate ---
+	var moments: int = maxi(1, int(spec.get("stride_moments", 1)))
+	actor.quick_step_until_tick = clock.tick + moments
+	return [{
+		"type": "quick_step", "actor": actor.id,
+		"moments": moments, "until_tick": actor.quick_step_until_tick,
+		"level": int(action.get("level", 1)),
+	}]
+
+
+## lockpicking (scheduled_pick) declare gate — the R33 downscope's missing
+## half. Mirrors the pick_lock API's own gates at declare (arena, door, lock
+## present + locked, adjacency) plus the SKILL's tier-access rows; then
+## PRICES the attempt (the substrate tier table minus the authored -1 rows,
+## floor 1) and stamps action.cost — the documented normalize-in-place
+## pattern, so the Moments flow through the normal schedule (_base_cost reads
+## the explicit cost). Magical rejects magical_lock_needs_special without the
+## special capability — L1-4 never has it (the L6/L9 rungs stay data).
+func _validate_scheduled_pick(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if arena == null:
+		return _reject("no_arena", {"actor": actor.id})
+	var door_key := String(action.get("door", ""))
+	var idx: int = arena.door_index_for(door_key)
+	if idx < 0:
+		return _reject("unknown_door", {"actor": actor.id, "key": door_key})
+	var door: Dictionary = arena.doors[idx]
+	var pos_raw: Array = door.get("position", [])
+	var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+	if CombatantState.hex_distance(actor.position, pos) != 1:
+		return _reject("door_not_adjacent", {"actor": actor.id, "key": door_key})
+	if not door.has("lock"):
+		return _reject("no_lock", {"actor": actor.id, "key": door_key})
+	var lock: Dictionary = door.get("lock", {})
+	if String(lock.get("state", "")) != "locked":
+		return _reject("lock_already_unlocked", {"actor": actor.id, "key": door_key})
+	var tier := String(lock.get("tier", ""))
+	if tier == "magical":
+		return _reject("magical_lock_needs_special", {"actor": actor.id, "key": door_key})
+	if not (spec.get("pick_tiers", []) as Array).has(tier):
+		return _reject("lock_tier_beyond_skill", {"actor": actor.id, "key": door_key,
+			"tier": tier, "level": int(action.get("level", 1))})
+	action["cost"] = _pick_moments(spec, tier)
+	return []
+
+
+## The priced Moments for a pick: the substrate tier table minus the authored
+## "-1 Moment" rows, floor 1 (a scheduled act costs at least one Moment —
+## PLACEHOLDER R14, documented in the SkillBook spec).
+static func _pick_moments(spec: Dictionary, tier: String) -> int:
+	var moments: int = int(Arena.LOCK_PICK_MOMENTS.get(tier, 0))
+	if (spec.get("discount_tiers", []) as Array).has(tier):
+		moments -= 1
+	return maxi(1, moments)
+
+
+## lockpicking (scheduled_pick) resolution: re-check the premise LIVE, then
+## call the R33 API (CombatSim.pick_lock — the substrate's own resolution,
+## reporting the Moments actually charged). ANY premise break — the lock
+## picked by someone else mid-windup, the actor knocked out of adjacency, a
+## vanished sim ref — collapses into Forced Action – Tool (the data's own
+## failure path: "Forced Action — Tool on failure ... if interrupted"), for
+## instants and windups alike (the pick FAILED; the feint/stutter chokepoints
+## upstream already cover their own collapses).
+func _resolve_scheduled_pick(actor: CombatantState, entry: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var door_key := String(action.get("door", ""))
+	var sim = _sim()
+	if sim == null or arena == null:
+		return _collapse_batch_windup(actor, "no_sim", forced_queue, "")
+	var idx: int = arena.door_index_for(door_key)
+	if idx < 0:
+		return _collapse_batch_windup(actor, "unknown_door", forced_queue, "")
+	var door: Dictionary = arena.doors[idx]
+	var lock: Dictionary = door.get("lock", {})
+	if String(lock.get("state", "")) != "locked":
+		return _collapse_batch_windup(actor, "lock_already_unlocked", forced_queue, "")
+	var tier := String(lock.get("tier", ""))
+	if tier == "magical" or not (spec.get("pick_tiers", []) as Array).has(tier):
+		return _collapse_batch_windup(actor, "lock_tier_beyond_skill", forced_queue, "")
+	var events: Array[Dictionary] = sim.pick_lock(actor.id, door_key, false, int(entry["action"].get("eff_cost", _pick_moments(spec, tier))))
+	if not first_of(events, "command_rejected").is_empty():
+		# The API's own gates broke between declare and resolve (adjacency
+		# lost to a knock-aside, actor helpless...) — the standard collapse.
+		var reason := String(first_of(events, "command_rejected").get("reason", "pick_failed"))
+		return _collapse_batch_windup(actor, reason, forced_queue, "")
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "lockpicking")), "result": "ok", "rounds": 0})
+	return events
+
+
+## First event of `event_type` in a batch ({} when absent) — tiny local
+## helper for API-result routing (the tests' first_event, resolver-side).
+static func first_of(events: Array[Dictionary], event_type: String) -> Dictionary:
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == event_type:
+			return event
+	return {}
+
+
+## wall_conjure (poison_wall / frost_wall / fire_wall) declare gate: the
+## declare names "from"/"to" hexes; the wall IS the straight hex line between
+## them (HexGeometry.line — by construction; a bent wall is not authored).
+## Gates per hex: length <= the ladder's wall_length, within the spec range
+## of the caster, in bounds, LOS from the caster (the aoe_blast precedent —
+## you conjure where you can see), off authored solids (the zones.create
+## zone_on_wall gate, mirrored so a doomed cast never schedules), and — for a
+## BLOCKING wall — off living bodies (zone_blocked_by_body, the door-close
+## precedent; frost L8 "raise it under a target" stays data). The validator
+## stamps the computed line onto the action ("hexes" rows — normalize-in-
+## place), so the stored command is complete and resolution re-checks the
+## exact declared geometry.
+func _validate_wall_conjure(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var from_raw: Array = action.get("from", [])
+	var to_raw: Array = action.get("to", [])
+	if from_raw.size() != 2 or to_raw.size() != 2:
+		return _reject("wall_line_required", {"actor": actor.id})
+	var from := Vector2i(int(from_raw[0]), int(from_raw[1]))
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	var line: Array[Vector2i] = HexGeometry.line(from, to)
+	if line.size() > int(spec.get("wall_length", 5)):
+		return _reject("wall_too_long", {"actor": actor.id,
+			"length": line.size(), "max": int(spec.get("wall_length", 5))})
+	var reach: int = int(spec.get("attack_range", 5))
+	var zone_spec: Dictionary = spec.get("zone", {})
+	var blocking: bool = bool(zone_spec.get("blocks_movement", false))
+	for hex: Vector2i in line:
+		if CombatantState.hex_distance(actor.position, hex) > reach:
+			return _reject("out_of_range", {"actor": actor.id, "range": reach, "hex": [hex.x, hex.y]})
+		if arena != null:
+			if not arena.in_bounds(hex):
+				return _reject("out_of_bounds", {"actor": actor.id, "hex": [hex.x, hex.y]})
+			if arena.walls.has(hex) or arena.is_closed_door(hex):
+				return _reject("wall_on_solid", {"actor": actor.id, "hex": [hex.x, hex.y]})
+		if not Stealth.has_los(arena, actor.position, hex):
+			return _reject("no_line_of_sight", {"actor": actor.id, "hex": [hex.x, hex.y]})
+		if blocking:
+			var ids: Array = combatants.keys()
+			ids.sort()
+			for id: Variant in ids:
+				var body: CombatantState = combatants[id]
+				if body.alive and not body.removed_from_play and body.position == hex:
+					return _reject("zone_blocked_by_body", {"actor": actor.id, "by": body.id})
+	var hex_rows: Array = []
+	for hex: Vector2i in line:
+		hex_rows.append([hex.x, hex.y])
+	action["hexes"] = hex_rows
+	return []
+
+
+## wall_conjure resolution: LOS re-check per hex (the aoe_blast windup rule —
+## a door closing mid-windup collapses the cast), then CombatSim.create_zone
+## with the spec's DATA-shaped payload + the declared line + owner = the
+## caster (attribution: a burn death in your wall credits YOU — R32). The
+## store re-validates placement itself, so a body stepping onto a frost line
+## mid-windup surfaces as zone_rejected — which collapses the windup into
+## Forced Action – Tool (the invalidated-windup rule), zone_rejected kept in
+## the batch for transparency.
+func _resolve_wall_conjure(actor: CombatantState, entry: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var sim = _sim()
+	if sim == null:
+		return _collapse_batch_windup(actor, "no_sim", forced_queue, "")
+	var hex_rows: Array = action.get("hexes", [])
+	if hex_rows.is_empty():
+		return _collapse_batch_windup(actor, "wall_line_required", forced_queue, "")
+	for pair: Variant in hex_rows:
+		var hex := Vector2i(int((pair as Array)[0]), int((pair as Array)[1]))
+		if not Stealth.has_los(arena, actor.position, hex):
+			return _collapse_batch_windup(actor, "lost_line_of_sight", forced_queue, "")
+	var zone_spec: Dictionary = (spec.get("zone", {}) as Dictionary).duplicate(true)
+	zone_spec["hexes"] = hex_rows.duplicate(true)
+	zone_spec["owner"] = actor.id
+	var events: Array[Dictionary] = sim.create_zone(zone_spec)
+	var rejection: Dictionary = first_of(events, "zone_rejected")
+	if not rejection.is_empty():
+		events.append_array(_collapse_batch_windup(
+			actor, String(rejection.get("reason", "zone_rejected")), forced_queue, ""))
+		return events
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "")), "result": "ok", "rounds": 0})
+	return events
+
+
+## Round 3a — the zone-attack resolution (frost_wall attackability, closing
+## R32's deferral): the R14 gate verbatim against the wall — Force =
+## action/item damage amount + the attacker's Physique push (the
+## _strike_round formula, cited), Robustness = Zones.WALL_ROBUSTNESS
+## (PLACEHOLDER R14), net = max(0, Force − Robustness); BURN-typed net
+## DOUBLES vs a frost_wall zone (the authored "Burn damage deals twice as
+## much" — applied post-gate, PLACEHOLDER). A connecting net routes through
+## CombatSim.damage_zone (zone_damaged; destroyed-at-0 unblocks via
+## zone_expired "destroyed" — the store's own path). No dodge, no rng: a
+## wall does not roll. The frost CHILL semantics ride here: an ADJACENT
+## striker takes Chilled T1 on the striking limb (acting_part) whatever the
+## gate said — touching the ice chills, a blocked blow still touched it; a
+## ranged striker's limb never did (documented in the SkillBook spec).
+## Damage derivation mirrors the strike path: action.damage, else the item's
+## damage_type/damage_amount, else the basic unarmed Crush 1 (the
+## counter_surge default). Ammo honesty: a magazine weapon's round
+## accounting stays OUT of the zone path this story (no rpm loop fires) —
+## documented gap, not hidden. A vanished zone at resolution collapses a
+## windup (Forced Tool); an instant reports action_invalidated (nothing to
+## collapse — the Moment was spent on air).
+func _resolve_zone_attack(actor: CombatantState, entry: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var zone_id: int = int(action.get("zone_target", 0))
+	var store: Zones = _zone_store()
+	var zone: Dictionary = store.zone_by_id(zone_id) if store != null else {}
+	var is_windup: bool = int(entry.get("window", 0)) > 0
+	if zone.is_empty() or int(zone.get("hp", -1)) < 0:
+		if is_windup:
+			return _collapse_batch_windup(actor, "zone_gone", forced_queue, "", ForcedAction.TABLE_TOOL)
+		return [{"type": "action_invalidated", "actor": actor.id, "kind": "attack", "reason": "zone_gone"}]
+	var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+	var reach: int = _attack_range(action, item)
+	var distance: int = _zone_min_distance(actor.position, zone)
+	if distance > reach:
+		if is_windup:
+			return _collapse_batch_windup(actor, "out_of_range", forced_queue, "", ForcedAction.TABLE_TOOL)
+		return [{"type": "action_invalidated", "actor": actor.id, "kind": "attack", "reason": "out_of_range"}]
+	var damage: Dictionary = action.get("damage", {})
+	if damage.is_empty() and item.has("damage_type"):
+		damage = {"type": String(item.get("damage_type", "")), "amount": int(item.get("damage_amount", 0))}
+	if damage.is_empty():
+		damage = {"type": "crushed", "amount": 1}
+	var condition_id := ConditionEngine.normalize_condition_id(String(damage.get("type", "")))
+	var amount: int = int(damage.get("amount", 0))
+	# R14 (decision-log #22, the _strike_round formula): Force = amount + the
+	# attacker's Physique push; the wall's flat robustness gates it.
+	var force: int = amount + floori(actor.trait_total("physique") / 2.0)
+	var net: int = maxi(0, force - Zones.WALL_ROBUSTNESS)
+	var zone_key := String(zone.get("key", ""))
+	if condition_id == "burn" and zone_key == "frost_wall":
+		net *= 2
+	var events: Array[Dictionary] = [{
+		"type": "zone_attacked", "actor": actor.id, "zone": zone_id,
+		"key": zone_key, "damage_type": condition_id,
+		"force": force, "robustness": Zones.WALL_ROBUSTNESS, "amount": net,
+	}]
+	if net > 0:
+		var sim = _sim()
+		if sim != null:
+			events.append_array(sim.damage_zone(zone_id, net))
+		else:
+			events.append_array(store.damage(zone_id, net))
+	# The authored frost bite: "strikes or collides ... Chilled Tier 1 to the
+	# striking limb" — adjacency-gated (the limb must touch the ice).
+	if zone_key == "frost_wall" and distance <= 1:
+		var limb: String = actor.acting_part(clock.tick)
+		if limb != "":
+			# Tier 1 at every rung this story (the SkillBook spec's
+			# strike_chill_tier; the L7 "colliders take Chill T2" is 6+ band
+			# data) — attributed to the wall's owner (R32 attribution).
+			events.append_array(cond.apply(actor, limb, "chilled", clock.tick, {
+				"source": "attack",
+				"tier": 1,
+				"attacker": String(zone.get("owner", "")),
+			}))
+	return events
 
 
 # ------------------------------------------------------------------ inventory
@@ -2549,7 +3007,12 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 	var events: Array[Dictionary] = []
 	match kind:
 		"attack":
-			events = _resolve_strike(actor, entry, snapshot, forced_queue)
+			# Round 3a: a zone-targeted attack (the additive target shape)
+			# resolves through its own path — a wall never dodges.
+			if action.has("zone_target"):
+				events = _resolve_zone_attack(actor, entry, forced_queue)
+			else:
+				events = _resolve_strike(actor, entry, snapshot, forced_queue)
 		"skill":
 			events = _resolve_skill(actor, entry, snapshot, forced_queue)
 		"move":
@@ -2661,9 +3124,14 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_sustained_channel(actor, entry, spec)
 		"item_flow":
 			return _resolve_item_flow(actor, entry, spec)
-		"forced_roll_save", "fused_evasion":
-			# Unreachable via declare (both armings route before scheduling);
-			# defensive so a hand-built entry can never fall into the strike path.
+		"scheduled_pick":
+			return _resolve_scheduled_pick(actor, entry, forced_queue, spec)
+		"wall_conjure":
+			return _resolve_wall_conjure(actor, entry, forced_queue, spec)
+		"forced_roll_save", "fused_evasion", "terrain_stride", "terrain_affinity":
+			# Unreachable via declare (the armings + the stride route before
+			# scheduling; the affinity passives reject at declare); defensive
+			# so a hand-built entry can never fall into the strike path.
 			return [{"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "not_schedulable"}]
 		_:
 			return _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
