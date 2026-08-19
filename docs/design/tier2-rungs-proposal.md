@@ -107,6 +107,66 @@ dependency-ordered stories (names stay PROVISIONAL pending the owner's rename pa
 > (threshold row 96). Tests: `tests/test_strike_fusions.gd`. S8–S9 remain the only
 > DATA-ONLY ladders.
 
+> **[IMPLEMENTATION STATUS — wave 4, the WAVE CLOSER, landed 2026-08-19.]** The last two
+> ladders are ENCODED (same conventions: not in KNOWN_KEYS, magnitudes PLACEHOLDER R14) —
+> **the implementation wave is CLOSED: all ten blessed ladders carry engine rungs a–d**
+> (every e/L5 mastery rung stays threshold DATA by the house convention — `mechanics()`
+> clamps to the 1–4 band; the threshold rows await the tier-2 economy pass).
+> **S8 the_unseen** (stealth_conceal EXTENDED — camouflage untouched, contrast-pinned) —
+> a PARTIAL (the headline [NEEDS] is BUILT: **the anchor-lift** — `conceal_mobile` marks
+> the conceal record and the CombatSim sweep RE-ANCHORS a 1-hex displacement instead of
+> breaking (once per Clock — "slow movement" AUTHORED as **1 hex per Clock** [PH];
+> `moved_clock`, the Clock-index idiom), while a farther displacement / a second
+> same-Clock step breaks `moved` and committing to a DAMAGING action breaks `attacked`
+> at the declare seam (the rung's "only fast movement or attacking does" — authored for
+> THIS conceal only; base stealth/camouflage keep R20's no-break-on-attack line,
+> test-pinned); reveal radius L1 = 2 ≤ the parent's L5 radius (threshold row 81);
+> nightlurking's always-on awareness/squeeze passive stays DATA per the doc's own
+> [NEEDS] — no exit/gap knowledge surface exists) · b PARTIAL (reveal-radius rows
+> IMPLEMENTED to the floor 1 — radius 0 is the e-rung's vanish; `awareness_range` rows
+> CARRIED AS DATA, the vibe_control resist_penetration precedent — documented, not
+> faked) · c DATA ([NEEDS] concealment-preserving room transition — judged honestly:
+> the R29 room graph is RUN-level and no in-encounter gap/vent substrate exists; R20's
+> sized gaps are still downscoped) · d PARTIAL (the ally-conceal half IMPLEMENTED — one
+> adjacent ally covered at resolution under an ANCHORED `cover_by`-linked conceal,
+> broken by its own movement or the holder's stealth ending, the sweep's cover-link
+> pass; the afterimage/decoy half stays DATA — [NEEDS: decoy entity]) · e DATA
+> (threshold row 100 — the vanish half's machinery, a conceal override at radius 0,
+> now exists and waits there).
+> **S9 the_long_con** (sustained_con — NEW archetype) — a IMPLEMENTED (**the con as a
+> SERIALIZED sustained state**: holder-side `con` {targets→table, dice, hype} +
+> mark-side `conned_by` mirror + banked `con_steps`, all only-when-set; declare gated
+> on each mark PERCEIVING the holder (Stealth.sees mark→holder — the R30 cone); while
+> it holds, each mark's NEXT resolved action naming the holder collapses into Forced
+> Action — Tool at the standard collapse ladder seam (counter > stutter > feint > con,
+> each preserving the later), once per mark, and each firing banks a free 1-hex
+> reposition spent through the move command OUTSIDE the R3 economy; the AUTHORED end
+> set [PH]: the holder STRIKES (declare seam), a mark stops perceiving / goes down
+> (the per-command `_con_checks` sweep), the holder goes down, scene end (RunState
+> sanitizer)) · b IMPLEMENTED (+targets/+range rows + the die manipulation: extra
+> dice on the inflicted roll, every die emitted, curated deterministically to the
+> severity-WORST for the victim — feint L3/L4's own "+1 Die. You choose result"
+> texture; the TOOL severity ranking is authored this wave [PH], the BODY ranking
+> reuses the save's; an armed acrobatic-save/negate on the victim routes the Body
+> collapse through the standard `_forced_body_roll` chokepoint UNCURATED — the save
+> out-scripts the con, authored interaction) · c IMPLEMENTED (choose the inflicted
+> result per mark — Tool or Body through the parameterized collapse table, L3+) · d
+> IMPLEMENTED (the con-duration hype hook: at each Clock reset while an L4+ con
+> holds, a `con_performance` beat pays base 1 [PH] × max(1, Charm total + dance
+> bonus) through the existing GENERIC spectacle ingest — no HypeEngine edit, "small"
+> per the rung) · e DATA (threshold row 101 — the spoofed-position next-Clock plan
+> would touch enemy_ai targeting and the house convention keeps mastery rungs as
+> threshold data; judged not reached for from a status rung).
+> **Round 5 rider — voicebox (BASE skill, id 34):** the R20 hearing marker's reserved
+> LOUD lane is REAL — the `thrown_sound` archetype throws a mimicked sound at a chosen
+> hex (range 10 [PH], loudness = the table's LOUD 10 verbatim, deliberately no LOS
+> gate); the noise sweep consumes the AUTHORED row even from a visible thrower
+> (nothing is visible AT the sound's hex), investigators walk to the THROWN hex, and
+> the throw neither breaks nor requires stealth — the LOUD alert row is finally
+> reachable FROM stealth (test-pinned). The row's social half (previously-heard
+> requirement, Mind-3 recognition, "+1 Strength" fidelity rows) stays DATA.
+> Tests: `tests/test_tier2_wave4.gd` + `tests/test_voicebox.gd`.
+
 **How to answer: by number.** Skills are **S1–S10**; each skill's five rungs are lettered
 **a–e** (a = L1 … e = L5). "S1–S7 yes, S8-c reword, S10 hold for OQ1" is a complete
 answer. All names stay PROVISIONAL pending the owner's rename pass.

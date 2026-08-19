@@ -54,6 +54,34 @@ static func save_severity(rolled: Dictionary) -> int:
 	return int(BODY_SEVERITY.get(String(rolled.get("consequence", "")), 100))
 
 
+## Tier-2 wave 4 (the_long_con S9-b — die manipulation): the AUTHORED severity
+## ranking over the TOOL table, higher = worse FOR THE VICTIM, curated from
+## the con-holder's vantage (the holder "chooses the result" — feint L3/L4's
+## own texture — so the sim keeps the deterministic worst). Ranking rationale
+## (PLACEHOLDER-family judgment, R14 — pinned so the choose rule is
+## deterministic and documented, revisit with the numbers pass): whiff (the
+## answered action simply never happened — the con's whole fantasy) > slip
+## (unarmed) > strained_grip (+1 Moment next tool act) > overextension (a
+## delayed schedule) > overcommit (Exposed — real but brief) > collateral
+## (the wild swing may even serve the victim's side). The acrobatic_save
+## stays BODY-only (its L6 "any fumble" rung is threshold data) — this
+## ranking is consumed ONLY by the con's curated roll.
+const TOOL_SEVERITY: Dictionary = {
+	"whiff": 6,
+	"slip": 5,
+	"strained_grip": 4,
+	"overextension": 3,
+	"overcommit": 2,
+	"collateral": 1,
+}
+
+
+## Severity of a rolled TOOL consequence for the con's curate rule; unknown
+## consequences rank hardest (the save_severity convention).
+static func tool_severity(rolled: Dictionary) -> int:
+	return int(TOOL_SEVERITY.get(String(rolled.get("consequence", "")), 100))
+
+
 ## Rolls the d6 on the named table. The caller emits the event (with reason)
 ## and defers apply_consequence() until after all resolutions this tick (R1).
 static func roll(table: String, rng: RandomNumberGenerator) -> Dictionary:

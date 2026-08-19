@@ -317,6 +317,33 @@ var quick_step_until_tick: int = 0
 ## re-checks at resolution); the gate re-opens at the reset, no sweep
 ## needed. Serialized ONLY while >= 0 (same compat pin).
 var treat_resolve_used_clock: int = -1
+## sustained_con (the_long_con, tier-2 wave 4 — S9-a): the live con on the
+## HOLDER — {"targets": {target_id -> "tool"|"body"}, "dice": int,
+## "hype": int} while the con holds, {} otherwise. Each entry is one mark
+## whose NEXT resolved action AGAINST this holder collapses into a Forced
+## Action on the stored table (Tool default; Body only via the S9-c L3+
+## choice), firing once per mark (the entry is consumed at the collapse).
+## "dice" = the S9-b die-manipulation extras stamped at resolve; "hype" =
+## the S9-d per-Clock performance base (0 below L4). Sanctioned ends
+## (AUTHORED this wave, PLACEHOLDER family R14): the holder STRIKES
+## (declaring a damaging action — the dance-end seam), a mark stops
+## PERCEIVING the holder (the CombatSim _con_checks sweep reads
+## Stealth.sees mark->holder), a party goes down, or the encounter ends
+## (never carried — the RunState sanitizer). Serialized ONLY while
+## non-empty (the stealthed compat-pin pattern).
+var con: Dictionary = {}
+## sustained_con: the mirror on the MARK — the id of the combatant whose con
+## this one is under ("" = free). One con per mark (a second holder rejects
+## at declare, the held_by precedent). Serialized ONLY while non-empty.
+var conned_by: String = ""
+## sustained_con (S9-a): banked free 1-hex repositions — each con firing
+## grants the holder one ("each time it fires you may reposition 1 space at
+## no cost" [PH]). Spent through the move command OUTSIDE the R3 movement
+## economy (no slot, no allowance, no moved_this_tick); persists until spent
+## or the encounter ends (AUTHORED lifetime, PLACEHOLDER R14 — deliberately
+## surviving the con's own end so the last firing's step is never stillborn).
+## Serialized ONLY while > 0 (the quick_step_until_tick compat-pin pattern).
+var con_steps: int = 0
 
 # Grapple (R9)
 var grappling: String = ""
@@ -828,6 +855,17 @@ func to_dict() -> Dictionary:
 	# byte-identically to the pre-wave engine (hash-covered while live).
 	if chain_open_key != "":
 		out["chain_open_key"] = chain_open_key
+	# Tier-2 wave 4 compat pins (the same only-when-set pattern): the con
+	# record, its mark-side mirror and the banked con steps exist ONLY while
+	# a con is live / a step is banked — a fight that never uses the_long_con
+	# serializes byte-identically to the pre-wave engine (hash-covered
+	# whenever any is live).
+	if not con.is_empty():
+		out["con"] = con.duplicate(true)
+	if conned_by != "":
+		out["conned_by"] = conned_by
+	if con_steps > 0:
+		out["con_steps"] = con_steps
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -935,4 +973,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.quick_step_until_tick = int(data.get("quick_step_until_tick", 0))
 	# Pre-tier-2-wave-3 saves lack the key: "" = no chain currently open.
 	c.chain_open_key = String(data.get("chain_open_key", ""))
+	# Pre-tier-2-wave-4 saves lack all three: no con, no mark, no banked step.
+	c.con = (data.get("con", {}) as Dictionary).duplicate(true)
+	c.conned_by = String(data.get("conned_by", ""))
+	c.con_steps = int(data.get("con_steps", 0))
 	return c

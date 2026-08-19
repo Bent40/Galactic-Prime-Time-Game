@@ -256,6 +256,13 @@ func _post(events: Array[Dictionary]) -> void:
 	# held_by mirror in sync). BEFORE the broadcast plane so the release is
 	# scored/seen too. No-op while nobody channels — the legacy compat pin.
 	events.append_array(_channel_checks(events))
+	# Tier-2 wave 4 (the_long_con) — the con sweep: a holder down/helpless
+	# ends its con; a mark that is gone or stops PERCEIVING the holder drops
+	# out (the authored perception end — Stealth.sees mark->holder, every
+	# command); the last drop plays the con out. BEFORE the broadcast plane so
+	# hype/tags/evidence see con_* events too. No-op (no events, no rng, no
+	# state) while nobody holds a con — the legacy compat pin.
+	events.append_array(_con_checks())
 	# ---- R20 HEARING (round 3b) — the NOISE sweep: its own bounded region. --
 	# Reads THIS command's event batch, derives its noise rows (the Stealth
 	# loudness table) and alerts AI hearers of noises from sources still
@@ -480,6 +487,11 @@ func _advance_tick() -> Array[Dictionary]:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
 		events.append_array(_antagonism_decay())
 		events.append_array(_pattern_read_expiry())
+		# Tier-2 wave 4 (the_long_con S9-d): the con-duration hype beat — a
+		# per-Clock Charm-scaled performance while an L4+ con holds, scored
+		# by HypeEngine's generic spectacle ingest in _post. No-op while no
+		# con carries a hype base — the legacy compat pin.
+		events.append_array(_con_hype_sweep())
 		# KAN-5 K1 (zones) — the Clock-boundary sweep: on_occupy_clock for
 		# every occupant (AFTER the universal condition advancement above, so
 		# a fresh zone application advances at the NEXT reset, not its own),
@@ -1096,14 +1108,38 @@ func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 		# moves"; the L6 move-one-hex rung stays threshold data). Checked
 		# before the sight sweep: the mover is revealed by the movement
 		# itself, whoever is watching.
+		# Tier-2 wave 4 (the_unseen S8-a) — THE ANCHOR-LIFT: a conceal record
+		# carrying "mobile" (only the_unseen's resolver sets it — legacy
+		# conceal keeps the anchored rule byte-identically) tolerates SLOW
+		# movement instead: a 1-hex displacement RE-ANCHORS the concealment
+		# (once per Clock — "slow" AUTHORED as 1 hex per Clock, PLACEHOLDER
+		# R14; moved_clock is the negate_used_clock Clock-index idiom), while
+		# a farther displacement or a second same-Clock step is FAST and
+		# breaks. The sweep reads displacement, not intent (documented [PH]
+		# coarseness: a 1-hex involuntary shove reads as the slow step). A
+		# re-anchored hider still falls through to the shout/sight checks —
+		# creeping into a cone is still being seen.
 		if not c.conceal.is_empty():
 			var anchor_raw: Array = c.conceal.get("anchor", [])
-			if anchor_raw.size() != 2 \
-					or c.position != Vector2i(int(anchor_raw[0]), int(anchor_raw[1])):
-				c.stealthed = false
-				c.conceal = {}
-				out.append({"type": "stealth_broken", "combatant": c.id, "reason": "moved"})
-				continue
+			var on_anchor: bool = anchor_raw.size() == 2 \
+				and c.position == Vector2i(int(anchor_raw[0]), int(anchor_raw[1]))
+			if not on_anchor:
+				var slow_step: bool = false
+				if bool(c.conceal.get("mobile", false)) and anchor_raw.size() == 2:
+					var clock_index: int = clock.tick / Clock.TICKS_PER_CLOCK
+					slow_step = CombatantState.hex_distance(c.position,
+						Vector2i(int(anchor_raw[0]), int(anchor_raw[1]))) == 1 \
+						and int(c.conceal.get("moved_clock", -1)) != clock_index
+					if slow_step:
+						c.conceal["anchor"] = [c.position.x, c.position.y]
+						c.conceal["moved_clock"] = clock_index
+						out.append({"type": "conceal_shifted", "combatant": c.id,
+							"to": [c.position.x, c.position.y]})
+				if not slow_step:
+					c.stealthed = false
+					c.conceal = {}
+					out.append({"type": "stealth_broken", "combatant": c.id, "reason": "moved"})
+					continue
 		if shouters.has(c.id):
 			c.stealthed = false
 			c.conceal = {}
@@ -1114,6 +1150,26 @@ func _stealth_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 			c.stealthed = false
 			c.conceal = {}
 			out.append({"type": "stealth_broken", "combatant": c.id, "reason": "seen", "observer": observer})
+	# Tier-2 wave 4 (the_unseen S8-d) — the COVER-LINK pass: an ally concealed
+	# under a holder's cover ("cover_by" on its conceal) loses it the moment
+	# the holder's own stealth is gone (broken above, revealed, or downed) —
+	# the cover never outlives the stealth it extends, within the same batch.
+	# ONE extra pass suffices: cover never chains (only the_unseen's resolver
+	# sets the link, and a covered ally cannot itself be covering), so a
+	# broken holder cannot cascade further. No-op while nobody carries the
+	# link — the legacy compat pin holds.
+	for id: Variant in ids:
+		var covered: CombatantState = combatants[id]
+		if not covered.stealthed or covered.conceal.is_empty():
+			continue
+		var cover_id := String(covered.conceal.get("cover_by", ""))
+		if cover_id == "":
+			continue
+		var cover_holder: CombatantState = combatants.get(cover_id)
+		if cover_holder == null or not cover_holder.stealthed:
+			covered.stealthed = false
+			covered.conceal = {}
+			out.append({"type": "stealth_broken", "combatant": covered.id, "reason": "cover_lost"})
 	return out
 
 
@@ -1205,6 +1261,80 @@ func _channel_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 	return out
 
 
+# ------------------------------------------------- the con (tier-2 wave 4, S9)
+
+## The per-command con sweep (the guard/channel sweep family): a HOLDER that
+## is down/removed/helpless loses the whole con (a con is held attention — a
+## body on the floor projects nothing); per MARK, a gone/downed mark or one
+## that no longer PERCEIVES the holder (Stealth.sees mark->holder — the same
+## flipped-roles gate the declare used; the authored "target leaves
+## perception" end, R14 family) drops out with a con_dropped, and the last
+## drop plays the con out through resolver.end_con (the one end seam — the
+## remaining mirrors clear there). A dangling mark-side mirror whose named
+## holder no longer cons it is cleared silently (the held_by defensive
+## invariant, same spirit). Deterministic sorted order; zero rng; a con-free
+## fight is a pure no-op (the compat pin).
+func _con_checks() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if not c.con.is_empty():
+			if not c.alive or c.removed_from_play:
+				out.append_array(resolver.end_con(c, "downed"))
+			elif c.is_helpless(clock.tick):
+				out.append_array(resolver.end_con(c, "helpless"))
+			else:
+				var marks: Dictionary = c.con.get("targets", {})
+				var mark_ids: Array = marks.keys()
+				mark_ids.sort()
+				for tid: Variant in mark_ids:
+					var mark: CombatantState = combatants.get(String(tid))
+					var reason: String = ""
+					if mark == null or not mark.alive or mark.removed_from_play:
+						reason = "mark_gone"
+					elif not Stealth.sees(mark, c, arena, clock.tick):
+						reason = "lost_perception"
+					if reason != "":
+						marks.erase(tid)
+						if mark != null and mark.conned_by == c.id:
+							mark.conned_by = ""
+						out.append({"type": "con_dropped", "actor": c.id,
+							"target": String(tid), "reason": reason})
+				if marks.is_empty():
+					out.append_array(resolver.end_con(c, "no_marks"))
+		if c.conned_by != "":
+			var holder: CombatantState = combatants.get(c.conned_by)
+			if holder == null \
+					or not (holder.con.get("targets", {}) as Dictionary).has(c.id):
+				c.conned_by = ""
+	return out
+
+
+## S9-d — the Clock-reset performance beat (called from _advance_tick's reset
+## branch): each holder whose live con carries a hype base (L4+) pays a
+## Charm-scaled spectacle event — points = base × max(1, Charm total + the
+## dance bonus, R18's presence read; AUTHORED formula, PLACEHOLDER R14,
+## "small" per the blessed rung). Scored by the generic spectacle_points
+## ingest — no HypeEngine edit. Zero rng; sorted; no-op without a hyped con.
+func _con_hype_sweep() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.con.is_empty():
+			continue
+		var base: int = int(c.con.get("hype", 0))
+		if base <= 0:
+			continue
+		var charm: int = c.trait_total("charm") + c.dance_charm_bonus()
+		out.append({"type": "con_performance", "actor": c.id,
+			"spectacle_points": base * maxi(1, charm)})
+	return out
+
+
 # ------------------------------------------------------ hearing (R20 round 3b)
 
 ## R20 hearing — the per-command NOISE sweep (called from _post; the model +
@@ -1251,12 +1381,16 @@ func _channel_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 ## alert_cleared {combatant, reason: "decayed"|"downed"}.
 func _noise_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 	# The legacy compat pin, provably complete: alerts only ORIGINATE from
-	# hidden sources and only an EXISTING alert can decay — with nobody
-	# stealthed and nobody alerted the sweep can do nothing, so it does
-	# nothing (no events, no rng, no state; stealth-free fights byte-match
-	# the pre-hearing engine — the pinned hashes + both CI harnesses).
+	# hidden sources OR from an AUTHORED no-visible-source noise (Round 5 —
+	# voicebox's sound_thrown, the batch scan below), and only an EXISTING
+	# alert can decay — with nobody stealthed, nobody alerted and no authored
+	# noise in the batch the sweep can do nothing, so it does nothing (no
+	# events, no rng, no state; stealth-free fights byte-match the
+	# pre-hearing engine — the pinned hashes + both CI harnesses: a fight
+	# that never declares voicebox never emits sound_thrown).
 	var any_hidden: bool = false
 	var any_alerted: bool = false
+	var any_authored: bool = false
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -1265,13 +1399,18 @@ func _noise_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 			any_hidden = true
 		if not c.alerted.is_empty():
 			any_alerted = true
-	if not any_hidden and not any_alerted:
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "sound_thrown":
+			any_authored = true
+			break
+	if not any_hidden and not any_alerted and not any_authored:
 		return []
 	var out: Array[Dictionary] = []
 	# 1) DERIVE this batch's noise rows — the full honest table (only worth
-	#    computing while a hidden source exists to be heard).
+	#    computing while a hidden source exists to be heard, or an authored
+	#    row is present — Round 5).
 	var noises: Array[Dictionary] = []
-	if any_hidden:
+	if any_hidden or any_authored:
 		noises = Stealth.derive_noises(events, combatants)
 	# 2) CONSUME per sorted hearer (the eligibility gates in the header).
 	for id: Variant in ids:
@@ -1284,7 +1423,14 @@ func _noise_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 			if source_id == hearer.id:
 				continue
 			var source: CombatantState = combatants.get(source_id)
-			if source == null or not source.stealthed:
+			if source == null:
+				continue
+			# Round 5 (voicebox): an AUTHORED row is exempt from the
+			# source-still-hidden redundancy filter — the sound has no
+			# visible source AT ITS HEX by construction, so a visible
+			# thrower makes it no less alarming (the R20 reserved lane;
+			# hostility/range gates below still bind).
+			if not source.stealthed and not bool(noise.get("authored", false)):
 				continue  # default-detected: a visible actor's noise is redundant
 			if hearer.team == "" or hearer.team == source.team:
 				continue  # hostile sources only (the sees() team predicate)

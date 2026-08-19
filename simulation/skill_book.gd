@@ -104,7 +104,22 @@ extends RefCounted
 ##                          (combatant.conceal, read by Stealth.sees) that
 ##                          caps every observer's sight range; anchored to
 ##                          the woven hex — ANY displacement breaks it (the
-##                          CombatSim sweep), alongside the normal break rules
+##                          CombatSim sweep), alongside the normal break rules.
+##                          Tier-2 wave 4 (the_unseen, S8): spec extensions,
+##                          camouflage untouched — "conceal_mobile" lifts the
+##                          hex anchor for SLOW movement (1 hex per Clock
+##                          [PH]: a 1-hex displacement re-ANCHORS instead of
+##                          breaking, once per Clock; farther/faster or a
+##                          second same-Clock step breaks "moved", and
+##                          declaring a DAMAGING action breaks "attacked" —
+##                          the rung's own "only fast movement or attacking
+##                          does", authored for THIS conceal only: base
+##                          stealth keeps its documented no-break-on-attack
+##                          line); "ally_conceal" (S8-d, L4+) extends the
+##                          cover to ONE adjacent ally at resolution — the
+##                          ally gets an ANCHORED conceal linked "cover_by",
+##                          broken by its own movement or the holder's
+##                          stealth ending (the sweep's cover-link pass)
 ##   projection_control   — batch D (vibe_control): two declared modes vs a
 ##                          PERCEIVING hostile (the target must SEE the actor
 ##                          — Stealth.sees with the R30 cone). FEAR = 1-hex
@@ -239,6 +254,50 @@ extends RefCounted
 ##                          DROPPED by the blessed fusion); L3+ (S4-c,
 ##                          [FROM row 80]) fresh wounds apply Bleed T2
 ##                          instead (T1 + the resolver's tier step)
+##   thrown_sound         — Round 5 (voicebox, BASE skill id 34): the authored
+##                          no-visible-source noise R20's hearing marker
+##                          reserved its LOUD lane for. A cost-0 (free-slot)
+##                          declare naming a hex ("at", within throw_range —
+##                          deliberately NO LOS gate: sound placement is
+##                          acoustic, not ballistic, and the model's sound
+##                          already ignores walls); resolution emits
+##                          sound_thrown {actor, position, loudness} — the
+##                          noise derivation maps it to an AUTHORED row at
+##                          the THROWN hex (Stealth.derive_noises), consumed
+##                          by AI hearers even when the thrower is visible
+##                          (the source-still-hidden redundancy filter is
+##                          waived for authored rows: nothing is visible AT
+##                          the sound's hex). Investigators walk to the
+##                          thrown hex, never the thrower's (R20's
+##                          alerted-not-located contract); throwing neither
+##                          breaks nor requires stealth — the whole point is
+##                          that the LOUD alert row is finally reachable
+##                          FROM stealth. The data row's social half (mimic
+##                          fidelity, the Mind-3 recognition, "+1 Strength"
+##                          rows, machinery-fooling L6) stays DATA — no
+##                          social-interaction substrate exists
+##   sustained_con        — tier-2 wave 4 (the_long_con, S9): the con as a
+##                          SERIALIZED sustained state, never a one-shot
+##                          debuff. Declare at 1..targets_max hostiles who
+##                          PERCEIVE the actor (Stealth.sees mark->actor —
+##                          vibe_control's R30-cone gate, per mark); while
+##                          it holds, each mark's NEXT resolved action
+##                          AGAINST THE HOLDER collapses into a Forced
+##                          Action (Tool; S9-c L3+ may store Body per mark)
+##                          and each firing banks a free 1-hex reposition
+##                          (con_steps — spent via the move command outside
+##                          the R3 economy). S9-b: extra dice on the
+##                          inflicted roll, curated deterministically to the
+##                          severity table's WORST for the victim (the
+##                          holder "chooses the result" — feint L3-4's own
+##                          authored texture — via ForcedAction's severity
+##                          rankings; the TOOL ranking is authored this
+##                          wave, PLACEHOLDER R14). S9-d (L4+): while the
+##                          con holds, each Clock reset pays a Charm-scaled
+##                          spectacle beat through the generic HypeEngine
+##                          ingest (con_performance). Ends (AUTHORED, R14
+##                          family): the holder strikes, a mark stops
+##                          perceiving, a party goes down, scene end
 ##   terrain_stride       — Round 3a (quick_step): a 0-Moment, SLOT-FREE
 ##                          IMMEDIATE self declare (the arming-declare
 ##                          pattern; it rides the movement it modifies —
@@ -405,6 +464,54 @@ extends RefCounted
 ## reasons (acquisition-gated; keyword rulings pending). All magnitudes
 ## PLACEHOLDER (R14), anchored >= the consumed parents' values.
 ##
+## TIER-2 WAVE 4 — the wave closer (same proposal doc, S8/S9 BLESSED; Round 5):
+## **the_unseen** (S8, OFFER: Camouflage Lv5 + Nightlurking Lv3 —
+## stealth_conceal EXTENDED): a PARTIAL (the headline anchor-lift is
+## IMPLEMENTED — conceal_mobile: slow movement re-anchors instead of
+## breaking, fast movement / a second same-Clock step / attacking breaks;
+## reveal radius 2 ≤ the parent's L5 radius (threshold row 81: 6−4=2);
+## nightlurking's always-on awareness/squeeze passive stays DATA — [NEEDS]
+## per the doc, no exit/gap knowledge surface exists) · b PARTIAL (reveal
+## radius row IMPLEMENTED; awareness_range rows CARRIED as data — the
+## vibe_control resist_penetration precedent: nothing consumes them yet,
+## documented not faked) · c DATA ([NEEDS] concealment-preserving room
+## transition — the room graph is RUN-level (R29), no in-encounter gap/vent
+## substrate exists to traverse) · d PARTIAL (the ally-conceal half
+## IMPLEMENTED on the conceal substrate — one adjacent ally covered,
+## cover_by-linked; the afterimage/decoy half stays DATA — [NEEDS: decoy
+## entity]) · e DATA (threshold row 100 — the house L5 line: mechanics()
+## clamps to L4, every ladder's mastery rung is threshold data; the vanish
+## half's machinery (a conceal override at radius 0) exists and waits there).
+## **the_long_con** (S9, OFFER: Feint Lv5 + Vibe Control Lv3 —
+## sustained_con): a IMPLEMENTED (the serialized con state — see the
+## archetype note; perception-gated declare, per-mark next-action-against-
+## you collapse to Forced Tool, the banked 1-hex repositions, the authored
+## end set) · b IMPLEMENTED (+targets/+range rows + the die manipulation —
+## extra dice curated worst-for-the-victim via the authored severity
+## rankings) · c IMPLEMENTED (choose the inflicted result per mark — Tool
+## or Body through the parameterized collapse table) · d IMPLEMENTED (the
+## con-duration hype hook: a per-Clock Charm-scaled con_performance beat
+## through the existing generic spectacle ingest — no HypeEngine edit) ·
+## e DATA (threshold row 101 — the spoofed-position AI misdirection hook
+## and the reveal spike ride the L5 band; the house convention keeps every
+## mastery rung as threshold data, and a deterministic spoof would touch
+## enemy_ai targeting — deliberately not reached for from a status rung).
+## Both stay OUT of KNOWN_KEYS for waves 1-3's two reasons (acquisition-
+## gated; keyword rulings pending). All magnitudes PLACEHOLDER (R14),
+## anchored per the blessed [PH] guidance. This CLOSES the implementation
+## wave: all ten blessed ladders are encoded a-d (PARTIAL/DATA flagged
+## per rung above and in the proposal doc's status blocks).
+##
+## ROUND 5 — voicebox (BASE skill, data id 34, KNOWN_KEYS): the thrown_sound
+## archetype above — the sim expression of the authored no-visible-source
+## noise (R20's reserved LOUD lane). The data row's is_passive marks the
+## TABLETOP framing (an always-available mimicry capability); the sim's
+## declarable throw is the phase-1 combat expression, and the row's social
+## half (previously-heard requirement, Mind-3 recognition, "+1 Strength"
+## fidelity rows, the L5/L6 thresholds) stays DATA — [NEEDS: social
+## interaction substrate]. throw_range 10 AUTHORED [PH] (a shout's own
+## carry — the LOUD radius); loudness = the R20 table's LOUD 10 verbatim.
+##
 ## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
 ## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
 ## at declare (one of chain / stance / stack / state / prep). The CHAIN prime
@@ -459,6 +566,10 @@ const KNOWN_KEYS: Array[String] = [
 	# 14, 17, 31, 32, 44, 50).
 	"poison_ball", "frost_ball", "fire_ball", "camouflage", "vibe_control",
 	"play_to_the_camera", "telekinesis", "juggling",
+	# Round 5 — the authored-noise base skill (data id 34; its ruled
+	# skill_keywords.json entry — performance/sound — predates this wave,
+	# so KNOWN_KEYS membership is legal per validate_seeds + test_keywords).
+	"voicebox",
 ]
 
 ## Generic fallback for any un-encoded skill: a plain single-target strike so the
@@ -1425,6 +1536,80 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"parts_max": [4, 5, 5, 5][lv - 1],
 				"targets_max": [2, 3, 3, 3][lv - 1],
 				"attack_range": 1,
+			}
+		"voicebox":
+			# Round 5 (BASE skill, data id 34 — "Sing for me, Polly."). Charm,
+			# cost 0 (the free slot — the data's base_moment_cost 0; one throw
+			# per tick through the R3 economy, never spammable). Throw a
+			# mimicked sound at a chosen hex: the resolution emits sound_thrown
+			# and the R20 hearing substrate does the rest (the archetype note
+			# carries the full contract — the authored no-visible-source LOUD
+			# lane, alert-not-locate, no stealth break either way). throw_range
+			# 10 AUTHORED (PLACEHOLDER R14 — a shout's own carry, the LOUD
+			# radius; the data authors no range row, its "+1 Strength" L2-4
+			# rows are the SOCIAL fidelity half, carried as data). Loudness =
+			# the R20 table's "a mimicked shout = LOUD (10)" verbatim
+			# (Stealth.NOISE_LOUD — never a new loudness row). The
+			# previously-heard requirement + Mind-3 recognition stay
+			# DATA-annotated ([NEEDS: social interaction substrate]).
+			spec = {
+				"archetype": "thrown_sound",
+				"cost": 0,
+				"throw_range": 10,
+				"loudness": Stealth.NOISE_LOUD,
+			}
+		"the_unseen":
+			# Tier-2 wave 4 (S8, OFFER: Camouflage Lv5 + Nightlurking Lv3 —
+			# broad-only `infiltration`, BLESSED 2026-08-18). Reflexes/Mind,
+			# cost 3 (the authored [PH] header — camouflage's own windup).
+			# The stealth_conceal substrate with the S8-a extensions (see the
+			# archetype note): reveal_radius L1 = 2 (≤ the parent's L5 radius
+			# — threshold row 81's "-4 Reveal Space" off 6; L2-4 shrink to the
+			# floor 1 — radius 0 is the L5 vanish, threshold data);
+			# conceal_mobile lifts the hex anchor for SLOW movement (1 hex per
+			# Clock, AUTHORED [PH]) — only fast movement or attacking breaks.
+			# awareness_range (S8-b's "+awareness" rows, anchored ≥
+			# nightlurking Lv3's 20 — its 10/+5/+10 band) is CARRIED AS DATA:
+			# the prowler's always-on awareness/squeeze passive stays [NEEDS]
+			# (no exit/gap knowledge surface exists — the vibe_control
+			# resist_penetration precedent, documented not faked). S8-c
+			# (gap/vent traversal) stays DATA ([NEEDS] — R29's room graph is
+			# run-level; no in-encounter gap substrate). ally_conceal (S8-d,
+			# L4+): extend the cover to one adjacent ally — the decoy half
+			# stays DATA ([NEEDS: decoy entity]). L5 stays threshold DATA
+			# (row 100). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "stealth_conceal",
+				"cost": 3,
+				"reveal_radius": [2, 1, 1, 1][lv - 1],
+				"conceal_mobile": true,
+				"awareness_range": [20, 25, 25, 30][lv - 1],
+				"ally_conceal": lv >= 4,
+			}
+		"the_long_con":
+			# Tier-2 wave 4 (S9, OFFER: Feint Lv5 + Vibe Control Lv3 —
+			# broad-only `performance`, BLESSED 2026-08-18; rename caution:
+			# the secondary parent is a v2 display-rename skill — this spec
+			# and its events carry only sim keys). Reflexes/Charm, cost 1
+			# (the authored header). The sustained_con archetype (see the
+			# archetype note). targets_max L1 = 2 (the blessed "1-2");
+			# attack_range L1 = 5 (≥ vibe_control Lv3's 5; feint is adjacent)
+			# — both scale per S9-b [PH]. con_dice = S9-b's die manipulation
+			# (feint L3/L4's own "+1 Die. You choose result" texture — the
+			# extra dice are curated to the severity-worst for the victim,
+			# deterministic). choose_result gates S9-c (L3+: Tool or Body per
+			# mark). con_hype gates S9-d (L4+: the per-Clock Charm-scaled
+			# performance beat, base 1 [PH] × max(1, Charm) through the
+			# generic spectacle ingest — "small" per the blessed rung). S9-e
+			# stays threshold DATA (row 101). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "sustained_con",
+				"cost": 1,
+				"attack_range": [5, 7, 7, 9][lv - 1],
+				"targets_max": [2, 3, 3, 4][lv - 1],
+				"con_dice": [0, 1, 1, 2][lv - 1],
+				"choose_result": lv >= 3,
+				"con_hype": [0, 0, 0, 1][lv - 1],
 			}
 		"quick_step":
 			# Round 3a (ladder #2). Reflexes, cost 0 — and SLOT-FREE (design

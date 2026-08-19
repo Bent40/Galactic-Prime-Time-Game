@@ -179,7 +179,15 @@ static func first_observer_seeing(combatants: Dictionary, target: CombatantState
 ##   attack resolutions / explosions / door flips      -> MODERATE (6)
 ##   movement (moved — free and scheduled alike)       -> QUIET    (3)
 ## v1 SOURCE MAP (exhaustive): shock_shout, action_resolved kind "attack",
-## explosion_blast, door_changed, moved. Everything else that plausibly makes
+## explosion_blast, door_changed, moved — plus, Round 5, the one AUTHORED
+## no-visible-source emission the R20 marker reserved this lane for:
+## sound_thrown (the voicebox skill) -> the event's own loudness (a mimicked
+## shout = LOUD 10), positioned at the THROWN hex, flagged "authored": true.
+## An authored row is exempt from the consumer's source-still-hidden
+## redundancy filter (CombatSim._noise_checks): the sound has no visible
+## source AT ITS HEX by construction, so seeing the THROWER elsewhere makes
+## it no less alarming — the scapegoat/misdirection design space R20 ruled.
+## Everything else that plausibly makes
 ## sound (reactions, grapples, zone effects, trash cans, treatment...) is
 ## DOWNSCOPED loudly in the addendum — no ruled loudness row yet; extend the
 ## table there first, then here.
@@ -214,12 +222,18 @@ static func derive_noises(events: Array[Dictionary], combatants: Dictionary) -> 
 				_append_noise(out, combatants, String(event.get("actor", "")), event.get("position", []), NOISE_MODERATE)
 			"moved":
 				_append_noise(out, combatants, String(event.get("actor", "")), event.get("to", []), NOISE_QUIET)
+			"sound_thrown":
+				# Round 5 (voicebox): the authored throw — loudness rides the
+				# event (the spec stamped it), position is the THROWN hex.
+				_append_noise(out, combatants, String(event.get("actor", "")),
+					event.get("position", []), int(event.get("loudness", NOISE_LOUD)), true)
 	return out
 
 
 ## Appends one noise row; `position` is the event-carried [q, r] pair when it
 ## has one, else the source combatant's current hex (see derive_noises).
-static func _append_noise(out: Array[Dictionary], combatants: Dictionary, source_id: String, position: Variant, loudness: int) -> void:
+## `authored` marks a no-visible-source row (Round 5 — the header's map).
+static func _append_noise(out: Array[Dictionary], combatants: Dictionary, source_id: String, position: Variant, loudness: int, authored: bool = false) -> void:
 	if source_id == "":
 		return
 	var pair: Array = position if position is Array else []
@@ -231,7 +245,12 @@ static func _append_noise(out: Array[Dictionary], combatants: Dictionary, source
 		if source == null:
 			return
 		pos = source.position
-	out.append({"source": source_id, "position": pos, "loudness": loudness})
+	var row: Dictionary = {"source": source_id, "position": pos, "loudness": loudness}
+	# Only-when-set (row hygiene): the flag exists only on authored rows, so
+	# the v1 event-derived rows keep their exact pre-Round-5 shape.
+	if authored:
+		row["authored"] = true
+	out.append(row)
 
 
 ## The R20 binary hearing check — the range half of the sense: does a hearer

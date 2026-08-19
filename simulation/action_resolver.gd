@@ -304,6 +304,21 @@ func _apply_declare_riders(actor: CombatantState, kind: String, action: Dictiona
 	var events: Array[Dictionary] = []
 	if actor.dancing and _action_is_damaging(kind, action):
 		events.append_array(_end_dance(actor, "declared_attack"))
+	# Tier-2 wave 4 (the_unseen S8-a): the MOBILE concealment's authored
+	# attack break — "only fast movement or attacking does [break it]".
+	# Committing to a damaging action IS the break (the dance-end seam's
+	# declare-time reading); base stealth and camouflage keep the documented
+	# R20 no-break-on-attack line untouched (no mobile flag = no branch).
+	if actor.stealthed and bool(actor.conceal.get("mobile", false)) \
+			and _action_is_damaging(kind, action):
+		actor.stealthed = false
+		actor.conceal = {}
+		events.append({"type": "stealth_broken", "combatant": actor.id, "reason": "attacked"})
+	# Tier-2 wave 4 (the_long_con — the authored "breaking it by striking"
+	# end): the holder committing to a damaging action drops the whole act —
+	# the con ends at DECLARE (the same seam), before the strike resolves.
+	if not actor.con.is_empty() and _action_is_damaging(kind, action):
+		events.append_array(end_con(actor, "struck"))
 	if kind == "skill":
 		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
 		var arch := String(spec.get("archetype", ""))
@@ -1088,6 +1103,10 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_aoe_blast(actor, action, spec)
 		"stealth_conceal":
 			return _validate_stealth_conceal(actor, action, spec)
+		"thrown_sound":
+			return _validate_thrown_sound(actor, action, spec)
+		"sustained_con":
+			return _validate_sustained_con(actor, action, spec)
 		"projection_control":
 			return _validate_projection_control(actor, action, spec)
 		"hype_surge":
@@ -1790,11 +1809,104 @@ func _validate_aoe_blast(actor: CombatantState, action: Dictionary, spec: Dictio
 ## Deliberately NO sight gate at declare: entering in a distant watcher's
 ## sight line is the skill's whole point — the RESOLUTION runs the entry
 ## check with the shrunk reveal radius already in place.
-func _validate_stealth_conceal(actor: CombatantState, _action: Dictionary, _spec: Dictionary) -> Array[Dictionary]:
+## Tier-2 wave 4 (the_unseen S8-d): an optional "ally" field asks the L4+
+## ally-conceal — one adjacent, living, un-stealthed, un-grappled teammate.
+## Gated here and re-checked live at resolution (the batch-C style); a spec
+## without ally_conceal rejects the ask outright (camouflage unchanged).
+func _validate_stealth_conceal(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	if actor.stealthed:
 		return _reject("already_stealthed", {"actor": actor.id})
 	if actor.grappling != "" or actor.grappled_by != "":
 		return _reject("in_grapple", {"actor": actor.id})
+	if action.has("ally"):
+		if not bool(spec.get("ally_conceal", false)):
+			return _reject("ally_conceal_locked", {"actor": actor.id})
+		var reason: String = _ally_conceal_unmet(actor, String(action.get("ally", "")))
+		if reason != "":
+			return _reject(reason, {"actor": actor.id, "ally": String(action.get("ally", ""))})
+	return []
+
+
+## The S8-d ally gate, shared by declare and the resolution re-check:
+## "" when the named ally can be covered right now, else the reject reason.
+func _ally_conceal_unmet(actor: CombatantState, ally_id: String) -> String:
+	var ally: CombatantState = combatants.get(ally_id)
+	if ally == null or not ally.alive or ally.removed_from_play:
+		return "unknown_ally"
+	if ally.id == actor.id:
+		return "ally_is_self"
+	if ally.team != actor.team:
+		return "not_an_ally"
+	if ally.stealthed:
+		return "ally_already_stealthed"
+	if ally.grappling != "" or ally.grappled_by != "":
+		return "ally_in_grapple"
+	if CombatantState.hex_distance(actor.position, ally.position) != 1:
+		return "ally_not_adjacent"
+	return ""
+
+
+## thrown_sound (voicebox, Round 5) declare gate: a target HEX ("at") within
+## throw_range. Deliberately NO LOS gate (the SkillBook note: sound placement
+## is acoustic — the model's sound already ignores walls, and throwing around
+## a corner is the scapegoat play R20 ruled the design space for); with an
+## arena set the hex must exist (in bounds) — a sound "outside the room" has
+## nowhere to happen. No stealth requirement either way: the throw works
+## hidden or seen, and neither state changes what the sound is.
+func _validate_thrown_sound(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var at_raw: Array = action.get("at", [])
+	if at_raw.size() != 2:
+		return _reject("throw_target_required", {"actor": actor.id})
+	var at := Vector2i(int(at_raw[0]), int(at_raw[1]))
+	var reach: int = int(spec.get("throw_range", 10))
+	if CombatantState.hex_distance(actor.position, at) > reach:
+		return _reject("out_of_range", {"actor": actor.id, "range": reach, "at": [at.x, at.y]})
+	if arena != null and not arena.in_bounds(at):
+		return _reject("out_of_bounds", {"actor": actor.id, "at": [at.x, at.y]})
+	return []
+
+
+## sustained_con (the_long_con, tier-2 wave 4 — S9-a) declare gate: ONE con at
+## a time per holder; 1..targets_max DISTINCT living HOSTILE marks, each
+## within the spec range, each currently PERCEIVING the actor (Stealth.sees
+## mark->actor — vibe_control's flipped-roles gate: the mark's R30 cone, its
+## 2×Mind sight, LOS; you cannot project a false read at what cannot see
+## you), and each un-conned (one con per mark — the held_by precedent). A
+## per-mark "result" choice ("tool" default | "body") is the S9-c fork —
+## locked below L3 (choose_result).
+func _validate_sustained_con(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	if actor.team == "":
+		return _reject("teamless", {"actor": actor.id})
+	if not actor.con.is_empty():
+		return _reject("con_active", {"actor": actor.id})
+	var targets: Array = action.get("targets", [])
+	var cap: int = int(spec.get("targets_max", 2))
+	if targets.is_empty() or targets.size() > cap:
+		return _reject("bad_target_count", {"actor": actor.id, "max": cap})
+	var reach: int = int(spec.get("attack_range", 5))
+	var seen_ids: Dictionary = {}
+	for row: Variant in targets:
+		var t: Dictionary = row
+		var tid := String(t.get("id", ""))
+		var target: CombatantState = combatants.get(tid)
+		if target == null or not target.alive or target.removed_from_play:
+			return _reject("unknown_target", {"target": tid})
+		if seen_ids.has(tid):
+			return _reject("duplicate_target", {"target": tid})
+		seen_ids[tid] = true
+		if target.team == "" or target.team == actor.team:
+			return _reject("target_not_enemy", {"actor": actor.id, "target": tid})
+		if target.conned_by != "":
+			return _reject("already_conned", {"target": tid, "by": target.conned_by})
+		if CombatantState.hex_distance(actor.position, target.position) > reach:
+			return _reject("out_of_range", {"target": tid, "range": reach})
+		if not Stealth.sees(target, actor, arena, clock.tick):
+			return _reject("target_cannot_perceive", {"actor": actor.id, "target": tid})
+		var result := String(t.get("result", "tool"))
+		if result != "tool" and result != "body":
+			return _reject("unknown_con_result", {"target": tid, "result": result})
+		if result == "body" and not bool(spec.get("choose_result", false)):
+			return _reject("result_choice_locked", {"actor": actor.id, "target": tid})
 	return []
 
 
@@ -2101,6 +2213,29 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 		return _reject("channeling", {"actor": actor_id})
 	if actor.windup_pending:
 		return _reject("winding_up", {"actor": actor_id})
+	# Tier-2 wave 4 (the_long_con S9-a): a banked con step is a free 1-hex
+	# reposition OUTSIDE the R3 movement economy — no slot, no allowance, no
+	# moved_this_tick (usable even after this tick's move; the grapple/held/
+	# channeling/windup gates above still bind — a body that cannot move
+	# cannot con-step either). Spent credit-first (deterministic, and it
+	# preserves the ordinary free move for later this tick). Arena legality
+	# mirrors the free move's own gates (bounds/walls/cans; combatant
+	# occupancy stays unchecked — the pre-arena model, unchanged).
+	if actor.con_steps > 0 and CombatantState.hex_distance(actor.position, to) == 1:
+		if arena != null:
+			if not arena.in_bounds(to):
+				return _reject("out_of_bounds", {"actor": actor_id, "to": [to.x, to.y]})
+			if arena.is_wall(to) or arena.object_index_at(to) >= 0:
+				return _reject("hex_blocked", {"actor": actor_id, "to": [to.x, to.y]})
+		actor.con_steps -= 1
+		# R30: a con step is voluntary movement — face it.
+		_face_along(actor, actor.position, to)
+		actor.position = to
+		var step_events: Array[Dictionary] = [{
+			"type": "moved", "actor": actor_id, "to": [to.x, to.y], "spaces": 1,
+			"free": true, "con_step": true,
+		}]
+		return step_events
 	if actor.moved_this_tick:
 		return _reject("already_moved", {"actor": actor_id})  # R3: never twice per tick
 	var spaces: int = CombatantState.hex_distance(actor.position, to)
@@ -3146,6 +3281,20 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 	# Check-and-clear at the START of the target's next resolution (any kind).
 	if actor.feint_forced:
 		return _collapse_feinted_action(actor, kind, String(action.get("key", String(action.get("item", "")))), forced_queue)
+	# Tier-2 wave 4 (the_long_con S9-a): a conned mark's resolved action AGAINST
+	# THE HOLDER collapses per the stored table — checked AFTER the feint (the
+	# collapse ladder: counter > stutter > feint > con; each earlier check
+	# preserves the later state for the following action, the stutter-preserves-
+	# feint discipline). Fires only on actions that NAME the holder (the
+	# declared-target read — _action_targets_combatant documents the boundary)
+	# while the holder is still standing (a same-batch holder death leaves the
+	# record for the sweep — no firing off a corpse's con).
+	if actor.conned_by != "":
+		var con_holder: CombatantState = combatants.get(actor.conned_by)
+		if con_holder != null and con_holder.alive and not con_holder.removed_from_play \
+				and _action_targets_combatant(action, con_holder.id):
+			return _collapse_conned_action(actor, con_holder, kind,
+				String(action.get("key", String(action.get("item", "")))), forced_queue)
 	var events: Array[Dictionary] = []
 	match kind:
 		"attack":
@@ -3272,6 +3421,10 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_aoe_blast(actor, entry, snapshot, forced_queue, spec)
 		"stealth_conceal":
 			return _resolve_stealth_conceal(actor, entry, forced_queue, spec)
+		"thrown_sound":
+			return _resolve_thrown_sound(actor, entry, spec)
+		"sustained_con":
+			return _resolve_sustained_con(actor, entry, spec)
 		"projection_control":
 			return _resolve_projection_control(actor, entry, spec)
 		"hype_surge":
@@ -4735,6 +4888,11 @@ func _resolve_stealth_conceal(actor: CombatantState, entry: Dictionary, forced_q
 		"radius": radius,
 		"anchor": [actor.position.x, actor.position.y],
 	}
+	# Tier-2 wave 4 (the_unseen S8-a): the mobile flag rides the conceal
+	# record ONLY when the spec authors it — camouflage's record (and every
+	# hash over it) keeps its exact batch-D shape.
+	if bool(spec.get("conceal_mobile", false)):
+		actor.conceal["mobile"] = true
 	var observer: String = Stealth.first_observer_seeing(combatants, actor, arena, clock.tick)
 	if observer != "":
 		actor.conceal = {}
@@ -4742,12 +4900,215 @@ func _resolve_stealth_conceal(actor: CombatantState, entry: Dictionary, forced_q
 		events[0]["observer"] = observer
 		return events
 	actor.stealthed = true
-	return [
-		{"type": "stealth_entered", "actor": actor.id, "via": "camouflage",
+	var out: Array[Dictionary] = [
+		{"type": "stealth_entered", "actor": actor.id, "via": String(action.get("key", "camouflage")),
 			"reveal_radius": radius},
-		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
-			"key": String(action.get("key", "camouflage")), "result": "ok", "rounds": 0},
 	]
+	# Tier-2 wave 4 (the_unseen S8-d, L4+): the ally-conceal half — re-checked
+	# LIVE (batch-C style: the declare-time gate may have rotted same-tick).
+	# An ally fizzle never voids the actor's own entry (the cover is an
+	# extension, not a premise); the ally gets an ANCHORED conceal linked
+	# "cover_by" — its own movement breaks it (the normal anchor rule) and
+	# the holder's stealth ending breaks it too (the sweep's cover-link pass).
+	if action.has("ally") and bool(spec.get("ally_conceal", false)):
+		var ally_id := String(action.get("ally", ""))
+		var unmet: String = _ally_conceal_unmet(actor, ally_id)
+		if unmet != "":
+			out.append({"type": "ally_conceal_failed", "actor": actor.id,
+				"ally": ally_id, "reason": unmet})
+		else:
+			var ally: CombatantState = combatants.get(ally_id)
+			ally.conceal = {
+				"radius": radius,
+				"anchor": [ally.position.x, ally.position.y],
+				"cover_by": actor.id,
+			}
+			var ally_observer: String = Stealth.first_observer_seeing(combatants, ally, arena, clock.tick)
+			if ally_observer != "":
+				ally.conceal = {}
+				out.append({"type": "ally_conceal_failed", "actor": actor.id,
+					"ally": ally_id, "reason": "in_enemy_sight", "observer": ally_observer})
+			else:
+				ally.stealthed = true
+				out.append({"type": "stealth_entered", "actor": ally_id,
+					"via": "the_unseen_cover", "reveal_radius": radius,
+					"cover_by": actor.id})
+	out.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "camouflage")), "result": "ok", "rounds": 0})
+	return out
+
+
+## thrown_sound (voicebox, Round 5): the authored no-visible-source noise —
+## R20's reserved LOUD lane, finally reachable (from stealth or in the open).
+## Instant (cost 0, the free slot). The resolution emits ONE sound_thrown
+## event; the R20 noise sweep (CombatSim._noise_checks) derives the AUTHORED
+## row from it and does everything else — hearer gates, the ALERTED state,
+## investigation of the THROWN hex. The throw touches NO stealth state in
+## either direction (neither a break nor a requirement — pinned in tests) and
+## no rng stream (a sound is a fact, not a roll). Nothing to re-check live:
+## the hex is static and the declare validated it.
+func _resolve_thrown_sound(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var at_raw: Array = action.get("at", [])
+	var at := Vector2i(int(at_raw[0]), int(at_raw[1]))
+	return [
+		{"type": "sound_thrown", "actor": actor.id, "position": [at.x, at.y],
+			"loudness": int(spec.get("loudness", Stealth.NOISE_LOUD))},
+		{"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "voicebox")), "result": "ok", "rounds": 0},
+	]
+
+
+## sustained_con (the_long_con, tier-2 wave 4 — S9-a): declaring the con.
+## Instant (cost 1) — live premise re-checks per mark in the batch-C style
+## (a same-tick earlier resolution can kill a mark, spin its cone away, or
+## con it first); surviving marks enter the serialized state — the holder's
+## `con` record + each mark's `conned_by` mirror. The con then LIVES in the
+## substrate: firing at _resolve_entry (the mark's next resolved action
+## against the holder), the CombatSim _con_checks sweep (perception/downed
+## ends), the declare seam (the holder striking ends it), the Clock-reset
+## hype beat (S9-d), and the RunState sanitizer (scene end). Zero rng here —
+## the dice live at the firings.
+func _resolve_sustained_con(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var events: Array[Dictionary] = []
+	if not actor.con.is_empty():
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "con_active"})
+		return events
+	var reach: int = int(spec.get("attack_range", 5))
+	var marks: Dictionary = {}
+	for row: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = row
+		var tid := String(t.get("id", ""))
+		var target: CombatantState = combatants.get(tid)
+		if target == null or not target.alive or target.removed_from_play \
+				or target.conned_by != "" or marks.has(tid) \
+				or CombatantState.hex_distance(actor.position, target.position) > reach \
+				or not Stealth.sees(target, actor, arena, clock.tick):
+			events.append({"type": "con_mark_failed", "actor": actor.id, "target": tid})
+			continue
+		var result := String(t.get("result", "tool"))
+		if result == "body" and not bool(spec.get("choose_result", false)):
+			result = "tool"
+		marks[tid] = result
+	if marks.is_empty():
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "no_valid_targets"})
+		return events
+	var mark_ids: Array = marks.keys()
+	mark_ids.sort()
+	for tid: Variant in mark_ids:
+		(combatants[tid] as CombatantState).conned_by = actor.id
+	actor.con = {
+		"targets": marks,
+		"dice": int(spec.get("con_dice", 0)),
+		"hype": int(spec.get("con_hype", 0)),
+	}
+	events.append({"type": "con_declared", "actor": actor.id, "targets": mark_ids.duplicate()})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "the_long_con")), "result": "ok", "rounds": 0})
+	return events
+
+
+## The ONE con-end seam (the release_channel pattern): clears every mark's
+## mirror and the holder's record together and says why. [] when no con is
+## live, so every caller (the holder striking, the CombatSim sweep, a full
+## wipe) can call it unconditionally. Banked con_steps deliberately survive
+## (their authored lifetime is the encounter — combatant.gd's field note).
+func end_con(holder: CombatantState, reason: String) -> Array[Dictionary]:
+	if holder.con.is_empty():
+		return []
+	var mark_ids: Array = (holder.con.get("targets", {}) as Dictionary).keys()
+	mark_ids.sort()
+	for tid: Variant in mark_ids:
+		var mark: CombatantState = combatants.get(String(tid))
+		if mark != null and mark.conned_by == holder.id:
+			mark.conned_by = ""
+	holder.con = {}
+	return [{"type": "con_ended", "actor": holder.id, "reason": reason,
+		"targets": mark_ids}]
+
+
+## Does this action name `target_id` — the con's "against you" read: declared
+## "targets" rows (attack/skill shapes) or the single "target" field (the
+## grapple family). Declared-target reads ONLY (documented S9-a boundary): an
+## un-named area catch is not "an action against you" — the con spoofs a read
+## of intent AT someone, and an aimed hex names nobody (PH reading, R14
+## family).
+static func _action_targets_combatant(action: Dictionary, target_id: String) -> bool:
+	for row: Variant in action.get("targets", []) as Array:
+		if String((row as Dictionary).get("id", "")) == target_id:
+			return true
+	return String(action.get("target", "")) == target_id
+
+
+## The con firing (S9-a, from _resolve_entry): the mark's resolved action
+## against the holder collapses into a Forced Action on the mark's stored
+## table (Tool default; Body via the S9-c choice), consuming that mark's
+## entry (once per mark — "their NEXT action against you") and banking the
+## holder's free 1-hex reposition. The last mark firing plays the con out.
+func _collapse_conned_action(actor: CombatantState, holder: CombatantState, kind: String, key: String, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	var marks: Dictionary = holder.con.get("targets", {})
+	var table := String(marks.get(actor.id, "tool"))
+	marks.erase(actor.id)
+	actor.conned_by = ""
+	var events: Array[Dictionary] = [{
+		"type": "action_invalidated", "actor": actor.id, "kind": kind, "reason": "conned",
+		"by": holder.id,
+	}]
+	events.append({"type": "con_fired", "actor": holder.id, "victim": actor.id,
+		"kind": kind, "key": key, "table": table})
+	var negated: bool = false
+	var rolled: Dictionary = {}
+	if table == ForcedAction.TABLE_BODY and not actor.forced_save.is_empty():
+		# The defended path: a victim holding an armed acrobatic-save/negate
+		# answers the con's scripted stumble through the STANDARD Body
+		# chokepoint (_forced_body_roll — the S5-d claim "covers every
+		# resolver-side Body roll" stays true), and the S9-b curation is
+		# WAIVED there — the save out-scripts the con (AUTHORED interaction,
+		# R14 family; documented, not silently decided).
+		var body: Dictionary = _forced_body_roll(actor, "conned")
+		events.append_array(body["events"])
+		negated = bool(body.get("negated", false))
+		rolled = body["rolled"]
+	else:
+		rolled = _con_curated_roll(table, int(holder.con.get("dice", 0)), events, actor.id)
+		events.append(ForcedAction.make_event(actor.id, rolled, "conned"))
+	if not negated:
+		forced_queue.append({"actor": actor.id, "rolled": rolled, "ctx": {
+			"part": actor.acting_part(clock.tick), "target": holder.id,
+		}})
+	holder.con_steps += 1
+	events.append({"type": "con_step_banked", "actor": holder.id, "steps": holder.con_steps})
+	if marks.is_empty():
+		events.append_array(end_con(holder, "played_out"))
+	return events
+
+
+## S9-b die manipulation: draw 1 + extra dice from the SAME action rng stream
+## the feint collapse uses (every die emitted in the con_dice event — no
+## unlogged randomness) and keep the severity-WORST for the victim per the
+## table's authored ranking (body: ForcedAction.save_severity read inverted;
+## tool: the wave-authored TOOL_SEVERITY). A tie keeps the EARLIEST die (the
+## save's own tie rule, mirrored).
+func _con_curated_roll(table: String, extra: int, events: Array[Dictionary], victim_id: String) -> Dictionary:
+	var rolled: Dictionary = ForcedAction.roll(table, rng)
+	if extra <= 0:
+		return rolled
+	var rolls: Array[int] = [int(rolled["roll"])]
+	for i: int in range(extra):
+		var candidate: Dictionary = ForcedAction.roll(table, rng)
+		rolls.append(int(candidate["roll"]))
+		if _con_severity(table, candidate) > _con_severity(table, rolled):
+			rolled = candidate
+	events.append({"type": "con_dice", "victim": victim_id, "table": table,
+		"rolls": rolls, "kept": int(rolled["roll"])})
+	return rolled
+
+
+static func _con_severity(table: String, rolled: Dictionary) -> int:
+	if table == ForcedAction.TABLE_BODY:
+		return ForcedAction.save_severity(rolled)
+	return ForcedAction.tool_severity(rolled)
 
 
 ## projection_control (vibe_control, batch D): the two projected modes.
