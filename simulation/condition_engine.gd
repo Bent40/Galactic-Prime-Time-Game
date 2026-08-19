@@ -668,6 +668,91 @@ func _bleed_out_drain(c: CombatantState, tick: int) -> Array[Dictionary]:
 	return events
 
 
+## Round 3a (swim, ladder #30 — the R33 in_water marker wired): the DROWNING
+## track. Called by CombatSim's Clock-reset water sweep for every living,
+## in-play combatant once terrain exists, with `submerged` = standing on a
+## water hex at this reset and `grace_clocks` = the swim grace (0 for
+## non-swimmers; the L1 "extends the Suffocation timer by 1 Clock before it
+## begins"). The honest minimal model, documented:
+##  * The track is the STANDARD suffocation timer (data/conditions.json:
+##    clock_timer 2 — a death timer, not a tiered condition) carried with two
+##    only-when-present extras: "cause": "submersion" (so surfacing never
+##    cancels a grapple-sourced choke) and "paused": true — the generic
+##    _advance_timers pass never touches it, because drowning must advance
+##    ONLY while really submerged (the sweep runs after on_clock_reset, so an
+##    engine-advanced timer could otherwise expire on dry land — dishonest).
+##    This method IS its advancement: delay (the grace) consumes first
+##    (timer_delay_consumed — so treat/delay machinery composes: delaying
+##    "suffocation" honestly extends breath), then the countdown
+##    (timer_advanced), then the standard terminal (timer_expired + the F2
+##    lethal-exposed gate + _kill "suffocation").
+##  * SURFACING cancels the track outright (timer_cancelled, reason
+##    "surfaced" — you breathe again; PROVISIONAL: no residual breathlessness
+##    is authored). A swimmer whose dip is shorter than the grace therefore
+##    never advances the track at all — the L1 exemption in practice.
+##  * R9 caps mirrored (the "R9-capped track" — boss wins are discovered, not
+##    drowned): a Boss never starts the track, nor a no_airway creature (the
+##    grapple-suffocation gate's airway half). R9's ">= 2 sizes larger" cap
+##    is grappler-relative and has no water analogue — not mirrored,
+##    documented. The environment owns the track (source "" — no killer).
+func submersion_tick(c: CombatantState, submerged: bool, grace_clocks: int, tick: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var idx: int = -1
+	for i: int in range(c.timers.size()):
+		if String(c.timers[i].get("cause", "")) == "submersion":
+			idx = i
+			break
+	if not submerged:
+		if idx >= 0:
+			var gone: Dictionary = c.timers[idx]
+			c.timers.remove_at(idx)
+			events.append({"type": "timer_cancelled", "combatant": c.id,
+				"kind": String(gone.get("kind", "")), "reason": "surfaced"})
+		return events
+	if not c.alive:
+		return events
+	# R9 cap mirror: bosses and airway-less creatures never drown.
+	if c.category == "Boss" or bool(c.boss_traits.get("no_airway", false)):
+		return events
+	if idx < 0:
+		var def: Dictionary = def_for("suffocation")
+		var part: String = _equivalent_part(c, def.get("target_body_parts", []))
+		if part == "":
+			return events
+		# F2 mirror: a landing part still hidden behind an un-breached surface
+		# immunity cannot host the track (the apply() gate, honored here too).
+		if bool((c.parts.get(part, {}) as Dictionary).get("hidden", false)):
+			return events
+		var clocks: int = int((def.get("spread_rules", {}) as Dictionary).get("clock_timer", 2))
+		c.timers.append({
+			"kind": "suffocation", "condition": "suffocation", "part": part,
+			"clocks_remaining": clocks, "delay": maxi(0, grace_clocks),
+			"paused": true, "fresh": false,
+			"source": "",
+			"cause": "submersion",
+		})
+		events.append({"type": "timer_started", "combatant": c.id,
+			"kind": "suffocation", "clocks": clocks, "cause": "submersion"})
+		return events
+	var timer: Dictionary = c.timers[idx]
+	if int(timer.get("delay", 0)) > 0:
+		timer["delay"] = int(timer["delay"]) - 1
+		events.append({"type": "timer_delay_consumed", "combatant": c.id,
+			"kind": String(timer.get("kind", ""))})
+		return events
+	timer["clocks_remaining"] = int(timer.get("clocks_remaining", 1)) - 1
+	if int(timer["clocks_remaining"]) > 0:
+		events.append({"type": "timer_advanced", "combatant": c.id,
+			"kind": String(timer.get("kind", "")),
+			"clocks_remaining": int(timer["clocks_remaining"])})
+		return events
+	c.timers.remove_at(idx)
+	events.append({"type": "timer_expired", "combatant": c.id, "kind": String(timer.get("kind", ""))})
+	if _lethal_exposed(c, String(timer.get("part", ""))):
+		events.append_array(_kill(c, "suffocation", String(timer.get("source", ""))))
+	return events
+
+
 func _advance_timers(c: CombatantState) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var kept: Array[Dictionary] = []

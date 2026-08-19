@@ -134,6 +134,16 @@ extends RefCounted
 ## Runtime caches (_hex_sets / blocking indexes / the position baseline) are
 ## derived state — rebuilt on wire/restore, never serialized.
 
+## Round 3a (frost_wall — the R32 attackability deferral CLOSED): a declared
+## attack may target a destructible zone by id (ActionResolver
+## _validate_zone_attack / _resolve_zone_attack route the damage here through
+## CombatSim.damage_zone). The R14 gate applies verbatim — Force (action/item
+## amount + the attacker's Physique push) vs THIS robustness, net = the
+## damage; burn-typed net doubles vs a frost_wall zone (the authored "Burn
+## damage deals twice as much"). One flat robustness for every zone this
+## story (PLACEHOLDER R14 — per-zone robustness waits for the numbers pass).
+const WALL_ROBUSTNESS: int = 1
+
 ## Trigger names + per-block op names the validator accepts (strict).
 const TRIGGERS: Array[String] = ["on_enter", "on_occupy_clock", "on_pass"]
 const BLOCK_KEYS: Array[String] = ["affects", "damage", "conditions", "advance"]
@@ -478,6 +488,15 @@ static func _rejected(reason: String, detail: Dictionary = {}) -> Array[Dictiona
 	var event: Dictionary = {"type": "zone_rejected", "reason": reason}
 	event.merge(detail)
 	return [event]
+
+
+## Round 3a — the live zone row by id ({} when unknown). Read-side query for
+## the zone-attack path (validation reads hp/key/hexes; mutation still flows
+## ONLY through create/remove/damage). Returns the LIVE dict, not a copy —
+## callers must not mutate it (the combatants-dict discipline).
+func zone_by_id(zone_id: int) -> Dictionary:
+	var idx: int = _zone_index(zone_id)
+	return zones[idx] if idx >= 0 else {}
 
 
 func _zone_index(zone_id: int) -> int:

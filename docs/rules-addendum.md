@@ -1490,6 +1490,37 @@ Events: `zone_created` / `zone_expired` (reason duration | destroyed | removed) 
 every un-owner-blessed numbers family: the substrate's shapes are engine contract; the
 per-skill payloads (tiers, amounts, durations) arrive with the wall-skill story.
 
+**Round 3a annotation (2026-08-19 — the wall skills LANDED; two deferrals closed).**
+The three wall skills are live on this substrate (`wall_conjure` archetype,
+`SkillBook` Round-3a specs; all magnitudes PLACEHOLDER R14): a declare names a
+straight hex LINE (`from`/`to`; length/range per ladder, LOS per hex — the
+aoe_blast precedent), the resolve calls `create_zone` with the DATA-shaped
+payload, owner = the caster (attribution holds end-to-end — a poison-wall wound
+names the caster). **poison_wall**: length 5 (+1/+2/+3), 1 Clock, entry-gated
+Tier-1 Poison (pneumo; `source: "attack"` rides the rows, so the condition
+system's own entry gate rejects unwounded walkers) on enter/pass/occupy.
+**frost_wall**: length 5 (data-hygiene #8 cleaned — the target line's 5 wins),
+2 Clocks, HP 3 (+2/+4/+6), blocks movement AND the lane channel (a solid ice
+wall is honestly lane-solid — the shared-choke caveat is a feature here);
+strike-chill T1 on ADJACENT strikers (a ranged limb never touches the ice —
+documented; dash-collision chill has no collision seam yet — honest gap).
+**fire_wall**: length 5 (+1/+2/+3), 1 Clock, indestructible; enter/pass = Burn
+T1, occupy at the reset = Burn T2 (the substrate's Clock-granularity for
+"starts their Moment inside" — documented; the torso-only row is a deliberate
+coarseness pending R14). **The frost-HP deferral is CLOSED**: a declared attack
+may target a zone id (`zone_target` — the additive target shape); validation
+rejects indestructible/unknown/unreachable zones, resolution runs the R14 gate
+verbatim (Force = damage amount + Physique push vs `Zones.WALL_ROBUSTNESS`,
+PLACEHOLDER) with burn-typed net ×2 vs frost (the authored weakness), routes
+net damage through `damage_zone`, and a destroyed wall unblocks its hexes.
+**elemental_confluence stays DATA-ONLY**: the substrate covers its placement
+mechanics entirely (create/remove for redeploy, `affects: non_owner`, the
+conditions/advance vocabulary — Toxic Surge is the advance op's own example);
+only the consume-unlock economics (KAN-7, off-ladder per FINAL default #5)
+blocks it. Tests: `tests/test_kan5_skills.gd`. The AI remains zone-oblivious
+(inherits zone walls through pathing, walks through damaging zones — unchanged
+known edge).
+
 ## R33 — Terrain typing & door locks (KAN-5 remainder K2, 2026-08-19 — PROVISIONAL)
 
 **What shipped (substrate + AI-side integration only — the SKILLS land next story):**
@@ -1574,6 +1605,54 @@ Events: `in_water` / `lock_picked` / rejections `door_locked`,
 `magical_lock_needs_special`. Tests: `tests/test_terrain_locks.gd`. PROVISIONAL like
 every un-owner-blessed numbers family: the terrain cost table, the lock tier table and
 both authored patches await the owner; the layer/query shapes are engine contract.
+
+**Round 3a annotation (2026-08-19 — the honest asymmetry is CLOSED; the deferred
+skills LANDED).** Contestant moves now pay terrain. **The CONTESTANT
+TERRAIN-PRICING CONTRACT (rule of record; mirrored verbatim at ActionResolver's
+movement-section header):** *a player move keeps its DESTINATION-ONLY geometry
+(the standing wall contract — only the destination hex is validated; interior
+hexes are never walked, for walls or terrain alike) and pays the DESTINATION
+hex's entry cost against its budget: priced spaces = hex distance +
+(move_cost(destination) − 1). The free move's allowance (3; 1 while
+Prone/Slowed) and the scheduled conversion (ceil((spaces − 3)/4) Moments,
+Slowed ×2) both read the priced spaces — a 3-allowance move ending on
+difficult ground covers at most 2 hexes; a Prone/Slowed budget-1 crawler
+cannot afford an adjacent cost-2 hex (the EnemyAI budget walker's exact rule,
+mirrored: Prone rejects, Slowed spills into a doubled scheduled Moment).*
+WHY destination-cost: the hop's only FACTUAL hex entry is the destination —
+charging an interior line the command never walked would price a route the
+player never chose (and be stricter than the wall contract). Known coarseness,
+stated: interior terrain is crossed free (a 3-space hop OVER a 1-hex patch
+pays nothing while the per-step AI pays double); the model cannot be gamed on
+what matters — you can never END deep on ground you cannot afford — and the
+remaining asymmetry closes for real when player movement gains a per-step
+route. Rolls PAY (tactical_roll + the fused evasion's roll half — a roll IS
+movement); LEAPS do not (airborne — pounce's own ladder texture, #20 L9; the
+on_pass "arc over the ground" physics); skill-absorbed repositions/knockbacks/
+drags stay unpriced (absorbed movement is the skill's own economy; forced
+movement has no payer). The per-combatant overlay seam has its first real
+consumers: **quick_step** (slot-free immediate declare — it rides the movement
+it modifies; window = L-scaled Moments; difficult AND rough read 1, water
+stays swim's), **swim** (water reads 1 — the destination-cost model makes the
+L1 "+1 space when swimming" exactly cancel the single priced hex; the L2-4
+movement rows have no further bite under this model, documented), and
+**acrobatics** (rough reads 1; the L2-4 "+1 Movement on an acrobatic maneuver"
+rows extend the declared roll range — PROVISIONAL reading). **The water marker
+is WIRED**: at each reset the sweep hands every combatant to
+`ConditionEngine.submersion_tick` — the standard suffocation timer (2 Clocks)
+with cause `"submersion"` and `paused: true` (it advances ONLY in the sweep,
+never on dry land), swim grace = 1 Clock of timer delay (L1-4 constant; the L6
+"+2 total" stays threshold data), surfacing cancels (`timer_cancelled` reason
+`surfaced`), and the R9 caps mirrored (Boss / `no_airway` never drown; the
+size cap is grappler-relative — no water analogue). **The pick-scheduling
+downscope is CLOSED**: lockpicking's `scheduled_pick` declares adjacent to a
+locked door, prices Moments off `LOCK_PICK_MOMENTS` minus the authored −1
+rows (floor 1) through the normal schedule (feint-able; premise breaks
+collapse into Forced Action – Tool — the data's failure path), and its resolve
+calls `pick_lock` (widened additively: the event now reports the Moments
+actually charged). Tier access: simple L1+, moderate L3+; complex (L5) and
+magical (L6 + the special flag) stay threshold data — an L1-4 magical declare
+rejects `magical_lock_needs_special`. Tests: `tests/test_kan5_skills.gd`.
 
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 

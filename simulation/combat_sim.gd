@@ -133,6 +133,11 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	# Batch D (play_to_the_camera): the resolver reads the camera-call spend
 	# ledger through this ref (remaining-stack prime) and opens the surge on it.
 	resolver.wire_hype(hype)
+	# Round 3a: the resolver-side skill hooks (lockpicking's pick, the wall
+	# conjures, the zone attack) call the INTERNAL pick_lock / create_zone /
+	# damage_zone APIs below through this back-ref (WeakRef — no ref cycle);
+	# the API call sites move into the resolver, the store lifecycle stays here.
+	resolver.wire_sim(self)
 	# Slice tags (I-13) — the second broadcast-plane consumer, wired after hype
 	# so its detectors also see hype outputs (Scene Stealer). HypeEngine reads
 	# held tags back through hype.tags for resonance.
@@ -471,23 +476,37 @@ func _advance_tick() -> Array[Dictionary]:
 		# No-op while no zone store exists — the legacy compat pin.
 		if zones != null:
 			events.append_array(zones.clock_reset_sweep(clock.tick))
-		# K2 (R33) — the WATER substrate marker: a living, in-play combatant
-		# OCCUPYING a water hex when the Clock resets is submersion-exposed —
-		# the sim EMITS in_water and mutates NOTHING (no state, no timer, no
-		# rng). The honest boundary: the R9-family suffocation interaction is
-		# condition/resolver scope — the swim story reads this marker and
-		# wires the timers; inventing them here would price a system the
-		# ladder owns. No-op without authored water (the legacy compat pin —
-		# terrain-less fights never enter the loop).
+		# K2 (R33) — the WATER substrate marker + (Round 3a, the swim story:
+		# the deferred wiring is IN) the R9-capped DROWNING track: a living,
+		# in-play combatant OCCUPYING a water hex when the Clock resets is
+		# submersion-exposed — the sim emits in_water (the substrate marker,
+		# verbatim) and hands the reset to ConditionEngine.submersion_tick,
+		# which starts/advances the standard suffocation timer (cause
+		# "submersion", paused so ONLY this sweep advances it — drowning
+		# never ticks on dry land) with the swim grace as its delay (L1's
+		# "+1 Clock before it begins"; a non-swimmer gets 0), cancels it on
+		# surfacing ("surfaced"), and mirrors the R9 caps (no Boss, no
+		# no_airway creature ever drowns — boss wins are discovered, not
+		# drowned). The engine method carries the full model; zero rng.
+		# No-op without authored water (the legacy compat pin — terrain-less
+		# fights never enter the loop, and a dry fight in a watered arena
+		# emits/advances nothing).
 		if arena != null and not arena.terrain.is_empty():
 			var water_ids: Array = combatants.keys()
 			water_ids.sort()
 			for water_id: Variant in water_ids:
 				var swimmer: CombatantState = combatants[water_id]
-				if swimmer.alive and not swimmer.removed_from_play \
-						and arena.terrain_at(swimmer.position) == "water":
+				if not swimmer.alive or swimmer.removed_from_play:
+					continue
+				var submerged: bool = arena.terrain_at(swimmer.position) == "water"
+				if submerged:
 					events.append({"type": "in_water", "combatant": swimmer.id,
 						"position": [swimmer.position.x, swimmer.position.y]})
+				var swim_level: int = swimmer.skill_level("swim")
+				var grace: int = 0
+				if swim_level >= 1:
+					grace = int(SkillBook.mechanics("swim", swim_level).get("suffocation_grace_clocks", 1))
+				events.append_array(cond.submersion_tick(swimmer, submerged, grace, clock.tick))
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
 	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
@@ -905,7 +924,12 @@ func _door(cmd: Dictionary) -> Array[Dictionary]:
 ## is the ONLY mutation — no slot, no Moments are charged HERE (the `moments`
 ## field on lock_picked REPORTS the tier price for the future scheduler; a
 ## direct call is a GM fiat until the skill lands). Rejections mutate nothing.
-func pick_lock(actor_id: String, key: String, special: bool = false) -> Array[Dictionary]:
+## Round 3a widening (additive, the documented seam): `moments_paid` >= 0
+## makes the lock_picked event report the Moments the SCHEDULER actually
+## charged (the lockpicking skill's priced declare — tier table minus the
+## authored -1 rows); the default -1 keeps the pre-round shape verbatim (the
+## tier-table REPORT for direct/GM calls — the test pins stand).
+func pick_lock(actor_id: String, key: String, special: bool = false, moments_paid: int = -1) -> Array[Dictionary]:
 	var actor: CombatantState = combatants.get(actor_id)
 	if actor == null:
 		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": actor_id}]
@@ -940,7 +964,7 @@ func pick_lock(actor_id: String, key: String, special: bool = false) -> Array[Di
 		"key": key,
 		"position": [pos.x, pos.y],
 		"tier": tier,
-		"moments": int(Arena.LOCK_PICK_MOMENTS.get(tier, 0)),
+		"moments": moments_paid if moments_paid >= 0 else int(Arena.LOCK_PICK_MOMENTS.get(tier, 0)),
 	}]
 
 
@@ -1444,6 +1468,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	sim.hype.set_goal_table(sim._goal_table())
 	sim.hype.wire(sim.combatants)  # R11 #14 v2 team-awareness ref
 	sim.resolver.wire_hype(sim.hype)  # batch D: camera-call ledger + surge
+	sim.resolver.wire_sim(sim)  # Round 3a: pick_lock/create_zone resolver hooks
 	# Re-wire the tag engine (effect table is static data, never saved; the
 	# combatants ref is a live object) and reconnect hype's resonance lookup.
 	sim.tags.set_effects(sim.static_data.get("tag_effects", {}))

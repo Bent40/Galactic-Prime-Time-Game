@@ -685,6 +685,43 @@ cost, explicitly NO prime. The engine implements G1. Also noted for the 6-10 ban
 L8/L9" conflicts with the later G6-round-3 Gemstone merge (Intercept Lv5 + Brace
 Lv3 -> Iron Stance, parents consumed) — OWNER CALL needed before any L6+ authoring.
 
+**Round 3a status annotation (2026-08-19 — the unblocked KAN-5 skills LANDED;
+contract of record: addendum R32/R33 Round-3a annotations):** seven deferred
+skills went live on the zones/terrain substrates, L1 core + L2-4 data rows,
+every magnitude PLACEHOLDER (R14), L5+ threshold DATA as authored.
+**#2 Quick Step** — the ignore-difficult window is a slot-free immediate
+declare (it rides the movement it modifies — pricing it into R3's free slot
+would kill its own L1 payload; PROVISIONAL economy); covers difficult AND
+rough per the story ruling (water stays Swim's lane); duration rows L2-4
+implemented; L5 "+4 Duration" / L6 physical-terrain stay data. **#30 Swim** —
+water prices as normal ground for the owner (under the destination-cost
+contract the L1 "+1 space when swimming" exactly cancels the one priced hex;
+the L2-4 movement rows have no further bite until a per-step model exists —
+data-annotated); the Suffocation interaction is live (the in_water reset
+starts the R9-capped drowning track for non-swimmers; the L1 grace = 1 Clock
+of delay, constant through L1-4 — the honest data reading; L6 "+2 total"
+stays threshold data). **#42 Acrobatics** — rough-terrain immunity live; the
+L2-4 "+1 Movement (acrobatic maneuver)" rows extend the DECLARED ROLL range
+(tactical_roll / fused evasion — the sim's acrobatic maneuver, PROVISIONAL
+reading); falls do not exist in the sim, so every safe-fall clause stays
+data-annotated (balance/jump/climb prose likewise); L6 3D traversal stays
+data. **#41 Lockpicking** — the scheduled pick is live (declare adjacent,
+Moments = the R33 tier table minus the authored −1 rows, floor 1; feintable
+windup; Forced-Tool on premise break; resolve = the pick_lock API); simple
+L1+/moderate L3+ implemented; complex (L5) / magical + special (L6/L9) stay
+threshold data. **#11/#13/#15 Poison/Frost/Fire Wall** — placed-line zones
+live with the authored effect vocabulary (poison: entry-gated pneumo T1 on
+enter/pass/occupy, 1 Clock; frost: blocks movement+lanes, HP rows, Burn ×2,
+ATTACKABLE via the new zone-target attack shape through the R14 gate,
+destroyed-at-0 unblocks, adjacent-striker Chill T1, 2 Clocks, data-hygiene #8
+cleaned to length 5; fire: enter/pass Burn T1, reset-occupancy Burn T2,
+indestructible, 1 Clock; the L6s — choose-toxin, chill-heal, Shock-passers —
+stay threshold data). **#16 Elemental Confluence stays DATA-ONLY** — the R32
+substrate now covers its placement mechanics entirely; only the
+consume-unlock economics (KAN-7, off-ladder per default #5) blocks it. The
+seven keys stay OUT of SkillBook.KNOWN_KEYS pending their skill_keywords.json
+rulings (the keyword pass owns those); mechanics() is the encoding authority.
+
 **F5 RESOLVED (2026-08-18, decision #33 / addendum R30):** the content-pass caution
 that "behind" was UNMODELED (Batch A shipped Slip Through's "reposition behind" as a
 far-side approximation and Decapitate's "positioned behind" as Exposed-only) is
