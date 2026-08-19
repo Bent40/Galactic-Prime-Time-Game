@@ -22,6 +22,13 @@ const BATCH_A_STRIKE_ARCHETYPES: Array[String] = [
 	"crossing_arc_strike", "pow_strike",
 ]
 
+## Tier-2 wave 3 — the strike fusions (S2/S3/S4, tier2-rungs-proposal.md).
+## Damage-dealing like the batch-A set (the dance-end trigger) and each carries
+## its own declare-time validation below.
+const TIER2_STRIKE_ARCHETYPES: Array[String] = [
+	"fused_leap_finisher", "state_forked_strike", "fused_arc_flurry",
+]
+
 # Shared context, wired by CombatSim (no back-reference to the sim itself).
 var clock: Clock
 var combatants: Dictionary = {}
@@ -299,7 +306,11 @@ func _apply_declare_riders(actor: CombatantState, kind: String, action: Dictiona
 		events.append_array(_end_dance(actor, "declared_attack"))
 	if kind == "skill":
 		var spec: Dictionary = SkillBook.mechanics(String(action.get("key", "")), int(action.get("level", 1)))
-		if String(spec.get("archetype", "")) == "committed_strike":
+		var arch := String(spec.get("archetype", ""))
+		# Tier-2 wave 3 (earthbreaker S3-a): "You are Exposed during the
+		# wind-up" — the state-forked arc commits exactly like a committed
+		# strike does.
+		if arch == "committed_strike" or arch == "state_forked_strike":
 			# Exposed for the whole windup and the beat it lands on (R2 channeling).
 			actor.exposed_until_tick = maxi(actor.exposed_until_tick, resolve_tick + 1)
 	return events
@@ -316,7 +327,8 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 		if arch == "committed_strike" or arch == "conditional_followup" \
 				or arch == "interrupt_counter" or arch == "psychic_strike" \
 				or arch == "aoe_blast" or arch == "wall_conjure" \
-				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
+				or BATCH_A_STRIKE_ARCHETYPES.has(arch) \
+				or TIER2_STRIKE_ARCHETYPES.has(arch):
 			return true
 		# Tier-2 wave 2 (counterscript): the counter mode is a strike; the
 		# read mode is a knowledge play — only the former ends the dance.
@@ -359,9 +371,18 @@ func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
 	match String(prime.get("type", "")):
 		"chain":
 			var after := String(prime.get("after", ""))
-			if actor.last_action_key != after:
+			if actor.last_action_key != after and not _chain_counts_as(actor.last_action_key, after):
 				return "chain_after:%s" % after
-			if bool(prime.get("same_target", false)):
+			# Tier-2 wave 3 (predators_arc S2-b, [FROM row 40]): a live
+			# chain-open marker — set by the opening resolver, cleared the
+			# moment any OTHER action resolves — WAIVES the same-target half:
+			# the chained skill may open into a different target (its own
+			# reach/size gates still apply). The last_action_key equality is
+			# the honest belt: the marker only speaks for the action that IS
+			# the last resolved one.
+			var chain_open: bool = actor.chain_open_key != "" \
+				and actor.chain_open_key == actor.last_action_key
+			if bool(prime.get("same_target", false)) and not chain_open:
 				var chain_target := ""
 				var chain_targets: Array = action.get("targets", [])
 				if not chain_targets.is_empty():
@@ -390,6 +411,22 @@ func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
 		_:
 			return "unknown_prime:%s" % String(prime.get("type", ""))
 	return ""
+
+
+## Ruling-#4 chain-seat aliasing (tier-2 wave 3 — the blessed S2-a/S3-a
+## seats): a SkillBook spec may carry "chain_as": the parent key this skill
+## COUNTS AS for downstream CHAIN gates (Predator's Arc counts as Pounce for
+## Slip Through; Earthbreaker counts as Overhead Slam for Shockwave). The
+## alias is consulted HERE, by the predicate — last_action_key keeps the REAL
+## resolved key (attribution and events never lie about what happened); the
+## seat is a property of the SPEC of the action that resolved. Read at level
+## 1: the blessed placements author every seat at L1, so the alias never
+## varies by level. An unknown/parent-less key resolves through the SkillBook
+## fallback, which carries no "chain_as" — false, exactly as before this wave.
+static func _chain_counts_as(last_key: String, after: String) -> bool:
+	if last_key == "" or after == "":
+		return false
+	return String(SkillBook.mechanics(last_key, 1).get("chain_as", "")) == after
 
 
 ## STACK resource count: the camera-call resource reuses the actor's Charm
@@ -1059,6 +1096,15 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_sustained_channel(actor, action, spec)
 		"item_flow":
 			return _validate_item_flow(actor, action, spec)
+		"fused_leap_finisher":
+			# Tier-2 wave 3 (predators_arc): the declare IS pounce's — single
+			# torso row + the leap_to landing contract (the strike's head
+			# adaptation is a RESOLUTION judgment, never a declare shape).
+			return _validate_leap_strike(actor, action, spec)
+		"state_forked_strike":
+			return _validate_state_forked_strike(actor, action, spec)
+		"fused_arc_flurry":
+			return _validate_fused_arc_flurry(actor, action, spec)
 		"terrain_affinity":
 			# Round 3a (swim / acrobatics): PASSIVE — owning the skill is the
 			# mechanic (the aura_reading rule); declaring one rejects.
@@ -1357,6 +1403,102 @@ static func _crossing_arc_mode(targets: Array) -> String:
 static func _is_limb_part(part_key: String) -> bool:
 	return part_key.contains("arm") or part_key.contains("leg") \
 		or part_key.contains("hand") or part_key.contains("limb")
+
+
+## state_forked_strike (earthbreaker) declare gate: single Head-or-Torso row
+## (the fork's union — the slam face lands on the torso line, the execution
+## face keeps execution's Head|Torso; a Head row passes only where the normal
+## head gate opens, NO bypass — Prone/Helpless/Exposed are the honest doors).
+## L3+ (S3-c): an optional "close_to" absorbs 1-2 hexes of approach into the
+## arc (the pounce leap_to contract: within close_range, adjacent to the
+## target, movement-legal); without one, reach stays 1 and _validate_attack's
+## out_of_range is the honest rejection.
+func _validate_state_forked_strike(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var t: Dictionary = targets[0]
+	var part := String(t.get("part", ""))
+	if not (part.contains("head") or part.contains("torso")):
+		return _reject("head_or_torso_only", {"actor": actor.id, "part": part})
+	var close_range: int = int(spec.get("close_range", 0))
+	var reach_override: int = 0
+	if action.has("close_to"):
+		# The close is movement — a held body cannot take it (the pounce rule).
+		if actor.held_by != "":
+			return _reject("held", {"actor": actor.id, "by": actor.held_by})
+		if close_range <= 0:
+			return _reject("close_not_available", {"actor": actor.id, "level": int(action.get("level", 1))})
+		var ct: Array = action["close_to"]
+		if ct.size() != 2:
+			return _reject("invalid_close_destination", {"actor": actor.id})
+		var to := Vector2i(int(ct[0]), int(ct[1]))
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		if target == null or not target.alive:
+			return _reject("unknown_target", {"target": String(t.get("id", ""))})
+		if to != actor.position:
+			var spaces: int = CombatantState.hex_distance(actor.position, to)
+			if spaces > close_range:
+				return _reject("close_out_of_range", {"actor": actor.id, "range": close_range, "spaces": spaces})
+			if CombatantState.hex_distance(to, target.position) > 1:
+				return _reject("landing_not_adjacent", {"actor": actor.id, "target": target.id})
+			var blocked: String = _movement_blocked_reason(actor, to)
+			if blocked != "":
+				return _reject(blocked, {"actor": actor.id, "to": [to.x, to.y]})
+		reach_override = close_range + 1
+	return _batch_strike_gate(actor, action, spec, reach_override)
+
+
+## fused_arc_flurry (vivisection) declare gate: parts_min..parts_max DISTINCT
+## (target, part) rows across at most targets_max DISTINCT adjacent targets
+## (every row passes _validate_attack's per-row reach/part/head gates through
+## the shared batch gate). Each row is stamped with its per-row amount here —
+## the inherited G8 crossing math (limb / torso / pair-torso-when-the-flurry-
+## spans-targets / head) — so the resolver never re-derives, exactly like
+## slice_n_dice's mode stamp.
+func _validate_fused_arc_flurry(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var rows: Array = action.get("targets", [])
+	var parts_min: int = int(spec.get("parts_min", 3))
+	var parts_max: int = int(spec.get("parts_max", 4))
+	if rows.size() < parts_min or rows.size() > parts_max:
+		return _reject("parts_out_of_band", {"actor": actor.id,
+			"declared": rows.size(), "min": parts_min, "max": parts_max})
+	var seen_pairs: Dictionary = {}
+	var seen_ids: Dictionary = {}
+	for row: Variant in rows:
+		var t: Dictionary = row
+		var pair: String = "%s|%s" % [String(t.get("id", "")), String(t.get("part", ""))]
+		if seen_pairs.has(pair):
+			return _reject("distinct_parts_required", {"actor": actor.id, "part": String(t.get("part", ""))})
+		seen_pairs[pair] = true
+		seen_ids[String(t.get("id", ""))] = true
+	var targets_max: int = int(spec.get("targets_max", 2))
+	if seen_ids.size() > targets_max:
+		return _reject("too_many_targets", {"actor": actor.id,
+			"declared": seen_ids.size(), "limit": targets_max})
+	var multi: bool = seen_ids.size() > 1
+	for row: Variant in rows:
+		var t: Dictionary = row
+		t["amount"] = _flurry_row_amount(spec, String(t.get("part", "")), multi)
+	action["rpm"] = rows.size()
+	action["rounds"] = rows.size()
+	return _batch_strike_gate(actor, action, spec)
+
+
+## The per-row Bleed for one vivisection row — the G8 crossing math inherited
+## where its shapes apply: limbs keep the limb value regardless of spread; a
+## torso takes the single-target value or the pair discount when the flurry
+## spans targets; a head row its own (small) value; any other anatomy
+## (tail/wing) reads as a limb — the representative value, the
+## _is_limb_part note's data-concern boundary.
+static func _flurry_row_amount(spec: Dictionary, part_key: String, multi_target: bool) -> int:
+	if part_key.contains("head"):
+		return int(spec.get("head_bleed", 1))
+	if part_key.contains("torso"):
+		if multi_target:
+			return int(spec.get("pair_torso_bleed", int(spec.get("amount", 1))))
+		return int(spec.get("torso_bleed", int(spec.get("amount", 1))))
+	return int(spec.get("limb_bleed", int(spec.get("amount", 1))))
 
 
 ## pow_strike (heroic_punch) declare gate: one row through the shared gate —
@@ -3050,6 +3192,14 @@ func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 	# Batch A: the first target id is recorded alongside for the CHAIN
 	# same-target gate ("" for target-less actions — which therefore also clear
 	# a pending same-target chain, mirroring the key rule).
+	# Tier-2 wave 3 (predators_arc S2-b): the chain-open marker lives exactly
+	# as long as the opening action IS the last resolved one — any OTHER
+	# action resolving clears it (the last_action_key overwrite rule's
+	# mirror); the opener's own resolution (key match — its resolver just set
+	# the marker) survives its own bookkeeping.
+	if actor.chain_open_key != "" \
+			and actor.chain_open_key != String(action.get("key", String(action.get("item", "")))):
+		actor.chain_open_key = ""
 	actor.last_action_key = String(action.get("key", String(action.get("item", ""))))
 	var resolved_targets: Array = action.get("targets", [])
 	actor.last_action_target = "" if resolved_targets.is_empty() \
@@ -3098,6 +3248,12 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_crossing_arc_strike(actor, entry, snapshot, forced_queue, spec)
 		"pow_strike":
 			return _resolve_pow_strike(actor, entry, snapshot, forced_queue, spec)
+		"fused_leap_finisher":
+			return _resolve_fused_leap_finisher(actor, entry, snapshot, forced_queue, spec)
+		"state_forked_strike":
+			return _resolve_state_forked_strike(actor, entry, snapshot, forced_queue, spec)
+		"fused_arc_flurry":
+			return _resolve_fused_arc_flurry(actor, entry, snapshot, forced_queue, spec)
 		"retarget_guard":
 			return _resolve_retarget_guard(actor, action, spec)
 		"skill_grapple":
@@ -3378,39 +3534,59 @@ func _forced_body_roll(victim: CombatantState, reason: String) -> Dictionary:
 ## generic windup re-check (the stored reach is the leap envelope, leap+1 —
 ## re-running the generic check would let a landing-adjacency miss through).
 func _resolve_leap_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var phase: Dictionary = _leap_phase(actor, entry, snapshot, "leap_to", "pounce_leap")
+	if String(phase.get("collapse", "")) != "":
+		return _collapse_batch_windup(actor, String(phase["collapse"]), forced_queue, String(phase.get("target", "")))
+	var events: Array[Dictionary] = phase["events"]
+	var synth: Dictionary = {"actor": actor.id, "action": entry["action"], "window": 0}
+	events.append_array(_strike_via_spec(actor, synth, snapshot, forced_queue, spec))
+	return events
+
+
+## Shared landing phase for the absorbed-movement strike family (pounce's
+## leap, predators_arc's fused leap, earthbreaker's L3 close — tier-2 wave 3
+## extracted this verbatim from _resolve_leap_strike so the fusions ride the
+## SAME landing contract instead of re-deriving it): re-checks target and
+## landing against the resolution snapshot (target dead / hostile-stealthed /
+## left the landing's adjacency / destination blocked — the R2 windup escape
+## surface), then performs the absorbed movement (R30 face-along) and emits
+## the attributed movement event. Returns {"collapse": reason, "target": id}
+## when the windup must collapse, else {"collapse": "", "target": id,
+## "events": [...]}. `move_field` names the action's declared destination key
+## ("leap_to" / "close_to"); staying put is legal (an already-adjacent
+## declare), exactly as before the extraction.
+func _leap_phase(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, move_field: String, event_type: String) -> Dictionary:
 	var action: Dictionary = entry["action"]
 	var targets: Array = action.get("targets", [])
 	var target_id: String = "" if targets.is_empty() else String((targets[0] as Dictionary).get("id", ""))
 	var target: CombatantState = combatants.get(target_id)
 	var target_snap: Dictionary = snapshot.get(target_id, {})
 	if target == null or not bool(target_snap.get("alive", false)):
-		return _collapse_batch_windup(actor, "target_dead", forced_queue, target_id)
+		return {"collapse": "target_dead", "target": target_id}
 	if bool(target_snap.get("stealthed", false)) and target.team != actor.team:
-		return _collapse_batch_windup(actor, "target_stealthed", forced_queue, target_id)
+		return {"collapse": "target_stealthed", "target": target_id}
 	var to: Vector2i = actor.position
-	if action.has("leap_to"):
-		var lt: Array = action["leap_to"]
+	if action.has(move_field):
+		var lt: Array = action[move_field]
 		to = Vector2i(int(lt[0]), int(lt[1]))
 	var target_pos_raw: Array = target_snap.get("position", [target.position.x, target.position.y])
 	var target_pos := Vector2i(int(target_pos_raw[0]), int(target_pos_raw[1]))
 	if CombatantState.hex_distance(to, target_pos) > 1:
-		return _collapse_batch_windup(actor, "target_left_landing", forced_queue, target_id)
+		return {"collapse": "target_left_landing", "target": target_id}
 	var events: Array[Dictionary] = []
 	if to != actor.position:
 		if _movement_blocked_reason(actor, to) != "":
-			return _collapse_batch_windup(actor, "leap_blocked", forced_queue, target_id)
+			return {"collapse": "leap_blocked", "target": target_id}
 		var from: Vector2i = actor.position
 		actor.position = to
 		# R30: the resolved leap faces its movement direction (the table's
 		# leap rule; the strike's own declare already faced the prey from the
 		# ORIGINAL hex — resolves never re-face toward targets).
 		_face_along(actor, from, to)
-		events.append({"type": "pounce_leap", "actor": actor.id,
+		events.append({"type": event_type, "actor": actor.id,
 			"from": [from.x, from.y], "to": [to.x, to.y],
 			"spaces": CombatantState.hex_distance(from, to)})
-	var synth: Dictionary = {"actor": actor.id, "action": action, "window": 0}
-	events.append_array(_strike_via_spec(actor, synth, snapshot, forced_queue, spec))
-	return events
+	return {"collapse": "", "target": target_id, "events": events}
 
 
 ## slip_reposition_strike (slip_through): the leg cuts (rows rebuilt at
@@ -3642,6 +3818,223 @@ func _resolve_pow_strike(actor: CombatantState, entry: Dictionary, snapshot: Dic
 			var tier: int = int(spec.get("head_shock_tier", 1))
 			events.append({"type": "heroic_punch_shock", "actor": actor.id, "target": target.id, "tier": tier})
 			events.append_array(cond.apply_shock(target, tier, clock.tick, part))
+	return events
+
+
+# ------------------------------------------- tier-2 wave 3: the strike fusions
+
+## fused_leap_finisher (predators_arc, S2): the pounce landing contract (the
+## shared _leap_phase), then the ADAPTIVE strike judged LIVE at the landing —
+## an Exposed target with the actor in its REAR ARC (R30 is_behind, exactly
+## decapitate's gate) takes the Head finisher with the bypass (Head→0 = the
+## cinematic beat, the head_finisher seam); anything else takes pounce's
+## declared torso Bleed. S2-b (L2+): resolving OPENS the chain — the
+## chain_open_key marker waives Slip Through's same-target half for one
+## chained declare. Recorded on resolution hit or miss, symmetric with the
+## chain key itself (the chain field's own rule).
+func _resolve_fused_leap_finisher(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var phase: Dictionary = _leap_phase(actor, entry, snapshot, "leap_to", "predators_arc_leap")
+	if String(phase.get("collapse", "")) != "":
+		return _collapse_batch_windup(actor, String(phase["collapse"]), forced_queue, String(phase.get("target", "")))
+	var events: Array[Dictionary] = phase["events"]
+	var target: CombatantState = combatants.get(String(phase.get("target", "")))
+	var head_part: String = _first_head_part(target)
+	var adapted: bool = target != null and target.exposed_cache \
+		and head_part != "" and Stealth.is_behind(target, actor.position)
+	if adapted:
+		# The kill opening: rewrite the landing strike onto the Head with
+		# decapitate's bypass + the head payload (the declared torso row was
+		# the fallback, never the promise — one declare, the strike adapts).
+		var strike_action: Dictionary = action.duplicate(true)
+		strike_action["targets"] = [{"id": target.id, "part": head_part}]
+		var tuned: Dictionary = spec.duplicate(true)
+		tuned["amount"] = int(spec.get("head_amount", int(spec.get("amount", 1))))
+		tuned["bypass_head_gate"] = true
+		events.append({"type": "predators_arc_adapt", "actor": actor.id,
+			"target": target.id, "mode": "head_finisher", "part": head_part})
+		var synth: Dictionary = {"actor": actor.id, "action": strike_action, "window": 0}
+		events.append_array(_strike_via_spec(actor, synth, snapshot, forced_queue, tuned))
+		# Head -> 0 rode the normal lethal path: the cinematic beat, attributed
+		# and scored through the existing HypeEngine spectacle_points hook.
+		if not target.alive:
+			for event: Dictionary in events:
+				if String(event.get("type", "")) == "combatant_died" \
+						and String(event.get("combatant", "")) == target.id:
+					events.append({
+						"type": "cinematic_kill", "actor": actor.id, "target": target.id,
+						"skill_key": String(action.get("key", "predators_arc")),
+						"spectacle_points": int(spec.get("cinematic_spectacle", 0)),
+					})
+					break
+	else:
+		if target != null:
+			events.append({"type": "predators_arc_adapt", "actor": actor.id,
+				"target": target.id, "mode": "torso_bleed"})
+		var synth_torso: Dictionary = {"actor": actor.id, "action": action, "window": 0}
+		events.append_array(_strike_via_spec(actor, synth_torso, snapshot, forced_queue, spec))
+	if bool(spec.get("chain_open", false)):
+		actor.chain_open_key = String(action.get("key", ""))
+		events.append({"type": "predators_arc_chain_open", "actor": actor.id})
+	return events
+
+
+## The deterministic head part for the arc's finisher adaptation: first
+## non-destroyed part key (sorted) containing "head"; "" = a headless body
+## plan — the adaptation never fires and the torso Bleed is the honest
+## fallback (mirrors _first_leg_part's convention).
+func _first_head_part(c: CombatantState) -> String:
+	if c == null:
+		return ""
+	var keys: Array = c.parts.keys()
+	keys.sort()
+	for pk: Variant in keys:
+		if String(pk).contains("head") and not bool((c.parts[pk] as Dictionary).get("destroyed", false)):
+			return String(pk)
+	return ""
+
+
+## state_forked_strike (earthbreaker, S3): one declared gravity arc, forked at
+## RESOLUTION on the target's live state. The landing contract (incl. the L3+
+## "close_to" absorbed approach) rides the shared _leap_phase, so the strike
+## itself runs window-0 — the head-gate half of the R2 re-check is mirrored
+## here (a Head row whose opening closed mid-windup collapses, the
+## _windup_invalid_reason rule). Standing fork: slam payload + knock Prone
+## (overhead_slam's authored knockdown). Downed fork: the execution payload —
+## a landed Torso hit adds the authored Shock; a Head kill rides the normal
+## lethal path (no cinematic beat — that is decapitate's/the arc's). S3-d
+## (L4+): a CONNECTED impact triggers the free tremor rider.
+func _resolve_state_forked_strike(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var phase: Dictionary = _leap_phase(actor, entry, snapshot, "close_to", "earthbreaker_close")
+	if String(phase.get("collapse", "")) != "":
+		return _collapse_batch_windup(actor, String(phase["collapse"]), forced_queue, String(phase.get("target", "")))
+	var events: Array[Dictionary] = phase["events"]
+	var target: CombatantState = combatants.get(String(phase.get("target", "")))
+	var rows: Array = action.get("targets", [])
+	var part: String = "" if rows.is_empty() else String((rows[0] as Dictionary).get("part", ""))
+	if part.contains("head"):
+		var t_snap: Dictionary = snapshot.get(target.id, {})
+		var head_open: bool = bool(t_snap.get("exposed", false)) \
+			or bool(t_snap.get("helpless", false)) or bool(t_snap.get("overwhelmed", false))
+		if not head_open:
+			return _collapse_batch_windup(actor, "head_not_targetable", forced_queue, target.id)
+	# The fork — one declare, judged live: what the arc lands ON decides the
+	# payload (a target downed mid-windup is executed; one that stood back up
+	# is slammed down again).
+	var downed: bool = _target_downed(target)
+	var tuned: Dictionary = spec.duplicate(true)
+	tuned["amount"] = int(spec.get("exec_amount", int(spec.get("amount", 1)))) if downed \
+		else int(spec.get("amount", 1))
+	events.append({"type": "earthbreaker_fork", "actor": actor.id, "target": target.id,
+		"mode": "execution" if downed else "slam"})
+	var synth: Dictionary = {"actor": actor.id, "action": action, "window": 0}
+	events.append_array(_strike_via_spec(actor, synth, snapshot, forced_queue, tuned))
+	var landed: bool = _hit_landed(events, target.id)
+	if downed:
+		if part.contains("torso") and target.alive and landed:
+			var tier: int = int(spec.get("torso_shock_tier", 3))
+			events.append({"type": "earthbreaker_shock", "actor": actor.id,
+				"target": target.id, "tier": tier})
+			events.append_array(cond.apply_shock(target, tier, clock.tick, part))
+	elif landed and target.alive and not bool(target.statuses.get("prone", false)):
+		target.statuses["prone"] = true
+		events.append({"type": "knocked_prone", "combatant": target.id,
+			"source": actor.id, "skill": String(action.get("key", ""))})
+		events.append_array(_end_dance(target, "knocked_prone"))
+	if bool(spec.get("tremor", false)) and landed:
+		events.append_array(_earthbreaker_tremor(actor, target, action, spec, forced_queue))
+	return events
+
+
+## S3-d ([FROM row 46, audit-reworded]): the free shockwave-shaped tremor a
+## connected Earthbreaker triggers — an action-triggers-action RIDER, never a
+## declared action (no chain bookkeeping, no Moment cost; the aliased
+## Shockwave chain stays open behind it). Composes the aoe_cone_strike
+## resolver's own per-member primitives, re-shaped for a ground pulse
+## CENTERED ON THE TARGET (the row's own words): membership = living enemies
+## within tremor_radius of the victim, the victim EXCLUDED (the shockwave
+## slam-victim rule applied consistently — the downed prey stays adjacent for
+## the follow-up) and allies never caught (the wave hits "every enemy");
+## per member in sorted-id order: one strike round to the leg line, the 1-hex
+## knockback away from the CENTER on a connected hit, and — Mob category only
+## — Forced Action – Body off the existing rng stream (no new rng).
+func _earthbreaker_tremor(actor: CombatantState, victim: CombatantState, action: Dictionary, spec: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var radius: int = int(spec.get("tremor_radius", 3))
+	var amount: int = int(spec.get("tremor_amount", 1))
+	var members: Array[CombatantState] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or other.id == victim.id or other.team == actor.team:
+			continue
+		if not other.alive or other.removed_from_play:
+			continue
+		if CombatantState.hex_distance(victim.position, other.position) > radius:
+			continue
+		members.append(other)
+	var member_ids: Array = []
+	for member: CombatantState in members:
+		member_ids.append(member.id)
+	events.append({"type": "earthbreaker_tremor", "actor": actor.id,
+		"center": victim.id, "radius": radius, "targets": member_ids})
+	var condition_id := ConditionEngine.normalize_condition_id(String(spec.get("damage_type", "crushed")))
+	for member: CombatantState in members:
+		var part_key: String = _first_leg_part(member)
+		if part_key == "":
+			continue  # nothing attackable on this body
+		var member_events: Array[Dictionary] = _strike_round(member, part_key, condition_id, amount, action, actor)
+		events.append_array(member_events)
+		if not _hit_landed(member_events, member.id):
+			continue
+		events.append_array(_knockback_away(member, victim))
+		if member.category == "Mob":
+			var body: Dictionary = _forced_body_roll(member, "earthbreaker_tremor")
+			events.append_array(body["events"])
+			if not bool(body.get("negated", false)):  # S5-d veto queues nothing
+				forced_queue.append({"actor": member.id, "rolled": body["rolled"], "ctx": {"part": member.acting_part(clock.tick)}})
+	return events
+
+
+## fused_arc_flurry (vivisection, S4): the declared rows (per-row amounts
+## stamped at declare — the G8 inheritance) run through the normal strike
+## path, then the fused bleed-advance rider PER HIT: capture which declared
+## (target, part) rows ALREADY bled (pre-strike, at resolution — the
+## thousand_cuts capture, made per-row), and each landed cut on such a part
+## advances one MORE tier on top of the standard R4 reapply advance (the
+## thousand_cuts payoff with the all-3 gate DROPPED — the blessed fusion's
+## own words: "each hit advances independently"). S4-c (L3+): a landed cut
+## that opened a FRESH wound steps it to the spec bleed_tier (T1 applied by
+## the normal path + the resolver's tier step — Bleed T2 "instead").
+func _resolve_fused_arc_flurry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	var rows: Array = action.get("targets", [])
+	var pre_bleeding: Dictionary = {}
+	for row: Variant in rows:
+		var t: Dictionary = row
+		var pre_target: CombatantState = combatants.get(String(t.get("id", "")))
+		if pre_target != null and pre_target.condition_tier(String(t.get("part", "")), "bleeding") > 0:
+			pre_bleeding["%s|%s" % [String(t.get("id", "")), String(t.get("part", ""))]] = true
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	var tier_step: int = maxi(0, int(spec.get("bleed_tier", 1)) - 1)
+	for row: Variant in rows:
+		var t: Dictionary = row
+		var target: CombatantState = combatants.get(String(t.get("id", "")))
+		var part := String(t.get("part", ""))
+		if target == null or not target.alive:
+			continue
+		if not _part_hit_landed(events, target.id, part):
+			continue
+		if pre_bleeding.has("%s|%s" % [target.id, part]):
+			events.append({"type": "vivisection_tier_advance", "actor": actor.id,
+				"target": target.id, "part": part})
+			events.append_array(cond.advance(target, part, "bleeding", 1, clock.tick, "vivisection_shred"))
+		elif tier_step > 0 and target.condition_tier(part, "bleeding") > 0:
+			# The fresh wound seeded T1 through the normal path; the S4-c rung
+			# raises it to the authored tier ("apply Bleed Tier 2 instead").
+			events.append_array(cond.advance(target, part, "bleeding", tier_step, clock.tick, "vivisection_deep_wound"))
 	return events
 
 
@@ -4736,6 +5129,20 @@ static func _hit_landed(events: Array[Dictionary], target_id: String) -> bool:
 	return false
 
 
+## Tier-2 wave 3 (vivisection): the per-ROW landed check — a damage_applied
+## on this combatant's exact part with amount > 0 (the Physical-path landed
+## equivalence the thousand_cuts payoff documented; a dodged / surface-blocked
+## / robustness-blocked / intercepted-away row never counts).
+static func _part_hit_landed(events: Array[Dictionary], target_id: String, part_key: String) -> bool:
+	for event: Dictionary in events:
+		if String(event.get("type", "")) == "damage_applied" \
+				and String(event.get("combatant", "")) == target_id \
+				and String(event.get("part", "")) == part_key \
+				and int(event.get("amount", 0)) > 0:
+			return true
+	return false
+
+
 ## Ends the dance stance (self_stance) and emits dance_ended; no-op when not dancing.
 static func _end_dance(c: CombatantState, reason: String) -> Array[Dictionary]:
 	if not c.dancing:
@@ -4910,8 +5317,19 @@ func _resolve_strike(actor: CombatantState, entry: Dictionary, snapshot: Diction
 		var target: CombatantState = combatants.get(String(t.get("id", "")))
 		if target == null:
 			continue
+		# Tier-2 wave 3 (vivisection — the fused arc+flurry): a declared row
+		# MAY carry its own per-row "amount" (the G8 crossing math varies by
+		# part class, so the validator stamps each row); absent — every
+		# pre-wave path, whose rows never carried one — the action amount
+		# holds unchanged. The R10 halving applies to a row amount exactly
+		# like the action amount (the action-level halving above never saw it).
+		var row_amount: int = amount
+		if t.has("amount"):
+			row_amount = int(t.get("amount", amount))
+			if unmet:
+				row_amount = floori(row_amount / 2.0)
 		# R14: `actor` is the attacker — its Physique feeds Force.
-		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, amount, action, actor))
+		events.append_array(_strike_round(target, String(t.get("part", "")), condition_id, row_amount, action, actor))
 	# Wave 2b: the dash's authored "knock aside" becomes real — a CONNECTED
 	# target (its strike round produced a damage_applied: not dodged, not
 	# surface-blocked, not fire-healed; a robustness-blocked 0 still connected

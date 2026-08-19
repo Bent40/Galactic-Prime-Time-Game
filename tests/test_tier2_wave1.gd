@@ -26,14 +26,19 @@ const TIER2_KEYS: Array[String] = [
 	"the_long_con", "phantom_grasp",
 ]
 ## Wave 1 encoded three ladders; wave 2 (tests/test_tier2_wave2.gd) added
-## counterscript (S1) + combat_medic (S6). The remaining five (S2-S4, S8-S9)
-## stay DATA-ONLY pending their machinery.
+## counterscript (S1) + combat_medic (S6); wave 3 — the strike fusions
+## (tests/test_strike_fusions.gd) — added predators_arc (S2), earthbreaker
+## (S3) and vivisection (S4). The remaining two (S8-S9) stay DATA-ONLY
+## pending their machinery.
 const IMPLEMENTED: Dictionary = {
 	"perfect_evasion": "fused_evasion",
 	"vice_grip": "skill_grapple",
 	"phantom_grasp": "sustained_channel",
 	"counterscript": "fused_counter",
 	"combat_medic": "ally_treatment",
+	"predators_arc": "fused_leap_finisher",
+	"earthbreaker": "state_forked_strike",
+	"vivisection": "fused_arc_flurry",
 }
 
 
@@ -159,8 +164,8 @@ func test_data_contract_results_match_recipes_and_offers() -> void:
 
 
 func test_implemented_vs_data_only_split_is_honest() -> void:
-	# The encoded ladders (waves 1 + 2) carry their real archetypes; the
-	# remaining five resolve through the honest `strike` fallback until their
+	# The encoded ladders (waves 1-3) carry their real archetypes; the
+	# remaining two resolve through the honest `strike` fallback until their
 	# machinery lands. None are in KNOWN_KEYS (acquisition-gated results are
 	# never creation-selectable, and their keyword rulings await the keyword
 	# pass).

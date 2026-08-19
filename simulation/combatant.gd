@@ -142,6 +142,18 @@ var last_action_key: String = ""
 ## (the stealthed compat-pin pattern) so a fight that never resolves a targeted
 ## action hashes byte-identically to the pre-batch engine.
 var last_action_target: String = ""
+## CHAIN open marker (tier-2 wave 3 — predators_arc S2-b, [FROM row 40]): the
+## key of a just-resolved action that OPENED its chain to ANY legal target —
+## while set (and still the last resolved action), the SAME-TARGET half of a
+## chain gate this actor's last action satisfies is WAIVED, so the chained
+## skill may declare against a different (adjacent — its own reach gate)
+## target ("the takedown feeds the next takedown"). Set by the opening
+## resolver (predators_arc L2+); cleared by ActionResolver's chain bookkeeping
+## the moment any OTHER action resolves (the last_action_key overwrite rule's
+## mirror). Serialized ONLY while non-empty (the stealthed compat-pin
+## pattern) so a fusion-free fight hashes byte-identically to the pre-wave
+## engine.
+var chain_open_key: String = ""
 ## STANCE: the stance the actor currently holds ("" = none). Set/cleared by the
 ## sim's set_stance command; a stance prime {"stance": s} is met when this == s.
 var stance: String = ""
@@ -810,6 +822,12 @@ func to_dict() -> Dictionary:
 	# serializes byte-identically to the pre-round engine.
 	if quick_step_until_tick > 0:
 		out["quick_step_until_tick"] = quick_step_until_tick
+	# Tier-2 wave 3 compat pin (the same only-when-set pattern): the chain-open
+	# marker exists ONLY between the opening resolution and the next resolved
+	# action — a fight that never resolves a chain-opening fusion serializes
+	# byte-identically to the pre-wave engine (hash-covered while live).
+	if chain_open_key != "":
+		out["chain_open_key"] = chain_open_key
 	# R30 compat pin (decision #33, the same only-when-set pattern): "facing"
 	# exists ONLY while != 0 — the documented serialization default is
 	# direction 0 (E), so a combatant that never faced away from 0 serializes
@@ -915,4 +933,6 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.treat_resolve_used_clock = int(data.get("treat_resolve_used_clock", -1))
 	# Pre-Round-3a saves lack the key: 0 = no stride window ever opened.
 	c.quick_step_until_tick = int(data.get("quick_step_until_tick", 0))
+	# Pre-tier-2-wave-3 saves lack the key: "" = no chain currently open.
+	c.chain_open_key = String(data.get("chain_open_key", ""))
 	return c
