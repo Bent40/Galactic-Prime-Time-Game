@@ -95,6 +95,13 @@ var ai: EnemyAI
 ## default — harnesses and pre-arena saves). Set via the set_arena command,
 ## serialized under "arena" ONLY when present (byte-identical legacy dicts).
 var arena: Arena = null
+## KAN-5 K1 — the zones/fields substrate (simulation/zones.gd carries the full
+## model + every seam decision). null until the FIRST create_zone call: zones
+## are STRICTLY OPT-IN runtime entities with NO command surface this story —
+## the internal create_zone/remove_zone/damage_zone API below is what the
+## future wall-skill resolvers call (tests drive it directly). Serialized
+## under "zones" ONLY once a zone has ever been created (the compat pin).
+var zones: Zones = null
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -193,6 +200,15 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 ## Housekeeping after every command: deaths cancel scheduled actions, breach
 ## checks run, exposure caches refresh, events get the tick stamp.
 func _post(events: Array[Dictionary]) -> void:
+	# KAN-5 K1 (zones) — the position sweep: on_pass off this batch's dash
+	# corridors, on_enter off the post-command position diff (the ONE seam
+	# every position mutation flows past — zones.gd documents the choice).
+	# Runs FIRST so zone-authored deaths get the same housekeeping (cancel /
+	# breach / broadcast) as any other batch event, and a zone-triggered Shock
+	# shout reaches the stealth sweep below. No-op (no events, no rng, no
+	# state) while no zone store exists — the legacy compat pin.
+	if zones != null:
+		events.append_array(zones.position_sweep(events, clock.tick))
 	for event: Dictionary in events.duplicate():
 		if String(event.get("type", "")) == "combatant_died":
 			var dead_id := String(event.get("combatant", ""))
@@ -439,6 +455,14 @@ func _advance_tick() -> Array[Dictionary]:
 			events.append_array(cond.on_clock_reset(combatants[id], clock.tick))
 		events.append_array(_antagonism_decay())
 		events.append_array(_pattern_read_expiry())
+		# KAN-5 K1 (zones) — the Clock-boundary sweep: on_occupy_clock for
+		# every occupant (AFTER the universal condition advancement above, so
+		# a fresh zone application advances at the NEXT reset, not its own),
+		# then the duration countdown/expiry (zones.gd documents the order —
+		# a 1-Clock wall bites its occupants at the reset that kills it).
+		# No-op while no zone store exists — the legacy compat pin.
+		if zones != null:
+			events.append_array(zones.clock_reset_sweep(clock.tick))
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
 	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
@@ -741,6 +765,10 @@ func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
 	arena = parsed
 	ai.arena = arena
 	resolver.arena = arena
+	# KAN-5 K1: a late-set arena inherits any existing zone store (the normal
+	# staging order puts set_arena before any zone exists; zone placement is
+	# validated against the arena present at CREATION time — documented).
+	arena.zones = zones
 	var summary: Dictionary = arena.view()
 	var arena_event: Dictionary = {
 		"type": "arena_set",
@@ -854,6 +882,41 @@ func _stealth(cmd: Dictionary) -> Array[Dictionary]:
 	actor.free_action_used = true
 	actor.stealthed = true
 	return [{"type": "stealth_entered", "actor": actor.id}]
+
+
+# ------------------------------------------------------------------ zones (KAN-5 K1)
+
+## The INTERNAL zone API — deliberately NO player/GM command surface this
+## story: the future wall-skill resolvers call these from inside their own
+## command (whose _post then folds the zone events into the batch); tests and
+## drivers may call them directly between commands (direct-call events carry
+## no tick stamp and skip the broadcast plane — none of today's engines score
+## zone_* events, so the two call shapes stay behaviorally identical).
+## simulation/zones.gd owns the model, the validation, the effect vocabulary
+## and every seam decision; this facade owns the store lifecycle + wiring.
+func create_zone(spec: Dictionary) -> Array[Dictionary]:
+	if zones == null:
+		zones = Zones.new()
+		zones.setup(combatants, cond)
+	var events: Array[Dictionary] = zones.create(spec, clock.tick, arena)
+	# Wire the arena's blocking composition once zones exist (idempotent).
+	if arena != null:
+		arena.zones = zones
+	return events
+
+
+func remove_zone(zone_id: int, reason: String = "removed") -> Array[Dictionary]:
+	if zones == null:
+		return [{"type": "zone_rejected", "reason": "zone_unknown", "zone": zone_id}]
+	return zones.remove(zone_id, reason)
+
+
+## Frost-wall HP wear — the ONLY hp path this story (attackability needs
+## resolver targeting: next story). Removal at 0 (zone_expired "destroyed").
+func damage_zone(zone_id: int, amount: int) -> Array[Dictionary]:
+	if zones == null:
+		return [{"type": "zone_rejected", "reason": "zone_unknown", "zone": zone_id}]
+	return zones.damage(zone_id, amount)
 
 
 ## R20 (wave 4c) — the per-command stealth sweep (called from _post): breaks
@@ -1238,6 +1301,14 @@ func to_dict() -> Dictionary:
 	# no-arena sim serializes byte-identically to the pre-arena engine.
 	if arena != null:
 		out["arena"] = arena.to_dict()
+	# KAN-5 K1 compat pin: the "zones" key exists ONLY once a zone has EVER
+	# been created (next_id > 0) — a zone-free fight serializes byte-
+	# identically to the pre-zone engine (the CI-harness gate). The key
+	# PERSISTS after every zone expired: the serialized id counter keeps a
+	# save/restore mid-fight replay-transparent (a restored sim hands out the
+	# same next zone id a straight-through run would).
+	if zones != null and zones.next_id > 0:
+		out["zones"] = zones.to_dict()
 	return out
 
 
@@ -1283,6 +1354,17 @@ static func from_dict(data: Dictionary) -> CombatSim:
 		sim.arena = Arena.from_dict(data.get("arena", {}))
 		sim.ai.arena = sim.arena
 		sim.resolver.arena = sim.arena
+	# KAN-5 K1: pre-zone saves lack "zones" — null keeps the legacy no-op
+	# sweeps, matching a fresh sim. Wired AFTER the arena so the blocking
+	# composition (arena.zones) lands on the restored instance; setup rebuilds
+	# the derived hex indexes and the position baseline (the sweep always
+	# leaves the baseline synced at a command boundary, so rebuilding it from
+	# the restored positions is exact).
+	if data.has("zones"):
+		sim.zones = Zones.from_dict(data.get("zones", {}))
+		sim.zones.setup(sim.combatants, sim.cond)
+		if sim.arena != null:
+			sim.arena.zones = sim.zones
 	return sim
 
 

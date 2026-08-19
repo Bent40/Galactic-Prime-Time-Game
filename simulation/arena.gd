@@ -113,6 +113,24 @@ var rect_size: Vector2i = Vector2i.ZERO
 var hex_set: Dictionary = {}  # {Vector2i: true} when bounds_kind == "hexes"
 ## Blocked hexes (authored walls): {Vector2i: true}.
 var walls: Dictionary = {}
+## KAN-5 K1 (zones substrate): the sim's RUNTIME zone store, wired by
+## CombatSim whenever zones exist (create_zone / set_arena / from_dict) and
+## NEVER serialized here — zones serialize on CombatSim under "zones", and
+## this arena's to_dict/view stay byte-identical whatever zones exist.
+## Composing here puts zone blocking behind the SAME queries every consumer
+## already reads (the R29 closed-door precedent — zero consumer edits):
+##   * a blocks_movement zone enters is_wall -> full wall parity (moves,
+##     tactical rolls, dash lane ends AND phase-3 bounces, sidesteps,
+##     knock-asides, flings, pulls, summon placement, pathing, staging — and
+##     LOS, since Stealth.has_los walks blocks_lane);
+##   * a blocks_los zone enters blocks_lane — the one channel the LOS walk
+##     consults. Shared-choke-point caveat (deliberate, documented in
+##     zones.gd): blocks_lane also drives dash-lane geometry, so a
+##     blocks_los-ONLY zone is lane-solid too; no such zone is authored this
+##     story, and the story that wants sight-only smoke owns the query split.
+## Authored-solid-only checks (set_arena placement validation, zone placement,
+## view/serialization) keep reading the `walls` dict directly, never is_wall.
+var zones: Zones = null
 ## Environment objects, in authored order (deterministic iteration order —
 ## the array IS command-stream state): [{"key", "position": [q, r], "burn": int}].
 var objects: Array[Dictionary] = []
@@ -217,7 +235,8 @@ func in_bounds(hex: Vector2i) -> bool:
 ## with zero edits; an OPEN door blocks nothing. Authored-wall-only checks
 ## (set_arena placement validation, view/serialization) read `walls` directly.
 func is_wall(hex: Vector2i) -> bool:
-	return walls.has(hex) or is_closed_door(hex)
+	return walls.has(hex) or is_closed_door(hex) \
+		or (zones != null and zones.blocks_movement_at(hex))
 
 
 ## True when `hex` carries a door whose state is "closed".
@@ -243,10 +262,14 @@ func door_index_for(key: String) -> int:
 	return -1
 
 
-## LANE blocking (dash geometry): walls + out-of-bounds only — a charge
-## smashes THROUGH trash cans, so cans never end (or bounce) a lane.
+## LANE blocking (dash geometry + the Stealth.has_los sight walk): walls +
+## out-of-bounds — a charge smashes THROUGH trash cans, so cans never end (or
+## bounce) a lane. KAN-5 K1: blocks_los zones compose here (the zones var's
+## header carries the seam rationale + the shared-choke-point caveat);
+## blocks_movement zones already arrive through is_wall.
 func blocks_lane(hex: Vector2i) -> bool:
-	return is_wall(hex) or not in_bounds(hex)
+	return is_wall(hex) or not in_bounds(hex) \
+		or (zones != null and zones.blocks_los_at(hex))
 
 
 ## MOVEMENT blocking (every non-lane position change): walls + out-of-bounds
