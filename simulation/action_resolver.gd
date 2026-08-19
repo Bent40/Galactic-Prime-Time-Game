@@ -46,6 +46,23 @@ var arena: Arena = null
 ## returns, so serialization stays trivially correct: the field is always empty
 ## between commands). Key "combo_id|target_id|part" -> group Dictionary.
 var _merge_groups: Dictionary = {}
+## Tier-2 wave 2 (counterscript — the widened gate's same-tick half). Both
+## fields live for the CURRENT resolve_due batch ONLY (the _merge_groups
+## transience model — set/cleared inside resolve_due, never across commands,
+## never serialized):
+##   _due_batch    — the seq-ordered due entries take_due removed from the
+##                   Clock queue this tick. A resolving counter scans it for
+##                   the read target's STILL-PENDING same-tick entries (seq >
+##                   the counter's own — anything with a lower seq already
+##                   resolved, and countering after resolution is impossible).
+##   _counter_cuts — victim_id -> {"seq": int, "by": String}: a counter that
+##                   connected against a same-tick pending entry marks it
+##                   here; when that exact entry (seq-matched) reaches its own
+##                   slot in the SAME batch, _resolve_entry collapses it into
+##                   Forced Action – BODY. The seq match means a later entry
+##                   of the same actor is never collateral.
+var _due_batch: Array[Dictionary] = []
+var _counter_cuts: Dictionary = {}
 
 
 func setup(clock_ref: Clock, combatants_ref: Dictionary, cond_ref: ConditionEngine, rng_ref: RandomNumberGenerator, ai_ref: EnemyAI) -> void:
@@ -263,6 +280,10 @@ func _action_is_damaging(kind: String, action: Dictionary) -> bool:
 				or arch == "aoe_blast" \
 				or BATCH_A_STRIKE_ARCHETYPES.has(arch):
 			return true
+		# Tier-2 wave 2 (counterscript): the counter mode is a strike; the
+		# read mode is a knowledge play — only the former ends the dance.
+		if arch == "fused_counter":
+			return String(action.get("mode", "counter")) != "read"
 		if arch == "strike":
 			return not (action.get("targets", []) as Array).is_empty()
 	return false
@@ -930,6 +951,8 @@ func _validate_skill_declare(actor: CombatantState, action: Dictionary, spec: Di
 			return _validate_skill_grapple(actor, action, spec)
 		"interrupt_counter":
 			return _validate_interrupt_counter(actor, action, spec)
+		"fused_counter":
+			return _validate_fused_counter(actor, action, spec)
 		"ally_treatment":
 			return _validate_ally_treatment(actor, action, spec)
 		"intel_reveal":
@@ -1336,12 +1359,62 @@ func _validate_interrupt_counter(actor: CombatantState, action: Dictionary, spec
 	return _batch_strike_gate(actor, action, spec)
 
 
+## fused_counter (counterscript, tier-2 wave 2) declare gate. Mode "read":
+## the intel_reveal declared_read gates verbatim (one living ENEMY within
+## read_range that the reader SEES — Stealth.sees, the R30 cone included);
+## the read-cap replacement policy is a RESOLUTION concern, so a declare at
+## the cap is legal. Default mode "counter": one target row through the
+## shared strike gate — the target must be YOUR read target (a live
+## pattern_reads record; any live read satisfies it — the merged character's
+## own reads in practice, documented), and that read IS the whole prime: no
+## winding_up STATE gate (the S1-a widening — the read target may have
+## nothing scheduled yet; the resolution answers whatever is genuinely
+## pending, or reports the miss honestly). The strike inherits action/item
+## damage with the counter_surge basic-unarmed default stamped at declare.
+func _validate_fused_counter(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var mode := String(action.get("mode", "counter"))
+	if mode != "read" and mode != "counter":
+		return _reject("unknown_counter_mode", {"actor": actor.id, "mode": mode})
+	var targets: Array = action.get("targets", [])
+	if targets.size() != 1:
+		return _reject("single_target_required", {"actor": actor.id})
+	var target: CombatantState = combatants.get(String((targets[0] as Dictionary).get("id", "")))
+	if mode == "read":
+		if target == null or not target.alive or target.removed_from_play:
+			return _reject("invalid_read_target", {"actor": actor.id})
+		if actor.team == "" or target.team == "" or target.team == actor.team:
+			return _reject("target_not_enemy", {"actor": actor.id, "target": target.id})
+		var reach: int = int(spec.get("read_range", 3))
+		if CombatantState.hex_distance(actor.position, target.position) > reach:
+			return _reject("out_of_range", {"target": target.id, "range": reach})
+		if not Stealth.sees(actor, target, arena, clock.tick):
+			return _reject("target_not_visible", {"actor": actor.id, "target": target.id})
+		return []
+	if target == null or not actor.pattern_reads.has(target.id):
+		return _reject("target_not_read", {"actor": actor.id,
+			"target": "" if target == null else target.id})
+	var item: Dictionary = actor.items.get(String(action.get("item", "")), {})
+	if (action.get("damage", {}) as Dictionary).is_empty() and not item.has("damage_type"):
+		action["damage"] = {"type": "crushed", "amount": 1}
+	return _batch_strike_gate(actor, action, spec)
+
+
 ## ally_treatment (batch C) declare gate: one target row {id, part} + the
 ## action's "condition" naming what to treat. Self only where the spec allows
 ## it (seal_the_wound); otherwise a same-team ALLY within treat_range. The
 ## condition must be on the spec's treatable list (empty list = any) and
 ## ACTUALLY ACTIVE on the named part (instance or a live non-bleed_out timer)
 ## — a treatment never declares against a wound that is not there.
+## Tier-2 wave 2 (combat_medic): a spec "ally_consumes" gates ALLY treatment
+## on holding the named charge (Triage's economy fused in — self-treatment is
+## exempt, Seal's lane had no charge; the reject mirrors the STACK prime's
+## vocabulary since it IS that economy, made target-conditional). An action
+## {"mode": "resolve"} (S6-d, [FROM row 6]) additionally requires: the spec's
+## resolve_conditions list (L4+ — resolve_not_available below it), the named
+## condition ON that list, the per-Clock gate open, and the condition NOT
+## driving the target's bleed-out — a lethal state is held (delay/stabilize),
+## never cured (default #8's boundary, enforced at declare and re-checked
+## live at resolution).
 func _validate_ally_treatment(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	var targets: Array = action.get("targets", [])
 	if targets.size() != 1:
@@ -1355,6 +1428,10 @@ func _validate_ally_treatment(actor: CombatantState, action: Dictionary, spec: D
 			return _reject("cannot_target_self", {"actor": actor.id})
 	elif target.team == "" or target.team != actor.team:
 		return _reject("target_not_ally", {"actor": actor.id, "target": target.id})
+	var ally_consumes := String(spec.get("ally_consumes", ""))
+	if ally_consumes != "" and target.id != actor.id \
+			and _stack_count(actor, ally_consumes) < 1:
+		return _reject("prime_unmet", {"actor": actor.id, "prime": "stack:%s<1" % ally_consumes})
 	var reach: int = int(spec.get("treat_range", 1))
 	if CombatantState.hex_distance(actor.position, target.position) > reach:
 		return _reject("out_of_range", {"target": target.id, "range": reach})
@@ -1362,6 +1439,19 @@ func _validate_ally_treatment(actor: CombatantState, action: Dictionary, spec: D
 	var treatable: Array = spec.get("treatable", [])
 	if condition_id == "" or (not treatable.is_empty() and not treatable.has(condition_id)):
 		return _reject("condition_not_treatable", {"actor": actor.id, "condition": condition_id})
+	var mode := String(action.get("mode", "delay"))
+	if mode != "delay" and mode != "resolve":
+		return _reject("unknown_treat_mode", {"actor": actor.id, "mode": mode})
+	if mode == "resolve":
+		var resolvable: Array = spec.get("resolve_conditions", [])
+		if resolvable.is_empty():
+			return _reject("resolve_not_available", {"actor": actor.id, "level": int(action.get("level", 1))})
+		if not resolvable.has(condition_id):
+			return _reject("condition_not_resolvable", {"actor": actor.id, "condition": condition_id})
+		if actor.treat_resolve_used_clock == clock.tick / Clock.TICKS_PER_CLOCK:
+			return _reject("resolve_used_this_clock", {"actor": actor.id})
+		if String(target.bleed_out.get("condition", "")) == condition_id:
+			return _reject("lethal_state_held_not_cured", {"actor": actor.id, "target": target.id})
 	var part_key := String(t.get("part", ""))
 	if not target.parts.has(part_key):
 		return _reject("no_such_part", {"target": target.id, "part": part_key})
@@ -2168,6 +2258,11 @@ func resolve_due(snapshot: Dictionary) -> Dictionary:
 	var forced_queue: Array[Dictionary] = []
 	var due: Array[Dictionary] = clock.take_due(clock.tick)
 	_prescan_merge_groups(due)
+	# Tier-2 wave 2 (counterscript): stash the batch for the widened counter's
+	# same-tick pending scan; clear any stale cut marks (both transient —
+	# see the field notes).
+	_due_batch = due
+	_counter_cuts.clear()
 	for entry: Dictionary in due:
 		var actor: CombatantState = combatants.get(String(entry["actor"]))
 		if actor == null:
@@ -2184,6 +2279,8 @@ func resolve_due(snapshot: Dictionary) -> Dictionary:
 	# (whiff, invalidated windup, feint collapse, shock stutter, death mid-tick)
 	# still lands what DID connect — flushed before forced consequences apply.
 	events.append_array(_flush_merge_groups())
+	_due_batch = []
+	_counter_cuts.clear()
 	return {"events": events, "forced": forced_queue}
 
 
@@ -2409,6 +2506,33 @@ func _flush_merge_groups() -> Array[Dictionary]:
 func _resolve_entry(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary]) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	var kind := String(action.get("kind", "attack"))
+	# Tier-2 wave 2 (counterscript S1-a — the widened gate's same-tick half): a
+	# counter that resolved EARLIER this tick (lower seq) marked this actor's
+	# still-pending declared action; at its own slot the countered action
+	# COLLAPSES into Forced Action – BODY (the parameterized table — the
+	# _collapse_batch_windup body path, kind-honest). Seq-matched: only the
+	# exact countered entry dies. Checked before the stutter/feint so the
+	# counter's collapse wins the slot — the stutter and the feint's pending
+	# consequence are both preserved for the actor's NEXT action (the same
+	# preservation discipline the stutter grants the feint).
+	if _counter_cuts.has(actor.id) \
+			and int((_counter_cuts[actor.id] as Dictionary).get("seq", -1)) == int(entry.get("seq", -2)):
+		var cut_by := String((_counter_cuts[actor.id] as Dictionary).get("by", ""))
+		_counter_cuts.erase(actor.id)
+		var countered_targets: Array = action.get("targets", [])
+		var countered_original: String = "" if countered_targets.is_empty() \
+			else String((countered_targets[0] as Dictionary).get("id", ""))
+		var countered_events: Array[Dictionary] = [{"type": "action_invalidated",
+			"actor": actor.id, "kind": kind, "reason": "countered", "by": cut_by}]
+		var countered_body: Dictionary = _forced_body_roll(actor, "countered")
+		countered_events.append_array(countered_body["events"])
+		# S5-d composition: a NEGATED Body roll queues no consequence — the
+		# countered action still died (the same rule the windup collapse follows).
+		if not bool(countered_body.get("negated", false)):
+			forced_queue.append({"actor": actor.id, "rolled": countered_body["rolled"], "ctx": {
+				"part": actor.acting_part(clock.tick), "target": countered_original,
+			}})
+		return countered_events
 	# Shock T2 (Stutter, R13): the combatant's next resolved scheduled action simply
 	# FAILS — check-and-clear at the same choke point feint uses, but with NO Forced
 	# Action roll (feint collapses into a Tool roll; a stutter just fails). A stutter
@@ -2517,6 +2641,8 @@ func _resolve_skill(actor: CombatantState, entry: Dictionary, snapshot: Dictiona
 			return _resolve_skill_grapple(actor, entry, snapshot, forced_queue, spec)
 		"interrupt_counter":
 			return _resolve_interrupt_counter(actor, entry, snapshot, forced_queue, spec)
+		"fused_counter":
+			return _resolve_fused_counter(actor, entry, snapshot, forced_queue, spec)
 		"ally_treatment":
 			return _resolve_ally_treatment(actor, entry, spec)
 		"intel_reveal":
@@ -3283,23 +3409,161 @@ func _resolve_interrupt_counter(actor: CombatantState, entry: Dictionary, snapsh
 	return events
 
 
+## fused_counter (counterscript, tier-2 wave 2 — S1). Mode "read" routes to
+## _resolve_counter_read. Default mode "counter" (S1-a, the WIDENED gate):
+## the strike resolves first (the counter_surge convention — a
+## robustness-blocked 0 still connects), the read-target gate re-checks LIVE
+## (a read expired at the Clock reset mid-flight is an honest miss). A
+## connected hit answers the read target's ONE genuinely pending declared
+## action:
+##   * a FUTURE windup (the Clock queue — during resolution the queue holds
+##     only future entries): cut remaining Moments, the counter_surge
+##     arithmetic + events verbatim; cut >= remaining collapses it (Forced
+##     BODY, the parameterized table). A cut that does NOT collapse arms the
+##     S1-b per-source immunity window (L2+, [FROM row 8]): the source
+##     cannot affect this counter-actor for immunity_moments Moments —
+##     counter_immunities, enforced at the hit seams.
+##   * a SAME-TICK still-pending scheduled instant (the due batch, seq >
+##     this counter's — declared AFTER the counter, unresolved): its whole
+##     remaining cost (the 1 Moment completing now) is cut, so it collapses
+##     at its own slot (_counter_cuts -> _resolve_entry, Forced BODY). The
+##     honest boundary, stated: a lower-seq entry already RESOLVED before
+##     this counter — a same-tick instant can never be countered after
+##     resolution (the batch-B "already firing" rule, seq-exact), so the
+##     widened gate covers exactly the SCHEDULED remainder. Free 0-cost
+##     entries carry no remaining cost and are never counterable.
+##   * neither: counter_missed — the strike landed, nothing was left to
+##     answer.
+func _resolve_fused_counter(actor: CombatantState, entry: Dictionary, snapshot: Dictionary, forced_queue: Array[Dictionary], spec: Dictionary) -> Array[Dictionary]:
+	var action: Dictionary = entry["action"]
+	if String(action.get("mode", "counter")) == "read":
+		return _resolve_counter_read(actor, action, spec)
+	var target: CombatantState = _first_target(action)
+	var events: Array[Dictionary] = _strike_via_spec(actor, entry, snapshot, forced_queue, spec)
+	if target == null or not _hit_landed(events, target.id):
+		return events
+	if not actor.pattern_reads.has(target.id):
+		events.append({"type": "counter_missed", "actor": actor.id, "target": target.id,
+			"reason": "read_expired"})
+		return events
+	var cut: int = int(spec.get("cost_cut", 1))
+	var windup: Dictionary = clock.windup_entry_for(target.id)
+	if not windup.is_empty():
+		var remaining: int = int(windup["tick"]) - clock.tick
+		if cut >= remaining:
+			var cancelled: Dictionary = clock.cancel_windup_for(target.id)
+			target.windup_pending = clock.has_windup_for(target.id)
+			var victim_action: Dictionary = cancelled.get("action", {})
+			var victim_targets: Array = victim_action.get("targets", [])
+			var victim_target: String = "" if victim_targets.is_empty() \
+				else String((victim_targets[0] as Dictionary).get("id", ""))
+			events.append({"type": "windup_collapsed", "actor": actor.id, "victim": target.id,
+				"cut": cut, "remaining_before": remaining,
+				"key": String(victim_action.get("key", String(victim_action.get("item", ""))))})
+			events.append_array(_collapse_batch_windup(target, "windup_cut", forced_queue,
+				victim_target, String(spec.get("collapse_table", ForcedAction.TABLE_BODY)), "windup_cut"))
+		else:
+			var new_tick: int = int(windup["tick"]) - cut
+			clock.reschedule_windup_for(target.id, new_tick)
+			target.next_action_tick = mini(target.next_action_tick, new_tick)
+			events.append({"type": "windup_cut", "actor": actor.id, "victim": target.id,
+				"cut": cut, "remaining_before": remaining, "remaining_after": remaining - cut,
+				"resolve_tick": new_tick})
+			# S1-b ([FROM row 8], L2+): countered but NOT collapsed — "you
+			# already answered it". Window convention: immune while
+			# clock.tick < until_tick; until = T + moments + 1 covers the
+			# NEXT `moments` Moments (T+1..T+moments — the counter's own
+			# tick T rides along vacuously, a cut windup never resolves
+			# before T+1). A re-counter of the same source overwrites
+			# (latest answer wins — deterministic).
+			var moments: int = int(spec.get("immunity_moments", 0))
+			if moments > 0:
+				var until: int = clock.tick + moments + 1
+				actor.counter_immunities[target.id] = until
+				events.append({"type": "counter_immunity", "actor": actor.id,
+					"source": target.id, "moments": moments, "until_tick": until})
+		return events
+	var my_seq: int = int(entry.get("seq", -1))
+	for due_entry: Dictionary in _due_batch:
+		if String(due_entry.get("actor", "")) != target.id:
+			continue
+		if int(due_entry.get("seq", -1)) <= my_seq:
+			continue
+		var due_action: Dictionary = due_entry.get("action", {})
+		if int(due_action.get("eff_cost", 0)) < 1:
+			continue
+		_counter_cuts[target.id] = {"seq": int(due_entry["seq"]), "by": actor.id}
+		events.append({"type": "action_countered", "actor": actor.id, "victim": target.id,
+			"cut": cut, "remaining_before": 1,
+			"key": String(due_action.get("key", String(due_action.get("item",
+				String(due_action.get("kind", "attack"))))))})
+		return events
+	events.append({"type": "counter_missed", "actor": actor.id, "target": target.id,
+		"reason": "nothing_pending"})
+	return events
+
+
+## The counterscript read (mode "read", S1-a/c): the intel_reveal
+## declared_read resolution on the SAME substrate — live re-checks, the
+## deterministic schedule projection, the pattern_reads record (the existing
+## Clock-reset expiry sweep and GameController's owner-gated view projection
+## carry it unchanged — the additive exposure idiom already shipped) — plus
+## the S1 read CAP: read_targets concurrent reads (1 below L3; S1-c's second
+## enemy at L3+). A read past the cap REPLACES the OLDEST read (insertion
+## order — attention moves; deterministic, and the dropped target's counter
+## gate closes with it). Zero rng.
+func _resolve_counter_read(actor: CombatantState, action: Dictionary, spec: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var target: CombatantState = _first_target(action)
+	if target == null or not target.alive or target.removed_from_play:
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_gone"})
+		return events
+	if not Stealth.sees(actor, target, arena, clock.tick):
+		events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "target_not_visible"})
+		return events
+	var cap: int = maxi(1, int(spec.get("read_targets", 1)))
+	if not actor.pattern_reads.has(target.id) and actor.pattern_reads.size() >= cap:
+		var oldest := String((actor.pattern_reads.keys() as Array)[0])
+		actor.pattern_reads.erase(oldest)
+		events.append({"type": "counterscript_read_dropped", "actor": actor.id, "target": oldest})
+	var actions_revealed: int = maxi(1, int(spec.get("actions_revealed", 1)))
+	actor.pattern_reads[target.id] = {"actions": actions_revealed}
+	events.append({
+		"type": "counterscript_read", "actor": actor.id, "target": target.id,
+		"actions": actions_revealed,
+		"schedule": _pattern_schedule_rows(target.id, actions_revealed),
+	})
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "counterscript")), "result": "ok", "rounds": 0})
+	return events
+
+
 # ---------------------------------------------------- batch-C skill resolvers
 
-## ally_treatment (batch C — seal_the_wound / field_triage): DELAY ONLY.
-## HONESTY PIN (FINAL default #8): this resolver has no resolve mode and no
-## heal_part call — HP restoration and full cures structurally cannot happen
-## here (tests/test_skills_batch_c.gd asserts the structure, not just the
-## behavior). Re-checks the live target (an instant can still lose it to a
-## same-tick death earlier in the batch), then delays the named condition
-## delay_clocks Clocks through ConditionEngine.delay — whose existing
-## bleed-out hook STABILIZES a downed ally when the delayed condition drives
-## the bleed-out (R5's 0-HP-stabilized: alive, held, no HP restored — not a
-## special case here). field_triage's bandage_charge is consumed ONLY when
-## the treatment actually lands (the delay found the condition live) — a
-## premise that evaporated between declare and resolve never burns the
-## bandage. A treatment is not an attack: it never enters _strike_round, so
-## the batch-B retarget_guard ignores it by construction — a guarded ally
-## receives their own bandage, never the guardian.
+## ally_treatment (batch C — seal_the_wound / field_triage; tier-2 wave 2 —
+## combat_medic): DELAY is the base mode; S6-d's RESOLVE is the ONE ruled
+## exception, and it clears a CONDITION INSTANCE only.
+## HONESTY PIN (FINAL default #8, updated for the wave-2 shape): this
+## resolver still has no heal_part call — HP restoration structurally cannot
+## happen here (tests/test_skills_batch_c.gd asserts the structure, not just
+## the behavior). The S6-d resolve path goes through ConditionEngine.treat's
+## OWN removal gates (mode "resolve": R10's infection-prevents-resolution
+## rule, timer handling, resolve's timer cancellation) — never a bespoke
+## removal (no direct cond.resolve call), never while the condition drives a
+## bleed-out (a lethal state is held, not cured — re-checked live here), and
+## once per Clock (treat_resolve_used_clock, spent only when the resolve
+## actually LANDS). Re-checks the live target (an instant can still lose it
+## to a same-tick death earlier in the batch), then delays the named
+## condition delay_clocks Clocks through ConditionEngine.delay — whose
+## existing bleed-out hook STABILIZES a downed ally when the delayed
+## condition drives the bleed-out (R5's 0-HP-stabilized: alive, held, no HP
+## restored — not a special case here). field_triage's bandage_charge (and
+## combat_medic's ally-only ally_consumes twin) is consumed ONLY when the
+## treatment actually lands — a premise that evaporated between declare and
+## resolve never burns the bandage, and a self-treatment never touches the
+## ally-gated charge. A treatment is not an attack: it never enters
+## _strike_round, so the batch-B retarget_guard ignores it by construction —
+## a guarded ally receives their own bandage, never the guardian.
 func _resolve_ally_treatment(actor: CombatantState, entry: Dictionary, spec: Dictionary) -> Array[Dictionary]:
 	var action: Dictionary = entry["action"]
 	var events: Array[Dictionary] = []
@@ -3310,21 +3574,51 @@ func _resolve_ally_treatment(actor: CombatantState, entry: Dictionary, spec: Dic
 	var rows: Array = action.get("targets", [])
 	var part_key: String = "" if rows.is_empty() else String((rows[0] as Dictionary).get("part", ""))
 	var condition_id := ConditionEngine.normalize_condition_id(String(action.get("condition", "")))
-	var clocks: int = maxi(1, int(spec.get("delay_clocks", 1)))
-	var delay_events: Array[Dictionary] = cond.delay(target, part_key, condition_id, clocks)
+	var mode := String(action.get("mode", "delay"))
 	var landed: bool = false
-	for ev: Dictionary in delay_events:
-		var ev_type := String(ev.get("type", ""))
-		if ev_type == "condition_delayed" or ev_type == "timer_delayed":
-			landed = true
-	if landed:
-		events.append({
-			"type": "treatment_applied", "actor": actor.id, "target": target.id,
-			"part": part_key, "condition": condition_id, "clocks": clocks,
-			"skill": String(action.get("key", "")),
-		})
-	events.append_array(delay_events)
+	if mode == "resolve":
+		# S6-d gates, re-checked LIVE (declare validated them; a same-tick
+		# earlier resolution can change every one of them).
+		if not (spec.get("resolve_conditions", []) as Array).has(condition_id):
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "condition_not_resolvable"})
+			return events
+		var clock_index: int = clock.tick / Clock.TICKS_PER_CLOCK
+		if actor.treat_resolve_used_clock == clock_index:
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "resolve_used_this_clock"})
+			return events
+		if String(target.bleed_out.get("condition", "")) == condition_id:
+			events.append({"type": "action_invalidated", "actor": actor.id, "kind": "skill", "reason": "lethal_state_held_not_cured"})
+			return events
+		var treat_events: Array[Dictionary] = cond.treat(target, part_key, condition_id, "resolve")
+		for ev: Dictionary in treat_events:
+			var ev_type := String(ev.get("type", ""))
+			if ev_type == "condition_resolved" or ev_type == "timer_cancelled":
+				landed = true
+		if landed:
+			actor.treat_resolve_used_clock = clock_index
+			events.append({
+				"type": "treatment_resolved", "actor": actor.id, "target": target.id,
+				"part": part_key, "condition": condition_id,
+				"skill": String(action.get("key", "")),
+			})
+		events.append_array(treat_events)
+	else:
+		var clocks: int = maxi(1, int(spec.get("delay_clocks", 1)))
+		var delay_events: Array[Dictionary] = cond.delay(target, part_key, condition_id, clocks)
+		for ev: Dictionary in delay_events:
+			var ev_type := String(ev.get("type", ""))
+			if ev_type == "condition_delayed" or ev_type == "timer_delayed":
+				landed = true
+		if landed:
+			events.append({
+				"type": "treatment_applied", "actor": actor.id, "target": target.id,
+				"part": part_key, "condition": condition_id, "clocks": clocks,
+				"skill": String(action.get("key", "")),
+			})
+		events.append_array(delay_events)
 	var consumes := String(spec.get("consumes", ""))
+	if consumes == "" and target.id != actor.id:
+		consumes = String(spec.get("ally_consumes", ""))
 	if landed and consumes != "":
 		var remaining: int = maxi(0, int(actor.charges.get(consumes, 0)) - 1)
 		actor.charges[consumes] = remaining
@@ -3433,6 +3727,16 @@ func _resolve_psychic_strike(actor: CombatantState, entry: Dictionary, snapshot:
 		return _collapse_batch_windup(actor, "target_left_range", forced_queue, original_first)
 	if not Stealth.has_los(arena, from, to):
 		return _collapse_batch_windup(actor, "lost_line_of_sight", forced_queue, original_first)
+	# Tier-2 wave 2 (counterscript S1-b): the per-source counter immunity
+	# covers the psychic seam too — this resolver deliberately never enters
+	# _strike_round, so the exclusion is mirrored here: an immune target is
+	# simply missed (no Shock, zero rng), the action still resolved.
+	if clock.tick < int(target.counter_immunities.get(actor.id, 0)):
+		events.append({"type": "attack_immune", "combatant": target.id, "part": part,
+			"source": actor.id, "until_tick": int(target.counter_immunities[actor.id])})
+		events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+			"key": String(action.get("key", "mind_burst")), "result": "ok", "rounds": 0})
+		return events
 	var tier: int = int(spec.get("shock_tier", 2))
 	events.append({"type": "mind_burst", "actor": actor.id, "target": target.id, "part": part, "tier": tier})
 	events.append_array(cond.apply_shock(target, tier, clock.tick, part))
@@ -4603,6 +4907,23 @@ func _strike_round(target: CombatantState, part_key: String, condition_id: Strin
 	# new body. R30: the interception is involuntary-adjacent — the guardian's
 	# facing NEVER changes (reactions/out-of-schedule strikes are off the
 	# update table).
+	# Tier-2 wave 2 (counterscript S1-b, [FROM row 8]): the per-source counter
+	# immunity — while clock.tick < until_tick, a hit FROM the countered
+	# source aimed at the counter-actor simply MISSES ("you already answered
+	# it"). Composition, documented: checked at the TOP of the round, BEFORE
+	# interception and every dodge — the hit never connects, so there is
+	# nothing to retarget and nothing to dodge; ZERO rng is consumed (the R26
+	# skip discipline — the ai_rng stream is byte-identical to a fight where
+	# the check never existed); a merged member drops out like a dodged one;
+	# the exclusion protects the AIMED counter-actor only — an interception
+	# ONTO an immune guardian still lands (the guardian chose to take that
+	# hit, the same override interception applies to dodges and R26).
+	if attacker != null and clock.tick < int(target.counter_immunities.get(attacker.id, 0)):
+		events.append({"type": "attack_immune", "combatant": target.id, "part": part_key,
+			"source": attacker.id, "until_tick": int(target.counter_immunities[attacker.id])})
+		if not group.is_empty():
+			events.append_array(_merge_drop(group, target))
+		return events
 	var intercepted: bool = false
 	var intercept_reduction: int = 0
 	var interception: Dictionary = _intercept_hit(group, target, part_key, action, attacker)

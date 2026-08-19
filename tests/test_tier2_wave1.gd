@@ -25,10 +25,15 @@ const TIER2_KEYS: Array[String] = [
 	"perfect_evasion", "combat_medic", "vice_grip", "the_unseen",
 	"the_long_con", "phantom_grasp",
 ]
+## Wave 1 encoded three ladders; wave 2 (tests/test_tier2_wave2.gd) added
+## counterscript (S1) + combat_medic (S6). The remaining five (S2-S4, S8-S9)
+## stay DATA-ONLY pending their machinery.
 const IMPLEMENTED: Dictionary = {
 	"perfect_evasion": "fused_evasion",
 	"vice_grip": "skill_grapple",
 	"phantom_grasp": "sustained_channel",
+	"counterscript": "fused_counter",
+	"combat_medic": "ally_treatment",
 }
 
 
@@ -154,10 +159,11 @@ func test_data_contract_results_match_recipes_and_offers() -> void:
 
 
 func test_implemented_vs_data_only_split_is_honest() -> void:
-	# The three low-machinery ladders are ENCODED; the other seven resolve
-	# through the honest `strike` fallback until their machinery lands. None
-	# are in KNOWN_KEYS (acquisition-gated results are never creation-
-	# selectable, and their keyword rulings await the keyword pass).
+	# The encoded ladders (waves 1 + 2) carry their real archetypes; the
+	# remaining five resolve through the honest `strike` fallback until their
+	# machinery lands. None are in KNOWN_KEYS (acquisition-gated results are
+	# never creation-selectable, and their keyword rulings await the keyword
+	# pass).
 	for key: String in TIER2_KEYS:
 		var spec: Dictionary = SkillBook.mechanics(key, 1)
 		if IMPLEMENTED.has(key):

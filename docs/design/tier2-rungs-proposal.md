@@ -32,6 +32,37 @@ dependency-ordered stories (names stay PROVISIONAL pending the owner's rename pa
 > **S1–S4, S6, S8–S9: DATA-ONLY this wave** — rows carry the blessed content with
 > [NEEDS] flags; undeclared keys resolve through the honest `strike` fallback.
 > Tests: `tests/test_tier2_wave1.gd`.
+
+> **[IMPLEMENTATION STATUS — wave 2 landed 2026-08-19.]** Two more ladders are
+> ENCODED (same conventions: not in KNOWN_KEYS, magnitudes PLACEHOLDER R14):
+> **S6 combat_medic** (ally_treatment extended) — a IMPLEMENTED (delay ANY
+> condition on self or any ally within range; Triage's charge economy kept
+> ALLY-only — self-treatment never burns a charge) · b IMPLEMENTED (delay/range
+> rows) · c DATA ([NEEDS] freeze/arrest — a hold-open distinct from multi-Clock
+> delay: blocking re-application advancement is engine machinery this wave did
+> not build) · d IMPLEMENTED ([FROM row 6, Crush dropped]: the RESOLVE mode —
+> full removal of one active Infection or Bleeding through ConditionEngine.treat's
+> own gates, once per Clock via `treat_resolve_used_clock`, REJECTED while the
+> condition drives a bleed-out — the lethal state is held, not cured; the batch-C
+> no-HP structural pin holds and was updated honestly to the new source shape) ·
+> e DATA (row 98 — the once-per-combat economy + the stabilize rider; the resolve
+> PATH it needs now exists).
+> **S1 counterscript** (fused_counter) — a IMPLEMENTED (the standing read on the
+> pattern_reads substrate — Clock-reset expiry + the owner-gated view projection
+> ride the existing sweeps — plus the WIDENED counter gate: no winding_up prime,
+> the read is the whole prime; any declared action of the read target with
+> remaining cost is answerable — a future windup (cut/collapse → Forced BODY) or
+> a same-tick still-pending scheduled instant (collapses at its own slot). The
+> honest boundary, stated: an action that already RESOLVED can never be countered
+> — same-tick instants resolve in declaration order, so in practice the widened
+> gate covers exactly the SCHEDULED remainder) · b IMPLEMENTED (deepened cut +
+> the serialized per-source immunity window `counter_immunities` — the countered
+> source cannot affect the counter-actor for the next 3 Moments [PH], enforced at
+> the hit seams the way guard/dodge compose; others still affected) · c
+> IMPLEMENTED (read_targets 2 at L3+ — a read past the cap replaces the oldest —
+> + row 10's deeper queue reveal) · d DATA ([NEEDS] R15 combined-action hooks —
+> cross-footprint) · e DATA (row 93; [NEEDS] boss win-condition telegraph
+> exposure). Tests: `tests/test_tier2_wave2.gd`.
 **How to answer: by number.** Skills are **S1–S10**; each skill's five rungs are lettered
 **a–e** (a = L1 … e = L5). "S1–S7 yes, S8-c reword, S10 hold for OQ1" is a complete
 answer. All names stay PROVISIONAL pending the owner's rename pass.

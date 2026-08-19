@@ -102,24 +102,41 @@ func test_seal_delays_never_cures() -> void:
 
 
 func test_seal_honesty_pin_no_hp_path_exists() -> void:
-	# STRUCTURAL assert (default #8): the ally_treatment resolver contains no
-	# resolve mode and no heal call — the delay-not-cure rule is not a code
-	# path we chose not to take, it is a path that does not exist.
+	# STRUCTURAL assert (default #8, updated for tier-2 wave 2): the
+	# ally_treatment resolver contains NO heal call — the no-HP rule is not a
+	# code path we chose not to take, it is a path that does not exist. The
+	# wave-2 S6-d rung (combat_medic L4, [FROM row 6]) added a RESOLVE mode —
+	# the ONE ruled exception, clearing a CONDITION INSTANCE only — so the
+	# pin's shape updates honestly: the resolve path exists exactly once and
+	# goes through ConditionEngine.treat's OWN gates (mode "resolve" — R10's
+	# infection rule and the timer handling ride along); a bespoke removal
+	# (direct cond.resolve) and any HP restoration remain structurally
+	# impossible.
 	var source: String = FileAccess.get_file_as_string("res://simulation/action_resolver.gd")
 	var start: int = source.find("func _resolve_ally_treatment(")
 	assert_true(start >= 0, "the ally_treatment resolver exists")
 	var end: int = source.find("\nfunc ", start)
 	var body: String = source.substr(start, (end - start) if end > start else -1)
 	assert_true(body.find("cond.delay(") >= 0, "the resolver delays through ConditionEngine.delay")
-	assert_eq(body.find("heal_part"), -1, "no heal call exists in the treatment resolver")
-	assert_eq(body.find("cond.resolve("), -1, "no resolve call exists in the treatment resolver")
-	assert_eq(body.find("cond.treat("), -1, "no treat-mode passthrough exists (delay is called directly)")
-	# And the specs carry no mode switch to smuggle one in.
+	assert_eq(body.find("heal_part"), -1, "no heal call exists in the treatment resolver (the no-HP pin)")
+	assert_eq(body.find("cond.resolve("), -1, "no bespoke removal — resolution only via the treat chokepoint")
+	assert_eq(body.count("cond.treat("), 1, "exactly ONE treat call — the S6-d resolve chokepoint")
+	assert_true(body.find("cond.treat(target, part_key, condition_id, \"resolve\")") >= 0,
+		"the one treat call is the mode-\"resolve\" S6-d path, nothing else")
+	# The batch-C specs are untouched: no mode switch, no heal field.
 	for lv: int in range(1, 5):
 		for key: String in ["seal_the_wound", "field_triage"]:
 			var spec: Dictionary = SkillBook.mechanics(key, lv)
 			assert_false(spec.has("mode"), "%s L%d spec has no mode field" % [key, lv])
 			assert_false(spec.has("heal"), "%s L%d spec has no heal field" % [key, lv])
+			assert_false(spec.has("resolve_conditions"), "%s L%d spec has no resolve unlock" % [key, lv])
+	# And the wave-2 medic unlocks resolve ONLY at L4, only for the ruled pair.
+	for lv: int in range(1, 4):
+		assert_false(SkillBook.mechanics("combat_medic", lv).has("resolve_conditions"),
+			"combat_medic L%d carries no resolve unlock (S6-d is the L4 rung)" % lv)
+	assert_eq(SkillBook.mechanics("combat_medic", 4).get("resolve_conditions", []),
+		["infected", "bleeding"], "combat_medic L4 resolves Infection/Bleed ONLY (row 6, Crush dropped)")
+	assert_false(SkillBook.mechanics("combat_medic", 4).has("heal"), "no heal field at any medic level")
 
 
 func test_seal_stabilizes_bleed_out() -> void:

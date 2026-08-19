@@ -52,13 +52,24 @@ extends RefCounted
 ##                          table — the feint path keeps Tool, F3)
 ##   ally_treatment       — batch C "Medics & Minds": delay a condition's
 ##                          advancement on self/an ally via ConditionEngine.delay
-##                          — mode is DELAY ONLY (FINAL default #8: never a cure,
-##                          never HP; no resolve/heal path exists in the
-##                          resolver). Two carriers via spec fields:
-##                          seal_the_wound (self_allowed, bleeding/infected
-##                          only) and field_triage (ally-only, any condition,
-##                          consumes a bandage_charge via the generic STACK
-##                          prime)
+##                          — the BASE mode is DELAY (FINAL default #8: never a
+##                          cure of a lethal state, never HP; no heal path
+##                          exists in the resolver, structurally). Two batch-C
+##                          carriers via spec fields: seal_the_wound
+##                          (self_allowed, bleeding/infected only) and
+##                          field_triage (ally-only, any condition, consumes a
+##                          bandage_charge via the generic STACK prime).
+##                          Tier-2 wave 2 (combat_medic — S6-d, [FROM row 6,
+##                          audit fix: Crush dropped]): a spec carrying
+##                          "resolve_conditions" (L4+) additionally accepts
+##                          {"mode": "resolve"} — fully REMOVE one listed
+##                          condition (Infection/Bleed) through the ENGINE's
+##                          own removal path (ConditionEngine.treat mode
+##                          "resolve" — R10's infection gate honored), once
+##                          per Clock (treat_resolve_used_clock), NEVER while
+##                          the condition drives a bleed-out (the lethal
+##                          state is held, not cured — default #8's line) and
+##                          still NEVER HP (the no-HP structural pin holds)
 ##   intel_reveal         — batch C: knowledge plays, zero rng. Two forms:
 ##                          "declared_read" (read_the_pattern — reveal one
 ##                          VISIBLE enemy's scheduled action(s) until the Clock
@@ -149,6 +160,33 @@ extends RefCounted
 ##                          (S5-d, row 68): the armed save NEGATES a Forced
 ##                          Action – Body outright once per Clock
 ##                          (negate_used_clock, serialized only-when-set)
+##   fused_counter        — tier-2 wave 2 (counterscript, S1 — BLESSED
+##                          2026-08-18): intel + counter fused. Mode "read"
+##                          (action {"mode": "read"}): the standing read —
+##                          intel_reveal's declared_read lane (visible enemy,
+##                          read_range, until the Clock reset via the same
+##                          pattern_reads record + expiry sweep + owner-gated
+##                          view projection) CAPPED at spec read_targets
+##                          concurrent reads (1 at L1; S1-c's second enemy at
+##                          L3+ — a read past the cap REPLACES the oldest,
+##                          attention moves). Default mode "counter": a
+##                          cost-1 strike vs an adjacent READ TARGET — the
+##                          WIDENED gate (S1-a): no winding_up prime; any
+##                          declared-but-unresolved action of the read target
+##                          with remaining cost can be countered — a future
+##                          windup (cut remaining cost / collapse → Forced
+##                          BODY, the counter_surge machinery) OR a same-tick
+##                          still-pending scheduled instant (seq-ordered:
+##                          declared after the counter, collapsing at its own
+##                          slot; an action that already RESOLVED can never
+##                          be countered — the honest boundary: same-tick
+##                          instants resolve in declaration order, so the
+##                          widened gate covers exactly the SCHEDULED
+##                          remainder). S1-b (L2+, [FROM row 8]): a
+##                          countered-but-NOT-collapsed action arms the
+##                          per-source immunity window (counter_immunities —
+##                          the source cannot affect the counter-actor for
+##                          immunity_moments Moments; others still affected)
 ##   strike               — generic single-target strike (the unknown-key fallback)
 ##
 ## SCOPE: the six demo-slice skills below carry FINAL authored numbers (not R14
@@ -202,6 +240,28 @@ extends RefCounted
 ## flags, and an undeclared key resolves through the `strike` fallback.
 ## L2-4 magnitudes below are PLACEHOLDER (R14), anchored per the blessed
 ## ladders' [PH] guidance (L1 >= the consumed parent's L5 value).
+##
+## TIER-2 WAVE 2 (same proposal doc): two more ladders ENCODED —
+## **combat_medic** (S6, M7: Seal Lv5 + Triage Lv3 — ally_treatment
+## extended): a IMPLEMENTED (delay ANY condition on self or any ally within
+## treat_range; Triage's charge economy kept — ALLY treatment consumes a
+## bandage_charge, self-treatment never does) · b IMPLEMENTED (delay/range
+## rows) · c DATA ([NEEDS] freeze/arrest — a hold-open distinct from
+## multi-Clock delay: blocking re-application advancement needs a
+## ConditionEngine mode this wave does not build) · d IMPLEMENTED ([FROM
+## row 6, Crush dropped]: the resolve mode — see the archetype note; once
+## per Clock, never HP, never a lethal state) · e DATA (threshold row 98 —
+## the once-per-combat economy + the stabilize rider stay data; the resolve
+## PATH it needs now exists).
+## **counterscript** (S1, M2: Counter-Surge Lv5 + Read The Pattern Lv3 —
+## fused_counter): a IMPLEMENTED (the standing read + the widened counter
+## gate — see the archetype note) · b IMPLEMENTED (deepened cut + the
+## per-source 3-Moment immunity window, serialized) · c IMPLEMENTED (the
+## second concurrent read + deeper queue reveal) · d DATA ([NEEDS] R15
+## combined-action hooks — cross-footprint) · e DATA (threshold row 93;
+## [NEEDS] boss win-condition telegraph exposure). Both stay OUT of
+## KNOWN_KEYS for wave 1's two reasons (acquisition-gated; keyword rulings
+## pending). All magnitudes PLACEHOLDER (R14).
 ##
 ## PRIMING (rules-addendum R3, decision-log #20 — "cooldowns do not exist"): a
 ## spec MAY carry a "prime" Dictionary that ActionResolver._prime_unmet enforces
@@ -1049,6 +1109,67 @@ static func mechanics(key: String, level: int) -> Dictionary:
 				"grip_range": [22, 24, 26, 28][lv - 1],
 				"drag": [2, 3, 3, 4][lv - 1],
 				"grip": "psychic",
+			}
+		"combat_medic":
+			# Tier-2 wave 2 (S6, M7: Seal The Wound Lv5 + Field Triage Lv3 —
+			# BLESSED 2026-08-18). Mind, cost 1 (instant). The fused medic:
+			# treat SELF or ANY ally within treat_range (L1 = 2, Triage's L5
+			# reach — threshold row 87 read as a total), delay ANY condition
+			# (both parents' lanes fused: no treatable list) delay_clocks
+			# Clocks (L1 = 4, >= Seal's L5 total — row 5's "+3 Clock" over
+			# base 1). Triage's economy kept via ally_consumes: an ALLY
+			# treatment requires + consumes a bandage_charge (the declare
+			# gate lives in _validate_ally_treatment — conditional on the
+			# target, so no unconditional STACK prime fits); SELF treatment
+			# never touches the counter (Seal's lane had no charge). S6-c
+			# (arrest/freeze) stays DATA ([NEEDS] — a hold-open distinct
+			# from multi-Clock delay). S6-d (L4, [FROM row 6 — audit fix:
+			# Crush dropped]): resolve_conditions unlocks the RESOLVE mode —
+			# fully remove one active Infection or Bleeding, once per Clock,
+			# through ConditionEngine.treat's own gates; never HP, never a
+			# lethal state (default #8 — the boundary is enforced, not
+			# assumed). S6-e stays threshold DATA (row 98). All numbers
+			# PLACEHOLDER (R14).
+			spec = {
+				"archetype": "ally_treatment",
+				"cost": 1,
+				"treat_range": [2, 3, 3, 3][lv - 1],
+				"self_allowed": true,
+				"treatable": [],
+				"delay_clocks": [4, 5, 5, 6][lv - 1],
+				"ally_consumes": "bandage_charge",
+			}
+			if lv >= 4:
+				spec["resolve_conditions"] = ["infected", "bleeding"]
+		"counterscript":
+			# Tier-2 wave 2 (S1, M2: Counter-Surge Lv5 + Read The Pattern
+			# Lv3 — BLESSED 2026-08-18). Physique/Mind, cost 1 (both modes).
+			# The fusion: mode "read" holds the standing read (read_range =
+			# the parent's authored 3; actions_revealed L1 >= the parent's
+			# L5 total 5 — row 9's "+4 Action"; L3 adds row 10's +4);
+			# read_targets caps CONCURRENT reads (S1-c: the second enemy at
+			# L3+ — reading past the cap replaces the oldest). Default mode
+			# "counter": strike an ADJACENT read target — the widened gate
+			# (no winding_up prime: any declared action of the read target
+			# with remaining cost); the strike inherits action/item damage
+			# (the counter_surge basic-unarmed default); a connected hit
+			# cuts cost_cut (L1 = 5, >= the parent's L5 cut — row 7; the
+			# S1-b deepen continues the band), collapse -> Forced BODY (the
+			# parameterized table). immunity_moments (S1-b, L2+ — [FROM row
+			# 8]): a cut that does NOT collapse arms the per-source
+			# 3-Moment immunity window. S1-d/e stay DATA ([NEEDS] R15
+			# hooks / boss telegraph exposure — cross-footprint; threshold
+			# row 93). All numbers PLACEHOLDER (R14).
+			spec = {
+				"archetype": "fused_counter",
+				"cost": 1,
+				"attack_range": 1,
+				"read_range": 3,
+				"actions_revealed": [5, 5, 9, 9][lv - 1],
+				"read_targets": [1, 1, 2, 2][lv - 1],
+				"cost_cut": [5, 6, 6, 7][lv - 1],
+				"collapse_table": "body",
+				"immunity_moments": [0, 3, 3, 3][lv - 1],
 			}
 		"tactical_roll":
 			# Reflexes, 0 Moments — the cost is the actor's MOVEMENT for the

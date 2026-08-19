@@ -1597,16 +1597,16 @@
     "requirements": "A visible enemy for the read; the counter strikes an adjacent enemy who is your read target.",
     "range": "Read 3 / Counter adjacent",
     "target": "Single",
-    "effect": "One skill, two uses that feed each other: hold the read on one visible enemy (their scheduled action(s) until the Clock reset), and against your read target the counter's gate widens — any declared action with remaining cost can be countered, not only a 2+ Moment windup. A connected counter cuts the remaining cost by [PH — >= the parent's L5 cut]; collapse -> Forced Action — Body. [NEEDS: read-linked counter gate — interrupt_counter requires an executing 2+ Moment action today] [numbers PLACEHOLDER R14]",
+    "effect": "One skill, two uses that feed each other: hold the read on one visible enemy (their scheduled action(s) until the Clock reset), and against your read target the counter's gate widens — any declared action with remaining cost can be countered, not only a 2+ Moment windup. A connected counter cuts the remaining cost by [PH — >= the parent's L5 cut]; collapse -> Forced Action — Body. [IMPLEMENTED wave 2 — the fused_counter archetype: the read is the whole prime (no winding_up gate); the widened gate covers any SCHEDULED remainder — an action that already resolved can never be countered (same-tick instants resolve in declaration order; the honest boundary, stated)] [numbers PLACEHOLDER R14]",
     "unlock_requirements": {},
     "effects": [
       {
         "level": 2,
-        "text": "[FROM row 8] The cut deepens to [PH — row 8's 5], and even if the countered action doesn't collapse, it cannot affect you for the next 3 Moments [PH] — you already answered it, so it simply misses you. [NEEDS: per-source immunity window on the actor]"
+        "text": "[FROM row 8] The cut deepens to [PH — row 8's 5], and even if the countered action doesn't collapse, it cannot affect you for the next 3 Moments [PH] — you already answered it, so it simply misses you. [IMPLEMENTED wave 2 — the serialized per-source counter_immunities window ({source -> until_tick}, the next 3 Moments), enforced at the hit seams: the immune actor is excluded from the source's effect against THEM only]"
       },
       {
         "level": 3,
-        "text": "[FROM row 10] The read holds on a second enemy at once, foreseeing more of their queue (+[PH] actions — row 10's +4); the counter answers either read target. [NEEDS: second concurrent read — spec extension]"
+        "text": "[FROM row 10] The read holds on a second enemy at once, foreseeing more of their queue (+[PH] actions — row 10's +4); the counter answers either read target. [IMPLEMENTED wave 2 — read_targets caps concurrent reads (2 at L3+); a read past the cap replaces the oldest]"
       },
       {
         "level": 4,
@@ -1771,11 +1771,11 @@
       },
       {
         "level": 3,
-        "text": "Arrest, don't cure: hold one condition frozen (no advancement) for [PH] duration rather than only delaying its next tick — deeper management, still not a cure and never HP. [NEEDS: freeze/arrest mode in ConditionEngine — delay exists, hold-open doesn't]"
+        "text": "Arrest, don't cure: hold one condition frozen (no advancement) for [PH] duration rather than only delaying its next tick — deeper management, still not a cure and never HP. [NEEDS: freeze/arrest mode in ConditionEngine — still DATA after wave 2: the multi-Clock delay postpones per-Clock advancement, but a true hold-open (blocking re-application advancement too) is engine machinery this wave did not build]"
       },
       {
         "level": 4,
-        "text": "[FROM row 6 — audit fix rides along: Crush dropped (Crushed is structural damage, not a treatable condition)] Resolve the treatable: fully resolve one active Infection or Bleeding condition [PH — once per Clock]. Boundary kept honest: this clears a condition instance — it never restores HP and never touches a lethal state. [NEEDS: condition-resolve path in ally_treatment — the shipped resolver mode is DELAY ONLY by design]"
+        "text": "[FROM row 6 — audit fix rides along: Crush dropped (Crushed is structural damage, not a treatable condition)] Resolve the treatable: fully resolve one active Infection or Bleeding condition [PH — once per Clock]. Boundary kept honest: this clears a condition instance — it never restores HP and never touches a lethal state. [IMPLEMENTED wave 2 — the resolve mode rides ConditionEngine.treat's own gates (R10's infection rule honored), once per Clock (treat_resolve_used_clock), rejected while the condition drives a bleed-out (the lethal state is held, not cured); the no-HP structural pin holds and was updated to the new source shape]"
       }
     ],
     "acquisition": "Gemstone mutation M7 (decision #35; data/skill_mutations.json 'combat_medic'): merge Seal The Wound Lv 5 + Field Triage Lv 3 — both parents consumed, arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
