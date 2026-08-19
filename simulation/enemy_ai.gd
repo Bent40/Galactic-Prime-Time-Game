@@ -45,13 +45,17 @@ extends RefCounted
 ##   heal / wait / stand           -> "defensive"   (recovering / holding back)
 ##   summon / telegraph / blast    -> "building"    (mustering the brood /
 ##                                                   charging the valve beat)
-## TWO documented exceptions: a "wait" whose reason is "explosion_building"
+## FOUR documented exceptions: a "wait" whose reason is "explosion_building"
 ## reads "building" — the venting boss is still charging its blast; a "wait"
 ## whose reason is "holding_cutoff" reads "hunting" — the herder on its post
-## (wave 4d below) is mid-hunt, not recovering. The stance reads INTENT, not
-## idleness. Unknown/future choices default to "defensive" (the wait bucket)
-## until mapped. The audit's fuller emotion ladder ("fleeing"/"desperate")
-## awaits behaviors that exist — v1 AI never flees.
+## (wave 4d below) is mid-hunt, not recovering; and the R20 hearing pair
+## (round 3b) both read "alert" — a "wait" whose reason is "alerted_holding"
+## (something was heard, nothing is seen: on edge, not recovering) and a
+## "move" whose reason is "investigating" (walking to a SOUND, not hunting
+## seen prey). The stance reads INTENT, not idleness. Unknown/future choices
+## default to "defensive" (the wait bucket) until mapped. The audit's fuller
+## emotion ladder ("fleeing"/"desperate") awaits behaviors that exist — v1
+## AI never flees.
 ##
 ## HERDING — the war-hound maze funnel (KAN-5 wave 4d, R11 #21 — makes
 ## corner_the_prey REAL; the compendium §4.6 signature: the pack corners the
@@ -261,6 +265,10 @@ static func stance_for_decision(decision: Dictionary) -> String:
 		return "building"  # the venting boss is still charging its blast
 	if choice == "wait" and String(decision.get("reason", "")) == "holding_cutoff":
 		return "hunting"  # wave 4d: the herder on its post is mid-hunt, not recovering
+	if choice == "wait" and String(decision.get("reason", "")) == "alerted_holding":
+		return "alert"  # R20 hearing: something is out there — on edge, not recovering
+	if choice == "move" and String(decision.get("reason", "")) == "investigating":
+		return "alert"  # R20 hearing: walking to a SOUND, not hunting seen prey
 	return String(STANCE_FOR_CHOICE.get(choice, "defensive"))
 
 
@@ -361,7 +369,7 @@ func _decide_mob(actor: CombatantState) -> Dictionary:
 	var strike: Dictionary = _first_strike_ability(actor, [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
-		return _wait("mob", "no_targets")
+		return _alert_or_wait(actor, "mob")  # R20 hearing: a live alert may investigate
 	if strike.is_empty():
 		return _wait("mob", "no_usable_ability")
 	return _strike_or_close(actor, "mob", strike, opponents, false)
@@ -400,7 +408,7 @@ func _decide_elite(actor: CombatantState) -> Dictionary:
 	var strike: Dictionary = _first_strike_ability(actor, [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
-		return _wait("elite", "no_targets")
+		return _alert_or_wait(actor, "elite")  # R20 hearing: a live alert may investigate
 	if strike.is_empty():
 		return _wait("elite", "no_usable_ability")
 	return _strike_or_close(actor, "elite", strike, opponents, true)
@@ -446,7 +454,7 @@ func _decide_boss(actor: CombatantState) -> Dictionary:
 	var allowed: Array = behavior.get("abilities", [])
 	var opponents: Array[CombatantState] = _opponents(actor)
 	if opponents.is_empty():
-		return _wait("boss", "no_targets")
+		return _alert_or_wait(actor, "boss")  # R20 hearing: a live alert may investigate
 	# Priority 1: cone sweep when enough targets stand inside the REAL arc
 	# (decision #31 — retires the R11 #16 range-only deferral): the aim is the
 	# fixed-order direction whose 120-degree HexGeometry.cone catches the most
@@ -1206,6 +1214,70 @@ static func _wait(tier: String, reason: String) -> Dictionary:
 	return {"choice": "wait", "tier": tier, "reason": reason}
 
 
+# ------------------------------------------------------ hearing (R20 round 3b)
+
+## R20 hearing — the investigate/ignore personality gate ("If an entity hears
+## you it may, per its personality/AI, investigate, ignore, or otherwise
+## react"). An explicit personality key `investigates` wins (spec/template
+## authored, the R23 override pattern); the derived default is the v1 "smart
+## enough" threshold FOLDED with the hunter instinct (PROVISIONAL, R14
+## family — flagged in the addendum): Mind >= 2 (R20's per-creature
+## AI/Mind threshold resolved to one number, the sight-2x precedent) OR a
+## herder personality (the hunter investigates by nose, not wit). Landing for
+## the seeded templates, documented in the addendum: war_hound INVESTIGATES
+## (herder, Mind 1); roach_dog (Mind 0), little_brother_roach (Mind 1) and
+## incinedile (Mind 1) IGNORE — the alerted boss holds its arena rather than
+## leaving it (stance shifts to "alert", nothing else). Lives here rather
+## than combatant.gd deliberately: the gate is AI reaction policy (the
+## decide flow is its only consumer); the derived-default shape mirrors
+## personality_mock_sensitive.
+static func investigates(actor: CombatantState) -> bool:
+	if actor.personality.has("investigates"):
+		return bool(actor.personality.get("investigates"))
+	return actor.trait_total("mind") >= 2 or actor.personality_herder()
+
+
+## R20 hearing — the ALERTED no-targets exit: every tier's "I see nobody"
+## wait routes through here, so a combatant carrying a live alert no longer
+## just stands down (the wave-4c "honestly loses the target" line, upgraded
+## exactly as the addendum's downscope promised). THE CONTRACT (addendum R20
+## "SHIPPED — hearing/alert"):
+##  * INVESTIGATORS (investigates() true) move toward the hex the SOUND
+##    happened on — the stored alerted.sound, stop_range 0 — never toward
+##    the hider's current position ("does not know where you are": hearing
+##    located a sound, not a maker; the divergence is pinned in
+##    tests/test_hearing.gd). The walk re-faces the mover (the R30 update
+##    table), so investigating can genuinely re-open the investigator's
+##    vision cone onto the hider — R20's escalation path (a), emergent from
+##    the facing primitive, no extra rule authored. Arrived on the hex, no
+##    legal step, or movement spent -> HOLD ("alerted_holding") until the
+##    alert decays or something shows itself.
+##  * NON-INVESTIGATORS hold ("alerted_holding") — alerted without pursuit:
+##    the stance shifts to "alert" (stance_for_decision), behavior otherwise
+##    the old wait. (v1 line, documented: the holder does not TURN toward
+##    the sound either — facing updates belong to the resolver's R30 table
+##    and a wait is not in it; a face-the-noise reaction is future work.)
+## No live alert -> the pre-hearing "no_targets" wait, byte-identical: a
+## fight in which nothing was ever heard never reaches the new branches (the
+## harness compat bar). Pure over stored state — ZERO rng on every path (no
+## candidates exist, so there is nothing to draw over).
+func _alert_or_wait(actor: CombatantState, tier: String) -> Dictionary:
+	if actor.alerted.is_empty():
+		return _wait(tier, "no_targets")
+	if not investigates(actor):
+		return _wait(tier, "alerted_holding")
+	var sound_raw: Array = actor.alerted.get("sound", [])
+	if sound_raw.size() != 2:
+		return _wait(tier, "no_targets")  # defensive: a malformed alert reads as none
+	var sound := Vector2i(int(sound_raw[0]), int(sound_raw[1]))
+	if actor.position == sound:
+		return _wait(tier, "alerted_holding")  # arrived where the sound WAS — hold, listen
+	var move_to: Variant = _step_toward(actor, sound, 0)
+	if move_to == null:
+		return _wait(tier, "alerted_holding")
+	return {"choice": "move", "tier": tier, "move_to": move_to, "reason": "investigating"}
+
+
 # ------------------------------------------------------------------ targeting
 
 ## Living, in-play combatants whose team differs from the actor's. An actor
@@ -1216,10 +1288,12 @@ static func _wait(tier: String, reason: String) -> Dictionary:
 ## an attackable part are skipped, and so is a STEALTHED target (R20 AI
 ## honesty, wave 4c): an undetected opponent does not EXIST to the policy —
 ## no targeting, no cone counting, no pack draw, no antagonism weight ever
-## reads it. With every opponent stealthed the tier policies wait
-## ("no_targets"): the mob honestly loses the target — no search or
-## last-known-position behavior (R20's "investigate" rides the downscoped
-## hearing model; documented in the addendum's IMPLEMENTED marker).
+## reads it. With every opponent stealthed the tier policies still honestly
+## lose the TARGET — no last-known-TARGET-position behavior exists — but the
+## no-targets exit now routes through _alert_or_wait (R20 hearing, round 3b):
+## a combatant carrying a live ALERTED state may investigate the hex a SOUND
+## happened on (never the hider's current hex — the state stores no target).
+## An unalerted combatant waits ("no_targets") exactly as before.
 ## Sorted-id iteration keeps this deterministic.
 func _opponents(actor: CombatantState) -> Array[CombatantState]:
 	var out: Array[CombatantState] = []

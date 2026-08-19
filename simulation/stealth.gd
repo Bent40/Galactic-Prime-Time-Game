@@ -33,9 +33,12 @@ extends RefCounted
 ##    observer watches no one, a teamless target hides from any teamed
 ##    observer). An observer that cannot act (dead / removed / helpless —
 ##    fainted keeps no watch) sees nothing.
-## Hearing (the Shock-T1 Shout wire), entry/exit, AI honesty and the sweep
-## live in CombatSim/ConditionEngine/EnemyAI — see the R20 IMPLEMENTED marker
-## in docs/rules-addendum.md for the full map + every remaining downscope.
+## HEARING (round 3b — the second sense) lives at the bottom of this file:
+## the loudness table + the pure noise derivation/`hears` queries; the
+## Shock-T1 Shout self-break wire, entry/exit, AI honesty and both sweeps
+## (stealth + noise) live in CombatSim/ConditionEngine/EnemyAI — see the R20
+## IMPLEMENTED marker in docs/rules-addendum.md for the full map + every
+## remaining downscope.
 ##
 ## ARC MODEL (R30 — the facing arcs). A combatant's `facing` is a direction
 ## index 0..5 into HexGeometry.DIRECTIONS (0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE):
@@ -152,3 +155,92 @@ static func first_observer_seeing(combatants: Dictionary, target: CombatantState
 		if sees(combatants[id], target, arena, tick):
 			return String(id)
 	return ""
+
+
+# --------------------------------------------------- hearing (R20 round 3b)
+## THE NOISE MODEL — hearing is R20's SECOND SENSE (closing the wave-4c
+## "hearing beyond the Shout" downscope; contract in the rules-addendum R20
+## "SHIPPED — hearing/alert" marker). Pure DERIVATION: a command's event
+## batch maps to noise rows through the loudness table below — no new
+## emission points anywhere in the resolver, the events the sim already
+## emits ARE the sounds. Deterministic and rng-FREE: R20's hearing text
+## authors a personality REACTION ("may, per its personality/AI,
+## investigate, ignore, or otherwise react"), never a detection roll, so
+## hearing touches neither rng stream. CONSUMPTION (who hears what, the
+## ALERTED state) lives in CombatSim._noise_checks — this file stays the
+## pure-query authority, mirroring the sight split.
+##
+## THE LOUDNESS TABLE (every value PLACEHOLDER, R14 family). Loudness IS the
+## hearing range in hexes — R20 authors no per-creature hearing acuity and
+## none is invented; sound is omnidirectional and deliberately ignores LOS
+## (no wall-acoustics model exists — a shout carries through a closed door;
+## muffling is future numbers work, not silently assumed):
+##   shout (shock_shout — the R13/R20 noise seed)      -> LOUD     (10)
+##   attack resolutions / explosions / door flips      -> MODERATE (6)
+##   movement (moved — free and scheduled alike)       -> QUIET    (3)
+## v1 SOURCE MAP (exhaustive): shock_shout, action_resolved kind "attack",
+## explosion_blast, door_changed, moved. Everything else that plausibly makes
+## sound (reactions, grapples, zone effects, trash cans, treatment...) is
+## DOWNSCOPED loudly in the addendum — no ruled loudness row yet; extend the
+## table there first, then here.
+const NOISE_LOUD: int = 10
+const NOISE_MODERATE: int = 6
+const NOISE_QUIET: int = 3
+
+
+## Derives THIS batch's noise rows: [{"source": id, "position": Vector2i,
+## "loudness": int}], in batch (event) order — deterministic. The derivation
+## is HONEST AND COMPLETE per the table: every mapped event yields its row
+## whether the source is hidden or seen — redundancy filtering is the
+## CONSUMER's job (CombatSim._noise_checks documents the default-detected
+## discipline). Position rule: the hex where the sound HAPPENED — the event's
+## own position when it carries one (explosion_blast / door_changed; moved
+## uses its destination "to" — the footfalls end there), else the source's
+## sweep-time position (batch events do not all carry positions; documented
+## v1 simplification). A sourceless/unknown-source row is skipped (nothing
+## ruled hears the environment itself yet — trash cans ride the downscope).
+static func derive_noises(events: Array[Dictionary], combatants: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for event: Dictionary in events:
+		match String(event.get("type", "")):
+			"shock_shout":
+				_append_noise(out, combatants, String(event.get("combatant", "")), [], NOISE_LOUD)
+			"action_resolved":
+				if String(event.get("kind", "")) == "attack":
+					_append_noise(out, combatants, String(event.get("actor", "")), [], NOISE_MODERATE)
+			"explosion_blast":
+				_append_noise(out, combatants, String(event.get("combatant", "")), event.get("position", []), NOISE_MODERATE)
+			"door_changed":
+				_append_noise(out, combatants, String(event.get("actor", "")), event.get("position", []), NOISE_MODERATE)
+			"moved":
+				_append_noise(out, combatants, String(event.get("actor", "")), event.get("to", []), NOISE_QUIET)
+	return out
+
+
+## Appends one noise row; `position` is the event-carried [q, r] pair when it
+## has one, else the source combatant's current hex (see derive_noises).
+static func _append_noise(out: Array[Dictionary], combatants: Dictionary, source_id: String, position: Variant, loudness: int) -> void:
+	if source_id == "":
+		return
+	var pair: Array = position if position is Array else []
+	var pos: Vector2i
+	if pair.size() == 2:
+		pos = Vector2i(int(pair[0]), int(pair[1]))
+	else:
+		var source: CombatantState = combatants.get(source_id)
+		if source == null:
+			return
+		pos = source.position
+	out.append({"source": source_id, "position": pos, "loudness": loudness})
+
+
+## The R20 binary hearing check — the range half of the sense: does a hearer
+## at `hearer_pos` hear a noise of `loudness` made at `noise_position`? Plain
+## hex distance, boundary INCLUSIVE (the sight-range convention), measured
+## from where the sound HAPPENED — never from the source's current hex (the
+## source may have moved on; hearing locates sounds, not makers). No LOS, no
+## Mind gate, no rng (see the table header). Who is ELIGIBLE to hear (AI,
+## able to act, hostile source, source undetected) is consumption policy —
+## CombatSim._noise_checks.
+static func hears(hearer_pos: Vector2i, noise_position: Vector2i, loudness: int) -> bool:
+	return CombatantState.hex_distance(hearer_pos, noise_position) <= loudness
