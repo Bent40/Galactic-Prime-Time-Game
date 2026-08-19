@@ -115,6 +115,29 @@ of the next Clock. Order of operations at each tick:
   rung (Predator's Arc L2+) may open its chain to ANY legal target by waiving the
   same-target half until any other action resolves. The prime vocabulary itself is
   unchanged — both are properties of how the CHAIN predicate reads existing state.
+- **Cross-character chains (owner-approved 2026-08-19 — "Cross character chain is
+  approved"; every design detail below is PROVISIONAL pending owner sign-off):** a CHAIN
+  prime `[after:X]` is now met if EITHER (1) the actor's own record satisfies it — the
+  pre-change predicate, untouched, chain-alias and the S2-b waiver included — OR (2) some
+  OTHER combatant on the **same team** last resolved X (or a key that chain-aliases to X)
+  against the **same target** the chained declare names (`ActionResolver._teammate_chain_met`).
+  The combo fantasy: ally A pounces the boss, ally B follows up with Slip Through on THAT
+  boss. PROVISIONAL details, each flagged in code: **same-target always** for the teammate
+  clause — a teammate's opener on a different target opens nothing, even for primes
+  without `same_target` (the flag only governs the actor-local clause); **a concrete
+  shared target is required** — self/area actions on either side (a target-less opener,
+  or a target-less follower like Shockwave's cone) never cross-chain; **the opener's life
+  state is ignored** — a downed/dead teammate's opener still counts (the action happened;
+  fewer conditions, deterministic); **`chain_open_key` stays actor-local** — a teammate's
+  S2-b waiver is never consulted; **strict team equality** with teamless ("" team) actors
+  having no teammates (the hype_surge precedent); **team-symmetric** — mobs chain off
+  mobs too, though EnemyAI does not exploit it yet (future AI hook); **no extra freshness
+  window** — a teammate's record persists exactly as long as actor-local chains do, until
+  their next resolved action overwrites it. Determinism-neutral by construction: the
+  clause reads existing serialized fields only (`team` / `last_action_key` /
+  `last_action_target`) — no new state, no rng draws, no serialization changes; a
+  chain-free fight is pinned hash-identical to the pre-change engine
+  (`tests/test_cross_chain.gd`).
 
 ## R4 — Damage, condition application, universal advancement, missing tiers (answers A4, C8, E1, E2, E3, D3)
 

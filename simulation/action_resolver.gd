@@ -374,7 +374,12 @@ func _effective_prime(action: Dictionary) -> Dictionary:
 ##   CHAIN          {"type":"chain","after":k}                — actor's last resolved key == k
 ##                  + optional "same_target": true (batch A) — the chained
 ##                  action's first target must equal the actor's
-##                  last_action_target (the FINAL default #4 "same target" gate)
+##                  last_action_target (the FINAL default #4 "same target" gate).
+##                  Cross-character clause (owner-approved 2026-08-19; details
+##                  PROVISIONAL): when the actor's OWN record leaves the chain
+##                  unmet, a TEAMMATE whose last resolved action was k (or
+##                  chain-aliases to k) ON THE SAME TARGET this declare names
+##                  opens it instead — see _teammate_chain_met.
 ##   STANCE         {"type":"stance","stance":s}              — actor holds stance s
 ##   STACK          {"type":"stack","resource":r,"count":n}   — actor has >= n of r
 ##   STATE-POSITION {"type":"state","who":"self|target","status":s} — subject has status s
@@ -386,24 +391,41 @@ func _prime_unmet(actor: CombatantState, action: Dictionary) -> String:
 	match String(prime.get("type", "")):
 		"chain":
 			var after := String(prime.get("after", ""))
+			# Clause 1 — the actor's OWN record (unchanged pre-cross-chain
+			# semantics, including the S2-b chain-open waiver). The unmet
+			# reason is held, not returned, so clause 2 can rescue it.
+			var own_unmet := ""
 			if actor.last_action_key != after and not _chain_counts_as(actor.last_action_key, after):
-				return "chain_after:%s" % after
-			# Tier-2 wave 3 (predators_arc S2-b, [FROM row 40]): a live
-			# chain-open marker — set by the opening resolver, cleared the
-			# moment any OTHER action resolves — WAIVES the same-target half:
-			# the chained skill may open into a different target (its own
-			# reach/size gates still apply). The last_action_key equality is
-			# the honest belt: the marker only speaks for the action that IS
-			# the last resolved one.
-			var chain_open: bool = actor.chain_open_key != "" \
-				and actor.chain_open_key == actor.last_action_key
-			if bool(prime.get("same_target", false)) and not chain_open:
-				var chain_target := ""
-				var chain_targets: Array = action.get("targets", [])
-				if not chain_targets.is_empty():
-					chain_target = String((chain_targets[0] as Dictionary).get("id", ""))
-				if chain_target == "" or chain_target != actor.last_action_target:
-					return "chain_same_target:%s" % after
+				own_unmet = "chain_after:%s" % after
+			else:
+				# Tier-2 wave 3 (predators_arc S2-b, [FROM row 40]): a live
+				# chain-open marker — set by the opening resolver, cleared the
+				# moment any OTHER action resolves — WAIVES the same-target half:
+				# the chained skill may open into a different target (its own
+				# reach/size gates still apply). The last_action_key equality is
+				# the honest belt: the marker only speaks for the action that IS
+				# the last resolved one. ACTOR-LOCAL by design (cross-character
+				# chains, PROVISIONAL): a teammate's chain_open_key is never
+				# consulted — the waiver belongs to the opener's own next declare.
+				var chain_open: bool = actor.chain_open_key != "" \
+					and actor.chain_open_key == actor.last_action_key
+				if bool(prime.get("same_target", false)) and not chain_open:
+					var chain_target := ""
+					var chain_targets: Array = action.get("targets", [])
+					if not chain_targets.is_empty():
+						chain_target = String((chain_targets[0] as Dictionary).get("id", ""))
+					if chain_target == "" or chain_target != actor.last_action_target:
+						own_unmet = "chain_same_target:%s" % after
+			# Clause 2 — cross-character chain (owner-approved 2026-08-19;
+			# design details PROVISIONAL): a teammate's opener on the SAME
+			# target this declare names satisfies the gate. Evaluated only
+			# when the actor's own record left the chain unmet; a fight that
+			# never leans on a teammate takes the exact pre-change path and
+			# the exact pre-change unmet reason.
+			if own_unmet != "" and _teammate_chain_met(actor, after, action):
+				own_unmet = ""
+			if own_unmet != "":
+				return own_unmet
 		"stance":
 			var want := String(prime.get("stance", ""))
 			if actor.stance != want:
@@ -442,6 +464,56 @@ static func _chain_counts_as(last_key: String, after: String) -> bool:
 	if last_key == "" or after == "":
 		return false
 	return String(SkillBook.mechanics(last_key, 1).get("chain_as", "")) == after
+
+
+## Cross-character CHAIN clause (owner-approved 2026-08-19; every design detail
+## below is PROVISIONAL pending owner sign-off — flagged individually). True when
+## some OTHER combatant on the actor's team last resolved `after` (or a key that
+## chain-aliases to it) against the SAME target the declared action names.
+##   - SAME-TARGET always (PROVISIONAL): the combo fantasy is ally A opens the
+##     boss, ally B follows up on THAT boss — a teammate's opener on a different
+##     target never opens your chain, even for primes without "same_target"
+##     (the teammate handoff IS the same-target story; the flag only governs
+##     the actor-local clause).
+##   - CONCRETE SHARED TARGET required (PROVISIONAL): if the declare names no
+##     target, or the teammate's last action had none (self/area actions), the
+##     clause never fires — cross-character chains need a body both sides touch.
+##   - TEAM gate (PROVISIONAL): strict team equality, and a teamless actor
+##     ("" team) has no teammates (the hype_surge precedent) — "" == "" never
+##     matches. Team-symmetric: mobs chain off mobs too, though EnemyAI does
+##     not exploit this yet (future AI hook — enemy_ai.gd untouched).
+##   - OPENER'S LIFE STATE ignored (PROVISIONAL): the action HAPPENED — a downed
+##     or removed teammate's opener still counts (fewer conditions, deterministic).
+##   - chain_open_key is NOT consulted (PROVISIONAL): the S2-b waiver is
+##     actor-local; this clause carries its own hard same-target requirement.
+##   - NO freshness window beyond the existing rule (PROVISIONAL): a teammate's
+##     record persists exactly as long as actor-local chains do — until THEIR
+##     next resolved action overwrites it.
+## Determinism: reads existing serialized fields only (team / last_action_key /
+## last_action_target) — no new state, no rng draws; combatants iterated in the
+## sim's canonical sorted-id order (the result is order-independent — any match
+## suffices — but the walk keeps the canonical idiom).
+func _teammate_chain_met(actor: CombatantState, after: String, action: Dictionary) -> bool:
+	if actor.team == "":
+		return false
+	var declared_target := ""
+	var declared_targets: Array = action.get("targets", [])
+	if not declared_targets.is_empty():
+		declared_target = String((declared_targets[0] as Dictionary).get("id", ""))
+	if declared_target == "":
+		return false
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var other: CombatantState = combatants[id]
+		if other.id == actor.id or other.team != actor.team:
+			continue  # clause 2 is OTHER combatants only — self is clause 1's job
+		if other.last_action_key != after and not _chain_counts_as(other.last_action_key, after):
+			continue
+		if other.last_action_target == "" or other.last_action_target != declared_target:
+			continue
+		return true
+	return false
 
 
 ## STACK resource count: the camera-call resource reuses the actor's Charm
