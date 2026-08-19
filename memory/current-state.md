@@ -1,12 +1,29 @@
 # Current State
 
 <!-- wf memory: required sections below; keep the headings. -->
-<!-- Last refreshed 2026-07-25 (post 4-fix batch + KAN-4 engine + wave 2). -->
+<!-- Last refreshed 2026-08-19 (post tier-2 wave — Rounds 1–5 complete). -->
 
 ## Done
 
-- **Suite: 698 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
-  gate; branches in lockstep at `dc63b07`.
+- **Suite: 844 passed / 0 failed** (`STATUS.md` is the live count). CI green on every
+  gate; branches in lockstep at `5b90ea0`.
+- **THE TIER-2 WAVE IS COMPLETE (2026-08-19, Rounds 1–5): ALL TEN blessed ladders
+  live** (IMPLEMENTED map in tests/test_tier2_wave1.gd) + the KAN-5 remainder:
+  R1 zones substrate (R32) + tier-2 import + Perfect Evasion/Vice Grip/Phantom
+  Grasp · R2 terrain+locks (R33) + Combat Medic/Counterscript · R3 seven unblocked
+  skills (terrain pricing, walls conjure/attackable, lockpicking, swim/drowning)
+  + hearing/alert (R20 phase 2, alerted≠located) · R4 the strike fusions
+  (Predator's Arc/Earthbreaker/Vivisection on the CHAIN-ALIAS primitive —
+  `chain_as` spec field, fusions inherit the parent's chain seat, event log keeps
+  the real key) · R5 the wave closer (The Unseen — the ANCHOR-LIFT, mobile conceal
+  re-anchors on 1-hex-per-Clock movement; The Long Con — sustained serialized con
+  state, Forced Tool/Body collapse, free repositions, Charm-scaled hype;
+  **voicebox** — thrown no-visible-source sounds, the LOUD alert row reachable
+  from stealth, 43rd base skill in KNOWN_KEYS). Every L5 mastery rung stays
+  threshold DATA by house convention (the tier-economy pass owns that band); all
+  magnitudes PLACEHOLDER R14. Tier-2 ids 51–60 stay out of KNOWN_KEYS
+  (Mod-Center acquisition-gated). Harnesses byte-identical through all five
+  rounds; balance still WIN t15 zero-damage. Reports: The Rundown artifact.
 - **THE CONTENT PASS IS COMPLETE (2026-08-18):** 28 skills implemented across four
   batches (A Chains&Strikes · B Guardians&Grapplers + the passover import ids 46-50 ·
   C Medics&Minds · D Casters&Showfolk — both slip candidates landed), on 11 new

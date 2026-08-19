@@ -1,15 +1,16 @@
 # Next Actions
 
 <!-- wf memory: required sections below; keep the headings. -->
-<!-- OWNER-FACING BY-ANGLE TRACKER. Last refreshed 2026-07-25. -->
+<!-- OWNER-FACING BY-ANGLE TRACKER. Last refreshed 2026-08-19. -->
 
 ## Next actions
 
 ### 🔀 branches
 `claude/session-continuation-next-steps-mpycyj` and `main` in **lockstep** (every
-commit pushed to both). Both at `e13d8e2` (wave 2 complete, CI green). Develop on
-the session branch; push `-u` to both. NOTE: the owner also pushes ledger commits
-directly to `main` — fetch + merge origin/main before pushing.
+commit pushed to both). Both at `5b90ea0` (tier-2 wave complete — Rounds 1–5,
+844/0, CI green). Develop on the session branch; push `-u` to both. NOTE: the
+owner also pushes ledger commits directly to `main` — fetch + merge origin/main
+before pushing.
 
 ### ⏸️ Owner-paced (open items)
 1. **Front rework (decision #31):** the owner drafts ALL mockups; we build against
@@ -24,26 +25,25 @@ directly to `main` — fetch + merge origin/main before pushing.
    on Pressure Strike (stands as-is); my two PROVISIONAL story readings —
    Sasha "Little shadow" may_reoffer / Nikita "The lonely" gone_for_run.
 
-### ▶️ Backlog status (wave 3 DONE 2026-07-25 — all four landed at `9af6d09`)
-- ~~Pack synergy + AI stances~~ · ~~keyword tree + mutations~~ · ~~second enemy
-  (war hound) + 3-encounter run~~ · ~~KAN-5 arenas (bounces + can pops real)~~.
-- ~~KAN-5 proper~~ **wave 4 DONE 2026-08-11 at `927fd0e`**: pathfinding, doors +
-  room graph (R29), stealth/detection/cover (R20), the maze funnel (R11 #21).
-  Still open there: R20's own deferred phases (facing cones, hearing/alert,
-  disguise), objects beyond trash cans, owner-authored room layouts (all
-  wall/can/door positions PLACEHOLDER).
-- ~~Content pass~~ **DONE 2026-08-18 at `dc63b07`** (28 implemented, 13 deferred
-  with named unblocks; facing primitive + tier machinery shipped alongside).
-  Follow-ups queued: **tier-2 rung authoring** (the merged skills' own L1-5 —
-  the 15 re-mapped threshold rows await placement); the two unblessed Mod-Center
-  offers; the run_state carry-sanitizer gap for the new combat fields
-  (guard/forced_save/conceal/channeling/held_by — self-healing sweeps cover it,
-  a small dedicated story closes it properly, run_state was story-frozen);
-  owner R14 glances flagged in Batch C/D notes (field_triage L3 range, frost's
-  Crushed coupling, poison impact + vibe grudge magnitudes, intercept guard
-  expiry).
+### ▶️ Backlog status (tier-2 wave DONE 2026-08-19 — Rounds 1–5 at `5b90ea0`, 844/0)
+- ~~Zones (R32)~~ · ~~terrain+locks (R33)~~ · ~~seven unblocked KAN-5 skills~~ ·
+  ~~hearing/alert (R20 ph2)~~ · ~~ALL TEN tier-2 ladders~~ · ~~voicebox~~ ·
+  ~~carry-sanitizer~~ — all shipped; harnesses byte-identical throughout.
+- **Owner-court queue (blocks the next content-quality pass):** the tier-2
+  RENAME pass (every fusion name PROVISIONAL); the R14 numbers glance-list
+  (field_triage L3 range, frost's Crushed coupling, poison/vibe magnitudes,
+  intercept guard expiry, quick_step slot-free economy, acrobatics roll-range —
+  plus every wave-authored placeholder, tagged per value in the specs);
+  PROVISIONAL content review (war hound, arenas, decline readings, investigate
+  personalities); premades' 4th skill slots + cross-character CHAIN; the front
+  mockups (decision #31 — owner drafts, we build → KAN-6).
+- **Dev-side ready when green-lit:** tier-3 merges ("we need a lot more
+  skills"); the deferred DATA rungs each name their unblock (decoy entity,
+  in-encounter gap/vent substrate, equipment vocabulary, verticality, the L5
+  mastery band → the tier-economy pass); disguise (R20's last phase).
 - **KAN-7 (parked — needs owner pricing):** threshold-dice upgrade economy,
-  Gemstone Bronze pricing, R6 XP, patron-roster migration, cap enforcement.
+  Gemstone Bronze pricing, R6 XP, patron-roster migration, cap enforcement,
+  Camera-Call v2 engine swap (named-Follower ledger, R11 #13).
 
 ### 🧰 process notes
 - Every wave: worktree → subagent ("do the work yourself") → main-agent verify

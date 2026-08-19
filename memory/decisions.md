@@ -55,3 +55,15 @@
 - **TTRPG side (owner, char-sheet repo):** rulebook v0.92 is the canonical rules master
   (folds the digital batch in — §14 = R22); skills passover G1–G8 ruled; campaign DB
   migrations executed 2026-07-25.
+- **The 2026-08-18/19 tier era (owner):** sign-off batch #32 (R26 undodgable declared
+  on windup; hype chain retention 40/60/80/100%; story-driven declines; epithets Sasha
+  "Little shadow" / Nikita "The lonely"); facing primitive + NO exclusive skills
+  (#33/R30 — exclusive_to retired, acquisition gates instead); **skill tiers RULED
+  (#34/#35/R31):** Tier 1 = L1–5, past 5 = MERGE (Gemstone, parents consumed) /
+  ABSORB (flat L6–8, per-recipe min fodder, cap 8) / LINEAR; tier-3 merges planned
+  ("we need a lot more skills"); Mod-Center broad-only offers ALL BLESSED
+  (phantom_grasp — owner-renamed, mundane-psionic per OQ1 — + the_unseen +
+  the_long_con); OQ2: Perfect Evasion S5-c = second roll vs a second distinct attack;
+  ALL TEN tier-2 ladders BLESSED 2026-08-19 ("Bless all ladders"). Names stay
+  PROVISIONAL pending the owner's rename pass. Full records: decision-log #32–35,
+  addendum R26–R33, docs/design/tier2-rungs-proposal.md (status blocks).
