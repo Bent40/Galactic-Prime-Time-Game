@@ -31,3 +31,4 @@ verdict_render.png.import
 /hud_render.png.import
 /hud_launch.png
 /hud_launch.png.import
+__pycache__/
