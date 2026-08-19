@@ -339,6 +339,15 @@ func view_combatants() -> Array[Dictionary]:
 		#                   Clock reset", so a read on an idle enemy pays off
 		#                   when they declare). Rows use the view_schedule
 		#                   vocabulary.
+		# R20 hearing (ADDITIVE, round 3b — only-when-set, the aura_reads
+		# idiom): the live ALERTED state verbatim ({tick, sound: [q, r]} —
+		# the hex a SOUND happened on, never the hider's location) for an AI
+		# combatant that heard something it cannot see. The broadcast stays
+		# omniscient (cameras see everything — the noise_heard event names
+		# the source); what the MOB knows is exactly this dict: no source id,
+		# by ruling ("ALERTED — it does not know where you are").
+		if not c.alerted.is_empty():
+			row["alerted"] = c.alerted.duplicate(true)
 		var aura: Dictionary = _aura_reads(c)
 		if not aura.is_empty():
 			row["aura_reads"] = aura

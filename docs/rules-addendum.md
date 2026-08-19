@@ -803,11 +803,86 @@ authors no detection roll, so no stream is ever touched.
 - **SHIPPED — the noise seed:** Shock-T1 Shout **breaks the shouter's stealth**
   (R13 wire via `shock_shout`, range-free — a shout is heard). Damage ALONE never
   breaks stealth (not a ruled break) — but a hit whose condition shocks (burn T1) shouts
-  the hider out through this path.
+  the hider out through this path. *(Unchanged by the hearing slice below — this is the
+  SHOUTER breaking its OWN stealth, a different rule from alerting others.)*
+- **SHIPPED — hearing/alert (round 3b, 2026-08-19 — closing this marker's "hearing
+  beyond the Shout" downscope).** Hearing is the SECOND SENSE: deterministic,
+  event-derived, **rng-free** (verified against the ruled text: hearing authors a
+  personality *reaction* — "may, per its personality/AI, investigate, ignore, or
+  otherwise react" — never a detection roll, so none was invented and neither rng
+  stream is touched).
+  * **The noise model** (`Stealth.derive_noises` + the `_noise_checks` sweep in
+    CombatSim `_post`): each command's event batch derives noise rows
+    `{source, position, loudness}` — **no new emission points in the resolver**; the
+    events the sim already emits ARE the sounds. **The loudness table (PLACEHOLDER,
+    R14 family — loudness IS the hearing range in hexes, boundary inclusive):**
+    shout (`shock_shout`) = **LOUD (10)** · attack resolutions / explosions / door
+    flips = **MODERATE (6)** · movement (`moved`) = **QUIET (3)**. Sound is
+    omnidirectional and ignores LOS (no wall-acoustics model exists; muffling is
+    future numbers work, not silently assumed). R20 authors no per-creature hearing
+    acuity — none invented. Positions are the hex the sound HAPPENED on (a move's
+    destination; a blast's center; a door's hex; else the source's sweep-time hex).
+  * **The consumption discipline (the honest minimal + the compat keystone):** noise
+    is DERIVED for every mapped event, but **consumed only while its source is still
+    HIDDEN (stealthed) at sweep time** — everyone else is DEFAULT-DETECTED (this
+    slice's own discipline), so a visible actor's noise is redundant with detection
+    itself. Consequence, documented not hidden: **a shout never alerts in v1** — the
+    R13 self-break (above) runs first and fully reveals the shouter, strictly more
+    information than an alert; the LOUD row stays real for authored no-visible-source
+    noises (**the voicebox skill's thrown sounds are exactly this substrate** — next
+    round). Hearer gates: AI-controlled + able to act (a fainted guard hears nothing
+    it will remember) + hostile to the source (your pack's noise alarms nobody) +
+    within loudness of the sound's hex. Several audible noises: the LAST in batch
+    order wins (the freshest sound; batches are ordered — deterministic).
+  * **The ALERTED state** (per the ruled wording "becomes ALERTED — it does **not**
+    know where you are"): a hearer that consumes a noise gets
+    `CombatantState.alerted = {tick, sound: [q, r]}` — **deliberately NO source id**:
+    the state records that a sound happened and WHERE THE SOUND WAS, never who made
+    it or where they are now (the scapegoat/illusion/decoy design space rides exactly
+    this gap). Serialized only-when-set (the `stealthed` compat pin), hash-covered
+    while live, never on the encounter carry (alerts are AI-only and enemies are
+    per-room). New noise refreshes it; **decay** clears it after a full quiet Clock
+    (`TICKS_PER_CLOCK` ticks since the last heard noise), and going down clears it
+    too (`alert_cleared`, reason `decayed`/`downed`).
+  * **Investigate/ignore per personality:** the `investigates` personality key
+    (spec/template-overridable), **derived default = Mind >= 2 OR herder**
+    (PROVISIONAL, R14 family — R20's per-creature "smart enough" AI/Mind threshold
+    resolved to one number, the sight-2× precedent, FOLDED with the hunter instinct:
+    a herder investigates by nose, not wit; the `mock_sensitive` derived-default
+    pattern). **Authored landing for the seeded templates:** war_hound INVESTIGATES
+    (herder, Mind 1) · roach_dog IGNORES (Mind 0) · little_brother_roach IGNORES
+    (Mind 1) · incinedile IGNORES (Mind 1 — the boss holds its arena; stance shifts
+    only). A finer smart-vs-alert split awaits owner numbers.
+  * **Alerted behavior** (EnemyAI `_alert_or_wait` — every tier's no-targets exit):
+    an INVESTIGATOR **moves toward the hex the sound happened on** (stop-range 0),
+    never toward the hider's current hex — faithful to "does not know where you are":
+    hearing located a *sound*, not a *maker*; the walk re-faces the mover (R30 update
+    table), so investigating can genuinely re-open its vision cone onto the hider —
+    **R20's escalation path (a), emergent from the facing primitive, no extra rule.**
+    Arrived / no legal step → HOLD (`alerted_holding`). A NON-INVESTIGATOR holds:
+    stance shifts to **"alert"** (two new documented `stance_for_decision`
+    exceptions: wait+`alerted_holding` and move+`investigating` both read "alert"),
+    behavior otherwise the old wait — and it does NOT turn toward the sound (facing
+    belongs to the resolver's R30 table; a face-the-noise reaction is future work,
+    flagged not invented). **Hearing never REVEALS** (`sees()` untouched — a
+    heard-but-unseen hider stays hidden); herding + targeting still require sight.
+  * **Events/view (additive):** `noise_heard` {combatant, source, position, loudness}
+    (the winning noise per hearer) · `alerted` {combatant, position} (transition
+    only; refreshes ride `noise_heard`) · `alert_cleared` {combatant, reason};
+    `view_combatants()` carries `alerted` only-when-set (the broadcast stays
+    omniscient; what the MOB knows is exactly the dict — no source). `ai_stance` may
+    now surface `"alert"`.
+  * **Compat (the bar):** the sweep is a provable no-op while nobody is hidden AND
+    nobody is alerted (alerts only originate from hidden sources; only an existing
+    alert decays), and `_alert_or_wait` is byte-identical to the old `no_targets`
+    wait while no alert is live — stealth-free fights replay the recorded legacy
+    hashes and both CI harnesses byte-diff clean.
 - **SHIPPED — AI honesty:** a stealthed target is **excluded from `_opponents`**
   (targeting, cone counting, the R23 draw — zero rng consumed on the shrunken pool);
-  with every opponent hidden the mob **waits (`no_targets`) — it honestly loses the
-  target**. Hostile player-surface asks mirror it: declares (attack/skill/grapple) and
+  with every opponent hidden the mob **honestly loses the
+  target** — it waits (`no_targets`), unless a hider's NOISE left it ALERTED, in which
+  case it may investigate the sound's hex (round 3b, the hearing marker above — still
+  never the hider's position). Hostile player-surface asks mirror it: declares (attack/skill/grapple) and
   damaging reactions at a stealthed hostile reject `target_stealthed`; an aimed hostile
   **windup collapses** if its target hides mid-windup (R2 snapshot re-check). Attacking
   FROM stealth neither breaks it (sight/noise are the only ruled breaks — sight usually
@@ -827,10 +902,15 @@ authors no detection roll, so no stream is ever touched.
     (decision #33, 2026-08-18): the R30 facing primitive landed and `sees()` is
     front-arc gated; see **R30** below for the facing contract (state, staging
     default, the update table, arcs, the v1 no-command limitation);
-  * **hearing beyond the Shout** — no noise-propagation substrate: the
+  * ~~**hearing beyond the Shout** — no noise-propagation substrate: the
     investigate/ignore personality reactions, the per-creature smart threshold, and the
     **ALERTED-but-unlocated** state (the scapegoating/illusion/decoy design space) all
-    wait on it;
+    wait on it~~ **RETIRED — hearing/alert is REAL** (round 3b, the SHIPPED marker
+    above). Still downscoped WITHIN hearing, flagged there: per-creature smart-threshold
+    NUMBERS (folded into the `investigates` default, PROVISIONAL), wall
+    acoustics/muffling, noise rows beyond the v1 table (reactions, grapples, zones,
+    trash cans), a face-the-noise turn for holders, and the scapegoat/decoy CONTENT
+    (voicebox rides the substrate next round);
   * **disguise** — no disguise items/skills exist to carry the range property
     (PLACEHOLDER R14 regardless);
   * **cover heights / sized gaps / skill-by-gap-size** — sized terrain unmodeled (own
@@ -849,7 +929,11 @@ re-acquisition with rng pins, every hostile-surface gate, windup collapse vs. in
 no-re-check, cone-burns-the-hidden-body, serialization round-trip mid-stealth,
 lockstep, determinism, zero-rng discipline, carry reset, and the legacy hash pins) +
 `tests/test_facing.gd` for the R30 front-arc gate on `sees()` (rear-arc concealment,
-the turning observer, herding's cone).
+the turning observer, herding's cone) + `tests/test_hearing.gd` for the round-3b
+hearing/alert contract (the loudness table both pure and behavioral, the
+walks-to-where-the-sound-WAS divergence, investigate vs ignore, decay, the
+redundant-with-sight pin, no-source-in-state, serialization mid-alert, determinism,
+and the re-verified legacy hash pins).
 
 ## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
 
@@ -1224,15 +1308,17 @@ encounter block mirrors.
   (corridors, doors, multi-room exploration)~~ SHIPPED wave 4b (R29 below);
   ~~stealth/detection/cover (R20, wave 4c)~~ SHIPPED wave 4c — the v1
   binary-sight slice (`simulation/stealth.gd` + the `stealth` command;
-  vision CONES upgraded to REAL by the R30 facing primitive, decision #33 —
-  the R20 IMPLEMENTED marker lists what still stays downscoped: hearing
-  beyond the Shout + ALERTED, disguise, sized cover, the rival-god lever);
+  vision CONES upgraded to REAL by the R30 facing primitive, decision #33;
+  hearing/ALERTED shipped round 3b — the R20 IMPLEMENTED marker lists what
+  still stays downscoped: disguise, sized cover, the rival-god lever);
   ~~the hound maze-funnel herding (`corner_the_prey`, wave 4d)~~ SHIPPED
   wave 4d — the herder chase/cut-off role split, R11 #21 (the KAN-5
   capstone: `pack_herding`, the kennel gate, tests/test_herding.gd).
-  Remaining: hearing per R20's own phasing (the investigate/ALERTED
-  reactions a fuller funnel would lean on — facing itself SHIPPED as R30,
-  decision #33), environment objects beyond the
+  ~~hearing per R20's own phasing (the investigate/ALERTED reactions a
+  fuller funnel would lean on — facing itself SHIPPED as R30, decision
+  #33)~~ SHIPPED round 3b (2026-08-19) — the noise sweep + ALERTED state +
+  investigate/ignore personalities (the R20 "SHIPPED — hearing/alert"
+  marker; tests/test_hearing.gd). Remaining: environment objects beyond the
   trash can, and owner-authored room layouts (every authored wall/can/door
   position is PLACEHOLDER — the owner redesigns rooms with the front).
   Tests: `tests/test_arena.gd` (+ the flipped pins in

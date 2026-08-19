@@ -73,8 +73,9 @@ extends RefCounted
 ##       REVEAL: voluntarily drops concealment — free (abandoning a state is
 ##       not an act), emits stealth_broken reason "revealed_self".
 ##       While stealthed: EnemyAI._opponents excludes the actor (the mob
-##       honestly loses the target — no search/last-known-position behavior,
-##       R20's investigate rides the downscoped hearing model); hostile
+##       honestly loses the TARGET — though a hider's NOISE can now leave an
+##       AI hearer ALERTED and investigating the hex a sound happened on:
+##       R20 hearing, round 3b — the _noise_checks sweep below); hostile
 ##       declares/reactions/grapples at it reject target_stealthed; an aimed
 ##       hostile windup collapses if it hides mid-windup (R2). Committed AREA
 ##       shapes (cones, charge lanes, blasts) still hit its BODY by hex —
@@ -250,6 +251,17 @@ func _post(events: Array[Dictionary]) -> void:
 	# held_by mirror in sync). BEFORE the broadcast plane so the release is
 	# scored/seen too. No-op while nobody channels — the legacy compat pin.
 	events.append_array(_channel_checks(events))
+	# ---- R20 HEARING (round 3b) — the NOISE sweep: its own bounded region. --
+	# Reads THIS command's event batch, derives its noise rows (the Stealth
+	# loudness table) and alerts AI hearers of noises from sources still
+	# HIDDEN at sweep time; also runs the alert decay. AFTER the state sweeps
+	# above (stealth first — a shouter/seen hider is already revealed, i.e.
+	# default-detected, before noise is consumed) and BEFORE the broadcast
+	# plane, so hype/tags/evidence can see noise_heard / alerted /
+	# alert_cleared too. No-op (no events, no rng, no state) while nobody is
+	# hidden AND nobody is alerted — the legacy compat pin.
+	events.append_array(_noise_checks(events))
+	# ---- end hearing. -------------------------------------------------------
 	# Batch D (play_to_the_camera): close an outlived surge window BEFORE this
 	# batch is scored — expiry is tick-driven, scoring must never read a stale
 	# window. No-op while none is live — the legacy compat pin.
@@ -1166,6 +1178,120 @@ func _channel_checks(events: Array[Dictionary]) -> Array[Dictionary]:
 			var holder: CombatantState = combatants.get(c.held_by)
 			if holder == null or String(holder.channeling.get("target", "")) != c.id:
 				c.held_by = ""
+	return out
+
+
+# ------------------------------------------------------ hearing (R20 round 3b)
+
+## R20 hearing — the per-command NOISE sweep (called from _post; the model +
+## loudness table live in Stealth, the addendum R20 "SHIPPED — hearing/alert"
+## marker carries the full contract). Deterministic and rng-FREE — R20's
+## hearing text authors a personality reaction, never a roll.
+##
+## DERIVE, then CONSUME (the honest split): Stealth.derive_noises maps the
+## batch to noise rows for EVERY mapped event, visible or hidden source alike
+## — but a noise is CONSUMED (can alert) only while its source is still
+## STEALTHED at sweep time, because everyone else is DEFAULT-DETECTED (the
+## R20 slice discipline): the AI already knows a visible actor is there, so
+## its noise is redundant with detection itself — filtering it is honesty
+## about information, not a shortcut (the redundant-with-sight pin in
+## tests/test_hearing.gd). Documented consequence: a SHOUT never alerts in
+## v1 — the R13 wire (the stealth sweep above, which runs first) breaks the
+## shouter's own stealth, fully revealing it: strictly MORE information than
+## an alert. The LOUD table row stays real for authored noises with no
+## visible source (voicebox's thrown sounds are exactly that substrate).
+##
+## PER SORTED HEARER, the eligibility gates: AI-controlled (alerts are an AI
+## reaction substrate — a contestant's ears are the player's), able to act
+## (a fainted guard hears nothing it will remember — sight's can-act rule),
+## not the source itself, HOSTILE to the source (your own pack's noise
+## alarms nobody — the sees() team predicate: a teamless hearer alerts to
+## no one, a teamless source is hostile to any teamed hearer), and within
+## the noise's loudness of the hex the sound HAPPENED on (Stealth.hears —
+## boundary inclusive; LOS deliberately unchecked, no wall-acoustics model
+## exists). Among several audible noises the LAST in batch order wins (the
+## most recent sound overwrites — event batches are ordered, deterministic).
+## Hearing never REVEALS: sees()/stealthed are untouched — the hearer
+## records that a sound happened, not where its maker is now.
+##
+## STATE + EVENTS: the winning noise writes hearer.alerted = {"tick",
+## "sound": [q, r]} (no source id — R20: "does not know where you are") and
+## emits noise_heard {combatant, source, position, loudness}; the
+## unalerted->alerted TRANSITION additionally emits alerted {combatant,
+## position} (refreshes ride noise_heard — the state change is the tick +
+## sound update it carries). DECAY, after consumption so a same-batch
+## refresh wins the boundary: a full Clock's worth of ticks
+## (Clock.TICKS_PER_CLOCK) since the last heard noise clears the alert
+## ("a quiet Clock" — deterministic, no sweep-order dependence), and a
+## downed hearer loses it too (the stealth "downed" mirror) — both emit
+## alert_cleared {combatant, reason: "decayed"|"downed"}.
+func _noise_checks(events: Array[Dictionary]) -> Array[Dictionary]:
+	# The legacy compat pin, provably complete: alerts only ORIGINATE from
+	# hidden sources and only an EXISTING alert can decay — with nobody
+	# stealthed and nobody alerted the sweep can do nothing, so it does
+	# nothing (no events, no rng, no state; stealth-free fights byte-match
+	# the pre-hearing engine — the pinned hashes + both CI harnesses).
+	var any_hidden: bool = false
+	var any_alerted: bool = false
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.stealthed:
+			any_hidden = true
+		if not c.alerted.is_empty():
+			any_alerted = true
+	if not any_hidden and not any_alerted:
+		return []
+	var out: Array[Dictionary] = []
+	# 1) DERIVE this batch's noise rows — the full honest table (only worth
+	#    computing while a hidden source exists to be heard).
+	var noises: Array[Dictionary] = []
+	if any_hidden:
+		noises = Stealth.derive_noises(events, combatants)
+	# 2) CONSUME per sorted hearer (the eligibility gates in the header).
+	for id: Variant in ids:
+		var hearer: CombatantState = combatants[id]
+		if not EnemyAI.is_ai_controlled(hearer) or not hearer.can_act(clock.tick):
+			continue
+		var winning: Dictionary = {}
+		for noise: Dictionary in noises:
+			var source_id := String(noise["source"])
+			if source_id == hearer.id:
+				continue
+			var source: CombatantState = combatants.get(source_id)
+			if source == null or not source.stealthed:
+				continue  # default-detected: a visible actor's noise is redundant
+			if hearer.team == "" or hearer.team == source.team:
+				continue  # hostile sources only (the sees() team predicate)
+			if not Stealth.hears(hearer.position, noise["position"], int(noise["loudness"])):
+				continue
+			winning = noise  # last audible in batch order wins (the freshest sound)
+		if winning.is_empty():
+			continue
+		var was_alerted: bool = not hearer.alerted.is_empty()
+		var pos: Vector2i = winning["position"]
+		hearer.alerted = {"tick": clock.tick, "sound": [pos.x, pos.y]}
+		out.append({"type": "noise_heard", "combatant": hearer.id,
+			"source": String(winning["source"]),
+			"position": [pos.x, pos.y], "loudness": int(winning["loudness"])})
+		if not was_alerted:
+			# The broadcast is omniscient (noise_heard above names the source);
+			# what the MOB knows is only its alerted dict — no source, no target.
+			out.append({"type": "alerted", "combatant": hearer.id,
+				"position": [pos.x, pos.y]})
+	# 3) DECAY (after consumption — a same-batch refresh already moved the
+	#    anchor tick, so it wins the boundary).
+	for id: Variant in ids:
+		var c: CombatantState = combatants[id]
+		if c.alerted.is_empty():
+			continue
+		if not c.alive or c.removed_from_play:
+			c.alerted = {}
+			out.append({"type": "alert_cleared", "combatant": c.id, "reason": "downed"})
+		elif clock.tick >= int(c.alerted.get("tick", 0)) + Clock.TICKS_PER_CLOCK:
+			c.alerted = {}
+			out.append({"type": "alert_cleared", "combatant": c.id, "reason": "decayed"})
 	return out
 
 

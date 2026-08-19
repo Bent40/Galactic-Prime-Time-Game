@@ -231,6 +231,19 @@ var pattern_reads: Dictionary = {}
 ## reason — the modifier never outlives the stealth state it modifies.
 ## Serialized ONLY while non-empty (the stealthed compat-pin pattern).
 var conceal: Dictionary = {}
+## R20 hearing (round 3b) — the ALERTED state: set by CombatSim's noise sweep
+## on an AI combatant that HEARD a noise from a source it cannot see. Shape:
+## {"tick": int (when heard), "sound": [q, r] (the hex the SOUND happened
+## on)}. Deliberately NO source id — R20's ruled wording: "becomes ALERTED —
+## it does NOT know where you are": the state records a sound, never a who,
+## so an investigator walks to where the sound WAS, not to the hider (the
+## scapegoat/illusion/decoy design space rides exactly this gap). Refreshed
+## by each newly heard noise; cleared by decay (a full quiet Clock) or going
+## down — both in the noise sweep. AI-only in practice (the sweep's hearer
+## gate), so it never rides the encounter carry: enemies are per-room and the
+## RunState sanitizer never sees one (documented there-by-omission; the gate
+## is the guarantee). Serialized ONLY while non-empty (same compat pin).
+var alerted: Dictionary = {}
 ## sustained_channel (telekinesis, batch D): the live channel on the ACTOR —
 ## {"key": String, "target": String, "range": int, "sustained_tick": int}
 ## while gripping, {} otherwise. sustained_tick = the last tick a grip or
@@ -757,6 +770,12 @@ func to_dict() -> Dictionary:
 	# whenever any is live).
 	if not conceal.is_empty():
 		out["conceal"] = conceal.duplicate(true)
+	# R20 hearing compat pin (round 3b, the same only-when-set pattern): the
+	# ALERTED state exists ONLY while a heard-but-unseen noise is live — a
+	# fight in which nothing alerting was ever heard serializes byte-
+	# identically to the pre-hearing engine (hash-covered while live).
+	if not alerted.is_empty():
+		out["alerted"] = alerted.duplicate(true)
 	if not channeling.is_empty():
 		out["channeling"] = channeling.duplicate(true)
 	if held_by != "":
@@ -871,6 +890,8 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.pattern_reads = (data.get("pattern_reads", {}) as Dictionary).duplicate(true)
 	# Pre-batch-D saves lack all three: no camouflage, no channel, not held.
 	c.conceal = (data.get("conceal", {}) as Dictionary).duplicate(true)
+	# Pre-hearing saves lack the key: {} = nothing heard, the legacy default.
+	c.alerted = (data.get("alerted", {}) as Dictionary).duplicate(true)
 	c.channeling = (data.get("channeling", {}) as Dictionary).duplicate(true)
 	c.held_by = String(data.get("held_by", ""))
 	# Pre-tier-2-wave-1 saves lack both: no live evasion window, never negated.
