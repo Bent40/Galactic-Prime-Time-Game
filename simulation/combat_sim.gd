@@ -29,14 +29,19 @@ extends RefCounted
 ##   {"type": "camera_call", "actor", "target"}                Charm spotlight (R6/R11 #13)
 ##   {"type": "ai_decide", "actor"}                            enemy AI turn (R11 #15)
 ##   {"type": "set_arena", "arena": {config}}                  OPT-IN arena (KAN-5 wave 3d)
-##       Bounds/walls/objects/doors per simulation/arena.gd's config shape.
+##       Bounds/walls/objects/doors/terrain per simulation/arena.gd's config
+##       shape (terrain + door locks: KAN-5 K2, rules-addendum R33).
 ##       Absent arena = today's unbounded behavior, with a byte-identical
 ##       to_dict() (the "arena" key is only present once set — the legacy
 ##       compat pin). Issued by GameController._stage_encounter BEFORE the
 ##       add_combatant batch when the encounter def carries an "arena" block;
 ##       rejected when an arena is already set, the config is invalid,
-##       walls/objects/doors fall outside the bounds or on each other, or an
-##       already-staged combatant would be left on a blocked/door hex.
+##       walls/objects/doors fall outside the bounds or on each other,
+##       terrain hexes fall outside the bounds or on walls/objects
+##       (arena_terrain_misplaced), or an already-staged combatant would be
+##       left on a blocked/door hex. Spawning ON terrain is LEGAL, water
+##       included (staging never prices movement; nothing ruled forbids a
+##       mid-pool spawn — deliberately NOT invented).
 ##   {"type": "door", "actor", "key", "set": "open"|"closed"}  KAN-5 wave 4b (R29)
 ##       Flips an authored door. The actor must be alive/ready and ADJACENT
 ##       (distance exactly 1) to the door hex — standing ON an open door
@@ -45,10 +50,13 @@ extends RefCounted
 ##       tick, shared with The Bit / the free move / first inventory use /
 ##       0-cost reactions; v1 deliberately grants NO Moment-cost fallback, so
 ##       one door interaction per tick is the cap). Closing onto a hex with a
-##       live body in the doorway rejects (door_blocked_by_body). Enemies
-##       never issue it in v1 — the AI never decides doors (no enemy_ai
-##       code path exists for it; a closed door honestly walls enemies off).
-##       Emits door_changed {actor, key, position, state}.
+##       live body in the doorway rejects (door_blocked_by_body). A LOCKED
+##       door (K2 — an authored lock in state "locked") cannot be opened:
+##       rejected door_locked naming the tier, slot untouched — the pick path
+##       is the INTERNAL pick_lock API below, NOT a command (R33 documents
+##       the downscope). Enemies never issue it in v1 — the AI never decides
+##       doors (no enemy_ai code path exists for it; a closed door honestly
+##       walls enemies off). Emits door_changed {actor, key, position, state}.
 ##   {"type": "stealth", "actor", "set"?: "hide"|"reveal"}    R20 (KAN-5 wave 4c)
 ##       The v1 binary stealth model (rules-addendum R20 — its own phasing
 ##       note authorizes this slice; the IMPLEMENTED marker there carries the
@@ -463,6 +471,23 @@ func _advance_tick() -> Array[Dictionary]:
 		# No-op while no zone store exists — the legacy compat pin.
 		if zones != null:
 			events.append_array(zones.clock_reset_sweep(clock.tick))
+		# K2 (R33) — the WATER substrate marker: a living, in-play combatant
+		# OCCUPYING a water hex when the Clock resets is submersion-exposed —
+		# the sim EMITS in_water and mutates NOTHING (no state, no timer, no
+		# rng). The honest boundary: the R9-family suffocation interaction is
+		# condition/resolver scope — the swim story reads this marker and
+		# wires the timers; inventing them here would price a system the
+		# ladder owns. No-op without authored water (the legacy compat pin —
+		# terrain-less fights never enter the loop).
+		if arena != null and not arena.terrain.is_empty():
+			var water_ids: Array = combatants.keys()
+			water_ids.sort()
+			for water_id: Variant in water_ids:
+				var swimmer: CombatantState = combatants[water_id]
+				if swimmer.alive and not swimmer.removed_from_play \
+						and arena.terrain_at(swimmer.position) == "water":
+					events.append({"type": "in_water", "combatant": swimmer.id,
+						"position": [swimmer.position.x, swimmer.position.y]})
 	# Breach/phase state must be read BEFORE the per-tick flag reset below:
 	# single-hit/burst breaches (R15/NQ2) and reset-driven condition tiers
 	# belong to the completing tick (I-16; _post re-runs this harmlessly).
@@ -753,6 +778,14 @@ func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
 				or object_hexes.has(door_pos) or door_hexes.has(door_pos):
 			return [{"type": "command_rejected", "reason": "arena_door_misplaced", "hex": [door_pos.x, door_pos.y]}]
 		door_hexes[door_pos] = true
+	# K2 (R33) terrain placement: typed hexes in bounds and off walls/objects
+	# (typing solid rock or a can's hex is an authoring error; a DOORWAY may
+	# legally carry terrain — an open door is floor). One-type-per-hex and the
+	# type enum are shape gates in from_config; the validator mirrors all of it.
+	for terrain_hex: Vector2i in parsed.sorted_terrain_hexes():
+		if not parsed.in_bounds(terrain_hex) or parsed.walls.has(terrain_hex) \
+				or object_hexes.has(terrain_hex):
+			return [{"type": "command_rejected", "reason": "arena_terrain_misplaced", "hex": [terrain_hex.x, terrain_hex.y]}]
 	var ids: Array = combatants.keys()
 	ids.sort()
 	for id: Variant in ids:
@@ -779,6 +812,9 @@ func _set_arena(cmd: Dictionary) -> Array[Dictionary]:
 	# Wave 4b compat pin: "doors" rides the event only when authored.
 	if summary.has("doors"):
 		arena_event["doors"] = summary["doors"]
+	# K2 compat pin: "terrain" rides the event only when authored.
+	if summary.has("terrain"):
+		arena_event["terrain"] = summary["terrain"]
 	return [arena_event]
 
 
@@ -818,6 +854,14 @@ func _door(cmd: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "door_not_adjacent", "actor": actor.id, "key": key}]
 	if String(door.get("state", "")) == to_state:
 		return [{"type": "command_rejected", "reason": "door_already_" + to_state, "actor": actor.id, "key": key}]
+	# K2 (R33): a LOCKED door cannot be worked — the ask this gate really
+	# meets is "open" (a locked door only exists closed, so "closed" already
+	# rejected door_already_closed above). Checked BEFORE the free slot so a
+	# rattled locked handle never wastes the actor's tick; the pick path is
+	# the internal pick_lock API (no command this story — documented there).
+	if Arena.door_locked(door):
+		return [{"type": "command_rejected", "reason": "door_locked", "actor": actor.id,
+			"key": key, "tier": String((door.get("lock", {}) as Dictionary).get("tier", ""))}]
 	if to_state == "closed":
 		var ids: Array = combatants.keys()
 		ids.sort()
@@ -838,6 +882,65 @@ func _door(cmd: Dictionary) -> Array[Dictionary]:
 		"key": key,
 		"position": [pos.x, pos.y],
 		"state": to_state,
+	}]
+
+
+## K2 (rules-addendum R33) — the INTERNAL lock-pick resolution, deliberately
+## NOT a command this story (the honest downscope, mirroring create_zone):
+## picking costs MOMENTS by tier (Arena.LOCK_PICK_MOMENTS — the lockpicking
+## ladder's "2 Moments per attempt" scale), and a Moments-costed act is a
+## SCHEDULED action — declare/resolve, feint-able, Forced-Action-on-failure —
+## which is ActionResolver territory. Scheduling it from a raw sim command
+## would either bypass that machinery (dishonest) or re-implement it here
+## (worse). So the substrate ships the lock MODEL + the door_locked rejection
+## + THIS resolution API; the lockpicking SKILL (next story, resolver-side)
+## declares the pick, pays the Moments through the normal schedule, and calls
+## this at resolve. Tests/GM drivers may call it directly between commands
+## (the create_zone precedent: direct-call events carry no tick stamp and
+## skip the broadcast plane — no engine scores lock_picked today, so the two
+## call shapes stay behaviorally identical). Gates mirror the door command
+## (actor alive/ready + ADJACENT); `special` is the capability flag a MAGICAL
+## lock additionally requires (the L9 rung — the substrate only enforces that
+## the flag exists; what grants it is the skill's business). The state flip
+## is the ONLY mutation — no slot, no Moments are charged HERE (the `moments`
+## field on lock_picked REPORTS the tier price for the future scheduler; a
+## direct call is a GM fiat until the skill lands). Rejections mutate nothing.
+func pick_lock(actor_id: String, key: String, special: bool = false) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(actor_id)
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": actor_id}]
+	if not actor.alive:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "removed_from_play", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if arena == null:
+		return [{"type": "command_rejected", "reason": "no_arena", "actor": actor.id}]
+	var idx: int = arena.door_index_for(key)
+	if idx < 0:
+		return [{"type": "command_rejected", "reason": "unknown_door", "actor": actor.id, "key": key}]
+	var door: Dictionary = arena.doors[idx]
+	var pos_raw: Array = door.get("position", [])
+	var pos := Vector2i(int(pos_raw[0]), int(pos_raw[1]))
+	if CombatantState.hex_distance(actor.position, pos) != 1:
+		return [{"type": "command_rejected", "reason": "door_not_adjacent", "actor": actor.id, "key": key}]
+	if not door.has("lock"):
+		return [{"type": "command_rejected", "reason": "no_lock", "actor": actor.id, "key": key}]
+	var lock: Dictionary = door.get("lock", {})
+	if String(lock.get("state", "")) != "locked":
+		return [{"type": "command_rejected", "reason": "lock_already_unlocked", "actor": actor.id, "key": key}]
+	var tier := String(lock.get("tier", ""))
+	if tier == "magical" and not special:
+		return [{"type": "command_rejected", "reason": "magical_lock_needs_special", "actor": actor.id, "key": key}]
+	lock["state"] = "unlocked"
+	return [{
+		"type": "lock_picked",
+		"actor": actor.id,
+		"key": key,
+		"position": [pos.x, pos.y],
+		"tier": tier,
+		"moments": int(Arena.LOCK_PICK_MOMENTS.get(tier, 0)),
 	}]
 
 

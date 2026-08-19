@@ -1519,16 +1519,21 @@ func _wants_heal(actor: CombatantState) -> bool:
 # ------------------------------------------------------------------ movement
 
 ## Free-move plan toward `goal` (wave 4a — Pathing.next_steps is the route
-## authority): up to the allowance, the first steps of the deterministic
-## optimal route — real A* around walls/bounds/cans/bodies when the arena has
-## walls (or concave explicit-hex bounds), so concave traps are navigated
-## across successive decides; the EXACT legacy greedy walk when it has none
-## (Pathing's fast path IS the old loop verbatim — no-arena and wall-less
-## fights stay byte-identical, R28). Stops inside `stop_range`. Returns the
-## destination hex, or null when the actor cannot move this tick or no legal
-## step exists — a walls-arena goal proven unreachable now WAITS honestly
-## (empty route) instead of thrashing against the wall. Tie-breaks, the 4096
-## node-expansion cap and its honest greedy fallback: simulation/pathing.gd.
+## authority): the allowance is a movement BUDGET (K2 terrain) the route
+## bills per step via Arena.move_cost — normal 1, difficult/rough/water 2
+## (PLACEHOLDER R14) — so a 3-budget walker crosses 1 difficult + 1 normal
+## hex, not 3 hexes, and an adjacent cost-2 hex is unaffordable to a
+## prone/slowed (budget-1) walker. Real A* (terrain-weighted — it PREFERS the
+## cheap route around a patch) when the arena has walls, concave explicit-hex
+## bounds, or any terrain; the EXACT legacy greedy walk when it has none
+## (Pathing's fast path IS the old loop verbatim — no-arena, wall-less and
+## terrain-less fights stay byte-identical, R28/R33). Stops inside
+## `stop_range`. Returns the destination hex, or null when the actor cannot
+## move this tick or no affordable legal step exists — a walls-arena goal
+## proven unreachable now WAITS honestly (empty route) instead of thrashing
+## against the wall. Tie-breaks, the 4096 node-expansion cap and its honest
+## greedy fallback: simulation/pathing.gd. (The resolver's player-move
+## terrain pricing is the NEXT story — R33 documents the interim asymmetry.)
 func _step_toward(actor: CombatantState, goal: Vector2i, stop_range: int) -> Variant:
 	if actor.grappled_by != "" or actor.grappling != "" or actor.windup_pending:
 		return null

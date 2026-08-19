@@ -1490,6 +1490,91 @@ Events: `zone_created` / `zone_expired` (reason duration | destroyed | removed) 
 every un-owner-blessed numbers family: the substrate's shapes are engine contract; the
 per-skill payloads (tiers, amounts, durations) arrive with the wall-skill story.
 
+## R33 — Terrain typing & door locks (KAN-5 remainder K2, 2026-08-19 — PROVISIONAL)
+
+**What shipped (substrate + AI-side integration only — the SKILLS land next story):**
+the per-hex terrain layer and the door-lock model that quick_step / swim / acrobatics /
+lockpicking (`docs/design/skills-r19-ladders-FINAL.md` #2/#30/#42/#41) need under them.
+Both are STRICTLY OPT-IN like every arena feature: a terrain-less arena and lockless
+doors behave (and serialize) byte-identically to wave 4b/K1 — the CI harnesses stage
+neither and byte-diff clean.
+
+- **The terrain layer** (`simulation/arena.gd` — authored
+  `terrain: [{type, hexes}]` on the arena block): per-hex typing over the extensible
+  enum **difficult | water | rough** (untyped = normal; unknown types are authoring
+  errors — `from_config` + the seed validator gate). Terrain never BLOCKS (walls/doors/
+  objects own blocking); it PRICES movement: `move_cost(hex)` is the entry cost —
+  **normal 1, difficult 2, rough 2, water 2 — every number PLACEHOLDER (R14)**.
+  Placement gates: in bounds, off walls/objects (`arena_terrain_misplaced`); one type
+  per hex; a doorway may carry terrain (an open door is floor). **Spawning ON terrain is
+  LEGAL, water included** — staging never prices movement and no rule forbids a mid-pool
+  spawn (deliberately NOT invented). Serialized with the arena as canonical rows (type
+  order fixed, hexes sorted), hash-covered, the `terrain` key present only when
+  authored; `view_arena` mirrors it additively.
+- **The substrate is SKILL-AGNOSTIC (the seam contract):** per-combatant modifiers —
+  quick_step ignoring difficult terrain, swim's L6 "water is not difficult terrain for
+  you", acrobatics' rough immunity — apply at the CONSUMER: the route walker overlays
+  its modifier on the `move_cost` call sites (`simulation/pathing.gd` marks them), so
+  the arena never learns skills. Next story wires the overlay parameter with its first
+  real consumer.
+- **AI movement is terrain-priced** (the K2 integration): `EnemyAI._step_toward`'s
+  allowance is now a movement BUDGET billed per step — a 3-budget walker crosses 1
+  difficult + 1 normal hex, not 3 hexes, and a slowed/prone (budget-1) walker cannot
+  afford an adjacent cost-2 hex (waits honestly). `Pathing.next_steps` runs
+  terrain-weighted A* (g accrues `move_cost`; the heuristic stays admissible+consistent
+  because every cost >= 1; the routing gate sends any terrain-carrying arena to A*, so
+  the cheap route AROUND a patch is really found). **The tie-break contract survives
+  weighted g verbatim** — the packed frontier key never cared how g accrued (pinned
+  under weighted costs). Greedy (the no-terrain fast path + the cap-hit fallback) keeps
+  its legacy distance-only CHOOSER and only BILLS costs — it never plans around terrain
+  (A*'s job). No-terrain arenas bill 1 everywhere = the pre-K2 walk, byte-compat.
+- **HONEST ASYMMETRY (interim, next story closes it):** the resolver's PLAYER moves
+  (free/scheduled, R3) do **not** pay terrain costs yet — resolver-side movement
+  pricing is the sibling/next story's footprint (this story may not touch
+  action_resolver.gd). Until it lands, contestants cross difficult ground at book rate
+  while the AI pays — flagged, not hidden.
+- **Water semantics, substrate only:** a living, in-play combatant OCCUPYING a water
+  hex when the **Clock resets** is submersion-exposed — the sim emits
+  **`in_water {combatant, position}`** and mutates NOTHING (event-only marker; no state,
+  no serialization delta). The R9-family suffocation interaction (swim's ladder: the
+  grace timer, drown-your-prey) is condition/resolver scope — the swim story reads this
+  marker and wires the timers; inventing them here would price a system the ladder owns.
+- **Door locks** (`arena.gd` + `combat_sim.gd`): a door may author
+  `lock: {tier: simple|moderate|complex|magical, state: locked|unlocked}`; absent = no
+  lock (the key never serializes — wave-4b byte-compat). A locked lock requires door
+  state `closed` (a locked-open door is a contradiction — `invalid_arena`). A LOCKED
+  door cannot be opened by the `door` command — rejected **`door_locked`** naming the
+  tier, checked before the free slot (a rattled handle never wastes the tick) — and
+  blocks exactly like any closed door through the unchanged `is_wall` query (zero
+  consumer edits, the R29 model). Lock state is hash-covered; `view_arena` door rows
+  carry the live lock additively.
+- **The pick-scheduling DOWNSCOPE (the honest choice, documented):** picking costs
+  **Moments by tier — simple 1 / moderate 2 / complex 3 / magical 3 + a special
+  capability flag (all PLACEHOLDER R14;** `Arena.LOCK_PICK_MOMENTS`; the ladder's
+  "2 Moments per attempt" scale + the L9 magical rung**)** — and a Moments-costed act
+  is a SCHEDULED action: declare/resolve, feint-able, Forced-Action-on-failure —
+  ActionResolver territory, which this story may not touch. Scheduling it from a raw
+  sim command would bypass that machinery (dishonest) or re-implement it (worse). So
+  **no `unlock` command ships**: the substrate ships the lock MODEL + the
+  `door_locked` rejection + the INTERNAL **`CombatSim.pick_lock(actor, key,
+  special)`** resolution API (adjacency + lock gates; flips the lock, emits
+  `lock_picked {actor, key, position, tier, moments}` with the tier price REPORTED,
+  not charged — the create_zone precedent). The lockpicking SKILL (next story,
+  resolver-side) declares the pick, pays the Moments through the normal schedule, its
+  failure rolls the Forced Action — Tool, and its resolve calls this API.
+- **Authored data (PROVISIONAL, PLACEHOLDER positions — the owner redesigns rooms with
+  the front):** the kennel's **muck row** (difficult, the south pens, clear of every
+  spawn and the gate funnel) and the service corridor's **supply cage door** (the first
+  authored LOCKED door, tier simple — flavor + the lockpicking skill's future practice
+  target). The seed validator gates both (terrain bounds/overlap/typing; lock
+  tier/state/locked-implies-closed) and counts them in its summary.
+
+Events: `in_water` / `lock_picked` / rejections `door_locked`,
+`arena_terrain_misplaced`, `no_lock`, `lock_already_unlocked`,
+`magical_lock_needs_special`. Tests: `tests/test_terrain_locks.gd`. PROVISIONAL like
+every un-owner-blessed numbers family: the terrain cost table, the lock tier table and
+both authored patches await the owner; the layer/query shapes are engine contract.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

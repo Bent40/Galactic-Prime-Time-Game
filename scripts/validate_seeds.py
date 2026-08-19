@@ -1199,7 +1199,12 @@ def main() -> int:
     # and NO wall/object/door on any staged spawn hex.
     arena_count = 0
     door_count = 0
+    lock_count = 0
+    terrain_hex_count = 0
     exit_count = 0
+    # KAN-5 K2 (R33) vocabularies — mirror simulation/arena.gd's enums/tables.
+    TERRAIN_TYPES = ("difficult", "water", "rough")
+    LOCK_TIERS = ("simple", "moderate", "complex", "magical")
     if (DATA / "demo_run.json").is_file():
         dr = load("demo_run.json")
         run = dr.get("run", {}) if isinstance(dr, dict) else {}
@@ -1306,6 +1311,65 @@ def main() -> int:
                     fail("demo_run.json", f"{where}: two doors share hex {list(h)}")
                 doors.add(h)
                 door_count += 1
+                # K2 (R33) door locks: optional; tier in the enum, state
+                # locked|unlocked, and a LOCKED lock only on a CLOSED door
+                # (a locked-open door is a contradiction — mirrors
+                # Arena.from_config).
+                if "lock" in door:
+                    lock = door.get("lock")
+                    if not isinstance(lock, dict):
+                        fail("demo_run.json", f"{where}: door {dk!r} lock must be an object")
+                        continue
+                    if lock.get("tier") not in LOCK_TIERS:
+                        fail("demo_run.json", f"{where}: door {dk!r} lock tier "
+                                              f"{lock.get('tier')!r} not in {list(LOCK_TIERS)}")
+                    if lock.get("state") not in ("locked", "unlocked"):
+                        fail("demo_run.json", f"{where}: door {dk!r} lock state "
+                                              f"{lock.get('state')!r} must be 'locked' or 'unlocked'")
+                    if lock.get("state") == "locked" and door.get("state") != "closed":
+                        fail("demo_run.json", f"{where}: door {dk!r} is locked but not closed "
+                                              "(a locked-open door is a contradiction)")
+                    lock_count += 1
+            # K2 (R33) terrain: rows of {type, hexes}; type in the enum, hexes
+            # valid pairs INSIDE the bounds, off walls/objects, ONE type per
+            # hex (mirrors Arena.from_config + CombatSim._set_arena). Terrain
+            # on a DOOR hex is legal (an open door is floor), and spawns MAY
+            # sit on terrain — water included (spawning in water is legal;
+            # staging never prices movement — deliberately NOT gated).
+            terrain_hexes = set()
+            for row in arena.get("terrain", []) or []:
+                if not isinstance(row, dict):
+                    fail("demo_run.json", f"{where}: terrain row must be an object")
+                    continue
+                t_type = row.get("type")
+                if t_type not in TERRAIN_TYPES:
+                    fail("demo_run.json", f"{where}: terrain type {t_type!r} "
+                                          f"not in {list(TERRAIN_TYPES)}")
+                    continue
+                row_hexes = row.get("hexes")
+                if not isinstance(row_hexes, list) or not row_hexes:
+                    fail("demo_run.json", f"{where}: terrain {t_type!r} needs a "
+                                          "non-empty hexes list")
+                    continue
+                for pair in row_hexes:
+                    h = _hex(pair)
+                    if h is None:
+                        fail("demo_run.json", f"{where}: terrain {t_type!r} bad hex {pair!r}")
+                        continue
+                    if not in_bounds(h):
+                        fail("demo_run.json", f"{where}: terrain {t_type!r} at {list(h)} "
+                                              "outside the bounds")
+                    if h in walls:
+                        fail("demo_run.json", f"{where}: terrain {t_type!r} at {list(h)} "
+                                              "sits on a wall")
+                    if h in objects:
+                        fail("demo_run.json", f"{where}: terrain {t_type!r} at {list(h)} "
+                                              "sits on an object")
+                    if h in terrain_hexes:
+                        fail("demo_run.json", f"{where}: hex {list(h)} carries two "
+                                              "terrain types (one type per hex)")
+                    terrain_hexes.add(h)
+                    terrain_hex_count += 1
             # Spawn hexes: enemies (position/positions), staged allies, and the
             # party (encounter 0 uses the party specs' own positions; later
             # encounters restage via party_positions).
@@ -1431,7 +1495,8 @@ def main() -> int:
           f"{dcmap_pairs} domain->condition affinities, {len(kw_skills)} skill keyword "
           f"entries, {len(mutations)} mutation recipes, {len(absorptions)} absorb entries, "
           f"{len(offers)} Mod-Center offers, {arena_count} encounter arenas, "
-          f"{door_count} doors, {exit_count} graph exits "
+          f"{door_count} doors, {lock_count} door locks, "
+          f"{terrain_hex_count} terrain hexes, {exit_count} graph exits "
           f"— {n} rows checked).")
     return 0
 
