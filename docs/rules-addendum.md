@@ -1431,6 +1431,65 @@ is a legal future parent (pinned in `tests/test_tier2_enablement.gd`).
 flow, and who pays what to level an unlocked L6–8 band are all deliberately unpriced
 here (the R27 discipline, unchanged).
 
+## R32 — Zones/fields: the area-effect substrate (KAN-5 remainder K1, 2026-08-19 — PROVISIONAL)
+
+**What shipped (substrate only — the SKILLS land next story):** the runtime zone store
+(`simulation/zones.gd`, serialized on CombatSim under `"zones"`, hash-covered) that the
+three wall skills (poison_wall / frost_wall / fire_wall), elemental_confluence, and
+DIRECTION.md's combat-fields sketch will drive. A zone is `{id, key, hexes, owner,
+created_tick, duration_clocks, effects, hp, blocks_movement, blocks_los}` with a
+DATA-shaped effect vocabulary on three triggers — `on_enter` / `on_occupy_clock` /
+`on_pass` — each authoring `affects` (all / non_owner / hostile), typed `damage` (R14
+paths: resistance reduction → the central damage sink), `conditions` (via the normal
+apply path, **attacker = the zone's owner** — a burn death in your fire wall credits YOU,
+takedown-v2), and `advance` (confluence's Toxic Surge shape). Shock is a legal condition
+entry (fire_wall L6's "passers take tier 2 Shock").
+
+**STRICTLY OPT-IN, no command surface:** zones exist only via the internal
+`create_zone`/`remove_zone`/`damage_zone` API the future skill resolvers call; a fight
+that never created one serializes byte-identically to the pre-zone engine (CI-harness
+pin). Once ANY zone was created, the `"zones"` key persists (the id counter is state —
+save/restore replay transparency).
+
+**Documented seam choices** (full rationale in `simulation/zones.gd`'s header):
+- **on_enter = the post-command position-diff sweep** in `CombatSim._post` — the ONE
+  hook every position mutation flows past (the resolver's mutation sites belong to a
+  sibling story's footprint). Spawning into a zone baselines silently (materializing is
+  not entering); moving within a zone never re-enters.
+- **on_pass fires only where traversal is REAL:** dash lanes expose their corridor
+  (`dash_charged` from/to + committed bend/bounce waypoints — reconstructed exactly);
+  1–3-space free moves and scheduled long moves are destination-only hops per the
+  standing wall contract, so they honestly never pass. One on_pass per zone per dash;
+  origin/destination zones excluded (ending inside is on_enter).
+- **on_occupy_clock + duration expiry at the Clock reset**, after the universal
+  condition advancement: occupancy bites FIRST, then the countdown — a 1-Clock wall
+  menaces through the reset that kills it.
+- **Blocking composes through the arena** (the R29 one-query precedent):
+  `blocks_movement` zones enter `Arena.is_wall` (wall parity everywhere — moves, dash
+  lane ends AND bounces, staging, pathing, summons, and LOS); `blocks_los` zones enter
+  `Arena.blocks_lane`, the channel `Stealth.has_los` walks. Caveat (deliberate): that
+  channel also drives dash-lane geometry, so a blocks_los-ONLY zone (future smoke)
+  would be lane-solid too — no such zone is authored yet; the story wanting sight-only
+  smoke owns the query split. **No-arena fights:** the unbounded legacy room has no
+  blocking queries, so both flags are inert there (effects still work).
+- **Frost-wall HP:** zones with `hp >= 1` wear down ONLY via `damage_zone` this story —
+  attackability (resolver targeting + the Burn-×2 rule) is deferred to the skills
+  story. A blocking zone may not be raised on a living body (door-close precedent;
+  frost L8 "raise it under a target" lifts this in its own story).
+- **Known edges (honest):** a dash resolving on the exact tick whose reset expires the
+  zone misses its on_pass/on_enter (the sweep runs post-reset; the occupancy bite still
+  lands first); a head-on-retrace bounce corridor under-walks its reconstruction; the
+  enemy AI is zone-oblivious (it inherits zone WALLS through pathing, but walks through
+  damaging non-blocking zones — AI zone-awareness is future work); a zone raised across
+  an already-committed dash lane does not stop the charge (lane legality gates at
+  declare — the R29 closed-door precedent).
+
+Events: `zone_created` / `zone_expired` (reason duration | destroyed | removed) /
+`zone_damaged` / `zone_effect_applied` (attributed). View: additive
+`GameController.view_zones()`. Tests: `tests/test_zones.gd` (19 tests). PROVISIONAL like
+every un-owner-blessed numbers family: the substrate's shapes are engine contract; the
+per-skill payloads (tiers, amounts, durations) arrive with the wall-skill story.
+
 ## KAN-2 acceptance criteria (what the engine tests must prove)
 
 Each line is a test target; ruling in brackets.

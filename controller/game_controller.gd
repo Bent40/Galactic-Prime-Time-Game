@@ -524,6 +524,22 @@ func view_arena() -> Dictionary:
 	return sim.arena.view()
 
 
+## Read-only ZONES probe (KAN-5 K1 — ADDITIVE, spectator contract): one plain
+## deep-copied row per live zone in id order, so a renderer can draw the
+## fields (fire/poison/frost walls, confluence) without touching simulation
+## classes. [] before start_combat AND for every zone-free combat (the
+## overwhelming default — zones are opt-in runtime entities with no command
+## surface; the harnesses stage none), so existing consumers see nothing new.
+##   id · key · owner · hexes [[q, r], ...] sorted · created_tick ·
+##   duration_clocks (REMAINING resets; -1 = combat) · hp (-1 =
+##   indestructible) · blocks_movement · blocks_los · effects (the authored
+##   trigger blocks, verbatim)
+func view_zones() -> Array:
+	if sim == null or sim.zones == null:
+		return []
+	return sim.zones.view()
+
+
 func view_clock() -> Dictionary:
 	if sim == null:
 		return {}
