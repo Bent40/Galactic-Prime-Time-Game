@@ -1,0 +1,374 @@
+<!doctype html><html><head><meta charset="utf-8"><title>HUD v2 — Mode C (targeting)</title><style>
+:root{
+  --bg:#04050d; --panel:#090c1a; --panel2:#0d1020; --glass:rgba(9,12,26,.86);
+  --cyan:#00d4ff; --gold:#c8a84b; --danger:#ff2255; --success:#00ff88;
+  --text:#b8c8e0; --muted:#3a4560; --border:#1a2540; --purple:#a855f7;
+  --mythic:#ec4899; --fire:#ff7a2f; --num:'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--text)}
+.mk{position:relative;width:1600px;height:1000px;background:var(--bg);overflow:hidden}
+.bbar{position:absolute;top:0;left:0;right:0;height:44px}
+.topstrip{position:absolute;top:44px;left:0;right:0;height:118px}
+.mid{position:absolute;top:162px;left:0;right:0;bottom:120px}
+.bottomstrip{position:absolute;bottom:34px;left:0;right:0;height:86px}
+.ticker{position:absolute;bottom:0;left:0;right:0;height:34px}
+.mono{font-family:var(--num)}
+.lbl{text-transform:uppercase;letter-spacing:3px;font-size:8px;color:var(--muted);font-weight:700}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;
+      border:1px solid var(--border);font-family:var(--num);font-size:11px;font-weight:700}
+.p-cyan{border-color:rgba(0,212,255,.5);color:var(--cyan);background:rgba(0,212,255,.07)}
+.p-gold{border-color:rgba(200,168,75,.5);color:var(--gold);background:rgba(200,168,75,.08)}
+.p-purple{border-color:rgba(168,85,247,.5);color:var(--purple);background:rgba(168,85,247,.08)}
+.p-danger{border-color:rgba(255,34,85,.55);color:var(--danger);background:rgba(255,34,85,.08)}
+.p-success{border-color:rgba(0,255,136,.45);color:var(--success);background:rgba(0,255,136,.06)}
+.p-fire{border-color:rgba(255,122,47,.55);color:var(--fire);background:rgba(255,122,47,.08)}
+.p-mute{color:var(--muted)}
+/* broadcast bar ------------------------------------------------------------ */
+.bbar{display:flex;align-items:center;gap:14px;padding:0 16px;
+      background:var(--panel);border-bottom:1px solid var(--border)}
+.live{display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border-radius:4px;
+      border:1px solid rgba(255,34,85,.6);color:#fff;font-weight:800;font-size:12px;letter-spacing:2px}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:blink 1.1s infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.rec{color:var(--muted);font-family:var(--num);font-size:11px;letter-spacing:1px}
+.brand{position:absolute;left:0;right:0;text-align:center;pointer-events:none}
+.brand b{font-size:19px;font-weight:900;letter-spacing:7px;color:var(--cyan);
+         text-shadow:0 0 20px rgba(0,212,255,.7)}
+.brand span{display:block;font-size:8px;letter-spacing:4px;color:var(--gold);margin-top:1px}
+.watch{margin-left:auto;display:flex;align-items:center;gap:10px;z-index:2}
+.watch .n{font-family:var(--num);font-size:13px;color:var(--text)}
+.momus-chip{padding:4px 12px;border-radius:14px;border:1px solid rgba(236,72,153,.55);
+            color:var(--mythic);font-weight:800;font-size:11px;letter-spacing:3px}
+/* top strip ----------------------------------------------------------------- */
+.topstrip{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);
+          background:linear-gradient(180deg,var(--panel) 0%,rgba(9,12,26,.4) 100%)}
+.selpanel{flex:0 0 400px;display:flex;gap:10px;padding:8px 10px;background:var(--panel2);
+          border:1px solid var(--border);border-radius:6px;position:relative}
+.selpanel.onclock{border-color:rgba(200,168,75,.55);box-shadow:0 0 22px rgba(200,168,75,.18)}
+.selglyph{flex:0 0 54px;height:54px;border-radius:9px;background:var(--panel);border:1px solid var(--border);
+          display:flex;align-items:center;justify-content:center;font-size:28px;align-self:center}
+.selbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.selname{font-size:14px;font-weight:800;color:#e8f2ff;letter-spacing:.5px;padding-right:96px;white-space:nowrap}
+.selname small{display:block;color:var(--muted);font-weight:700;font-size:8px;letter-spacing:1px;margin-top:2px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+.selrow{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.selrow .pill{font-size:9px;padding:2px 7px}
+.onclock-tag{position:absolute;top:-1px;right:-1px;padding:3px 9px;border-radius:0 6px 0 6px;
+             background:rgba(200,168,75,.15);border:1px solid rgba(200,168,75,.5);
+             color:var(--gold);font-size:8px;letter-spacing:2px;font-weight:800}
+.topcenter{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.shortcuts{display:flex;gap:6px;justify-content:flex-start}
+.sc{padding:4px 11px;border-radius:4px;border:1px solid var(--border);background:var(--panel2);
+    color:var(--muted);font-size:8px;letter-spacing:2px;font-weight:800;text-transform:uppercase}
+.sc.active{border-color:rgba(0,212,255,.5);color:var(--cyan);background:rgba(0,212,255,.07)}
+.timeline{flex:1;display:flex;align-items:center;gap:12px;background:var(--panel2);
+          border:1px solid var(--border);border-radius:6px;padding:4px 12px}
+.track{flex:1;position:relative;height:58px;margin-top:6px}
+.track .rail-line{position:absolute;left:0;right:0;top:12px;height:2px;background:var(--border)}
+.tickmark{position:absolute;top:8px;width:2px;height:10px;background:var(--muted);opacity:.6}
+.ticknum{position:absolute;top:-6px;transform:translateX(-50%);font-family:var(--num);
+         font-size:8px;color:var(--muted)}
+.nowmark{position:absolute;top:2px;width:3px;height:22px;background:var(--cyan);
+         box-shadow:0 0 10px rgba(0,212,255,.8)}
+.tl-chip{position:absolute;top:26px;transform:translateX(-50%);white-space:nowrap;
+         font-size:8px;letter-spacing:1px;font-weight:800;padding:1px 6px;border-radius:3px;
+         border:1px solid var(--border);background:var(--panel)}
+.tl-chip.lane1{top:43px}
+.tl-bandlbl{position:absolute;top:-3px;white-space:nowrap;font-size:7px;letter-spacing:1px;font-weight:800;background:rgba(4,5,13,.92);padding:1px 5px;border-radius:3px}
+.tl-band{position:absolute;top:11px;height:4px;border-radius:2px}
+.odds{flex:0 0 300px;display:flex;flex-direction:column;gap:4px;justify-content:center;
+      background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 12px}
+.odds .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.odds .k{font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:800;text-transform:uppercase}
+.odds .v{font-family:var(--num);font-size:12px;font-weight:700;color:var(--text)}
+/* middle -------------------------------------------------------------------- */
+.mid{display:flex}
+.rail{flex:0 0 168px;padding:10px 8px;display:flex;flex-direction:column;gap:8px;
+      background:linear-gradient(90deg,rgba(9,12,26,.9),rgba(9,12,26,.55));
+      border-right:1px solid var(--border);z-index:5}
+.pcard{border:1px solid var(--border);border-radius:6px;background:var(--glass);padding:7px 8px;
+       display:flex;flex-direction:column;gap:4px;position:relative}
+.pcard.active{border-color:rgba(200,168,75,.6);box-shadow:0 0 18px rgba(200,168,75,.22)}
+.pcard.selected{border-color:rgba(0,212,255,.55)}
+.pcard .hd{display:flex;align-items:center;gap:7px}
+.pcard .g{width:26px;height:26px;border-radius:6px;background:var(--panel);border:1px solid var(--border);
+          display:flex;align-items:center;justify-content:center;font-size:14px}
+.pcard .nm{font-size:11px;font-weight:800;color:#dce8fa;line-height:1.1}
+.pcard .nm small{display:block;font-size:7px;letter-spacing:1px;color:var(--muted);font-weight:700}
+.hpbar{height:4px;border-radius:2px;background:var(--border);overflow:hidden}
+.hpbar i{display:block;height:100%}
+.flagrow{display:flex;gap:4px;flex-wrap:wrap}
+.flag{font-size:7px;letter-spacing:1px;font-weight:800;padding:1px 5px;border-radius:3px;
+      border:1px solid var(--border);color:var(--muted)}
+.f-danger{border-color:rgba(255,34,85,.5);color:var(--danger)}
+.f-gold{border-color:rgba(200,168,75,.5);color:var(--gold)}
+.f-cyan{border-color:rgba(0,212,255,.5);color:var(--cyan)}
+.f-purple{border-color:rgba(168,85,247,.5);color:var(--purple)}
+.f-success{border-color:rgba(0,255,136,.45);color:var(--success)}
+.f-fire{border-color:rgba(255,122,47,.5);color:var(--fire)}
+.statmini{display:flex;justify-content:space-between;font-family:var(--num);font-size:8px;color:var(--muted)}
+/* world --------------------------------------------------------------------- */
+.world{flex:1;position:relative;overflow:hidden;min-width:0}
+.stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+       perspective:1500px}
+.board{transform:rotateX(46deg) rotateZ(-2deg) translateY(-30px);transform-style:preserve-3d}
+.feed{position:absolute;inset:0;pointer-events:none;
+      background:repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 1px,transparent 1px 3px)}
+.vign{position:absolute;inset:0;pointer-events:none;
+      background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
+.cammark{position:absolute;width:18px;height:18px;border:2px solid rgba(0,212,255,.25);pointer-events:none}
+.cm-tl{top:10px;left:12px;border-right:0;border-bottom:0}
+.cm-tr{top:10px;right:12px;border-left:0;border-bottom:0}
+.cm-bl{bottom:10px;left:12px;border-right:0;border-top:0}
+.cm-br{bottom:10px;right:12px;border-left:0;border-top:0}
+.feedtag{position:absolute;top:12px;left:40px;font-size:9px;letter-spacing:2px;color:var(--muted);font-weight:700}
+.rectag{position:absolute;top:12px;right:44px;font-size:9px;letter-spacing:2px;color:var(--danger);font-weight:800}
+.phasetags{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.token{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;z-index:6;
+       transform:translate(-50%,-100%)}
+.tok-g{width:52px;height:52px;border-radius:11px;background:rgba(9,12,26,.9);border:2px solid var(--border);
+       display:flex;align-items:center;justify-content:center;font-size:26px;position:relative}
+.token.boss .tok-g{width:84px;height:84px;font-size:46px;border-radius:16px;border-color:rgba(255,122,47,.65);
+                   box-shadow:0 0 34px rgba(255,122,47,.35)}
+.token.ally-act .tok-g{border-color:var(--gold);box-shadow:0 0 22px rgba(200,168,75,.45)}
+.token.ally-sel .tok-g{border-color:var(--cyan);box-shadow:0 0 22px rgba(0,212,255,.45)}
+.token.conceal .tok-g{border-style:dashed;border-color:rgba(0,212,255,.5);opacity:.75}
+.tok-name{font-size:9px;letter-spacing:1.5px;font-weight:800;padding:2px 8px;border-radius:3px;
+          background:rgba(4,5,13,.85);border:1px solid var(--border);color:#dbe7f8;white-space:nowrap}
+.tok-hp{width:52px;height:3px;border-radius:2px;background:rgba(4,5,13,.9);overflow:hidden}
+.tok-hp i{display:block;height:100%}
+.tok-conds{position:absolute;top:-9px;right:-9px;display:flex;gap:2px}
+.cond-dot{width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;
+          justify-content:center;background:rgba(4,5,13,.95);border:1px solid var(--danger)}
+.groundtag{position:absolute;z-index:5;font-size:8px;letter-spacing:1.5px;font-weight:800;
+           padding:2px 7px;border-radius:3px;background:rgba(4,5,13,.8);border:1px solid var(--border);
+           transform:translate(-50%,-50%);white-space:nowrap}
+/* right column -------------------------------------------------------------- */
+.rightcol{position:absolute;top:10px;right:10px;bottom:10px;width:308px;display:flex;
+          flex-direction:column;gap:10px;z-index:7}
+.rpanel{background:var(--glass);border:1px solid var(--border);border-radius:7px;padding:11px 13px;
+        backdrop-filter:blur(4px)}
+.rpanel h4{font-size:9px;letter-spacing:3px;color:var(--muted);font-weight:800;margin-bottom:8px;
+           text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.hypehead{display:flex;justify-content:space-between;align-items:baseline}
+.hypehead .v{font-family:var(--num);font-size:26px;font-weight:800;color:var(--gold)}
+.hypehead .v small{font-size:12px;color:var(--muted)}
+.hypebar{height:9px;border-radius:4px;background:var(--border);overflow:hidden;margin:7px 0 6px}
+.hypebar i{display:block;height:100%;background:linear-gradient(90deg,#7a6320,var(--gold));
+           box-shadow:0 0 12px rgba(200,168,75,.6)}
+.bandrow{display:flex;justify-content:space-between;align-items:center}
+.band{font-size:12px;font-weight:900;letter-spacing:2px;color:var(--gold)}
+.goal{border:1px solid rgba(0,212,255,.4);border-radius:6px;padding:9px 11px;margin-top:9px;
+      background:rgba(0,212,255,.05)}
+.goal .t{font-size:12px;font-weight:900;letter-spacing:1px;color:#eaf6ff}
+.goal .d{font-size:10px;color:var(--text);margin:4px 0 7px;line-height:1.45}
+.goal .r{display:flex;gap:6px}
+.part{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(26,37,64,.6)}
+.part:last-child{border-bottom:0}
+.part .pn{flex:1;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--text)}
+.part .ph{font-family:var(--num);font-size:10px;font-weight:700}
+.part .st{font-size:7px;letter-spacing:1px;font-weight:800;padding:1px 5px;border-radius:3px;
+          border:1px solid var(--border);color:var(--muted)}
+.part.hidden-part .pn,.part.hidden-part .ph{color:var(--muted);font-style:italic}
+.knowrow{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.telegraph{margin-top:9px;border:1px solid rgba(255,122,47,.5);border-radius:6px;padding:8px 10px;
+           background:rgba(255,122,47,.06)}
+.telegraph .t{font-size:10px;font-weight:900;letter-spacing:1px;color:var(--fire)}
+.telegraph .d{font-size:9px;color:var(--text);margin-top:3px;line-height:1.5}
+/* bottom -------------------------------------------------------------------- */
+.bottomstrip{display:flex;gap:10px;padding:8px 12px;border-top:1px solid var(--border);
+             background:var(--panel);z-index:8}
+.chat{flex:0 0 400px;border:1px solid var(--border);border-radius:6px;background:var(--panel2);
+      padding:7px 10px;display:flex;flex-direction:column;gap:3px}
+.chat .m{font-size:9px;color:var(--muted);line-height:1.4}
+.chat .m b{color:var(--text)}
+.chat .hd{display:flex;justify-content:space-between;align-items:center}
+.launcher{flex:1;display:flex;align-items:center;gap:9px;position:relative}
+.whoclock{display:flex;flex-direction:column;gap:2px;margin-right:2px}
+.whoclock .w{font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:800}
+.whoclock .n{font-size:12px;font-weight:800;color:var(--gold)}
+.abtn{padding:11px 20px;border-radius:5px;border:1px solid var(--border);background:var(--panel2);
+      font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text);position:relative}
+.abtn.open{border-color:rgba(0,212,255,.55);color:var(--cyan);background:rgba(0,212,255,.07)}
+.abtn .badge{position:absolute;top:-7px;right:-7px;width:16px;height:16px;border-radius:50%;
+             background:var(--gold);color:#04050d;font-size:9px;font-weight:900;display:flex;
+             align-items:center;justify-content:center;box-shadow:0 0 10px rgba(200,168,75,.7)}
+.endturn{margin-left:auto;padding:12px 26px;border-radius:5px;border:1px solid rgba(255,34,85,.55);
+         color:#fff;font-weight:900;letter-spacing:2px;font-size:12px;background:rgba(255,34,85,.08)}
+.conseq{position:absolute;right:0;top:-26px;font-size:10px;color:var(--muted)}
+.conseq b{color:var(--cyan)}
+.conseq .to{color:var(--gold)}
+/* flyout + preview ----------------------------------------------------------- */
+.flyout{position:absolute;bottom:100%;margin-bottom:10px;background:var(--glass);border:1px solid
+        rgba(0,212,255,.4);border-radius:7px;padding:9px;display:flex;flex-direction:column;gap:5px;
+        min-width:250px;backdrop-filter:blur(4px);box-shadow:0 -6px 30px rgba(0,0,0,.5)}
+.fly-h{font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:800;padding:0 4px}
+.frow{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:5px;border:1px solid transparent}
+.frow.sel{border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.07)}
+.frow.dis{opacity:.45}
+.frow .fn{flex:1;font-size:11px;font-weight:800;color:#dfeaff}
+.frow .fn small{display:block;font-size:8px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-top:1px}
+.frow .fc{font-family:var(--num);font-size:9px;color:var(--muted);white-space:nowrap}
+.preview{position:absolute;bottom:100%;margin-bottom:10px;background:var(--glass);
+         border:1px solid rgba(200,168,75,.5);border-radius:7px;padding:12px 14px;width:300px;
+         backdrop-filter:blur(4px);box-shadow:0 -6px 30px rgba(0,0,0,.5)}
+.preview .t{font-size:13px;font-weight:900;letter-spacing:2px;color:var(--gold)}
+.preview .kv{display:flex;justify-content:space-between;font-size:10px;margin-top:5px}
+.preview .kv .k{color:var(--muted);letter-spacing:1px;font-weight:700;text-transform:uppercase;font-size:8px}
+.preview .kv .v{font-family:var(--num);font-weight:700;color:var(--text)}
+.preview ul{list-style:none;margin:8px 0;border-top:1px solid var(--border);padding-top:7px}
+.preview li{font-size:10px;line-height:1.6;color:var(--text)}
+.preview li b{color:var(--cyan)}
+.pv-btns{display:flex;gap:7px;margin-top:9px}
+.pv-btns .ok{flex:1;text-align:center;padding:8px;border-radius:5px;border:1px solid rgba(0,255,136,.5);
+             color:var(--success);font-weight:900;font-size:10px;letter-spacing:2px}
+.pv-btns .no{flex:0 0 84px;text-align:center;padding:8px;border-radius:5px;border:1px solid var(--border);
+             color:var(--muted);font-weight:800;font-size:10px;letter-spacing:2px}
+/* ticker --------------------------------------------------------------------- */
+.ticker{display:flex;align-items:center;gap:12px;padding:0 16px;
+        background:var(--panel);border-top:1px solid var(--border)}
+.ticker .who{display:flex;align-items:center;gap:8px;color:var(--mythic);font-weight:900;
+             letter-spacing:3px;font-size:11px}
+.ticker .line{font-size:12px;font-style:italic;color:#d8c9e2}
+.ticker .hint{margin-left:auto;font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:700}
+/* overlays ------------------------------------------------------------------- */
+.watermark{position:absolute;left:240px;bottom:130px;z-index:5;font-size:8px;letter-spacing:2px;
+           color:rgba(58,69,96,.9);font-weight:800;text-align:left;line-height:1.7}
+.dim{position:absolute;inset:0;background:rgba(2,3,8,.68);z-index:20;backdrop-filter:blur(2px)}
+.ask{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:24;width:560px;
+     background:var(--glass);border:1px solid rgba(255,34,85,.55);border-radius:9px;padding:15px 18px;
+     box-shadow:0 0 44px rgba(255,34,85,.25);backdrop-filter:blur(5px)}
+.popup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:24;width:960px;
+       background:var(--panel);border:1px solid rgba(200,168,75,.5);border-radius:10px;
+       box-shadow:0 0 60px rgba(0,0,0,.7);overflow:hidden}
+.cursor-tip{position:absolute;z-index:9;background:rgba(4,5,13,.92);border:1px solid rgba(0,212,255,.5);
+            border-radius:5px;padding:6px 9px;font-size:9px;line-height:1.6}
+</style></head><body><div class="mk"><div class="bbar">
+      <span class="live"><span class="dot"></span>LIVE</span><span class="rec">REC 00:07:58</span>
+      <div class="brand"><b>GALACTIC PRIME TIME</b><span>◆ COSMIC CASINO · VIP TABLE — THE INCINERATOR</span></div>
+      <div class="watch"><span style="color:var(--muted)">👁</span><span class="n">4,102,338</span>
+      <span class="lbl">watching</span><span class="momus-chip">🦩 MOMUS</span></div></div><div class="topstrip"><div class="selpanel onclock"><span class="onclock-tag">◂ ON THE CLOCK</span>
+      <span class="selglyph">🎭</span><div class="selbody">
+      <div class="selname">DARIO “ENCORE” <small>THE HEEL YOU PAY TO BOO</small></div>
+      <div class="selrow"><span class="pill p-gold">⚜ ENYO</span><span class="pill p-cyan">CLOCK 3</span><span class="pill p-danger">🩸 R-ARM 1/2 · BLEEDING T1</span></div>
+      <div class="selrow"><span class="pill p-gold">📸 CAMERA ×1</span><span class="pill p-mute">SHOCK 0</span><span class="flag f-gold">SPOTLIGHT</span><span class="flag ">TAG · RECKLESS</span></div>
+      </div></div><div class="topcenter"><div class="shortcuts"><span class="sc">Wagers</span><span class="sc">Divine</span><span class="sc">Social</span><span class="sc">Encyclopedia</span><span class="sc">Achievements</span><span class="sc">Quests</span><span class="sc">⚙</span></div><div class="timeline"><span class="pill p-purple">CLOCK 3</span><span class="pill p-cyan">MOMENT 07</span><div class="track"><div class="rail-line"></div><span class="tickmark" style="left:0%"></span><span class="ticknum" style="left:0%">0</span><span class="tickmark" style="left:10%"></span><span class="ticknum" style="left:10%">1</span><span class="tickmark" style="left:20%"></span><span class="ticknum" style="left:20%">2</span><span class="tickmark" style="left:30%"></span><span class="ticknum" style="left:30%">3</span><span class="tickmark" style="left:40%"></span><span class="ticknum" style="left:40%">4</span><span class="tickmark" style="left:50%"></span><span class="ticknum" style="left:50%">5</span><span class="tickmark" style="left:60%"></span><span class="ticknum" style="left:60%">6</span><span class="tickmark" style="left:70%"></span><span class="ticknum" style="left:70%">7</span><span class="tickmark" style="left:80%"></span><span class="ticknum" style="left:80%">8</span><span class="tickmark" style="left:90%"></span><span class="ticknum" style="left:90%">9</span><span class="tickmark" style="left:100%"></span><span class="ticknum" style="left:100%">10</span><span class="nowmark" style="left:30.0%"></span><span class="tl-band" style="left:34.0%;width:16.0%;background:rgba(255,122,47,.85);box-shadow:0 0 8px rgba(255,122,47,.85)"></span><span class="tl-bandlbl" style="left:34.0%;color:rgba(255,122,47,.85)">FLAMETHROWER — INTERRUPTIBLE ✓</span><span class="tl-chip p-gold" style="left:30.0%">DARIO ▸ NOW</span><span class="tl-chip p-cyan lane1" style="left:40.0%">FEINT ⌖ PREVIEW</span><span class="tl-chip p-cyan" style="left:56.0%">SASHA</span></div><span class="lbl" style="white-space:nowrap">next reset · clock 4</span></div></div><div class="odds"><div class="row"><span class="k">Survival odds</span><span class="v" style="">3 : 1</span></div><div class="row"><span class="k">Top bidder</span><span class="v" style="color:var(--gold)">ENYO ×3.1 ▲</span></div><div class="row"><span class="k">Live wager</span><span class="v" style="font-size:10px">Breach before MOMENT 20</span></div><div style="font-size:8px;color:var(--muted);line-height:1.5">Declared actions animate the odds on commit — the house is watching your cursor</div></div></div><div class="mid"><div class="rail"><div class="lbl" style="padding:0 3px">Party — 3 / 6</div><div class="pcard "><div class="hd"><span class="g">🛡</span><span class="nm">IMANI<small>the door</small></span></div><div class="hpbar"><i style="width:95%;background:var(--success)"></i></div><div class="flagrow"><span class="flag f-gold">⚜ HESTIA</span><span class="flag f-success">READY · CLK 4</span><span class="flag ">GUARD ✓</span></div><div class="statmini"><span>PHY 5</span><span>RFX 2</span><span>MND 4</span><span>CHA 3</span></div></div><div class="pcard active"><div class="hd"><span class="g">🎭</span><span class="nm">DARIO<small>encore</small></span></div><div class="hpbar"><i style="width:88%;background:var(--gold)"></i></div><div class="flagrow"><span class="flag f-gold">⚜ ENYO</span><span class="flag f-gold">ACTING NOW</span><span class="flag f-danger">🩸 R-ARM 1/2</span></div><div class="statmini"><span>PHY 2</span><span>RFX 5</span><span>MND 2</span><span>CHA 5</span></div></div><div class="pcard "><div class="hd"><span class="g">🃏</span><span class="nm">SASHA<small>little shadow</small></span></div><div class="hpbar"><i style="width:100%;background:var(--success)"></i></div><div class="flagrow"><span class="flag f-cyan">CONCEALED</span><span class="flag ">WAITS · CLK 5</span><span class="flag f-purple">MIND 5 · READS FEINTS</span></div><div class="statmini"><span>PHY 3</span><span>RFX 4</span><span>MND 5</span><span>CHA 2</span></div></div><div class="lbl" style="padding:6px 3px 0;opacity:.7">↕ scrolls at 4+ members</div></div><div class="world"><div class="stage"><div class="board"><svg width="900" height="560" viewBox="0 0 900 560"><polygon points="102.0,50.0 81.0,86.4 39.0,86.4 18.0,50.0 39.0,13.6 81.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,122.7 81.0,159.1 39.0,159.1 18.0,122.7 39.0,86.4 81.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,195.5 81.0,231.9 39.0,231.9 18.0,195.5 39.0,159.1 81.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,268.2 81.0,304.6 39.0,304.6 18.0,268.2 39.0,231.9 81.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,341.0 81.0,377.4 39.0,377.4 18.0,341.0 39.0,304.6 81.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,413.7 81.0,450.1 39.0,450.1 18.0,413.7 39.0,377.4 81.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="102.0,486.5 81.0,522.8 39.0,522.8 18.0,486.5 39.0,450.1 81.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,86.4 144.0,122.7 102.0,122.7 81.0,86.4 102.0,50.0 144.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,159.1 144.0,195.5 102.0,195.5 81.0,159.1 102.0,122.7 144.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,231.9 144.0,268.2 102.0,268.2 81.0,231.9 102.0,195.5 144.0,195.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,304.6 144.0,341.0 102.0,341.0 81.0,304.6 102.0,268.2 144.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,377.4 144.0,413.7 102.0,413.7 81.0,377.4 102.0,341.0 144.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,450.1 144.0,486.5 102.0,486.5 81.0,450.1 102.0,413.7 144.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="165.0,522.8 144.0,559.2 102.0,559.2 81.0,522.8 102.0,486.5 144.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,50.0 207.0,86.4 165.0,86.4 144.0,50.0 165.0,13.6 207.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,122.7 207.0,159.1 165.0,159.1 144.0,122.7 165.0,86.4 207.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,195.5 207.0,231.9 165.0,231.9 144.0,195.5 165.0,159.1 207.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,268.2 207.0,304.6 165.0,304.6 144.0,268.2 165.0,231.9 207.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,341.0 207.0,377.4 165.0,377.4 144.0,341.0 165.0,304.6 207.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,413.7 207.0,450.1 165.0,450.1 144.0,413.7 165.0,377.4 207.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="228.0,486.5 207.0,522.8 165.0,522.8 144.0,486.5 165.0,450.1 207.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,86.4 270.0,122.7 228.0,122.7 207.0,86.4 228.0,50.0 270.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,159.1 270.0,195.5 228.0,195.5 207.0,159.1 228.0,122.7 270.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,231.9 270.0,268.2 228.0,268.2 207.0,231.9 228.0,195.5 270.0,195.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,304.6 270.0,341.0 228.0,341.0 207.0,304.6 228.0,268.2 270.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,377.4 270.0,413.7 228.0,413.7 207.0,377.4 228.0,341.0 270.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,450.1 270.0,486.5 228.0,486.5 207.0,450.1 228.0,413.7 270.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="291.0,522.8 270.0,559.2 228.0,559.2 207.0,522.8 228.0,486.5 270.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,50.0 333.0,86.4 291.0,86.4 270.0,50.0 291.0,13.6 333.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,122.7 333.0,159.1 291.0,159.1 270.0,122.7 291.0,86.4 333.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,195.5 333.0,231.9 291.0,231.9 270.0,195.5 291.0,159.1 333.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,268.2 333.0,304.6 291.0,304.6 270.0,268.2 291.0,231.9 333.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,341.0 333.0,377.4 291.0,377.4 270.0,341.0 291.0,304.6 333.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,413.7 333.0,450.1 291.0,450.1 270.0,413.7 291.0,377.4 333.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="354.0,486.5 333.0,522.8 291.0,522.8 270.0,486.5 291.0,450.1 333.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,86.4 396.0,122.7 354.0,122.7 333.0,86.4 354.0,50.0 396.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,159.1 396.0,195.5 354.0,195.5 333.0,159.1 354.0,122.7 396.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,231.9 396.0,268.2 354.0,268.2 333.0,231.9 354.0,195.5 396.0,195.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,304.6 396.0,341.0 354.0,341.0 333.0,304.6 354.0,268.2 396.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,377.4 396.0,413.7 354.0,413.7 333.0,377.4 354.0,341.0 396.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,450.1 396.0,486.5 354.0,486.5 333.0,450.1 354.0,413.7 396.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="417.0,522.8 396.0,559.2 354.0,559.2 333.0,522.8 354.0,486.5 396.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,50.0 459.0,86.4 417.0,86.4 396.0,50.0 417.0,13.6 459.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,122.7 459.0,159.1 417.0,159.1 396.0,122.7 417.0,86.4 459.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,195.5 459.0,231.9 417.0,231.9 396.0,195.5 417.0,159.1 459.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,268.2 459.0,304.6 417.0,304.6 396.0,268.2 417.0,231.9 459.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,341.0 459.0,377.4 417.0,377.4 396.0,341.0 417.0,304.6 459.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,413.7 459.0,450.1 417.0,450.1 396.0,413.7 417.0,377.4 459.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="480.0,486.5 459.0,522.8 417.0,522.8 396.0,486.5 417.0,450.1 459.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,86.4 522.0,122.7 480.0,122.7 459.0,86.4 480.0,50.0 522.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,159.1 522.0,195.5 480.0,195.5 459.0,159.1 480.0,122.7 522.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,231.9 522.0,268.2 480.0,268.2 459.0,231.9 480.0,195.5 522.0,195.5" fill="#3a1c0c" fill-opacity=".95" stroke="rgba(255,122,47,.7)" stroke-width="1.2"/>
+<polygon points="543.0,304.6 522.0,341.0 480.0,341.0 459.0,304.6 480.0,268.2 522.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,377.4 522.0,413.7 480.0,413.7 459.0,377.4 480.0,341.0 522.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,450.1 522.0,486.5 480.0,486.5 459.0,450.1 480.0,413.7 522.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="543.0,522.8 522.0,559.2 480.0,559.2 459.0,522.8 480.0,486.5 522.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="606.0,50.0 585.0,86.4 543.0,86.4 522.0,50.0 543.0,13.6 585.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="606.0,122.7 585.0,159.1 543.0,159.1 522.0,122.7 543.0,86.4 585.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="606.0,195.5 585.0,231.9 543.0,231.9 522.0,195.5 543.0,159.1 585.0,159.1" fill="#3a1c0c" fill-opacity=".95" stroke="rgba(255,122,47,.7)" stroke-width="1.2"/>
+<polygon points="606.0,268.2 585.0,304.6 543.0,304.6 522.0,268.2 543.0,231.9 585.0,231.9" fill="#3a1c0c" fill-opacity=".95" stroke="rgba(255,122,47,.7)" stroke-width="1.2"/>
+<polygon points="606.0,341.0 585.0,377.4 543.0,377.4 522.0,341.0 543.0,304.6 585.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="606.0,413.7 585.0,450.1 543.0,450.1 522.0,413.7 543.0,377.4 585.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="606.0,486.5 585.0,522.8 543.0,522.8 522.0,486.5 543.0,450.1 585.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,86.4 648.0,122.7 606.0,122.7 585.0,86.4 606.0,50.0 648.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,159.1 648.0,195.5 606.0,195.5 585.0,159.1 606.0,122.7 648.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,231.9 648.0,268.2 606.0,268.2 585.0,231.9 606.0,195.5 648.0,195.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,304.6 648.0,341.0 606.0,341.0 585.0,304.6 606.0,268.2 648.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,377.4 648.0,413.7 606.0,413.7 585.0,377.4 606.0,341.0 648.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,450.1 648.0,486.5 606.0,486.5 585.0,450.1 606.0,413.7 648.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="669.0,522.8 648.0,559.2 606.0,559.2 585.0,522.8 606.0,486.5 648.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,50.0 711.0,86.4 669.0,86.4 648.0,50.0 669.0,13.6 711.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,122.7 711.0,159.1 669.0,159.1 648.0,122.7 669.0,86.4 711.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,195.5 711.0,231.9 669.0,231.9 648.0,195.5 669.0,159.1 711.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,268.2 711.0,304.6 669.0,304.6 648.0,268.2 669.0,231.9 711.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,341.0 711.0,377.4 669.0,377.4 648.0,341.0 669.0,304.6 711.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,413.7 711.0,450.1 669.0,450.1 648.0,413.7 669.0,377.4 711.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="732.0,486.5 711.0,522.8 669.0,522.8 648.0,486.5 669.0,450.1 711.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,86.4 774.0,122.7 732.0,122.7 711.0,86.4 732.0,50.0 774.0,50.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,159.1 774.0,195.5 732.0,195.5 711.0,159.1 732.0,122.7 774.0,122.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,231.9 774.0,268.2 732.0,268.2 711.0,231.9 732.0,195.5 774.0,195.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,304.6 774.0,341.0 732.0,341.0 711.0,304.6 732.0,268.2 774.0,268.2" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,377.4 774.0,413.7 732.0,413.7 711.0,377.4 732.0,341.0 774.0,341.0" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,450.1 774.0,486.5 732.0,486.5 711.0,450.1 732.0,413.7 774.0,413.7" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="795.0,522.8 774.0,559.2 732.0,559.2 711.0,522.8 732.0,486.5 774.0,486.5" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,50.0 837.0,86.4 795.0,86.4 774.0,50.0 795.0,13.6 837.0,13.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,122.7 837.0,159.1 795.0,159.1 774.0,122.7 795.0,86.4 837.0,86.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,195.5 837.0,231.9 795.0,231.9 774.0,195.5 795.0,159.1 837.0,159.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,268.2 837.0,304.6 795.0,304.6 774.0,268.2 795.0,231.9 837.0,231.9" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,341.0 837.0,377.4 795.0,377.4 774.0,341.0 795.0,304.6 837.0,304.6" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,413.7 837.0,450.1 795.0,450.1 774.0,413.7 795.0,377.4 837.0,377.4" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/>
+<polygon points="858.0,486.5 837.0,522.8 795.0,522.8 774.0,486.5 795.0,450.1 837.0,450.1" fill="#0c1122" fill-opacity=".9" stroke="#1a2540" stroke-width="1.2"/><g transform="translate(180,88) rotate(-2)"><rect x="-75.0" y="-7" width="150" height="14" rx="2" fill="#232c48" stroke="#31406b" stroke-width="1.5"/><rect x="-75.0" y="-7" width="150" height="5" rx="2" fill="#31406b" opacity=".7"/></g><g transform="translate(560,60) rotate(0)"><rect x="-95.0" y="-7" width="190" height="14" rx="2" fill="#232c48" stroke="#31406b" stroke-width="1.5"/><rect x="-95.0" y="-7" width="190" height="5" rx="2" fill="#31406b" opacity=".7"/></g><g transform="translate(90,300) rotate(88)"><rect x="-65.0" y="-7" width="130" height="14" rx="2" fill="#232c48" stroke="#31406b" stroke-width="1.5"/><rect x="-65.0" y="-7" width="130" height="5" rx="2" fill="#31406b" opacity=".7"/></g><g transform="translate(760,310) rotate(90)"><rect x="-37.0" y="-6" width="74" height="12" rx="2" fill="rgba(200,168,75,.25)" stroke="#c8a84b" stroke-width="1.6" /></g><g transform="translate(150,470) rotate(0)"><rect x="-42.0" y="-6" width="84" height="12" rx="2" fill="rgba(0,212,255,.12)" stroke="#00d4ff" stroke-width="1.6" stroke-dasharray="5 4"/></g><ellipse cx="600" cy="170" rx="13" ry="9" fill="#1b2340" stroke="#31406b" stroke-width="1.5"/><ellipse cx="600" cy="166" rx="13" ry="9" fill="#242e52" stroke="#31406b" stroke-width="1.5"/><circle cx="600" cy="164" r="16" fill="rgba(255,122,47,.28)"/><circle cx="600" cy="164" r="7" fill="rgba(255,170,60,.55)"/><ellipse cx="210" cy="420" rx="13" ry="9" fill="#1b2340" stroke="#31406b" stroke-width="1.5"/><ellipse cx="210" cy="416" rx="13" ry="9" fill="#242e52" stroke="#31406b" stroke-width="1.5"/><ellipse cx="430" cy="480" rx="13" ry="9" fill="#1b2340" stroke="#31406b" stroke-width="1.5"/><ellipse cx="430" cy="476" rx="13" ry="9" fill="#242e52" stroke="#31406b" stroke-width="1.5"/><circle cx="186.0" cy="340.9845356715714" r="86" fill="none" stroke="rgba(0,212,255,.35)" stroke-width="1.5" stroke-dasharray="6 6"/><path d="M 438.0 195.4922678357857 L 178.0 385.4922678357857 A 330 330 0 0 0 398.0 515.4922678357857 Z" fill="rgba(255,122,47,.16)" stroke="rgba(255,122,47,.55)" stroke-width="1.6" stroke-dasharray="7 5"/><path d="M 438.0 195.4922678357857 L 288.0 291.4922678357857 A 180 180 0 0 0 402.0 371.4922678357857 Z" fill="rgba(255,122,47,.10)" stroke="rgba(255,122,47,.4)" stroke-width="1.2"/></svg></div></div><span class="groundtag" style="left:70%;top:54%;border-color:rgba(200,168,75,.5);color:var(--gold)">SERVICE HATCH · CLOSED</span><span class="groundtag" style="left:26%;top:73%;border-color:rgba(0,212,255,.45);color:var(--cyan)">KENNEL GATE · OPEN</span><span class="groundtag" style="left:64%;top:38%;border-color:rgba(255,122,47,.55);color:var(--fire)">🔥 BURNING CAN — FIRE HEALS IT</span><div class="token boss" style="left:52%;top:34%"><div class="tok-g">🐊<span class="tok-conds"><span class="cond-dot" title="fire-fed">🔥</span></span></div><span class="tok-name">INCINE-DILE</span><span class="tok-hp"><i style="width:100%;background:var(--fire)"></i></span></div><div class="token " style="left:45%;top:56%"><div class="tok-g">🛡<span class="tok-conds"><span class="cond-dot" title="guard">💢</span></span></div><span class="tok-name">IMANI</span><span class="tok-hp"><i style="width:95%;background:var(--success)"></i></span></div><div class="token ally-act" style="left:58%;top:74%"><div class="tok-g">🎭<span class="tok-conds"><span class="cond-dot" title="bleeding T1">🩸</span></span></div><span class="tok-name">DARIO</span><span class="tok-hp"><i style="width:88%;background:var(--gold)"></i></span></div><div class="token conceal" style="left:35%;top:60%"><div class="tok-g">🃏</div><span class="tok-name">SASHA</span><span class="tok-hp"><i style="width:100%;background:var(--success)"></i></span><span class="tok-name" style="border-color:rgba(0,212,255,.4);color:var(--cyan)">CONCEALED · r2</span></div><div class="feed"></div><div class="vign"></div><span class="cammark cm-tl"></span><span class="cammark cm-tr"></span><span class="cammark cm-bl"></span><span class="cammark cm-br"></span><span class="feedtag">● FEED 01 · ARENA CAM</span><span class="rectag">● REC</span><div class="phasetags"><span class="pill p-fire">PHASE 1</span><span class="pill p-cyan">TARGETING — VALID PARTS LIT</span></div><div class="cursor-tip" style="left:47%;top:31%"><b style="color:var(--cyan)">LEFT HAND</b><br>In range · front arc ✓<br><span style="color:var(--gold)">Predicted: 2 DMG · BLEED I</span></div></div><div class="rightcol"><div class="rpanel">
+      <h4>Crowd <span class="pill p-gold" style="font-size:8px">+12</span></h4>
+      <div class="hypehead"><span class="v">68<small> / 100</small></span><span class="lbl">hype</span></div>
+      <div class="hypebar"><i style="width:68%"></i></div>
+      <div class="bandrow"><span class="band">ELECTRIC ⚡</span>
+        <span class="flag f-gold">SPOTLIGHT · DARIO</span><span class="flag">“Reckless”</span></div>
+      <div class="goal"><div class="t">🎯 SHOW-OFF!</div><div class="d">Land a hit from an <b style='color:var(--cyan)'>Exposed</b> state — make it look easy.</div>
+      <div class="r"><span class="pill p-success">+40 HYPE</span><span class="pill p-purple">⏱ 2 CLOCKS</span></div></div></div><div class="rpanel insp"><h4>Inspector — INCINE-DILE <span class="pill p-fire" style="font-size:8px">PHASE 1</span></h4><div class="knowrow" style="margin-bottom:6px"><span class="flag f-cyan">TARGETING — FEINT</span><span class="flag ">front arc only</span></div><div class="part "><span class="pn">HEAD</span><span class="flag ">VISIBLE</span><span class="flag ">OUT OF ARC</span><span class="ph" style="color:var(--success)">7/7</span></div><div class="part "><span class="pn">RIGHT HAND · FLAMER</span><span class="flag f-fire">🔥 WEAPON</span><span class="flag f-success">VALID</span><span class="flag f-gold">2 DMG · BLEED</span><span class="ph" style="color:var(--success)">8/8</span></div><div class="part "><span class="pn">LEFT HAND</span><span class="flag ">VISIBLE</span><span class="flag f-success">VALID</span><span class="flag f-gold">2 DMG · BLEED</span><span class="ph" style="color:var(--success)">30/30</span></div><div class="part "><span class="pn">RIGHT LEG</span><span class="flag ">VISIBLE</span><span class="flag ">OUT OF ARC</span><span class="ph" style="color:var(--success)">15/15</span></div><div class="part "><span class="pn">LEFT LEG</span><span class="flag ">VISIBLE</span><span class="flag ">OUT OF ARC</span><span class="ph" style="color:var(--success)">15/15</span></div><div class="part hidden-part"><span class="pn">UNKNOWN INTERNAL STRUCTURE</span><span class="flag f-purple">SUSPECTED</span><span class="ph" style="color:var(--muted)">🔒 ???</span></div><div class="knowrow"><span class="flag f-gold">AFFLICTION RES 2</span><span class="flag f-fire">FIRE HEALS — SUSPECTED</span><span class="flag ">MIND 1 — feints unreadable</span></div><div class="knowrow"><span class="lbl" style="letter-spacing:1px">discovery:</span><span class="flag f-success">VISIBLE</span><span class="flag f-cyan">KNOWN</span><span class="flag f-purple">SUSPECTED</span><span class="flag ">HIDDEN</span><span class="flag f-danger">MISIDENTIFIED?</span></div><div class="telegraph"><div class="t">⚠ TELEGRAPH — FLAMETHROWER</div><div class="d">Cone from the right hand · resolves <b class="mono">CLOCK 5</b> · interrupt window <b class="mono">OPEN</b> — a hit on the flamer hand before then forces the d6.</div></div></div></div></div><div class="bottomstrip"><div class="chat"><div class="hd"><span class="lbl">chat · party</span>
+      <span class="flag f-cyan">2 UNREAD</span><span class="lbl" style="letter-spacing:1px">EXPAND ▴</span></div>
+      <div class="m"><b>SASHA:</b> Flamer hand. It vents when you hit it. Watch the valve.</div>
+      <div class="m"><b>IMANI:</b> Quit lighting things up — the fire FEEDS it.</div></div><div class="launcher"><div class="whoclock"><span class="w">ON THE CLOCK</span>
+      <span class="n">DARIO “ENCORE”</span></div>
+      <span class="abtn">↔ MOVE</span><span class="abtn">ATTACK</span><span class="abtn open">SKILLS</span>
+      <span class="abtn">FREE ACTIONS<span class="badge">!</span></span><span class="endturn" title="">END TURN</span><div class="conseq"><b>FEINT</b> → forces a reaction · sets up <span class="to">PRESSURE STRIKE</span> · ally openers count — <b>CROSS-CHARACTER CHAIN</b></div><div class="flyout" style="left:270px">
+          <div class="fly-h">DARIO — SKILLS</div>
+          <div class="frow sel"><span class="fn">FEINT <small>L3 · forces a reaction · opens PRESSURE STRIKE</small></span><span class="fc">1 MOMENT</span></div>
+          <div class="frow"><span class="fn">PRESSURE STRIKE <small>L1 · CHAIN — needs FEINT (yours or an ally's, same target)</small></span><span class="fc">1 MOMENT</span></div>
+          <div class="frow"><span class="fn">DANCE <small>L2 · STANCE — spectacle while it holds</small></span><span class="fc">1 MOMENT</span></div>
+          <div class="frow dis"><span class="fn">🔒 THE LONG CON <small>TIER 2 — Mod-Center offer · FEINT 5 + VIBE CONTROL 3</small></span><span class="fc">—</span></div>
+        </div>
+        <div class="preview" style="left:540px">
+          <div class="t">FEINT</div>
+          <div class="kv"><span class="k">Target</span><span class="v">INCINE-DILE · LEFT HAND</span></div>
+          <div class="kv"><span class="k">Cost</span><span class="v">1 MOMENT · resolves CLOCK 4</span></div>
+          <div class="kv"><span class="k">Read risk</span><span class="v" style="color:var(--success)">NONE — MIND 1</span></div>
+          <ul><li>▸ Low damage · applies <b>EXPOSED</b></li>
+              <li>▸ Opens <b>PRESSURE STRIKE</b> for the party (same target)</li>
+              <li>▸ Crowd goal <b>SHOW-OFF!</b> pays if you land from EXPOSED</li></ul>
+          <div class="pv-btns"><span class="ok">CONFIRM ▸</span><span class="no">BACK</span></div>
+        </div></div></div><div class="ticker"><span class="who">🦩 MOMUS</span><span class="line">“He’s pointing at the big one. Bold. The odds board certainly thinks so.”</span><span class="hint">CLICK FOR FULL EVENT LOG ▸</span></div><div class="watermark">MOCKUP · FRAME 2 · MODE C — TARGETING A BODY PART<br>STRUCTURE PER hud-v2/ARCHITECTURE.md §2 · IDENTITY PER demo-slice DESIGN.md<br>PLACEHOLDER NUMBERS · R14 · EMOJI = PLACEHOLDER ART</div></div></body></html>
