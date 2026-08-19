@@ -28,8 +28,12 @@ const TIER2_KEYS: Array[String] = [
 ## Wave 1 encoded three ladders; wave 2 (tests/test_tier2_wave2.gd) added
 ## counterscript (S1) + combat_medic (S6); wave 3 — the strike fusions
 ## (tests/test_strike_fusions.gd) — added predators_arc (S2), earthbreaker
-## (S3) and vivisection (S4). The remaining two (S8-S9) stay DATA-ONLY
-## pending their machinery.
+## (S3) and vivisection (S4); wave 4 — the wave closer
+## (tests/test_tier2_wave4.gd) — added the_unseen (S8, the stealth_conceal
+## substrate extended: the mobile-conceal anchor-lift + the ally cover) and
+## the_long_con (S9, sustained_con). ALL TEN ladders are now encoded a-d
+## (per-rung PARTIAL/DATA flags live in the proposal doc's status blocks;
+## every L5 mastery rung stays threshold DATA by the house convention).
 const IMPLEMENTED: Dictionary = {
 	"perfect_evasion": "fused_evasion",
 	"vice_grip": "skill_grapple",
@@ -39,6 +43,8 @@ const IMPLEMENTED: Dictionary = {
 	"predators_arc": "fused_leap_finisher",
 	"earthbreaker": "state_forked_strike",
 	"vivisection": "fused_arc_flurry",
+	"the_unseen": "stealth_conceal",
+	"the_long_con": "sustained_con",
 }
 
 
@@ -164,9 +170,10 @@ func test_data_contract_results_match_recipes_and_offers() -> void:
 
 
 func test_implemented_vs_data_only_split_is_honest() -> void:
-	# The encoded ladders (waves 1-3) carry their real archetypes; the
-	# remaining two resolve through the honest `strike` fallback until their
-	# machinery lands. None are in KNOWN_KEYS (acquisition-gated results are
+	# The encoded ladders (waves 1-4 — ALL TEN as of the wave closer) carry
+	# their real archetypes; the strike-fallback branch below is kept so a
+	# future ladder regression (an entry dropping out of mechanics()) fails
+	# HERE, by name. None are in KNOWN_KEYS (acquisition-gated results are
 	# never creation-selectable, and their keyword rulings await the keyword
 	# pass).
 	for key: String in TIER2_KEYS:

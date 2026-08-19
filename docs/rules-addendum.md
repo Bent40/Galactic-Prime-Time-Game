@@ -839,8 +839,9 @@ authors no detection roll, so no stream is ever touched.
     itself. Consequence, documented not hidden: **a shout never alerts in v1** — the
     R13 self-break (above) runs first and fully reveals the shouter, strictly more
     information than an alert; the LOUD row stays real for authored no-visible-source
-    noises (**the voicebox skill's thrown sounds are exactly this substrate** — next
-    round). Hearer gates: AI-controlled + able to act (a fainted guard hears nothing
+    noises (**the voicebox skill's thrown sounds are exactly this substrate** —
+    **SHIPPED, Round 5: see the authored-noise bullet below**). Hearer gates:
+    AI-controlled + able to act (a fainted guard hears nothing
     it will remember) + hostile to the source (your pack's noise alarms nobody) +
     within loudness of the sound's hex. Several audible noises: the LAST in batch
     order wins (the freshest sound; batches are ordered — deterministic).
@@ -876,9 +877,30 @@ authors no detection roll, so no stream is ever touched.
     belongs to the resolver's R30 table; a face-the-noise reaction is future work,
     flagged not invented). **Hearing never REVEALS** (`sees()` untouched — a
     heard-but-unseen hider stays hidden); herding + targeting still require sight.
+  * **SHIPPED — the authored noise (voicebox, Round 5 — the reserved LOUD lane
+    made real).** The base skill voicebox (data id 34, Charm; `thrown_sound` in
+    `SkillBook`, now in KNOWN_KEYS — its ruled keyword entry predates the wave)
+    is the sanctioned NEW emission point this section reserved: a cost-0
+    (free-slot) declare throws a mimicked sound at a chosen hex within 10
+    [PLACEHOLDER R14 — a shout's own carry], **deliberately without an LOS
+    gate** (sound placement is acoustic; the model's sound already ignores
+    walls). The resolution emits `sound_thrown {actor, position, loudness}`;
+    `Stealth.derive_noises` maps it to an **AUTHORED row** at the THROWN hex
+    at **LOUD 10 — the table row verbatim, no new loudness authored** — and
+    the sweep consumes an authored row **even from a visible thrower** (the
+    source-still-hidden redundancy filter is waived: nothing is visible AT
+    the sound's hex — the scapegoat/misdirection space this ruling named).
+    Alerted-not-located holds exactly: investigators walk to the thrown hex,
+    never the thrower's, and the throw **neither breaks nor requires
+    stealth** — the LOUD alert row is finally reachable FROM stealth
+    (test-pinned, `tests/test_voicebox.gd`). Zero rng. The row's SOCIAL half
+    (the previously-heard requirement, Mind-3 recognition, the "+1 Strength"
+    fidelity rows, the machinery-fooling L6) stays DATA — no
+    social-interaction substrate exists, none invented.
   * **Events/view (additive):** `noise_heard` {combatant, source, position, loudness}
     (the winning noise per hearer) · `alerted` {combatant, position} (transition
     only; refreshes ride `noise_heard`) · `alert_cleared` {combatant, reason};
+    Round 5 adds `sound_thrown` {actor, position, loudness} (the authored throw);
     `view_combatants()` carries `alerted` only-when-set (the broadcast stays
     omniscient; what the MOB knows is exactly the dict — no source). `ai_stance` may
     now surface `"alert"`.
@@ -897,7 +919,11 @@ authors no detection roll, so no stream is ever touched.
   **windup collapses** if its target hides mid-windup (R2 snapshot re-check). Attacking
   FROM stealth neither breaks it (sight/noise are the only ruled breaks — sight usually
   reveals a melee attacker anyway: adjacent + Mind ≥ 1) **nor grants any bonus** (this
-  section authors no first-strike rule; none invented).
+  section authors no first-strike rule; none invented). *(Tier-2 wave 4 nuance,
+  R31: the_unseen's MOBILE concealment authors its own attack-break for that
+  skill's conceal only — "only fast movement or attacking does" is the blessed
+  S8-a rung, enforced at the declare seam; the base-stealth line here is
+  unchanged and contrast-pinned in `tests/test_tier2_wave4.gd`.)*
 - **SHIPPED — physicality over information (documented v1 line):** committed AREA
   geometry — cone arcs, charge lanes, blasts — hits **bodies by hex**, stealthed or
   not; stealth gates targeted INFORMATION, it never phases the body out.
@@ -919,8 +945,10 @@ authors no detection roll, so no stream is ever touched.
     above). Still downscoped WITHIN hearing, flagged there: per-creature smart-threshold
     NUMBERS (folded into the `investigates` default, PROVISIONAL), wall
     acoustics/muffling, noise rows beyond the v1 table (reactions, grapples, zones,
-    trash cans), a face-the-noise turn for holders, and the scapegoat/decoy CONTENT
-    (voicebox rides the substrate next round);
+    trash cans), a face-the-noise turn for holders, and ~~the scapegoat/decoy CONTENT
+    (voicebox rides the substrate next round)~~ **voicebox SHIPPED (Round 5 — the
+    authored-noise bullet above); decoy ENTITIES (the_unseen S8-d's afterimage
+    half) still wait on machinery**;
   * **disguise** — no disguise items/skills exist to carry the range property
     (PLACEHOLDER R14 regardless);
   * **cover heights / sized gaps / skill-by-gap-size** — sized terrain unmodeled (own
@@ -943,7 +971,9 @@ the turning observer, herding's cone) + `tests/test_hearing.gd` for the round-3b
 hearing/alert contract (the loudness table both pure and behavioral, the
 walks-to-where-the-sound-WAS divergence, investigate vs ignore, decay, the
 redundant-with-sight pin, no-source-in-state, serialization mid-alert, determinism,
-and the re-verified legacy hash pins).
+and the re-verified legacy hash pins) + `tests/test_voicebox.gd` for the Round-5
+authored noise (the reserved LOUD lane: thrown-hex investigation with the thrower
+unrevealed, the visible-thrower exemption, the no-LOS throw, zero rng).
 
 ## R21 — Body structure: Lego-style part composition (owner, 2026-07-18)
 
@@ -1527,13 +1557,19 @@ is a legal future parent (pinned in `tests/test_tier2_enablement.gd`).
 flow, and who pays what to level an unlocked L6–8 band are all deliberately unpriced
 here (the R27 discipline, unchanged).
 
-**Implementation status (2026-08-19):** eight of the ten blessed tier-2 ladders are
-ENCODED — wave 1 (S5 perfect_evasion, S7 vice_grip, S10 phantom_grasp), wave 2 (S1
-counterscript, S6 combat_medic), wave 3 the strike fusions (S2 predators_arc, S3
-earthbreaker, S4 vivisection — incl. the ruling-#4 chain-seat aliasing `chain_as` +
-the S2-b chain-open marker; see the R3 note above). S8–S9 stay DATA-ONLY. Per-rung
-implemented-vs-data maps: `docs/design/tier2-rungs-proposal.md` status blocks; tests:
-`tests/test_tier2_wave1.gd` / `test_tier2_wave2.gd` / `test_strike_fusions.gd`.
+**Implementation status (2026-08-19):** ALL TEN blessed tier-2 ladders are ENCODED —
+the implementation wave is CLOSED. Wave 1 (S5 perfect_evasion, S7 vice_grip, S10
+phantom_grasp), wave 2 (S1 counterscript, S6 combat_medic), wave 3 the strike fusions
+(S2 predators_arc, S3 earthbreaker, S4 vivisection — incl. the ruling-#4 chain-seat
+aliasing `chain_as` + the S2-b chain-open marker; see the R3 note above), wave 4 the
+wave closer (S8 the_unseen — the mobile-conceal anchor-lift + ally cover on the R20
+conceal substrate; S9 the_long_con — the serialized sustained con: perception-gated
+marks, next-action-against-you collapse, banked repositions, curated dice, the
+per-Clock Charm-scaled hype beat). Every L5 mastery rung stays threshold DATA (the
+house convention — the tier-2 economy pass owns that band). Per-rung
+implemented/PARTIAL/DATA maps: `docs/design/tier2-rungs-proposal.md` status blocks;
+tests: `tests/test_tier2_wave1.gd` / `test_tier2_wave2.gd` / `test_strike_fusions.gd`
+/ `test_tier2_wave4.gd`.
 
 ## R32 — Zones/fields: the area-effect substrate (KAN-5 remainder K1, 2026-08-19 — PROVISIONAL)
 

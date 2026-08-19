@@ -33,9 +33,11 @@ extends SimTestBase
 ##       tick before any over-state exists).
 
 const RUN_SEED := 4242
+## Tier-2 wave 4 appended con / conned_by / con_steps (the_long_con — the con
+## names per-encounter enemy ids; scene end is one of its AUTHORED ends).
 const NEW_FIELD_KEYS: Array[String] = ["guard", "iron_stance", "forced_save",
 	"pattern_reads", "conceal", "channeling", "held_by", "last_action_target",
-	"stealthed"]
+	"stealthed", "con", "conned_by", "con_steps"]
 
 
 # ---------------------------------------------------------------- plumbing
@@ -311,6 +313,11 @@ func test_sanitizer_dispositions_over_a_fully_loaded_capture() -> void:
 		"channeling": {"key": "telekinesis", "target": "bo", "range": 10, "sustained_tick": 4},
 		"held_by": "bo",
 		"stealthed": true,
+		# Tier-2 wave 4 (the_long_con): the con record, the mark-side mirror
+		# and the banked step — all combat-scoped, all erased.
+		"con": {"targets": {"bo": "tool"}, "dice": 1, "hype": 0},
+		"conned_by": "bo",
+		"con_steps": 2,
 	}
 	run.apply_command({"type": "end_encounter", "outcome": "WIN",
 		"carried": {"ava": capture}, "hype_meter": 0})

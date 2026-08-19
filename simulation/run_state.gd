@@ -866,8 +866,12 @@ static func _sanitize_carry(raw_variant: Variant) -> Dictionary:
 	# stealth); channeling + held_by (batch D — the partner did not follow you
 	# out, the grapple-link rule). facing is deliberately ABSENT here: the
 	# controller splice re-derives it at staging (R30/#33 — see the header).
+	# Tier-2 wave 4 (the_long_con) rides the same only-when-set idiom: the con
+	# names per-encounter enemy ids and the banked con steps are the encounter
+	# economy — all three ERASE (scene end is one of the con's authored ends).
 	for combat_scoped: String in ["last_action_target", "guard", "iron_stance",
-			"forced_save", "pattern_reads", "conceal", "channeling", "held_by"]:
+			"forced_save", "pattern_reads", "conceal", "channeling", "held_by",
+			"con", "conned_by", "con_steps"]:
 		carry.erase(combat_scoped)
 	# Statuses: only the condition-justified incapacitated persists (its head
 	# condition carried too); overwhelmed/prone/slowed are per-combat posture.

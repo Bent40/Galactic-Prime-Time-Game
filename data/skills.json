@@ -1828,20 +1828,20 @@
     "requirements": "Look like or be concealed in the environment around you.",
     "range": "Self",
     "target": "Self",
-    "effect": "Concealment that moves: enter concealment (the R20 substrate — an override reveal radius [PH — <= the parent's L5 radius] capping every observer's sight) — and slow movement no longer breaks it (only fast movement or attacking does). The prowler's sense rides along always-on: you know the nearest exit/gap/vent in any room, and squeeze through Small-plausible gaps without a Forced Action. [NEEDS: moving concealment — stealth_conceal is hex-anchored today, any displacement breaks it] [NEEDS: nightlurking's awareness/squeeze passive — not in SkillBook yet] [Moment cost 3 PH; numbers PLACEHOLDER R14]",
+    "effect": "Concealment that moves: enter concealment (the R20 substrate — an override reveal radius [PH — <= the parent's L5 radius] capping every observer's sight) — and slow movement no longer breaks it (only fast movement or attacking does). The prowler's sense rides along always-on: you know the nearest exit/gap/vent in any room, and squeeze through Small-plausible gaps without a Forced Action. [IMPLEMENTED wave 4 — the ANCHOR-LIFT: the conceal record carries conceal_mobile and slow movement (1 hex per Clock, AUTHORED PH) RE-ANCHORS instead of breaking; fast movement / a second same-Clock step breaks 'moved', a damaging declare breaks 'attacked' — authored for this conceal only, base stealth/camouflage unchanged] [NEEDS: nightlurking's awareness/squeeze passive — still DATA: no exit/gap knowledge surface exists; awareness_range rows are carried on the spec unconsumed] [Moment cost 3 PH; numbers PLACEHOLDER R14]",
     "unlock_requirements": {},
     "effects": [
       {
         "level": 2,
-        "text": "Harder to find: -[PH] reveal radius, +[PH] awareness range — both parents' rows continued."
+        "text": "Harder to find: -[PH] reveal radius, +[PH] awareness range — both parents' rows continued. [PARTIAL wave 4 — reveal-radius rows IMPLEMENTED (2/1/1/1, floor 1 — radius 0 is the L5 vanish); awareness rows CARRIED as data, nothing consumes them yet]"
       },
       {
         "level": 3,
-        "text": "Vanish through: use a detected gap/vent without breaking concealment — enter and leave rooms unseen; emerging from a gap onto an unaware target Exposes them [PH]. [NEEDS: concealment-preserving room transition]"
+        "text": "Vanish through: use a detected gap/vent without breaking concealment — enter and leave rooms unseen; emerging from a gap onto an unaware target Exposes them [PH]. [NEEDS: concealment-preserving room transition — still DATA after wave 4, judged honestly: the R29 room graph is RUN-level and no in-encounter gap/vent substrate exists to traverse]"
       },
       {
         "level": 4,
-        "text": "The second shadow: conceal one adjacent ally under your cover, or leave an afterimage/decoy at your last position when you move [PH] — the room watches the wrong shape. [NEEDS: ally-conceal link; decoy entity]"
+        "text": "The second shadow: conceal one adjacent ally under your cover, or leave an afterimage/decoy at your last position when you move [PH] — the room watches the wrong shape. [PARTIAL wave 4 — the ally-conceal half IMPLEMENTED: one adjacent ally covered at resolution under an anchored cover_by-linked conceal, broken by its own movement or the holder's stealth ending; the afterimage/decoy half stays DATA — NEEDS: decoy entity]"
       }
     ],
     "acquisition": "Mod-Center special offer (broad-only 'infiltration', BLESSED 2026-08-18; data/mod_center_offers.json 'the_unseen'): consume Camouflage Lv 5 + Nightlurking Lv 3 — arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
@@ -1861,20 +1861,20 @@
     "requirements": "Targets must be able to perceive you (R30 cone).",
     "range": "[PH]",
     "target": "[PH — 1-2] targets",
-    "effect": "Declare the con: project a false read of your intent at [PH — 1-2] targets who can perceive you (the perception gate, R30 cone). While the con holds, each affected target's next action against you becomes a Forced Action — Tool (the inflicted fumble, made ambient), and each time it fires you may reposition 1 space at no cost [PH]. [NEEDS: a sustained multi-target misdirection status — the con as a serialized state, not a one-shot debuff] [numbers PLACEHOLDER R14]",
+    "effect": "Declare the con: project a false read of your intent at [PH — 1-2] targets who can perceive you (the perception gate, R30 cone). While the con holds, each affected target's next action against you becomes a Forced Action — Tool (the inflicted fumble, made ambient), and each time it fires you may reposition 1 space at no cost [PH]. [IMPLEMENTED wave 4 — the sustained_con archetype: the con is a SERIALIZED state (holder con record + per-mark mirror, only-when-set); each mark's next resolved action NAMING the holder collapses to Forced Tool once, each firing banks a free 1-hex reposition spent outside the R3 economy; AUTHORED ends (PH): the holder strikes, a mark stops perceiving or goes down, the holder goes down, scene end] [numbers PLACEHOLDER R14]",
     "unlock_requirements": {},
     "effects": [
       {
         "level": 2,
-        "text": "Sell it wider: +[PH] targets, +[PH] range, +[PH] die manipulation on the inflicted roll — the parents' rows continued."
+        "text": "Sell it wider: +[PH] targets, +[PH] range, +[PH] die manipulation on the inflicted roll — the parents' rows continued. [IMPLEMENTED wave 4 — extra dice on the inflicted roll, every die emitted, curated deterministically to the severity-worst for the victim (the authored TOOL ranking, PH); an armed acrobatic-save Body roll routes through the standard chokepoint uncurated]"
       },
       {
         "level": 3,
-        "text": "Pick the fumble: choose the inflicted result per target — Tool (the fumble) or Body (the stumble — Exposed) [PH]. [the parameterized collapse table exists — expressible at implementation]"
+        "text": "Pick the fumble: choose the inflicted result per target — Tool (the fumble) or Body (the stumble — Exposed) [PH]. [IMPLEMENTED wave 4 — the per-mark result choice through the parameterized collapse table, L3+]"
       },
       {
         "level": 4,
-        "text": "The con pays the crowd: while the con holds, the deception is also a performance — hype ticks accrue and Charm scales the payoff [PH] (R18 — presentability as the audience economy). [NEEDS: a con-duration hype hook]"
+        "text": "The con pays the crowd: while the con holds, the deception is also a performance — hype ticks accrue and Charm scales the payoff [PH] (R18 — presentability as the audience economy). [IMPLEMENTED wave 4 — each Clock reset while an L4+ con holds pays a con_performance beat (base 1 PH x max(1, Charm)) through the existing generic spectacle ingest]"
       }
     ],
     "acquisition": "Mod-Center special offer (broad-only 'performance', BLESSED 2026-08-18; data/mod_center_offers.json 'the_long_con'): consume Feint Lv 5 + Vibe Control Lv 3 — arrives at Lv 1. Never learnable directly. Name PROVISIONAL pending the owner's rename pass."
