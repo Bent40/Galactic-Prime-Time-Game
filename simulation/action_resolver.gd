@@ -301,6 +301,91 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	return events
 
 
+## R35 (owner, 2026-08-19) — THE FREE-FORM DECLARE: voicebox and lockpicking
+## while the clock is STOPPED. R34 already ruled exploration-time actions free
+## ("opening doors, picking locks, voicebox throws, scouting are free out of
+## combat and only regain their Moment costs once the clock is running"), but
+## both acts are SCHEDULED declares whose Moment cost lives in this file, so
+## R34 shipped them on CombatSim's `clock_stopped` reject list. This is the
+## waiver, and it is deliberately a SEPARATE entry point rather than a branch
+## inside declare(): the combat path above is not touched by one byte, so
+## every recorded hash and both CI harnesses are provably unaffected.
+##
+## WHAT IS WAIVED (all three, per the ruling): no Moment cost
+## (next_action_tick untouched), no free-action budget entry, no scheduling
+## (clock.schedule is never called — nothing is queued on a clock that cannot
+## advance, which is also why the R34 phase gate can keep rejecting an
+## exploration START while a windup is pending). WHAT IS NOT: the actor gates
+## and the archetype's own declare validator run VERBATIM — an out-of-range
+## throw, a missing lock, a tier beyond the skill all reject exactly as they
+## do in combat, with the same reason strings.
+##
+## RESOLUTION IS IMMEDIATE. With no schedule there is no declare/resolve gap,
+## so there is nothing to re-check and nothing to collapse: the archetype's
+## resolver runs in the same command and its events ARE the command's batch
+## (so CombatSim's _post sweeps — noise, contact, hype — see them like any
+## other batch). One consequence, documented not hidden: out of combat a pick
+## can no longer collapse into Forced Action - Tool, because a collapse needs
+## a windup to break and there is no windup. A failing pick is a plain
+## rejection. ZERO rng on both paths (the two archetypes draw none, and the
+## collapse path — the only draw in reach — is unreachable here).
+##
+## The `moments` field on lock_picked honestly reports 0: that IS the waiver.
+## Only CombatSim calls this, and only for an Exploration.is_free_form_declare
+## action while phase == exploration; everything else still rejects
+## clock_stopped as a family.
+func declare_free_form(actor_id: String, action: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(actor_id)
+	if actor == null:
+		return _reject("unknown_actor", {"actor": actor_id})
+	if not actor.alive:
+		return _reject("actor_dead", {"actor": actor_id})
+	if actor.removed_from_play:
+		return _reject("removed_from_play", {"actor": actor_id})
+	if actor.is_helpless(clock.tick):
+		return _reject("helpless", {"actor": actor_id})
+	var spec: Dictionary = SkillBook.mechanics(
+		String(action.get("key", "")), int(action.get("level", 1)))
+	var archetype := String(spec.get("archetype", ""))
+	if not Exploration.FREE_FORM_ARCHETYPES.has(archetype):
+		# Defensive: CombatSim gates on the same predicate before routing here.
+		return _reject("clock_stopped", {"actor": actor_id, "command": "declare_action"})
+	var stored: Dictionary = action.duplicate(true)
+	var gate: Array[Dictionary] = _validate_skill_declare(actor, stored, spec)
+	if not gate.is_empty():
+		return gate
+	# The waiver made concrete: cost 0, charged to nothing, scheduled nowhere.
+	stored["eff_cost"] = 0
+	stored["declared_tick"] = clock.tick
+	stored["free_form"] = true
+	var entry: Dictionary = {"actor": actor_id, "action": stored}
+	match archetype:
+		"thrown_sound":
+			return _resolve_thrown_sound(actor, entry, spec)
+		"scheduled_pick":
+			return _resolve_free_form_pick(actor, stored, spec)
+	return _reject("clock_stopped", {"actor": actor_id, "command": "declare_action"})
+
+
+## R35 — the exploration-side pick resolution. Deliberately NOT
+## _resolve_scheduled_pick: that function exists to survive the declare/resolve
+## GAP (a lock picked mid-windup, adjacency lost to a knock-aside) and answers
+## a break with a Forced Action - Tool collapse, which DRAWS RNG. There is no
+## gap here — the validator ran microseconds ago in this same command — so the
+## honest shape is the R33 API call plus the ordinary action_resolved row, and
+## an API rejection is surfaced as itself. `moments_paid` is 0: the waiver.
+func _resolve_free_form_pick(actor: CombatantState, action: Dictionary, _spec: Dictionary) -> Array[Dictionary]:
+	var sim = _sim()
+	if sim == null:
+		return _reject("no_sim", {"actor": actor.id})
+	var events: Array[Dictionary] = sim.pick_lock(actor.id, String(action.get("door", "")), false, 0)
+	if not first_of(events, "command_rejected").is_empty():
+		return events
+	events.append({"type": "action_resolved", "actor": actor.id, "kind": "skill",
+		"key": String(action.get("key", "lockpicking")), "result": "ok", "rounds": 0})
+	return events
+
+
 ## Declare-time skill riders. Committed strikes commit the actor: they are Exposed
 ## through the windup (the existing exposure system reports it). And the dance
 ## stance ends the moment its owner commits to an attack or a damaging skill.
@@ -3004,6 +3089,50 @@ func inventory(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 		"type": "action_declared", "actor": actor_id, "kind": "inventory", "cost": cost,
 		"resolve_tick": clock.tick + (cost if cost >= 2 else 0), "windup": window > 0,
 	}]
+	return events
+
+
+## R35 (owner, 2026-08-19, the inventory addition) — INVENTORY AND ITEM USE
+## WORK IN EXPLORATION. *"Time can pause during inventory and item use in
+## exploration mode so players can heal their characters and the likes.
+## Pokemon had the same system for poison or burn, i think thats fine."*
+##
+## THE WAIVER (the voicebox/lockpick shape, third member): no Moment cost, no
+## free-action budget entry, no scheduling — and, one step further than those
+## two, **no touch on the R3 `inventory_uses` ledger** either. That ledger is
+## the "first interaction of a COMBAT is free, every later one costs a Moment,
+## never resets — exploit deleted" counter; spending it on an out-of-combat
+## heal would make exploration quietly charge the next fight, which is the
+## opposite of the ruling. Out of combat the interaction is simply free, every
+## time. R3's whole ladder resumes untouched the instant combat starts.
+##
+## THE EFFECT REALLY RUNS (the ruling's "so players can heal their characters"
+## half): this is the ordinary interaction path — `inventory_used` plus
+## `_apply_inventory_effect`, so a dropped item is genuinely recovered — not an
+## acceptance stub. Healing proper rides the `treat` / `heal` commands, which
+## were never on the no-turn-order reject list and already work out of combat.
+##
+## PAUSE IS NOT SIM STATE, here either: opening the inventory pauses time by
+## the DRIVER not issuing time-step commands while the menu is up — the same
+## mechanism as the manual pause. There is deliberately no "inventory is open"
+## flag. THE DRIVER CONTRACT (for the KAN-6 wiring story): **stop issuing
+## advance_tick while an inventory / item-use UI is open.** The sim half of the
+## owner's Pokemon intent is already guaranteed — an inventory command advances
+## no tick of its own, so a burn cannot tick while you rummage.
+func inventory_free_form(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
+	var actor: CombatantState = combatants.get(actor_id)
+	if actor == null:
+		return _reject("unknown_actor", {"actor": actor_id})
+	if not actor.alive or actor.removed_from_play:
+		return _reject("actor_dead", {"actor": actor_id})
+	if actor.is_helpless(clock.tick):
+		return _reject("helpless", {"actor": actor_id})
+	var events: Array[Dictionary] = [{
+		"type": "inventory_used", "actor": actor_id, "free": true,
+		"exploration": true,
+		"interaction": String(payload.get("interaction", "use")),
+	}]
+	events.append_array(_apply_inventory_effect(actor, payload))
 	return events
 
 

@@ -12,9 +12,15 @@ extends SimTestBase
 ##    tick, schedule nothing, and charge neither the R3 free-action slot nor
 ##    Moments — three doors and two hides in one phase, then the CONTRAST pin
 ##    that the same second door flip rejects free_action_used back in combat.
-##  * THE CLOCK-BOUND REJECT FAMILY: advance_tick / declare_action /
-##    combined_action / reaction / ai_decide / inventory / camera_call / bit
-##    all reject `clock_stopped` and mutate nothing.
+##  * THE NO-TURN-ORDER REJECT FAMILY: declare_action / combined_action /
+##    reaction / ai_decide / camera_call / bit all reject `clock_stopped` and
+##    mutate nothing. **R35 also took `inventory` out of this family** (the
+##    owner's item-use addition) — pinned in test_exploration_layer.gd. **R35 revision (owner, 2026-08-19 —
+##    "time should just be moving"): advance_tick LEFT this family.** Time
+##    flows during exploration; what is gone out of combat is the Moment
+##    ORDER, not the clock. The exploration-side time step, the patrol beat it
+##    drives and the tick-sweep consequences are pinned in
+##    tests/test_exploration_layer.gd.
 ##  * CONTACT — SIGHT: a contestant walking into a mob's cone starts the fight,
 ##    `contact` names sense "sight" and the detector; the R30 rear arc is the
 ##    contrast (same distance, same Mind, facing away = no contact).
@@ -187,8 +193,13 @@ func test_clock_bound_commands_are_rejected_while_exploring() -> void:
 	add_contestant(sim, "h1", [0, 0])
 	add_mob(sim, "mob", [30, 0])  # far out of every sense
 	explore(sim)
+	# R35 revision: advance_tick is no longer in this family — it IS the
+	# exploration time step now, so it is asserted ACCEPTED before the hash
+	# baseline is taken (test_exploration_layer.gd owns its full contract).
+	assert_no_event(sim.apply_command({"type": "advance_tick"}), "command_rejected",
+		"time flows out of combat (R35): the time step is legal")
+	assert_eq(sim.clock.tick, 1, "…and it really advanced the one real clock")
 	var before: String = sim.state_hash()
-	assert_rejected(sim.apply_command({"type": "advance_tick"}), "clock_stopped", "no tick to end")
 	assert_rejected(declare(sim, "h1", attack_action("crushed", 3, "mob", "torso")),
 		"clock_stopped", "no Moment order to declare into")
 	assert_rejected(sim.apply_command({"type": "combined_action", "members": []}),
@@ -196,13 +207,16 @@ func test_clock_bound_commands_are_rejected_while_exploring() -> void:
 	assert_rejected(sim.apply_command({"type": "reaction", "actor": "h1", "cost": 0}),
 		"clock_stopped", "reactions ride the clock")
 	assert_rejected(ai_decide(sim, "mob"), "clock_stopped", "no enemy turn out of combat")
-	assert_rejected(sim.apply_command({"type": "inventory", "actor": "h1", "interaction": "swap"}),
-		"clock_stopped", "inventory spends the R3 per-tick economy")
+	# R35 inventory addition: `inventory` LEFT this family too (owner
+	# 2026-08-19 — item use out of combat is how a party heals between rooms).
+	# Its full contract lives in tests/test_exploration_layer.gd.
+	assert_no_event(sim.apply_command({"type": "inventory", "actor": "h1", "interaction": "swap"}),
+		"command_rejected", "inventory works out of combat (R35)")
 	assert_rejected(sim.apply_command({"type": "camera_call", "actor": "h1", "target": "mob"}),
 		"clock_stopped", "camera call spends the free slot")
 	assert_rejected(sim.apply_command({"type": "bit", "actor": "h1"}),
 		"clock_stopped", "the bit spends the free slot")
-	assert_eq(sim.clock.tick, 0, "not one tick moved")
+	assert_eq(sim.clock.tick, 1, "no MOMENT-ORDER command moved the clock")
 	assert_eq(sim.state_hash(), before, "every rejection mutated nothing")
 	assert_eq(sim.phase, Exploration.PHASE_EXPLORATION, "and none of them started the fight")
 
@@ -395,8 +409,9 @@ func test_phase_round_trips_only_when_set() -> void:
 	assert_eq(restored.phase, Exploration.PHASE_EXPLORATION, "phase survives the round trip")
 	assert_eq(restored.state_hash(), sim.state_hash(), "hash-identical round trip")
 	# The restored sim is still exploring — the economy comes back with it.
-	assert_rejected(restored.apply_command({"type": "advance_tick"}), "clock_stopped",
-		"a resumed exploration is still an exploration")
+	assert_rejected(restored.apply_command({"type": "declare_action", "actor": "h1",
+		"action": {"kind": "wait", "cost": 1}}), "clock_stopped",
+		"a resumed exploration is still an exploration (no Moment order)")
 	assert_event(restored.apply_command({"type": "move", "actor": "h1", "to": [4, 0]}),
 		"moved", "and the free-form walk still works")
 	# A pre-exploration save (no key) resumes in combat.

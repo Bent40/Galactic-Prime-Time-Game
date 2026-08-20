@@ -1966,37 +1966,78 @@ the numbers below are PLACEHOLDER (R14) as always.
     start one **somewhere else**, and a door heard through a wall can pull a room onto
     you before you enter it. The mockup's "ENTER ▸ ⟨route⟩" remains the *deliberate*
     way in; contact is the *involuntary* one.
+  * **TIME AMENDMENT (owner, 2026-08-19, same day — supersedes this bullet's
+    "there is no Clock" clause).** *"I think id want there to be a pause option
+    maybe for our singleplayer for now, and in general, i think time should
+    just be moving. We have moment-to-time conversion units already
+    established. id say its a nonissue."* The reason: freezing the clock made
+    the world hold its breath whenever the party did, and R0/R1 already carry
+    the conversion (**one tick ≈ 0.5 fictional seconds; a Clock ≈ 5**), so
+    running the ordinary clock out of combat costs nothing and buys a living
+    room. The corrected ruling:
+    - Exploration is **"the clock RUNS, but there is no turn order and nothing
+      costs Moments"** — *not* "the clock is stopped".
+    - The beat is an explicit, **logged exploration time step**: `advance_tick`
+      is legal out of combat and runs the **one real tick path** (no parallel
+      clock). The driver picks the real-time cadence; the sim never reads a
+      wall clock, so state stays a pure function of (seed, ordered command log)
+      and every hash is unchanged.
+    - **PAUSE is simply the driver not issuing time steps.** It needs no sim
+      state and has none — deliberately not modelled.
+    - What still rejects out of combat is the **Moment-ORDER family**:
+      `declare_action` (minus R35's two waived skills) / `combined_action` /
+      `reaction` / `ai_decide`, plus `inventory` / `camera_call` / `bit` as a
+      **flagged conservative carry-over** (R34 rejected those three because
+      they spend a per-tick economy "only a running clock resets" — that reason
+      is now void, but R35 authored no exploration behaviour for them either,
+      so they stay rejected rather than being silently opened; one owner
+      sentence moves them).
+    - **FLAGGED:** the rejection reason string is still `clock_stopped`. It is
+      now a *legacy name* for "no turn order out of combat" and is kept because
+      the HUD, the tests and the harnesses read it. Rename it with the KAN-6
+      HUD wiring, not mid-sim-story.
+    - **CONSEQUENCE, accepted and tested:** exploration ticks run the ordinary
+      per-tick sweeps. Conditions advance at a Clock reset (**a burn burns
+      while you walk** — consistent with wounds persisting between encounters),
+      zone durations count down, drowning ticks, the free-action budget
+      refreshes (nothing spends it out of combat), and the broadcast plane's
+      Clock-reset beat fires: hype **decays** and the crowd-goal director
+      offers/expires goals, drawing its usual **one** `goal_rng` draw per
+      completed Clock — the same draw combat makes. That last one makes "the
+      crowd is bored by safety" (R35) literally true: an unspectacular stroll
+      bleeds meter. Pinned in
+      `tests/test_exploration_layer.gd::test_exploration_time_steps_run_the_real_tick_path`.
   * **Engine status: SHIPPED at the SIM layer (2026-08-20) — PARTIAL, the gaps
     named below.** `simulation/exploration.gd` + `CombatSim.phase` carry the
     free-form mode and the contact predicate; the full contract is the R29
-    amendment above (`tests/test_exploration.gd`). What is REAL: the phase state
-    (serialized only-when-set, default combat — byte-identical legacy saves,
-    hashes and CI harnesses), free-form **move / door / stealth** at zero cost
-    and zero ticks, the clock-bound reject family, deliberate entry, and
+    amendment above (`tests/test_exploration.gd`, `tests/test_exploration_layer.gd`).
+    What is REAL: the phase state (serialized only-when-set, default combat —
+    byte-identical legacy saves, hashes and CI harnesses), free-form
+    **move / door / stealth** at zero cost and zero ticks, the exploration
+    **time step** and the no-turn-order reject family, deliberate entry, and
     **contact by sight OR hearing** off the existing R20/R30 substrates with
     **zero new rng draws**.
-    **DOWNSCOPED, flagged not hidden — each needs a seam this story did not own:**
+    **CLOSED by R35 (2026-08-20):**
+    - ~~Voicebox throws and lockpicking out of combat~~ — **SHIPPED.** Both take
+      the free-form waiver through `ActionResolver.declare_free_form`.
+    - ~~Enemies do not act during exploration~~ — **SHIPPED.** Mobs patrol per
+      exploration time step (`CombatantState.patrol`, opt-in authored data).
+    - ~~Spectacle during exploration is UNRULED~~ — **RULED and SHIPPED** for the
+      three expressible sources; cross-party meetings stay DEFERRED (see R35).
+    **STILL DOWNSCOPED, flagged not hidden:**
     - **Run-loop + view/HUD wiring** — `RunState.choose_exit` does not yet issue
-      the phase command, `GameController` exposes no `view_phase`, and nothing
-      renders the mode. The sim is driver-ready; the driver is a KAN-6 story.
-    - **Voicebox throws and lockpicking out of combat** — R34 names both as
-      exploration-time free actions, but both are **ActionResolver-scheduled
-      declares** (the resolver owns their Moment cost), so they ride the
-      `clock_stopped` reject list with the rest of `declare_action` until a
-      resolver-side free-form cost waiver exists. Follow-up story.
-    - **Enemies do not act during exploration** — no patrol, wander or watch
-      behaviour; a mob holds its staged hex and facing until contact. R34
-      authors none, so none was invented (the R20 hearing/investigate machinery
-      still runs, it simply has no turn to spend).
+      the phase command, `GameController` exposes no `view_phase`, nothing
+      renders the mode, and nothing drives the exploration time step or the
+      pause control. The sim is driver-ready; the driver is a KAN-6 story.
     - **The DIRECTION of contact** (a documented reading, owner call welcome):
       R34's own examples are both *enemy detects contestant*, so a contestant
       who SEES a mob does **not** start the fight — that is the stealth design
       space R20 pays for. The mirror direction is one loop in
       `Exploration.first_contact` if ruled otherwise.
-    - **Spectacle during exploration is UNRULED and currently ingests
-      normally** — the broadcast plane is untouched, so a free-form walk still
-      feeds the movement-streak tag and the "Zoomies!" `move_spaces` crowd goal.
-      Nothing ruled it either way; flagged rather than silently suppressed.
+    - **No seeded enemy authors a patrol yet.** The engine gives every enemy the
+      capability; whether a given room's guard paces is content, exactly like
+      `personality.herder` / `abilities` / `phases`. `data/enemies.json` is
+      untouched by this story.
     - Hearing keeps its inherited R20 downscopes (no per-creature acuity, no
       wall muffling, no noise rows beyond the v1 loudness table).
 - **Free actions are limited per turn.** Camera Call, The Bit, and the rest stay
@@ -2045,12 +2086,17 @@ the numbers below are PLACEHOLDER (R14) as always.
 ## R35 — The exploration layer: free actions, patrols, and the watching crowd (owner, 2026-08-19)
 
 R34 shipped free-form exploration with four gaps named honestly. The owner ruled on
-three of them the same day; the fourth (run-loop + HUD wiring) is KAN-6 and waits on
-the mockup gate. Numbers PLACEHOLDER (R14) as always.
+three of them the same day (plus two same-day additions — the TIME revision recorded in
+R34's TIME AMENDMENT, and inventory/item use below); the fourth (run-loop + HUD wiring)
+is KAN-6 and waits on the mockup gate. Numbers PLACEHOLDER (R14) as always.
 
-- **Voicebox and lockpicking WORK in exploration (owner).** Both are exploration-shaped
-  actions — throwing a sound to pull a room, opening a way through — and R34 already
-  ruled out-of-combat actions free while the clock is stopped. They currently reject
+**Engine status: SHIPPED at the SIM layer 2026-08-20** — per-bullet detail inline below,
+tests in `tests/test_exploration_layer.gd`. Combat is provably unaffected: `enemy_ai.gd`
+has no edit, both CI harnesses are byte-identical, and the recorded legacy hashes stand.
+
+- **Voicebox and lockpicking WORK in exploration (owner). — SHIPPED 2026-08-20.**
+  Both are exploration-shaped actions — throwing a sound to pull a room, opening a way
+  through — and R34 already ruled out-of-combat actions free. They rejected
   `clock_stopped` because their costs live in the resolver's scheduled-action path.
   The waiver is theirs: **no Moment cost, no free-action budget, no scheduling** while
   exploring; full R3 costs the instant combat starts.
@@ -2058,17 +2104,84 @@ the mockup gate. Numbers PLACEHOLDER (R14) as always.
     an authored noise that can start a fight **somewhere else**, with the thrower never
     seen. The contact predicate already consumes derived noises from any hostile-side
     source, so this composes with no new machinery.
-- **Mobs PATROL during exploration (owner).** Enemies are no longer statues waiting on
-  their staged hex; they move, and their eyelines move with them (R34 cone semantics —
-  a patrolling cone stays NEUTRAL until it has someone).
-  * **PROVISIONAL (mine, flagged — the clock problem):** exploration has no tick, so
-    *something* must advance a patrol. The build takes **the party's own exploration
-    commands as the beat**: each party walk grants each patrolling mob one step. This
-    keeps determinism (patrols are a pure function of the command log), makes creeping
-    genuinely slower than sprinting past, and has one property worth an owner glance —
-    **standing still freezes the room**, which rewards holding position to time a gap.
-    Alternatives if disliked: an explicit "wait" command, or steps-per-distance-moved.
-- **The crowd watches exploration too (owner).** A free-form walk **can** feed hype
+  * **Engine:** `ActionResolver.declare_free_form`, reached from `CombatSim`'s
+    exploration gate via the pure `Exploration.is_free_form_declare` (keyed on the
+    ARCHETYPE — `thrown_sound` / `scheduled_pick` — so the two acts are named once).
+    Deliberately a SEPARATE entry point, never a branch inside `declare()`: the combat
+    path is not touched by one byte. Cost gone, **gates kept verbatim** (range, tier
+    access, adjacency, missing lock — same reason strings). Resolution is IMMEDIATE, so
+    there is no declare/resolve gap: one documented consequence is that an
+    out-of-combat pick can no longer collapse into Forced Action – Tool (no windup
+    exists to break), and a failure is a plain rejection. `lock_picked` honestly
+    reports `moments: 0`. **Zero rng on both paths.** Every other declare still rejects
+    `clock_stopped`, byte-identically.
+    Tests: `tests/test_exploration_layer.gd` (`test_lockpicking_is_free_in_exploration_and_priced_in_combat`,
+    `test_voicebox_is_free_in_exploration_and_budgeted_in_combat`,
+    `test_only_the_two_ruled_declares_are_waived`,
+    `test_a_thrown_sound_starts_the_fight_somewhere_else`).
+- **INVENTORY / ITEM USE WORKS in exploration (owner addition, 2026-08-19). — SHIPPED
+  2026-08-20.** *"Time can pause during inventory and item use in exploration mode so
+  players can heal their characters and the likes. Pokemon had the same system for
+  poison or burn, i think thats fine."*
+  * Same waiver as above, **plus one more**: the interaction also leaves R3's
+    `inventory_uses` ledger (the "first interaction of a COMBAT is free, every later one
+    costs a Moment, never resets" counter) UNTOUCHED — spending it on an out-of-combat
+    heal would make exploration quietly charge the next fight. R3's whole ladder resumes
+    the instant combat starts.
+  * The interaction really RUNS (a dropped item is genuinely recovered), not an
+    acceptance stub. Healing proper rides `treat` / `heal`, which were never on the
+    reject list and already worked out of combat.
+  * **PAUSE IS NOT SIM STATE.** Opening the inventory pauses time by the DRIVER not
+    issuing time-step commands while the menu is up — the same mechanism as the manual
+    pause. **Driver contract for KAN-6: stop issuing `advance_tick` while an inventory
+    / item-use UI is open.** The sim half of the Pokémon intent is already guaranteed —
+    an inventory command advances no tick of its own, so a burn cannot tick while you
+    rummage (`test_the_menu_does_not_race_the_burn`).
+  * **Engine:** `ActionResolver.inventory_free_form`.
+    Test: `test_inventory_and_item_use_are_free_in_exploration`.
+- **Mobs PATROL during exploration (owner). — SHIPPED 2026-08-20 (engine); content
+  authoring outstanding.** Enemies are no longer statues waiting on their staged hex;
+  they move, and their eyelines move with them (R34 cone semantics — a patrolling cone
+  stays NEUTRAL until it has someone).
+  * ~~**PROVISIONAL (mine, flagged — the clock problem):** ... each party walk grants
+    each patrolling mob one step ... **standing still freezes the room**~~ —
+    **RETIRED the same day by the owner's TIME ruling** (see R34's TIME AMENDMENT
+    above: *"i think time should just be moving"*). The premise it rested on
+    ("exploration has no tick") is gone. **THE SHIPPED BEAT: the exploration TIME STEP.**
+    Every `advance_tick` out of combat grants each patrolling mob one step, so standing
+    still never freezes the room and **a mob can walk into a motionless party and make
+    contact** — the case the retired design got wrong, now a pinned test.
+  * **Determinism guarantees (all held):** ZERO rng draws on every patrol path; the beat
+    is a LOGGED command, never a wall-clock read; sorted-id iteration with occupancy
+    rebuilt per mob from live state; routes are authored waypoint cycles or a derived
+    facing-axis pace — never a wander roll. Same log → same hash, twin-RNG pinned.
+  * **Routes (PROVISIONAL, mine — flagged):** `patrol` is **opt-in authored data** on the
+    spec/template, normalized by `Exploration.patrol_from_spec` into
+    `CombatantState.patrol` (serialized only-when-set). Two shapes:
+    `{"route": [[q,r], …]}` = a waypoint **cycle** (a two-point route is exactly
+    "pacing between staged points"); `true` = the **derived pace** — step along the
+    mob's own facing while the hex ahead is walkable, unoccupied and within
+    `Exploration.PATROL_PACE_REACH` (3, PLACEHOLDER R14) of the staged anchor, else
+    spend the beat about-facing (`patrol_turned`). A blocked or unreachable waypoint
+    HOLDS rather than thrashing. **Opt-in rather than default-on** is the design call:
+    every other behaviour here is data-gated (`personality.herder`, `pack_hunter`,
+    `abilities`, `phases`), and default-on would silently rewrite every staged room.
+    The consequence, flagged: **no seeded enemy in `data/enemies.json` authors a patrol
+    yet** — the capability ships, the content does not.
+  * A patrolling mob that acquires a contestant triggers the EXISTING contact path (no
+    duplicate predicate); facing follows every step, which is what lets a moving cone
+    acquire someone. `enemy_ai.gd` is **untouched** — the combat decide flow is not on
+    this path at all. An alerted patroller does not divert to a sound out of combat
+    (hearing a hostile noise IS contact, so the fight has already started); investigation
+    stays `_alert_or_wait`'s, in combat, where it was ruled.
+  * **Engine:** `CombatSim._patrol_beat` / `_patrol_one` + the pure
+    `Exploration.patrol_step`. Tests: `test_one_patrol_step_per_time_step_and_none_from_a_walk`,
+    `test_the_derived_pace_walks_its_axis_and_turns_around`,
+    `test_a_patrolling_cone_walks_into_a_standing_party_and_names_sight`,
+    `test_a_blocked_patrol_holds_and_a_downed_one_walks_no_beat`,
+    `test_patrols_are_deterministic_and_draw_zero_rng`, `test_patrol_serializes_only_when_set`.
+- **The crowd watches exploration too (owner). — SHIPPED 2026-08-20 for the three
+  expressible sources; the fourth stays DEFERRED.** A free-form walk **can** feed hype
   when something is at stake. Ruled sources: **danger nearby**, **good stealth**,
   **approaching a large boss**, and **cross-party meetings**. Idle walking through a
   cleared room pays nothing — the crowd is bored by safety, which is the whole point.
@@ -2077,6 +2190,31 @@ the mockup gate. Numbers PLACEHOLDER (R14) as always.
     /Boss-category enemy.
   * **Cross-party meetings are DEFERRED, flagged:** the shared-world stages
     (DIRECTION Stage 1+) do not exist yet, so there is no second party to meet. Recorded
-    as a real ruling awaiting its substrate — not silently dropped.
+    as a real ruling awaiting its substrate — not silently dropped. Nothing was invented
+    in its place.
   * This composes with R29: exploration hype feeds the same meter the chain carries
     forward, so a tense approach can arrive at the fight already warm.
+  * **Engine:** the pure `Exploration.walk_spectacle`, stamped by `CombatSim._explore_move`
+    onto the walk's own `moved` event as the GENERIC `spectacle_points` field — the
+    ingest hook `HypeEngine` has carried since v1 for authored content. **No new hype
+    plumbing was needed or added**: the points land in the same meter and ledger, under
+    the same Camera-Call/surge multipliers, and therefore ride the R29 chain carry
+    unchanged. Only the PARTY's walk is scored (a patrolling mob's step is scenery), and
+    the key is stamped **only when earned**, so an idle walk is byte-identical to the
+    pre-R35 engine.
+  * **AUTHORED MAGNITUDES — every one PLACEHOLDER (R14), named at its constant in
+    `simulation/exploration.gd`:**
+    | source | rule | constants |
+    |---|---|---|
+    | danger nearby | nearest live hostile at distance *d* from the destination; nothing past the radius, then a linear ramp inward: `STEP × (RADIUS + 1 − d)` (2 at the edge, 12 in its face) | `SPECTACLE_DANGER_RADIUS = 6`, `SPECTACLE_DANGER_STEP = 2` |
+    | good stealth | unseen by every live hostile (`Stealth.first_observer_seeing` — hidden by a skill or by a wall, both count) **with danger nearby** | `SPECTACLE_UNSEEN_BONUS = 4` |
+    | …the money shot | unseen **while inside** a live hostile's vision cone (R30 front arc within its 2×Mind sight range); composes ON TOP of the base | `SPECTACLE_IN_CONE_BONUS = 8` |
+    | approaching a large boss | per hex CLOSED this walk on the nearest live Boss-category **or** Huge enemy; retreating pays nothing | `SPECTACLE_BOSS_STEP = 6` |
+  * Tests: `test_an_idle_walk_through_a_cleared_room_pays_nothing`,
+    `test_the_three_ruled_spectacle_sources_and_their_magnitudes`,
+    `test_a_stealthed_approach_to_a_boss_warms_the_meter`,
+    `test_exploration_hype_arrives_at_the_fight_and_rides_the_R29_chain`.
+- **Still open after this story (not mine):** the **run-loop + view/HUD wiring** —
+  `RunState.choose_exit` issuing the phase command, a `view_phase` projection, the
+  renderer, the driver that issues exploration time steps, and the pause / inventory-UI
+  control that must stop them. KAN-6, behind the mockup gate.

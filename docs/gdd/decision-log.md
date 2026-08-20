@@ -488,17 +488,41 @@ Answering the four gaps R34's exploration story named, plus the cadence question
   two refreshes every Moment, matching R3's live window. The PROVISIONAL per-Clock
   reading is retired.
 - **Voicebox and lockpicking work in exploration** — the resolver-side cost waiver is
-  theirs; free while the clock is stopped, full R3 costs once combat starts.
+  theirs; free out of combat, full R3 costs once combat starts.
 - **Mobs patrol during exploration** — enemies move and their eyelines move with them.
-  What advances a patrol without a clock is my call, flagged: the party's own
+  ~~What advances a patrol without a clock is my call, flagged: the party's own
   exploration commands are the beat (one mob step per party walk), which makes standing
-  still freeze the room.
+  still freeze the room.~~ **RETIRED the same day by the TIME ruling below** — the beat
+  is the exploration time step, so standing still never freezes the room.
 - **The crowd watches exploration** — a free-form walk can feed hype when something is
   at stake: danger nearby, good stealth, approaching a large boss, cross-party
   meetings. Idle walking through a cleared room pays nothing. Cross-party meetings are
   deferred to the shared-world stages that do not exist yet (recorded, not dropped).
 
+**Two same-day owner additions, mid-story (2026-08-19):**
+
+- **TIME FLOWS IN EXPLORATION** — *"i think time should just be moving. We have
+  moment-to-time conversion units already established"* (+ a pause option for
+  single-player). This **revises R34**: exploration is no longer "the clock is stopped"
+  but "the clock runs, there is no turn order, and nothing costs Moments". `advance_tick`
+  is the logged exploration time step and runs the one real tick path (R1: one tick ≈
+  0.5 fictional seconds). PAUSE is the driver not issuing time steps — deliberately no
+  sim state. Accepted consequence: exploration ticks run the ordinary per-tick sweeps,
+  so wounds burn while you walk and hype decays between beats.
+- **INVENTORY AND ITEM USE WORK IN EXPLORATION** — *"Time can pause during inventory
+  and item use... Pokemon had the same system for poison or burn"*. Same free-form
+  waiver as voicebox/lockpicking, and it additionally leaves R3's never-resetting
+  `inventory_uses` ledger alone. The pause is again the driver's job: **stop the beat
+  while an inventory UI is open** (a KAN-6 driver contract, not sim state).
+
 **Epic placement (asked and answered):** only the run-loop + HUD wiring is KAN-6 and
 gated on the mockup sign-off. The resolver waiver and patrols are KAN-5/KAN-2, and
 exploration spectacle rides the already-live HypeEngine — all three were unblocked and
-started immediately. Full text: `docs/rules-addendum.md` R35.
+started immediately.
+
+**SHIPPED at the sim layer 2026-08-20** (`simulation/exploration.gd`,
+`CombatSim._patrol_beat`, `ActionResolver.declare_free_form` / `inventory_free_form`;
+`tests/test_exploration_layer.gd`). Combat is provably unaffected — `enemy_ai.gd` has no
+edit and both CI harnesses are byte-identical. Outstanding: the KAN-6 driver/HUD wiring,
+and no seeded enemy authors a patrol route yet (content, not engine).
+Full text: `docs/rules-addendum.md` R35 + R34's TIME AMENDMENT.
