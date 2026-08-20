@@ -2015,10 +2015,11 @@ the numbers below are PLACEHOLDER (R14) as always.
     untouched. Tests: `tests/test_free_action_budget.gd`. See R3's 2026-08-19 amendment
     — including the FLAGGED cadence mismatch (the engine's window is R3's tick, not the
     Clock this bullet's next line assumes).
-  * **PROVISIONAL (mine, flagged, small):** "per turn" is read as **per combatant per
-    Clock**, matching R3's existing reset cadence — not per Moment window. Entries are
-    assumed to cost **one** each (no entry costs two) until an authored one says
-    otherwise.
+  * **CADENCE RULED: PER TICK (owner, 2026-08-19 — "per tick is correct, keep it").**
+    The window is R3's live one: the budget refreshes every **tick (Moment)**, not once
+    per Clock. A per-Clock reading would have cut every combatant to two free moves per
+    ten ticks and frozen the board. Entries cost **one** each until an authored one
+    says otherwise (still my assumption, small).
 - **Vision cones carry state; attack cones never do (owner, 2026-08-19 — amends R30
   presentation).** A sight cone renders **NEUTRAL** while its owner has spotted nobody
   and **RED** the moment it holds a contestant. An **attack** cone stays hazard-orange
@@ -2039,3 +2040,43 @@ the numbers below are PLACEHOLDER (R14) as always.
     explicitly stated property of a given skill), not the default fallback for a
     declined merge. `data/skills.json` `default_cap` 5 remains the norm; the
     Mod-Center copy was corrected to match.
+
+
+## R35 — The exploration layer: free actions, patrols, and the watching crowd (owner, 2026-08-19)
+
+R34 shipped free-form exploration with four gaps named honestly. The owner ruled on
+three of them the same day; the fourth (run-loop + HUD wiring) is KAN-6 and waits on
+the mockup gate. Numbers PLACEHOLDER (R14) as always.
+
+- **Voicebox and lockpicking WORK in exploration (owner).** Both are exploration-shaped
+  actions — throwing a sound to pull a room, opening a way through — and R34 already
+  ruled out-of-combat actions free while the clock is stopped. They currently reject
+  `clock_stopped` because their costs live in the resolver's scheduled-action path.
+  The waiver is theirs: **no Moment cost, no free-action budget, no scheduling** while
+  exploring; full R3 costs the instant combat starts.
+  * A voicebox throw in exploration is the sharpest expression of R34's contact rule —
+    an authored noise that can start a fight **somewhere else**, with the thrower never
+    seen. The contact predicate already consumes derived noises from any hostile-side
+    source, so this composes with no new machinery.
+- **Mobs PATROL during exploration (owner).** Enemies are no longer statues waiting on
+  their staged hex; they move, and their eyelines move with them (R34 cone semantics —
+  a patrolling cone stays NEUTRAL until it has someone).
+  * **PROVISIONAL (mine, flagged — the clock problem):** exploration has no tick, so
+    *something* must advance a patrol. The build takes **the party's own exploration
+    commands as the beat**: each party walk grants each patrolling mob one step. This
+    keeps determinism (patrols are a pure function of the command log), makes creeping
+    genuinely slower than sprinting past, and has one property worth an owner glance —
+    **standing still freezes the room**, which rewards holding position to time a gap.
+    Alternatives if disliked: an explicit "wait" command, or steps-per-distance-moved.
+- **The crowd watches exploration too (owner).** A free-form walk **can** feed hype
+  when something is at stake. Ruled sources: **danger nearby**, **good stealth**,
+  **approaching a large boss**, and **cross-party meetings**. Idle walking through a
+  cleared room pays nothing — the crowd is bored by safety, which is the whole point.
+  * Expressible now: proximity to a live threat, quality of a stealth approach (moving
+    unseen *inside* a hostile cone is the money shot), and closing distance on a Huge
+    /Boss-category enemy.
+  * **Cross-party meetings are DEFERRED, flagged:** the shared-world stages
+    (DIRECTION Stage 1+) do not exist yet, so there is no second party to meet. Recorded
+    as a real ruling awaiting its substrate — not silently dropped.
+  * This composes with R29: exploration hype feeds the same meter the chain carries
+    forward, so a tense approach can arrive at the fight already warm.

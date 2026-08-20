@@ -479,3 +479,26 @@ R34:**
 The mockups were rebuilt to match the rulings the same day; the gate README carries
 the per-decision record. Scene-building (KAN-6) remains gated on the owner's sign-off
 of the revised frames.
+
+## #37 — The exploration layer ruled out (owner, 2026-08-19)
+
+Answering the four gaps R34's exploration story named, plus the cadence question:
+
+- **Free-action cadence: PER TICK** ("per tick is correct, keep it") — the budget of
+  two refreshes every Moment, matching R3's live window. The PROVISIONAL per-Clock
+  reading is retired.
+- **Voicebox and lockpicking work in exploration** — the resolver-side cost waiver is
+  theirs; free while the clock is stopped, full R3 costs once combat starts.
+- **Mobs patrol during exploration** — enemies move and their eyelines move with them.
+  What advances a patrol without a clock is my call, flagged: the party's own
+  exploration commands are the beat (one mob step per party walk), which makes standing
+  still freeze the room.
+- **The crowd watches exploration** — a free-form walk can feed hype when something is
+  at stake: danger nearby, good stealth, approaching a large boss, cross-party
+  meetings. Idle walking through a cleared room pays nothing. Cross-party meetings are
+  deferred to the shared-world stages that do not exist yet (recorded, not dropped).
+
+**Epic placement (asked and answered):** only the run-loop + HUD wiring is KAN-6 and
+gated on the mockup sign-off. The resolver waiver and patrols are KAN-5/KAN-2, and
+exploration spectacle rides the already-live HypeEngine — all three were unblocked and
+started immediately. Full text: `docs/rules-addendum.md` R35.
