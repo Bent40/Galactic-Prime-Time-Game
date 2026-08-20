@@ -241,9 +241,13 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	var uses_strained: bool = actor.strained_grip and (kind == "attack" or kind == "reload")
 	var eff_cost: int = _effective_cost(actor, kind, action, uses_strained)
 
-	# R3 caps: one scheduled action + one free (0-Moment) action per tick.
+	# R3 caps: one scheduled action + the R34 free-action BUDGET per tick
+	# (CombatantState.FREE_ACTIONS_PER_CLOCK entries, PLACEHOLDER R14 — the
+	# owner's 2026-08-19 ruling amending R3's single slot). The rejection
+	# reason keeps its byte-identical "free_action_used" string: the caps the
+	# HUD, the tests and the harnesses read did not change name, only depth.
 	if eff_cost <= 0:
-		if actor.free_action_used:
+		if not actor.has_free_action():
 			return _reject("free_action_used", {"actor": actor_id})
 	else:
 		if clock.tick < actor.next_action_tick:
@@ -272,7 +276,7 @@ func declare(actor_id: String, action: Dictionary) -> Array[Dictionary]:
 	var window: int = 0
 	var resolve_tick: int = clock.tick
 	if eff_cost <= 0:
-		actor.free_action_used = true
+		actor.spend_free_action()
 	else:
 		actor.next_action_tick = clock.tick + eff_cost
 		actor.took_scheduled_action_this_clock = true
@@ -2329,9 +2333,9 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 	# budget (the destination-cost contract in the section header).
 	var priced_spaces: int = spaces + (_move_cost_for(actor, to) - 1)
 	if priced_spaces <= allowance:
-		if actor.free_action_used:
+		if not actor.has_free_action():
 			return _reject("free_action_used", {"actor": actor_id})
-		actor.free_action_used = true
+		actor.spend_free_action()
 		actor.moved_this_tick = true
 		# R30: a resolved move faces the movement direction — the from→to ray's
 		# nearest axial direction (the sim's move is a from→to hop, so the ray
@@ -2970,9 +2974,9 @@ func inventory(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 	if actor.is_helpless(clock.tick):
 		return _reject("helpless", {"actor": actor_id})
 	var first: bool = actor.inventory_uses == 0
-	if first and not actor.free_action_used:
+	if first and actor.has_free_action():
 		actor.inventory_uses += 1
-		actor.free_action_used = true
+		actor.spend_free_action()
 		var events: Array[Dictionary] = [{
 			"type": "inventory_used", "actor": actor_id, "free": true,
 			"interaction": String(payload.get("interaction", "use")),
@@ -3029,7 +3033,7 @@ func reaction(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 	if actor.reaction_used:
 		return _reject("reaction_used", {"actor": actor_id})
 	var cost: int = int(payload.get("cost", 0))
-	if cost <= 0 and actor.free_action_used:
+	if cost <= 0 and not actor.has_free_action():
 		return _reject("free_action_used", {"actor": actor_id})
 	# R20 (wave 4c): a damaging reaction cannot aim at a stealthed hostile —
 	# same honesty gate as declare, checked BEFORE the slot/readiness mutate.
@@ -3038,7 +3042,7 @@ func reaction(actor_id: String, payload: Dictionary) -> Array[Dictionary]:
 		return _reject("target_stealthed", {"actor": actor_id, "target": aimed.id})
 	actor.reaction_used = true
 	if cost <= 0:
-		actor.free_action_used = true
+		actor.spend_free_action()
 	actor.next_action_tick = maxi(actor.next_action_tick, clock.tick) + cost
 	var events: Array[Dictionary] = [{
 		"type": "reaction_resolved", "actor": actor_id, "cost": cost,

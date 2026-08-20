@@ -60,10 +60,14 @@ func test_throw_gates_shape_range_and_free_slot() -> void:
 		"throw_target_required", "a throw names a hex")
 	assert_rejected(throw_sound(sim, "mimic", [11, 0]),
 		"out_of_range", "eleven hexes is past the throw range 10")
-	# The R3 free-slot economy: the throw consumes the slot — one per tick.
+	# The R3/R34 free-action economy: the throw draws on the budget
+	# (CombatantState.FREE_ACTIONS_PER_CLOCK per tick since the owner's
+	# 2026-08-19 ruling) — bounded per Moment, never spammable.
 	assert_event(throw_sound(sim, "mimic", [10, 0]), "action_declared", "a legal throw declares")
-	assert_rejected(throw_sound(sim, "mimic", [9, 0]),
-		"free_action_used", "the free slot is spent — never spammable within a Moment")
+	assert_event(throw_sound(sim, "mimic", [9, 0]), "action_declared",
+		"a second throw rides the budget's second entry")
+	assert_rejected(throw_sound(sim, "mimic", [8, 0]),
+		"free_action_used", "the budget is spent — never spammable within a Moment")
 	# Out-of-bounds hexes have nowhere for a sound to happen (arena set).
 	var sim2: CombatSim = make_sim(7502)
 	sim2.apply_command({"type": "set_arena", "arena": {"bounds": {"width": 8, "height": 8}}})

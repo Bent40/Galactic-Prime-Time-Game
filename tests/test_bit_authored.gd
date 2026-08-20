@@ -88,17 +88,20 @@ func test_bit_stays_mechanically_null_with_authored_bit() -> void:
 
 # ---------------------------------------------------------------- (e) free-action economy (anti-spam ruling)
 
-func test_second_bit_same_tick_is_rejected_free_action_used() -> void:
+func test_bit_past_the_free_action_budget_is_rejected_free_action_used() -> void:
 	# THE EXPLOIT, DELETED: the bit could be issued unlimited times per tick,
-	# pumping unbounded escalating hype. Ruled fix: R3's existing free-action
-	# economy — one free (0-Moment) action per combatant per tick.
+	# pumping unbounded escalating hype. Ruled fix: R3's free-action economy —
+	# now the R34 BUDGET (CombatantState.FREE_ACTIONS_PER_CLOCK free (0-Moment)
+	# actions per combatant per tick, owner 2026-08-19). The cap moved from 1
+	# to 2; the anti-spam property (bounded per tick, same reason string) did not.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
-	assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
-		"the first bit of the Moment performs")
+	for i: int in range(CombatantState.FREE_ACTIONS_PER_CLOCK):
+		assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
+			"bit %d of the Moment performs (inside the budget)" % (i + 1))
 	var before: String = sim.state_hash()
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "dario"})
-	assert_rejected(events, "free_action_used", "a second bit the SAME tick is rejected — not spammable")
+	assert_rejected(events, "free_action_used", "the bit PAST the budget is rejected — not spammable")
 	assert_no_event(events, "bit_performed", "no bit_performed rides the rejection")
 	assert_eq(sim.state_hash(), before,
 		"the rejection mutates NOTHING (full state hash identical — no hype, no tags, no combat state)")
@@ -109,9 +112,11 @@ func test_bit_works_again_after_advance_tick() -> void:
 	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
 	var first: Dictionary = assert_event(sim.apply_command({"type": "bit", "actor": "dario"}),
 		"bit_performed", "first bit performs")
+	assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
+		"the second rides the R34 budget")
 	assert_rejected(sim.apply_command({"type": "bit", "actor": "dario"}), "free_action_used",
-		"the same-tick repeat is rejected")
-	advance(sim, 1)  # reset_tick_flags frees the R3 slot every Moment
+		"the same-tick repeat PAST the budget is rejected")
+	advance(sim, 1)  # reset_tick_flags refreshes the R3/R34 budget every Moment
 	var again: Dictionary = assert_event(sim.apply_command({"type": "bit", "actor": "dario"}),
 		"bit_performed", "the NEXT Moment the bit performs again")
 	assert_true(int(again.get("spectacle_points", 0)) > int(first.get("spectacle_points", 0)),
@@ -119,20 +124,27 @@ func test_bit_works_again_after_advance_tick() -> void:
 
 
 func test_bit_consumes_the_free_slot_and_vice_versa() -> void:
-	# The slot IS the cost: doing the bit forfeits the tick's other free actions.
+	# The budget IS the cost: the bit and the tick's other free actions draw on
+	# ONE shared pool (R34: two entries, not two pools).
 	var sim: CombatSim = make_sim()
 	add_human(sim, "dario", {"team": "party", "bit": DARIO_BIT})
 	assert_event(sim.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
-		"the bit consumes the free-action slot")
-	assert_rejected(sim.apply_command({"type": "move", "actor": "dario", "to": [1, 0]}), "free_action_used",
-		"the free 1-3 space move the same tick is rejected — the bit WAS the tick's free action")
-	# And vice versa: the free move first forecloses the bit.
+		"the bit consumes a free-action entry")
+	assert_event(sim.apply_command({"type": "move", "actor": "dario", "to": [1, 0]}), "moved",
+		"the free 1-3 space move rides the SECOND entry — the R34 budget, same pool")
+	assert_rejected(sim.apply_command({"type": "bit", "actor": "dario"}), "free_action_used",
+		"and the third free action of the tick is rejected — the pool is shared, not per family")
+	# And vice versa: the free move first, then the bit, then nothing.
 	var sim2: CombatSim = make_sim()
 	add_human(sim2, "dario", {"team": "party", "bit": DARIO_BIT})
 	assert_event(sim2.apply_command({"type": "move", "actor": "dario", "to": [1, 0]}), "moved",
-		"the free move consumes the slot first")
+		"the free move consumes the first entry")
+	assert_event(sim2.apply_command({"type": "bit", "actor": "dario"}), "bit_performed",
+		"the bit after a free move spends the second")
 	assert_rejected(sim2.apply_command({"type": "bit", "actor": "dario"}), "free_action_used",
-		"the bit after a free move the same tick is rejected — one free action per Moment")
+		"and the third free action of the tick is rejected — the move+bit pair spent the pool")
+	assert_rejected(sim2.apply_command({"type": "move", "actor": "dario", "to": [2, 0]}), "already_moved",
+		"the move gate still answers first: never twice per tick, budget or not (R3)")
 
 
 func test_view_combatants_exposes_free_action_used() -> void:
@@ -150,13 +162,23 @@ func test_view_combatants_exposes_free_action_used() -> void:
 	assert_true((row.call() as Dictionary).has("free_action_used"),
 		"the view row carries the free_action_used field")
 	assert_false(bool((row.call() as Dictionary).get("free_action_used", true)),
-		"slot open before any free action")
+		"budget open before any free action")
+	assert_eq(int((row.call() as Dictionary).get("free_actions_left", -1)),
+		CombatantState.FREE_ACTIONS_PER_CLOCK,
+		"R34: the view carries the whole budget for the `FREE ACTIONS n/N` readout")
+	game.apply_command({"type": "bit", "actor": "dario"})
+	assert_false(bool((row.call() as Dictionary).get("free_action_used", true)),
+		"one entry spent is NOT exhausted — the flag means 'no free entry left' (R34)")
+	assert_eq(int((row.call() as Dictionary).get("free_actions_used", -1)), 1,
+		"the view counts the spend — UIs render 1/2 honestly")
 	game.apply_command({"type": "bit", "actor": "dario"})
 	assert_true(bool((row.call() as Dictionary).get("free_action_used", false)),
-		"the bit flips free_action_used true in the view — UIs can gate 0-cost entries honestly")
+		"the budget-exhausting bit flips free_action_used true — UIs can gate 0-cost entries honestly")
+	assert_eq(int((row.call() as Dictionary).get("free_actions_left", -1)), 0, "nothing left")
 	game.apply_command({"type": "advance_tick"})
 	assert_false(bool((row.call() as Dictionary).get("free_action_used", true)),
-		"the next Moment the view reads the reset slot")
+		"the next Moment the view reads the reset budget")
+	assert_eq(int((row.call() as Dictionary).get("free_actions_used", -1)), 0, "and the counter reset")
 	game.free()
 
 

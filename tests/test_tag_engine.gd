@@ -357,11 +357,12 @@ func test_3am_energy_movement_streak() -> void:
 ## Everything about the sim EXCEPT the broadcast-plane engines (hype, tags,
 ## evidence). If a command leaves this fingerprint unchanged it touched no
 ## combat state. ignore_free_slot=true additionally normalizes every
-## combatant's free_action_used flag to false — the DELIBERATE, RULED exception
-## to the bit's nullity (anti-spam ruling: the bit is a free action and the R3
-## free-action slot IS its cost). Same-tick nullity checks pass it true and
-## assert the flag flip explicitly; across-a-tick checks keep the strict
-## default, because reset_tick_flags clears the slot every advance.
+## combatant's free-action BUDGET (the derived free_action_used flag AND the
+## R34 free_actions_used counter) back to untouched — the DELIBERATE, RULED
+## exception to the bit's nullity (anti-spam ruling: the bit is a free action
+## and the R3/R34 free-action economy IS its cost). Same-tick nullity checks
+## pass it true and assert the spend explicitly; across-a-tick checks keep the
+## strict default, because reset_tick_flags clears the budget every advance.
 func combat_fingerprint(sim: CombatSim, ignore_free_slot: bool = false) -> String:
 	var d: Dictionary = sim.to_dict()
 	d.erase("hype")
@@ -369,7 +370,9 @@ func combat_fingerprint(sim: CombatSim, ignore_free_slot: bool = false) -> Strin
 	d.erase("evidence")
 	if ignore_free_slot:
 		for id: Variant in (d.get("combatants", {}) as Dictionary):
-			((d["combatants"] as Dictionary)[id] as Dictionary)["free_action_used"] = false
+			var row: Dictionary = (d["combatants"] as Dictionary)[id]
+			row["free_action_used"] = false
+			row.erase("free_actions_used")  # serialized only-when-set (R34 compat pin)
 	return CombatSim.canonical_serialize(d)
 
 
@@ -383,7 +386,7 @@ func test_the_bit_is_mechanically_null() -> void:
 	advance(sim, 1)
 	var before_state: String = combat_fingerprint(sim, true)
 	var before_meter: int = sim.hype.meter
-	assert_false(sim.combatants["a"].free_action_used, "precondition: a's free-action slot is open")
+	assert_eq(sim.combatants["a"].free_actions_used, 0, "precondition: a's free-action budget is untouched")
 	# Perform the bit.
 	var events: Array[Dictionary] = sim.apply_command({"type": "bit", "actor": "a", "key": "bow"})
 	var bit: Dictionary = assert_event(events, "bit_performed", "the bit resolves")
@@ -391,9 +394,9 @@ func test_the_bit_is_mechanically_null() -> void:
 	#    anti-spam cost): nothing else outside hype/tags changed, and the flag
 	#    flip is asserted explicitly rather than hidden by the normalization.
 	assert_eq(combat_fingerprint(sim, true), before_state,
-		"the bit changed NO combat state beyond the free-action slot (combatants, clock, rng, ai, snapshot all identical)")
-	assert_true(sim.combatants["a"].free_action_used,
-		"the bit consumed the free-action slot — the ONLY combat-state change, and the ruled cost")
+		"the bit changed NO combat state beyond the free-action budget (combatants, clock, rng, ai, snapshot all identical)")
+	assert_eq(sim.combatants["a"].free_actions_used, 1,
+		"the bit spent ONE free-action entry — the ONLY combat-state change, and the ruled cost")
 	# 2) The ONLY payout is spectacle.
 	assert_true(int(bit.get("spectacle_points", 0)) > 0, "the bit pays spectacle")
 	assert_true(sim.hype.meter > before_meter, "spectacle raised the hype meter")

@@ -16,6 +16,10 @@ extends SimTestBase
 ##   * facing (R30/#33): NOT sanitized — re-derived at staging by the
 ##     controller splice (verified live: a carried non-default facing does
 ##     not leak into the next room).
+##   * free_actions_used (R34, the 2026-08-19 free-action budget): same shape —
+##     NOT sanitized (run_state.gd's table still zeroes only the legacy
+##     boolean, which no longer clears the counter), ERASED at staging by the
+##     controller splice; verified live below with a victory free action.
 ## What these tests pin:
 ##   (1) a LIVE run through the controller where one encounter ends with EVERY
 ##       new field armed via REAL commands (intercept guard, armed save, a
@@ -174,6 +178,11 @@ func test_every_new_field_lives_at_encounter_end_and_stages_clean() -> void:
 	assert_eq(String(live_tk.channeling.get("target", "")), "buddy", "precondition: the channel is live")
 	assert_eq(live_buddy.held_by, "tk", "precondition: the held-by mirror is live")
 	assert_false(live_buddy.iron_stance.is_empty(), "precondition: the stance is still held")
+	# R34: a victory free action (the bow after the kill) is spent AFTER the
+	# last tick, so it is still live in the capture the sanitizer sees.
+	_declare(gc, "hero", {"kind": "skill", "cost": 0, "key": "taunt"})
+	assert_eq(live_hero.free_actions_used, 1,
+		"precondition: one free-action entry is live at capture (R3/R34 budget)")
 	gc.apply_run_command({"type": "end_encounter"})
 	# The roster carry is SANITIZED: every only-when-set key erased, charges kept.
 	for id: String in ["hero", "guardian", "acrobat", "sneak", "tk", "buddy"]:
@@ -201,6 +210,9 @@ func test_every_new_field_lives_at_encounter_end_and_stages_clean() -> void:
 	assert_true(guardian.guard.is_empty(), "the guard record died with the encounter (batch B)")
 	assert_true(guardian.armed_primes.is_empty(), "its PREP substrate died with it (R3/#20)")
 	assert_eq(guardian.facing, 0, "the carried W-facing did NOT leak — staging re-derived it (R30/#33)")
+	assert_eq(hero.free_actions_used, 0,
+		"the carried free-action budget did NOT leak — staging erased it (R34, the facing precedent)")
+	assert_true(hero.has_free_action(), "the next room opens with the whole budget")
 	assert_true(buddy.iron_stance.is_empty(), "the stance died with the encounter (batch B)")
 	assert_true(acrobat.forced_save.is_empty(), "the armed save died with the encounter (batch C)")
 	assert_eq(int(acrobat.charges.get("bandage_charge", -1)), 1,
