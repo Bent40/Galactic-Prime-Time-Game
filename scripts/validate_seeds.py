@@ -1241,6 +1241,8 @@ def main() -> int:
     lock_count = 0
     terrain_hex_count = 0
     exit_count = 0
+    patrol_route_count = 0
+    patrol_pace_count = 0
     # KAN-5 K2 (R33) vocabularies — mirror simulation/arena.gd's enums/tables.
     TERRAIN_TYPES = ("difficult", "water", "rough")
     LOCK_TIERS = ("simple", "moderate", "complex", "magical")
@@ -1324,6 +1326,7 @@ def main() -> int:
             # CombatSim._set_arena (placement) — unique non-empty keys, a
             # ruled state, in bounds, off walls/objects/other doors.
             doors = set()
+            closed_doors = set()
             door_keys = set()
             for door in arena.get("doors", []) or []:
                 if not isinstance(door, dict) or not door.get("key"):
@@ -1349,6 +1352,8 @@ def main() -> int:
                 if h in doors:
                     fail("demo_run.json", f"{where}: two doors share hex {list(h)}")
                 doors.add(h)
+                if door.get("state") == "closed":
+                    closed_doors.add(h)
                 door_count += 1
                 # K2 (R33) door locks: optional; tier in the enum, state
                 # locked|unlocked, and a LOCKED lock only on a CLOSED door
@@ -1444,6 +1449,83 @@ def main() -> int:
                     fail("demo_run.json", f"{where}: spawn {sid!r} at {list(h)} on a door hex "
                                           "(a doorway is never a spawn hex, wave 4b)")
 
+            # ---- R35 PATROL data (authored per enemy INSTANCE) --------------
+            # Mirrors Exploration.patrol_from_spec's two authored shapes and
+            # adds the checks the engine cannot make (it never sees the room
+            # at normalize time): every waypoint / anchor must be a real hex
+            # of THIS arena — in bounds, off walls, off objects and off a
+            # CLOSED door (an open door is floor, so a waypoint there is
+            # legal). A blocked waypoint does not crash the sim — patrol_step
+            # HOLDS — which is exactly why it must fail here instead: a
+            # permanently-holding sentry is an authoring mistake that looks
+            # like a working patrol. `patrol: true` (the derived pace) and an
+            # absent patrol are both fine and check nothing.
+            for row in enc.get("enemies", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                spec_patrol = (row.get("overrides", {}) or {}).get("patrol", row.get("patrol"))
+                if spec_patrol is None or isinstance(spec_patrol, bool):
+                    continue
+                rid = row.get("id", row.get("enemy_key", "?"))
+                if not isinstance(spec_patrol, dict):
+                    fail("demo_run.json", f"{where}: enemy {rid!r} patrol must be true or an "
+                                          "object ({route:[...]} or {anchor,reach}) — R35")
+                    continue
+
+                def _patrol_hex_ok(pair, label, rid=rid, where=where):
+                    h = _hex(pair)
+                    if h is None:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol {label} "
+                                              f"{pair!r} is not a [q, r] hex")
+                        return
+                    if not in_bounds(h):
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol {label} "
+                                              f"{list(h)} outside the bounds")
+                    if h in walls:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol {label} "
+                                              f"{list(h)} sits on a wall (unreachable — the "
+                                              "patrol would HOLD forever)")
+                    if h in objects:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol {label} "
+                                              f"{list(h)} sits on an object")
+                    if h in closed_doors:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol {label} "
+                                              f"{list(h)} sits on a CLOSED door (unreachable)")
+
+                route = spec_patrol.get("route")
+                if route is not None:
+                    if not isinstance(route, list) or not route:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol route must be a "
+                                              "non-empty list of [q, r] waypoints")
+                        continue
+                    seen_wp = set()
+                    for wi, pair in enumerate(route):
+                        _patrol_hex_ok(pair, f"waypoint[{wi}]")
+                        h = _hex(pair)
+                        if h is not None:
+                            if h in seen_wp:
+                                fail("demo_run.json", f"{where}: enemy {rid!r} patrol repeats "
+                                                      f"waypoint {list(h)} — a cycle visits each "
+                                                      "post once")
+                            seen_wp.add(h)
+                    if len(route) == 1:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol route has ONE "
+                                              "waypoint — that is a statue, not a patrol "
+                                              "(drop the key or add a second post)")
+                    idx = spec_patrol.get("index", 0)
+                    if not isinstance(idx, int) or not (0 <= idx < max(1, len(route))):
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol index {idx!r} "
+                                              "must be an int inside the route")
+                    patrol_route_count += 1
+                else:
+                    if "anchor" in spec_patrol:
+                        _patrol_hex_ok(spec_patrol.get("anchor"), "anchor")
+                    reach = spec_patrol.get("reach", 0)
+                    if not isinstance(reach, int) or reach < 0:
+                        fail("demo_run.json", f"{where}: enemy {rid!r} patrol reach {reach!r} "
+                                              "must be an int >= 0")
+                    patrol_pace_count += 1
+
         # ---- KAN-5 wave 4b: room-GRAPH integrity (R29) -----------------------
         # Only when any def authors "exits" (graph mode; a linear list skips
         # this whole block). Mirrors RunState's graph rules: exit keys unique
@@ -1454,6 +1536,16 @@ def main() -> int:
         enc_keys = [e.get("key") for e in encs]
         if len(enc_keys) != len(set(enc_keys)):
             fail("demo_run.json", f"duplicate encounter keys: {sorted(k for k in set(enc_keys) if enc_keys.count(k) > 1)}")
+        # R34/R35 run-loop wiring: the OPENING PHASE vocabulary. Absent =
+        # "exploration" (the default — the room is walked before it is
+        # fought); "combat" is the scripted-ambush opt-out. Gated here so
+        # authored data never leans on RunState's conservative fallback (a
+        # typo would silently open the room mid-fight).
+        for e in encs:
+            if "opens_in" in e and e["opens_in"] not in ("exploration", "combat"):
+                fail("demo_run.json", f"{e.get('key', '?')}: opens_in {e['opens_in']!r} must be "
+                                      "'exploration' (the default) or 'combat' (the "
+                                      "scripted-ambush opt-out) — R34/R35 run-loop wiring")
         graph_mode = any("exits" in e for e in encs)
         if graph_mode and encs:
             adjacency: dict = {}
@@ -1535,7 +1627,8 @@ def main() -> int:
           f"entries, {len(mutations)} mutation recipes, {len(absorptions)} absorb entries, "
           f"{len(offers)} Mod-Center offers, {arena_count} encounter arenas, "
           f"{door_count} doors, {lock_count} door locks, "
-          f"{terrain_hex_count} terrain hexes, {exit_count} graph exits "
+          f"{terrain_hex_count} terrain hexes, {exit_count} graph exits, "
+          f"{patrol_route_count} authored patrol routes, {patrol_pace_count} derived paces "
           f"— {n} rows checked).")
     return 0
 

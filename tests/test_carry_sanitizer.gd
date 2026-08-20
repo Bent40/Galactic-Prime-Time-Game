@@ -107,6 +107,7 @@ func _start_run(gc: Node) -> void:
 ##       Clock reset that would expire the pattern read is ~5 ticks away).
 func _drive_loaded_encounter(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	gc.apply_command({"type": "apply_condition", "target": "guardian", "part": "torso",
 		"condition": "chilled", "tier": 1})
 	_declare(gc, "guardian", {"kind": "skill", "key": "intercept", "level": 1,
@@ -140,6 +141,7 @@ func _drive_loaded_encounter(gc: Node) -> void:
 ## are command-identical.
 func _finish_encounter_two(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_declare(gc, "hero", attack_action("crushed", 3, "roach_b", "carapace", {"attack_range": 2}))
 	gc.apply_command({"type": "advance_tick"})
 	gc.apply_run_command({"type": "end_encounter"})
@@ -199,6 +201,7 @@ func test_every_new_field_lives_at_encounter_end_and_stages_clean() -> void:
 	assert_eq(int(hero_spec_skill.get("cap", 0)), 8, "the absorb cap survives on the spec")
 	# Next encounter staged: every combat-scoped field clean on the LIVE sim.
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	var staged_plan: Dictionary = gc.run.staging()
 	var hero: CombatantState = gc.sim.combatants["hero"]
 	var guardian: CombatantState = gc.sim.combatants["guardian"]
@@ -255,6 +258,7 @@ func test_save_restore_and_bare_replay_with_new_fields_present() -> void:
 	assert_eq(RunState.from_dict(checkpoint).state_hash(), gc_live.run.state_hash(),
 		"the between-encounters round trip is state-hash faithful with the new-field carry ingested")
 	gc_live.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_live)  # R34 deliberate ENTER (the room opens free-form)
 	var live_staged_hash: String = gc_live.sim.state_hash()
 	_declare(gc_live, "hero", attack_action("crushed", 3, "roach_b", "carapace", {"attack_range": 2}))
 	gc_live.apply_command({"type": "advance_tick"})
@@ -270,6 +274,7 @@ func test_save_restore_and_bare_replay_with_new_fields_present() -> void:
 	assert_eq(((_roster_row(gc_restored, "acrobat")["carried"] as Dictionary).get("charges", {}) as Dictionary)
 		.get("bandage_charge", -1), 1, "the restored roster carries the spent-bandage count")
 	gc_restored.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_restored)  # R34 deliberate ENTER (the room opens free-form)
 	assert_eq(gc_restored.sim.state_hash(), live_staged_hash,
 		"save/restore between encounters stages a hash-identical encounter 2")
 	_declare(gc_restored, "hero", attack_action("crushed", 3, "roach_b", "carapace", {"attack_range": 2}))

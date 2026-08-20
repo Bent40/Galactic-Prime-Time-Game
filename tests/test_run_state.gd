@@ -86,6 +86,7 @@ func _advance_until_over(gc: Node, max_ticks: int) -> void:
 ## Encounter 1 (brood_landing) — the recruit fights as an ally.
 func _drive_encounter_one(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_drive_encounter_one_after_begin(gc)
 
 
@@ -227,6 +228,7 @@ func _fight_boss(gc: Node, max_ticks: int) -> void:
 func _finish_from_between(gc: Node) -> void:
 	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc)
 	_stage_hound_bites(gc)
 	_fight_hounds(gc, MAX_FIGHT_TICKS)
@@ -240,6 +242,7 @@ func _finish_from_between(gc: Node) -> void:
 ## TERMINAL room, so clearing it auto-finishes the run WIN (no end_run).
 func _finish_finale(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
@@ -351,9 +354,13 @@ func test_demo_run_data_contract() -> void:
 	# tests/test_second_enemy.gd) — and the finale stays the boss.
 	var enc2: Dictionary = (def.get("encounters", []) as Array)[1]
 	assert_eq(String(enc2.get("key", "")), "kennel_gauntlet", "encounter 2 is the kennel mid room")
-	var hound_row: Dictionary = (enc2.get("enemies", []) as Array)[0]
-	assert_eq(String(hound_row.get("enemy_key", "")), "war_hound", "the mid room fields the war hound")
-	assert_eq(int(hound_row.get("count", 0)), 2, "staged as the R15 pack PAIR")
+	var hound_rows: Array = enc2.get("enemies", []) as Array
+	assert_eq(hound_rows.size(), 2, "staged as the R15 pack PAIR — since the R35 patrol pass the "
+		+ "pair is TWO count-1 rows so each hound can carry its own route (the ids/positions "
+		+ "war_hound_1 [2, 0] / war_hound_2 [2, -2] are unchanged)")
+	for hound_row: Variant in hound_rows:
+		assert_eq(String((hound_row as Dictionary).get("enemy_key", "")), "war_hound",
+			"the mid room fields the war hound")
 	# Wave 4b: index 2 is the branch-B corridor (roach reuse), the den moved
 	# to index 3 (the graph pins live in test_dungeon_flow.gd).
 	var enc_corridor: Dictionary = (def.get("encounters", []) as Array)[2]
@@ -418,6 +425,7 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 
 	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	# --- PERSISTS into the KENNEL: wounds + conditions (no field HP regen) ----
 	var imani: CombatantState = gc.sim.combatants["imani"]
 	var sasha: CombatantState = gc.sim.combatants["sasha"]
@@ -486,6 +494,7 @@ func test_damage_carries_and_per_combat_state_resets() -> void:
 		post_kennel[id] = hp_by_part
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	for id: String in ["imani", "dario", "sasha"]:
 		var member: CombatantState = gc.sim.combatants[id]
 		for part_key: Variant in (post_kennel[id] as Dictionary):
@@ -530,6 +539,7 @@ func test_decline_in_the_demo_run_honors_sashas_may_reoffer_story() -> void:
 		"no offer beat is open mid-exploration — a re-offer needs a later encounter's recruit_offer")
 	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	assert_false(gc.sim.combatants.has("sasha"), "encounter 2 is staged WITHOUT the declined recruit")
 	assert_eq(gc.sim.combatants.size(), 4, "imani + dario + the kennel pair on the table")
 	var run_view: Dictionary = gc.view_run()
@@ -543,6 +553,7 @@ func test_party_wipe_in_encounter_one_ends_the_run_as_loss() -> void:
 	var gc: Node = _controller()
 	_start_demo_run(gc)
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	# Deterministic wipe: lethal suffocation on every party torso (the
 	# test_run_loop idiom); the brood is left alone — no enemy turns needed.
 	for id: String in ["imani", "dario", "sasha"]:
@@ -604,6 +615,7 @@ func test_save_restore_mid_encounter_two_identical_continuation() -> void:
 	gc_live.apply_run_command({"type": "accept_recruit"})
 	gc_live.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc_live.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_live)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc_live)
 	_stage_hound_bites(gc_live)
 	_fight_hounds(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
@@ -650,6 +662,7 @@ func test_run_command_gating_and_abandon() -> void:
 	assert_eq(String(first_event(no_fight, "run_command_rejected").get("reason", "")), "no_active_combat",
 		"end_encounter with no staged fight rejects")
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	var mid_fight: Array[Dictionary] = gc.apply_run_command({"type": "end_encounter"})
 	assert_eq(String(first_event(mid_fight, "run_command_rejected").get("reason", "")), "encounter_not_resolved",
 		"the run never records an outcome the sim does not show (honesty gate)")
@@ -938,6 +951,7 @@ func test_epithets_surface_on_the_run_views() -> void:
 		"the view_run roster row carries the renamed epithet")
 	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})  # branch A (wave 4b)
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	var combatant_row: Dictionary = {}
 	for row: Variant in gc.view_combatants():
 		if String((row as Dictionary).get("id", "")) == "sasha":

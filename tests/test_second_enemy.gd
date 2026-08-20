@@ -144,9 +144,25 @@ func test_war_hound_data_contract() -> void:
 	assert_eq(encounters.size(), 4, "the demo run is 4 rooms (wave 4b branch map)")
 	var kennel: Dictionary = encounters[1]
 	assert_eq(String(kennel.get("key", "")), "kennel_gauntlet", "the mid room is the kennel")
-	var row: Dictionary = (kennel.get("enemies", []) as Array)[0]
-	assert_eq(String(row.get("enemy_key", "")), "war_hound", "the mid room fields the war hound")
-	assert_eq(int(row.get("count", 0)), 2, "staged as a PAIR — the R15 pack cap, and never alone")
+	var rows: Array = kennel.get("enemies", []) as Array
+	assert_eq(rows.size(), 2, "staged as a PAIR — the R15 pack cap, and never alone (two count-1 "
+		+ "rows since the R35 patrol pass: a route is per-INSTANCE data)")
+	var route_signatures: Array[String] = []
+	for row_variant: Variant in rows:
+		var row: Dictionary = row_variant
+		assert_eq(String(row.get("enemy_key", "")), "war_hound", "the mid room fields the war hound")
+		var patrol: Dictionary = (row.get("overrides", {}) as Dictionary).get("patrol", {})
+		var route: Array = patrol.get("route", [])
+		assert_true(route.size() >= 2, "%s authors a real patrol route (R35 content half)"
+			% String(row.get("id", "?")))
+		route_signatures.append(JSON.stringify(route))
+	assert_ne(route_signatures[0], route_signatures[1],
+		"the two hounds walk DIFFERENT routes — a pack with two jobs, not two clones")
+	# The template itself must stay patrol-FREE: patrolling is opt-in authored
+	# data, and a template `patrol` would make every war hound everywhere pace
+	# (the silent-room-rewrite R35's opt-in design exists to prevent).
+	assert_false(t.has("patrol"),
+		"data/enemies.json war_hound authors NO patrol — routes are per-encounter instance data")
 
 
 # ------------------------------------------------- the hunt (ai_decide path)

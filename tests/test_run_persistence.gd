@@ -58,6 +58,7 @@ func _declare(gc: Node, actor: String, action: Dictionary) -> Array[Dictionary]:
 ## carried damage, then a guarded real fight (declares + live enemy turns).
 func _drive_encounter_one(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_declare(gc, "roach_dog_1", attack_action("crushed", 4, "imani", "torso"))
 	_declare(gc, "roach_dog_2", attack_action("crushed", 3, "sasha", "torso"))
 	gc.apply_command({"type": "camera_call", "actor": "dario", "target": "imani"})
@@ -162,6 +163,7 @@ func _fight_boss(gc: Node, max_ticks: int) -> void:
 ## continuation so they are command-identical.
 func _finish_from_between(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc)
 	_stage_hound_bites(gc)
 	_fight_hounds(gc, MAX_FIGHT_TICKS)
@@ -174,6 +176,7 @@ func _finish_from_between(gc: Node) -> void:
 ## clearing it auto-finishes the run WIN, so there is no end_run.
 func _finish_finale(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_hound_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
@@ -241,6 +244,7 @@ func test_save_load_mid_encounter_two_identical_continuation() -> void:
 	var gc_live: Node = _controller()
 	_drive_to_between(gc_live)
 	gc_live.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_live)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc_live)
 	_stage_hound_bites(gc_live)
 	_fight_hounds(gc_live, 1)  # one real fight tick in — genuinely mid-encounter
@@ -287,6 +291,7 @@ func test_failed_loads_are_typed_and_leave_the_live_session_untouched() -> void:
 	var gc: Node = _controller()
 	_drive_to_between(gc)
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc)
 	_stage_hound_bites(gc)
 	_fight_hounds(gc, 1)
@@ -339,6 +344,7 @@ func test_save_load_save_round_trip_is_byte_identical() -> void:
 	# Mid-encounter round trip (exercises the CombatSim block too — a live
 	# war hound rides the envelope).
 	gc_b.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_b)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc_b)
 	_stage_hound_bites(gc_b)
 	_fight_hounds(gc_b, 1)
@@ -384,6 +390,7 @@ func test_declined_recruit_state_survives_the_disk_round_trip() -> void:
 		"no offer beat is open mid-exploration — only a later encounter's recruit_offer re-offers")
 	gc_loaded.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc_loaded.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc_loaded)  # R34 deliberate ENTER (the room opens free-form)
 	assert_false(gc_loaded.sim.combatants.has("sasha"), "encounter 2 stages WITHOUT the declined recruit")
 	gc.free()
 	gc_loaded.free()

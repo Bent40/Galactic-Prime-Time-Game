@@ -1496,8 +1496,21 @@ an exits-less encounter list behave (and serialize) byte-identically to wave
   * **Deliberate entry is unchanged in spirit.** The `phase` command's combat
     side is the "ENTER ▸ ⟨route⟩" commit: `combat_started {reason:
     "deliberate"}`, **no contact event**. `choose_exit` stays the run-level way
-    to pick the route; wiring it to issue the phase command is the named
-    follow-up below.
+    to pick the route.
+    **WIRED 2026-08-20 (the named follow-up, now closed):** the room's OPENING
+    phase is the decision, not the exit choice. `RunState.staging()` carries
+    **`opens_in`** — `"exploration"` by DEFAULT for **every** room, `"combat"`
+    as the per-def scripted-ambush opt-out — and `GameController` issues the
+    logged `phase` command after the add batch, so a room is walked before it
+    is fought and the fight starts on **contact** or on the player's ENTER.
+    Keying the opening phase off HOW the room was reached (a 2+-exit beat vs a
+    one-exit corridor auto-advance) was considered and rejected: that is
+    run-level routing, and it would open the kennel walkable while dropping
+    the party into the den mid-corridor. The boss den is still entered
+    deliberately in R34's own sense — deliberate entry IS the phase command's
+    combat side, reachable only FROM exploration. `choose_exit` itself is
+    untouched and RunState holds no phase state, so the graph flow, the hype
+    chain and every run hash are unchanged.
   * **Contact is the involuntary way in** — sight OR hearing, both built out of
     the existing R20/R30 substrates, zero new rng: after **every** exploration
     command the sim asks whether any AI-controlled enemy **sees** a contestant
@@ -2024,20 +2037,49 @@ the numbers below are PLACEHOLDER (R14) as always.
       exploration time step (`CombatantState.patrol`, opt-in authored data).
     - ~~Spectacle during exploration is UNRULED~~ — **RULED and SHIPPED** for the
       three expressible sources; cross-party meetings stay DEFERRED (see R35).
+    **CLOSED by the run-loop pass (2026-08-20):**
+    - ~~Run-loop wiring: `choose_exit` does not issue the phase command~~ —
+      **SHIPPED, one level up from where this bullet guessed.** The decision
+      lives on `RunState.staging()` as **`opens_in`** (default
+      `"exploration"`; a def may author `"combat"` for a scripted ambush) and
+      `GameController._stage_encounter` executes it by issuing the LOGGED
+      `{"type": "phase", "set": "exploration"}` command after the add batch.
+      **Every room opens free-form** — not only rooms reached through an
+      exploration beat: how you REACHED a room (a 2+-exit beat, a one-exit
+      corridor auto-advance, `begin_encounter` on the entry room) is
+      run-level routing, while the phase is a fact about the room you now
+      stand in, and keying one off the other would open the kennel walkable
+      and the den mid-fight. The **boss den is still "entered deliberately"**
+      in exactly R34's sense: deliberate entry IS the phase command's combat
+      side (`combat_started {reason: "deliberate"}` — the mockup's ENTER
+      button), and it is only reachable FROM exploration. `choose_exit` is
+      untouched and stays the run-level route pick; RunState holds no phase
+      state, so the run reducer and every run hash are unchanged.
+    - ~~`GameController` exposes no `view_phase`~~ — **SHIPPED.**
+      `view_phase()` projects `phase` · `exploring` · `label` ·
+      `tick`/`moment` · `time_runs` (always true) · `turn_order` ·
+      `moment_costs` · `time_step` (`advance_tick`, the ONE real tick path —
+      and out of combat it IS the patrol beat) · `pause: "driver"` (stated in
+      the API because PAUSE IS NOT SIM STATE) · `enter_command` (the ENTER
+      commit, `{}` in combat) · `patrolling` (sorted ids of the mobs taking a
+      beat). Read-only, `{}` before a fight is staged.
+      Tests: `tests/test_kennel_patrol.gd`.
+
     **STILL DOWNSCOPED, flagged not hidden:**
-    - **Run-loop + view/HUD wiring** — `RunState.choose_exit` does not yet issue
-      the phase command, `GameController` exposes no `view_phase`, nothing
-      renders the mode, and nothing drives the exploration time step or the
-      pause control. The sim is driver-ready; the driver is a KAN-6 story.
+    - **The renderer and the driver loop** — nothing DRAWS the mode, and
+      nothing issues the exploration time step or the pause / inventory-UI
+      control that must stop it. The sim and the view API are both
+      driver-ready; the driver is a KAN-6 story behind the mockup gate.
     - **The DIRECTION of contact** (a documented reading, owner call welcome):
       R34's own examples are both *enemy detects contestant*, so a contestant
       who SEES a mob does **not** start the fight — that is the stealth design
       space R20 pays for. The mirror direction is one loop in
       `Exploration.first_contact` if ruled otherwise.
-    - **No seeded enemy authors a patrol yet.** The engine gives every enemy the
-      capability; whether a given room's guard paces is content, exactly like
-      `personality.herder` / `abilities` / `phases`. `data/enemies.json` is
-      untouched by this story.
+    - ~~No seeded enemy authors a patrol yet.~~ **CLOSED 2026-08-20 — the two
+      kennel war hounds author routes** (owner: "give the hounds patrol
+      routes"). Per-INSTANCE data in `data/demo_run.json`, NOT on the
+      `war_hound` template: see R35's ROUTES bullet for the routes, the
+      reasoning and the one content gap that remains.
     - Hearing keeps its inherited R20 downscopes (no per-creature acuity, no
       wall muffling, no noise rows beyond the v1 loudness table).
 - **Free actions are limited per turn.** Camera Call, The Bit, and the rest stay
@@ -2088,7 +2130,10 @@ the numbers below are PLACEHOLDER (R14) as always.
 R34 shipped free-form exploration with four gaps named honestly. The owner ruled on
 three of them the same day (plus two same-day additions — the TIME revision recorded in
 R34's TIME AMENDMENT, and inventory/item use below); the fourth (run-loop + HUD wiring)
-is KAN-6 and waits on the mockup gate. Numbers PLACEHOLDER (R14) as always.
+has since been **half closed**: the RUN-LOOP half shipped 2026-08-20 alongside the
+kennel patrol content (rooms now OPEN in exploration and `view_phase` projects the mode
+— see the closing bullet), and only the renderer/driver half is still KAN-6 behind the
+mockup gate. Numbers PLACEHOLDER (R14) as always.
 
 **Engine status: SHIPPED at the SIM layer 2026-08-20** — per-bullet detail inline below,
 tests in `tests/test_exploration_layer.gd`. Combat is provably unaffected: `enemy_ai.gd`
@@ -2139,8 +2184,8 @@ has no edit, both CI harnesses are byte-identical, and the recorded legacy hashe
     rummage (`test_the_menu_does_not_race_the_burn`).
   * **Engine:** `ActionResolver.inventory_free_form`.
     Test: `test_inventory_and_item_use_are_free_in_exploration`.
-- **Mobs PATROL during exploration (owner). — SHIPPED 2026-08-20 (engine); content
-  authoring outstanding.** Enemies are no longer statues waiting on their staged hex;
+- **Mobs PATROL during exploration (owner). — SHIPPED 2026-08-20 (engine); CONTENT
+  AUTHORED 2026-08-20 (the kennel hounds — see THE CONTENT below).** Enemies are no longer statues waiting on their staged hex;
   they move, and their eyelines move with them (R34 cone semantics — a patrolling cone
   stays NEUTRAL until it has someone).
   * ~~**PROVISIONAL (mine, flagged — the clock problem):** ... each party walk grants
@@ -2166,8 +2211,49 @@ has no edit, both CI harnesses are byte-identical, and the recorded legacy hashe
     HOLDS rather than thrashing. **Opt-in rather than default-on** is the design call:
     every other behaviour here is data-gated (`personality.herder`, `pack_hunter`,
     `abilities`, `phases`), and default-on would silently rewrite every staged room.
-    The consequence, flagged: **no seeded enemy in `data/enemies.json` authors a patrol
-    yet** — the capability ships, the content does not.
+  * **THE CONTENT — AUTHORED 2026-08-20 (owner: "give the hounds patrol routes"). This
+    closes the "no seeded enemy authors a patrol yet" gap.** The two war hounds of
+    `data/demo_run.json`'s `kennel_gauntlet` now carry routes. **PER-INSTANCE, never on
+    the template:** a route is position-specific and `data/enemies.json` cannot know the
+    room, so `war_hound` stays patrol-free — a template `patrol` would make every war
+    hound *anywhere* pace, which is precisely the silent-room-rewrite the opt-in design
+    exists to prevent. Expressing it needed no schema change: the count-2 enemy row was
+    SPLIT into two count-1 rows (ids, names and positions byte-identical — `war_hound_1`
+    at `[2, 0]`, `war_hound_2` at `[2, -2]`) so each hound carries its own
+    `overrides.patrol`, which the existing staging → spec → `patrol_from_spec` path
+    already delivers. **Every waypoint is PLACEHOLDER (R14) and PROVISIONAL** like the
+    arena it sits in — the owner redesigns rooms with the front.
+    | hound | route | the beat |
+    |---|---|---|
+    | `war_hound_1` | `[[2, 0], [-3, 0]]` | **THE RUN** — a two-point cycle (= pacing): its post at the east pens down the `r = 0` lane to the **gate mouth** `[-3, 0]`, the hex just inside the open `kennel_run_gate`, and back. The waypoint is the MOUTH, not the doorway: a doorway is never a spawn hex, and a waypoint ON the gate would strand the route the moment anyone closed it (a blocked waypoint HOLDS). This is the lane R11 #21's cut-off denies. |
+    | `war_hound_2` | `[[2, -2], [-2, -2], [-2, -4], [2, -4]]` | **THE NORTH PENS** — a four-point circuit, a deliberately different SHAPE so the pair reads as a pack with two jobs rather than two clones. It stops two hexes short of the west fence (`q >= -2`), keeping the two beats independent. |
+    The fiction is compendium §4.6 + R11 #21 — the pack herds prey toward the gate: hound
+    2 sweeps quarry out of the pens, hound 1 owns the lane it runs down. Both routes stay
+    in bounds, off the fence (`q = -4`), off the gate hex and clear of the kennel-muck row
+    (`r = 3`).
+  * **The seed validator now gates patrol data** (`scripts/validate_seeds.py`): every
+    waypoint/anchor must be a real hex of THAT room's arena — in bounds, off walls, off
+    objects, off a CLOSED door — plus no repeated waypoint, no one-waypoint "patrol", and
+    a cursor inside the route. The engine cannot make these checks (it never sees the room
+    at normalize time) and a bad waypoint does not crash it — `patrol_step` HOLDS — which
+    is exactly why a permanently-holding sentry has to fail at authoring time instead of
+    looking like a working patrol.
+  * **THE ONE HONEST GAP LEFT, flagged not hidden.** The kennel's authored **FIGHT**
+    staging puts `war_hound_1` one hex from Imani, inside its own cone, so the contact
+    sweep that runs at the end of the opening phase command finds her immediately: the
+    room opens free-form and is caught in the same breath. (This is per-ROOM, not
+    universal — `brood_landing` and `service_corridor` genuinely survive their opening
+    sweep and are walked; `kennel_gauntlet` and `incinedile_den` do not. Pinned room by
+    room in `tests/test_kennel_patrol.gd` so a re-authored staging announces itself.)
+    That is R34 working exactly as ruled — but it means the authored routes take **no
+    beat in the seeded demo drive**.
+    Closing it needs an **ENTRY staging distinct from the FIGHT staging** (the party
+    arriving at the kennel-run gate rather than nose-to-nose with the pack), which is
+    owner room-design work, not engine work — every room position in R28/R29 is
+    PLACEHOLDER and awaits that pass. The routes themselves are proven live in
+    `tests/test_kennel_patrol.gd`: each hound walks its own authored route on the authored
+    arena, a patrolling hound acquires a MOTIONLESS contestant and names **sight**, and
+    the no-route contrast never finds her.
   * A patrolling mob that acquires a contestant triggers the EXISTING contact path (no
     duplicate predicate); facing follows every step, which is what lets a moving cone
     acquire someone. `enemy_ai.gd` is **untouched** — the combat decide flow is not on
@@ -2179,7 +2265,15 @@ has no edit, both CI harnesses are byte-identical, and the recorded legacy hashe
     `test_the_derived_pace_walks_its_axis_and_turns_around`,
     `test_a_patrolling_cone_walks_into_a_standing_party_and_names_sight`,
     `test_a_blocked_patrol_holds_and_a_downed_one_walks_no_beat`,
-    `test_patrols_are_deterministic_and_draw_zero_rng`, `test_patrol_serializes_only_when_set`.
+    `test_patrols_are_deterministic_and_draw_zero_rng`, `test_patrol_serializes_only_when_set`,
+    plus the whole content + run-loop layer in `tests/test_kennel_patrol.gd`.
+    **Test-hygiene fix shipped with the content pass:**
+    `test_patrol_serializes_only_when_set` cast `CombatSim.to_dict()["combatants"]` (a
+    DICTIONARY, id → row) `as Array`, so it threw on its first line, ran **zero checks**
+    and still reported PASS — a vacuous pin on exactly the compat guarantee it names. It
+    now iterates the dictionary, and its cursor assertion (written for the RETIRED
+    "a walk grants a beat" design, so it had never executed) is corrected to the shipped
+    TIME STEP beat.
 - **The crowd watches exploration too (owner). — SHIPPED 2026-08-20 for the three
   expressible sources; the fourth stays DEFERRED.** A free-form walk **can** feed hype
   when something is at stake. Ruled sources: **danger nearby**, **good stealth**,
@@ -2214,7 +2308,22 @@ has no edit, both CI harnesses are byte-identical, and the recorded legacy hashe
     `test_the_three_ruled_spectacle_sources_and_their_magnitudes`,
     `test_a_stealthed_approach_to_a_boss_warms_the_meter`,
     `test_exploration_hype_arrives_at_the_fight_and_rides_the_R29_chain`.
-- **Still open after this story (not mine):** the **run-loop + view/HUD wiring** —
-  `RunState.choose_exit` issuing the phase command, a `view_phase` projection, the
-  renderer, the driver that issues exploration time steps, and the pause / inventory-UI
-  control that must stop them. KAN-6, behind the mockup gate.
+- ~~**Still open after this story (not mine):** the run-loop + view/HUD wiring~~ —
+  **the RUN-LOOP half SHIPPED 2026-08-20** with the patrol content above, because
+  authoring routes into a loop that never issues the exploration phase would have been
+  authoring something that provably never executes. What is now REAL: `RunState.staging()`
+  carries **`opens_in`** (default `"exploration"`, `"combat"` as the scripted-ambush
+  opt-out — no authored room uses it), `GameController._stage_encounter` issues the
+  **LOGGED** `{"type": "phase", "set": "exploration"}` command after the add batch, and
+  `GameController.view_phase()` projects the mode (`phase` · `exploring` · `label` ·
+  `tick`/`moment` · `time_runs` · `turn_order` · `moment_costs` · `time_step` ·
+  `pause: "driver"` · `enter_command` · `patrolling`). **EVERY room opens free-form** —
+  the ruling and its reasoning live in `simulation/run_state.gd`'s "THE OPENING PHASE"
+  header and in R34's amended bullet; the boss den is still "entered deliberately",
+  because deliberate entry IS the phase command's combat side and it is only reachable
+  from exploration. `choose_exit` is untouched and RunState holds no phase state, so every
+  run hash is unchanged; a combat-only fight is hash-identical whichever way the room
+  opened (`tests/test_kennel_patrol.gd`).
+  **STILL OPEN (KAN-6, behind the mockup gate):** the renderer, the driver loop that
+  issues exploration time steps, and the pause / inventory-UI control that must stop
+  them. The sim and the view API are both driver-ready.

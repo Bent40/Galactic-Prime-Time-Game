@@ -109,10 +109,59 @@ extends RefCounted
 ##                combat id is the key's first "_"-separated token (the
 ##                documented loadout-id rule, same join view_bid uses),
 ##    "party_positions"?: {id: [q, r]} — restage positions for roster members,
+##    "opens_in"?: "exploration" (DEFAULT) | "combat" — the PHASE the staged
+##                room opens in (R34/R35 run-loop wiring, 2026-08-20). See
+##                OPENING PHASE below; the key is absent from every authored
+##                room today because exploration IS the default.
 ##    "arena"?: {bounds/walls/objects — simulation/arena.gd's config shape,
 ##                KAN-5 wave 3d}. Passed through staging() verbatim; the
 ##                controller issues set_arena BEFORE the add batch. Absent =
 ##                the unbounded legacy combat, unchanged.}
+##
+## THE OPENING PHASE (R34's free-form ruling wired into the run loop,
+## 2026-08-20 — the "run-loop wiring" R34/R35 both named as still open).
+## R34 rules that a room is WALKED before it is fought: "the party walks
+## freely; movement costs nothing; the clock starts on contact", with the
+## deliberate "ENTER > <route>" commit as the other way in. Until now
+## RunState.staging() handed the controller a room and the controller staged
+## it straight into combat, so nothing ever issued the exploration phase and
+## no patrol beat, contact check or exploration free action could run in a
+## real run.
+## THE RULE (mine, PROVISIONAL — flagged): EVERY room opens in EXPLORATION.
+##   * Consistency with R29's graph flow is the reason: how you REACHED a room
+##     (the 2+-exit exploration beat, a 1-exit corridor auto-advance, or
+##     begin_encounter on the entry room) is a RUN-level routing fact, while
+##     the phase is a fact about the ROOM you are now standing in. Keying the
+##     opening phase off the previous room's exit count would mean the kennel
+##     (chosen at a beat) opens walkable while the den (auto-advanced down a
+##     corridor) opens mid-fight — a difference the fiction cannot justify.
+##   * The BOSS DEN is still "entered deliberately", exactly as R34 means it:
+##     deliberate entry IS the phase command's combat side
+##     (combat_started {reason: "deliberate"} — the mockup's ENTER button),
+##     which is available only FROM exploration. Opening the den in
+##     exploration is what gives the player an ENTER to press.
+##   * A SCRIPTED AMBUSH stays possible: a def authoring
+##     "opens_in": "combat" gets the pre-2026-08-20 behaviour verbatim (no
+##     phase command is issued at all, so the sim never leaves its default
+##     combat phase and serializes byte-identically). No authored room uses
+##     it today.
+##   * staging() carries the decision as `opens_in`; GameController executes
+##     it by issuing the LOGGED {"type": "phase", "set": "exploration"}
+##     command after the add batch. RunState itself holds NO phase state — the
+##     sim owns the phase (CombatSim.phase), and the run reducer stays a pure
+##     function of the run log, unchanged and hash-identical.
+##   * CONSEQUENCE, honest: the contact sweep runs at the end of that same
+##     command, so a room whose FIGHT staging already puts a mob's eyeline on
+##     a contestant flips straight back with contact + combat_started
+##     {reason: "contact"} — the window is real but one command long. Of the
+##     four seeded rooms, brood_landing and service_corridor SURVIVE the
+##     opening sweep (the party genuinely walks them); kennel_gauntlet and
+##     incinedile_den do not, because their staging is nose-to-nose. That is
+##     R34 working, not a bug — but it does mean the kennel's authored patrol
+##     routes take no beat in the seeded demo drive. Closing that needs an
+##     ENTRY staging distinct from the FIGHT staging, which is owner
+##     room-design work (R28/R29 rooms are all PLACEHOLDER) — flagged in
+##     rules-addendum R35 and pinned per-room in tests/test_kennel_patrol.gd.
 ##
 ## WHAT PERSISTS vs RESETS BETWEEN ENCOUNTERS (_sanitize_carry — the policy):
 ## The party's post-combat CombatantState.to_dict() is captured at end_encounter
@@ -776,6 +825,12 @@ func staging() -> Dictionary:
 		# no arena — the unbounded legacy combat). The controller stages it
 		# via set_arena BEFORE the add batch.
 		"arena": (def.get("arena", {}) as Dictionary).duplicate(true),
+		# R34/R35 run-loop wiring: the phase this room OPENS in (see THE
+		# OPENING PHASE in the header). Default exploration; a def may author
+		# "opens_in": "combat" for a scripted ambush. Anything else is read as
+		# combat — the conservative side, and the seed validator gates the
+		# vocabulary so authored data never relies on the fallback.
+		"opens_in": String(def.get("opens_in", Exploration.PHASE_EXPLORATION)),
 	}
 
 

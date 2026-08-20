@@ -607,8 +607,13 @@ func test_patrol_serializes_only_when_set() -> void:
 	var sim: CombatSim = make_sim()
 	add_contestant(sim, "h1", [0, 0])
 	add_mob(sim, "statue", [20, 0], 0)
-	for row: Variant in (sim.to_dict().get("combatants", []) as Array):
-		assert_false((row as Dictionary).has("patrol"),
+	# NOTE: CombatSim.to_dict()["combatants"] is a DICTIONARY (id -> row), not
+	# an array. The `as Array` cast this test shipped with threw at runtime, so
+	# the whole test aborted after ZERO checks and still reported PASS — fixed
+	# 2026-08-20 with the run-loop pass; the pins below now actually run.
+	var rows: Dictionary = sim.to_dict().get("combatants", {})
+	for id: Variant in rows:
+		assert_false((rows[id] as Dictionary).has("patrol"),
 			"no patrol key anywhere on a board nobody told to walk (the compat pin)")
 	# A combat-only fight is still hash-identical to the recorded legacy hash.
 	assert_eq(_legacy_plain_hash(), LEGACY_HASH_PLAIN,
@@ -620,25 +625,29 @@ func test_patrol_serializes_only_when_set() -> void:
 	add_mob(patrolled, "guard", [10, 0], 0, {"route": [[10, 0], [10, 4]]})
 	explore(patrolled)
 	move(patrolled, "h1", [1, 0])
-	var guard_row: Dictionary = {}
-	for row: Variant in (patrolled.to_dict().get("combatants", []) as Array):
-		if String((row as Dictionary).get("id", "")) == "guard":
-			guard_row = row
+	var walked_row: Dictionary = (patrolled.to_dict().get("combatants", {}) as Dictionary).get("guard", {})
+	assert_eq(int((walked_row["patrol"] as Dictionary).get("index", -1)), 0,
+		"a party WALK grants no beat, so the cursor has not moved (the 2026-08-19 TIME revision "
+		+ "— this line asserted the RETIRED walk-grants-a-beat design and never ran)")
+	advance(patrolled, 1)  # the exploration TIME STEP is the beat
+	var guard_row: Dictionary = (patrolled.to_dict().get("combatants", {}) as Dictionary).get("guard", {})
 	assert_true(guard_row.has("patrol"), "a patrolling body carries the record")
 	assert_eq(int((guard_row["patrol"] as Dictionary).get("index", -1)), 1,
-		"…including the live cursor (hash-covered)")
+		"…including the live cursor (hash-covered), advanced by the time step")
 	var restored: CombatSim = CombatSim.from_dict(patrolled.to_dict())
 	assert_eq(restored.state_hash(), patrolled.state_hash(), "hash-identical round trip")
 	assert_eq(restored.combatants["guard"].patrol, patrolled.combatants["guard"].patrol, "record survives")
 	# A legacy save with no patrol key resumes as the pre-R35 statue.
 	var dict: Dictionary = patrolled.to_dict()
-	for row: Variant in (dict.get("combatants", []) as Array):
-		(row as Dictionary).erase("patrol")
+	var legacy_rows: Dictionary = dict.get("combatants", {})
+	for id: Variant in legacy_rows:
+		(legacy_rows[id] as Dictionary).erase("patrol")
 	var legacy: CombatSim = CombatSim.from_dict(dict)
 	assert_true(legacy.combatants["guard"].patrol.is_empty(), "no key = no patrol")
-	move(legacy, "h1", [2, 0])
-	assert_eq(legacy.combatants["guard"].position, patrolled.combatants["guard"].position,
-		"…and it holds its hex forever")
+	var held: Vector2i = legacy.combatants["guard"].position
+	advance(legacy, 3)
+	assert_eq(legacy.combatants["guard"].position, held,
+		"…and it holds its hex forever — three time steps, not one beat")
 
 
 ## The exact pre-exploration combat sequence tests/test_exploration.gd pins —
