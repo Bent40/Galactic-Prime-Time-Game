@@ -490,9 +490,13 @@ Answering the four gaps R34's exploration story named, plus the cadence question
 - **Voicebox and lockpicking work in exploration** — the resolver-side cost waiver is
   theirs; free while the clock is stopped, full R3 costs once combat starts.
 - **Mobs patrol during exploration** — enemies move and their eyelines move with them.
-  What advances a patrol without a clock is my call, flagged: the party's own
-  exploration commands are the beat (one mob step per party walk), which makes standing
-  still freeze the room.
+  My party-commands-as-the-beat proposal was **retired by the owner the same day**:
+  *"time should just be moving"* — R1's conversion (1 tick ≈ 0.5s in-game) already
+  supports it, so exploration runs the real clock with no turn order and no Moment
+  costs, and **singleplayer gets a PAUSE** (which is just the driver not issuing time
+  steps — no sim state). This revises R34's "no tick advance"; the accepted consequence
+  is that per-tick sweeps (burns, conceal, zones, the free-action refresh) run during
+  exploration too.
 - **The crowd watches exploration** — a free-form walk can feed hype when something is
   at stake: danger nearby, good stealth, approaching a large boss, cross-party
   meetings. Idle walking through a cleared room pays nothing. Cross-party meetings are

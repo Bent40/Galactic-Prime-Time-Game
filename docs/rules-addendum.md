@@ -2061,13 +2061,24 @@ the mockup gate. Numbers PLACEHOLDER (R14) as always.
 - **Mobs PATROL during exploration (owner).** Enemies are no longer statues waiting on
   their staged hex; they move, and their eyelines move with them (R34 cone semantics —
   a patrolling cone stays NEUTRAL until it has someone).
-  * **PROVISIONAL (mine, flagged — the clock problem):** exploration has no tick, so
-    *something* must advance a patrol. The build takes **the party's own exploration
-    commands as the beat**: each party walk grants each patrolling mob one step. This
-    keeps determinism (patrols are a pure function of the command log), makes creeping
-    genuinely slower than sprinting past, and has one property worth an owner glance —
-    **standing still freezes the room**, which rewards holding position to time a gap.
-    Alternatives if disliked: an explicit "wait" command, or steps-per-distance-moved.
+  * **RULED — TIME JUST MOVES (owner, 2026-08-19):** *"i think time should just be
+    moving. We have moment-to-time conversion units already established."* Correct — R1
+    (amended 2026-07-17) already makes **one tick ≈ 0.5 seconds of in-game time**, a
+    Clock ≈ 5 fictional seconds. My party-commands-as-the-beat proposal is **retired**;
+    standing still does NOT freeze the room, and patrols advance with time like
+    everything else.
+  * **This REVISES R34.** R34 said exploration advances no tick. It does now:
+    **exploration is "the clock runs, but there is no turn order and nothing costs
+    Moments"** — not "the clock is stopped". Turn order (declare / reaction / combined /
+    ai_decide) still has no meaning out of combat and stays rejected.
+  * **Determinism is untouched.** The beat is an explicit **logged time-step command**
+    issued by the driver at a real-time cadence; the sim never reads a wall clock and
+    stays a pure function of (seed, ordered command log). **PAUSE is simply the driver
+    not issuing time steps** — singleplayer gets it for free, and it needs no sim state.
+  * **Consequence, deliberately accepted:** a real advancing tick means the existing
+    per-tick sweeps run in exploration too — condition timers (a burn keeps burning
+    while you walk), stealth/conceal sweeps, zone durations, and the per-tick
+    free-action refresh. One clock, one code path; no parallel time system.
 - **The crowd watches exploration too (owner).** A free-form walk **can** feed hype
   when something is at stake. Ruled sources: **danger nearby**, **good stealth**,
   **approaching a large boss**, and **cross-party meetings**. Idle walking through a

@@ -761,18 +761,22 @@ def explore_board():
     return f'<div class="stage"><div class="board">{svg}</div></div>{tags}'
 
 def explore_tokens():
-    toks = [token(46, 60, "🛡", "IMANI", 95, "var(--success)", "ally-sel"),
-            token(53, 70, "🎭", "DARIO", 88, "var(--gold)", "", (("🩸", "bleeding T1"),)),
-            token(40, 72, "🃏", "SASHA", 84, "var(--success)", "", (), sub="JOINED AS-IS · L-ARM 1/2")]
+    toks = [token(40, 60, "🛡", "IMANI", 95, "var(--success)", "ally-sel"),
+            token(47, 70, "🎭", "DARIO", 88, "var(--gold)", "", (("🩸", "bleeding T1"),)),
+            token(31, 72, "🃏", "SASHA", 84, "var(--success)", "", (), sub="JOINED AS-IS · L-ARM 1/2")]
     return "".join(toks)
 
 def frame_explore():
-    # Owner ruling 2026-08-19 (decision 8): exploration is FREE-FORM, not turn-based.
-    # No clock, no Moment order, no ready/waits — the timing strip is replaced by a
-    # route breadcrumb, and the clock only starts when contact does.
+    # Owner rulings 2026-08-19 (decision 8, then the time revision): exploration is
+    # FREE-FORM, not turn-based — and TIME STILL RUNS (R1: 1 tick ~ 0.5s in-game).
+    # There is no turn order and nothing costs Moments, but the world keeps moving:
+    # patrols walk, wounds bleed. Singleplayer gets a PAUSE. Turns start on contact.
     tl = '''<div class="timeline" style="border-color:rgba(0,212,255,.35)">
-      <span class="pill p-cyan">✦ OUT OF COMBAT</span>
-      <span class="pill p-mute">FREE MOVEMENT — NO CLOCK</span>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span class="pill p-cyan">✦ OUT OF COMBAT</span>
+        <span class="pill p-gold" style="cursor:pointer">⏸ PAUSE</span>
+      </div>
+      <span class="pill p-purple" style="font-size:13px">⏱ 00:41</span>
       <div class="track" style="height:44px;margin-top:2px">
         <div class="rail-line" style="top:20px"></div>
         <span class="tl-band" style="left:0%;width:26%;top:19px;background:rgba(0,255,136,.65)"></span>
@@ -781,7 +785,7 @@ def frame_explore():
         <span class="tl-chip" style="left:45%;top:26px;border-color:rgba(0,212,255,.5);color:var(--cyan)">⌖ YOU ARE HERE — 2 WAYS ON</span>
         <span class="tl-chip" style="left:83%;top:26px;border-color:var(--border);color:var(--muted)">THE DEN · BOTH ROUTES END HERE</span>
       </div>
-      <span class="lbl" style="white-space:nowrap">clock starts on contact</span></div>'''
+      <span class="lbl" style="white-space:nowrap;color:var(--cyan)">turns start on contact</span></div>'''
     odds = odds_panel(
         [("Survival odds", "2 : 1 ▲", "color:var(--success)"), ("Top bidder", "ENYO ×3.1", "color:var(--gold)"),
          ("Room record", "BROOD LANDING — CLEAR", "font-size:10px")],
@@ -800,7 +804,8 @@ def frame_explore():
       <div class="part"><span class="pn">LEADS TO</span><span class="ph">THE KENNEL GAUNTLET</span></div>
       <div class="part"><span class="pn">HEARD THROUGH IT</span><span class="ph" style="color:var(--fire)">BARKING · LOUD</span></div>
       <div class="part"><span class="pn">READ</span><span class="ph" style="color:var(--danger)">PACK · HERDERS · BLOOD-SCENT</span></div>
-      <div class="knowrow">{flag("f-purple","ALERTED ≠ LOCATED — they heard the fight, not you")}{flag("","R20")}</div>
+      <div class="knowrow">{flag("f-purple","ALERTED ≠ LOCATED — they heard the fight, not you")}{flag("","R20")}
+      {flag("f-danger","PATROLLING — they move while you decide")}</div>
       <div class="telegraph" style="border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.05)">
       <div class="t" style="color:var(--cyan)">⛭ CHOOSE THE ROUTE</div>
       <div class="d"><b>KENNEL GAUNTLET</b> — the hound pens. Elite pair, hunts as a pack, funnels prey into doors.
@@ -810,28 +815,30 @@ def frame_explore():
       <span class="n">PARTY WALKS TOGETHER</span></div>
       <span class="abtn">↔ WALK <b class="fa-count">FREE</b></span><span class="abtn open">INTERACT</span>
       <span class="abtn">SKILLS <b class="fa-count">OUT-OF-COMBAT ONLY</b></span><span class="abtn">INVENTORY</span>
+      <span class="abtn" style="border-color:rgba(200,168,75,.5);color:var(--gold)">⏸ PAUSE</span>
       <span class="endturn" style="border-color:rgba(0,212,255,.55);background:rgba(0,212,255,.07)">ENTER ▸ KENNEL</span>
-      <div class="conseq">No turn to end — walk freely until you <b>enter</b>. ENTER → locks the route ·
-      <b>hype chain opens the fight at 27</b> · wounds persist · <span class="to">the clock starts</span></div>
+      <div class="conseq">No turn to end — but the world does not wait. ENTER → locks the route ·
+      <b>hype chain opens the fight at 27</b> · wounds persist · <span class="to">turn order starts</span></div>
       <div class="flyout" style="left:270px;border-color:rgba(0,212,255,.4)">
         <div class="fly-h">INTERACT</div>
         <div class="frow sel"><span class="fn">KENNEL GATE <small>enter the gauntlet — the pack is AWAKE</small></span><span class="fc">EXIT</span></div>
         <div class="frow"><span class="fn">SERVICE HATCH <small>the crew route — quieter, tighter</small></span><span class="fc">EXIT</span></div>
         <div class="frow"><span class="fn">SASHA — VOICEBOX <small>throw a bark down the corridor · mobs investigate THE SOUND</small></span><span class="fc">FREE</span></div>
         <div class="frow"><span class="fn">SCOUT AHEAD <small>walk the party up without entering — the gate does not close behind you</small></span><span class="fc">FREE</span></div>
+        <div class="frow"><span class="fn">PICK THE SUPPLY CAGE <small>simple lock · free out here, 1 MOMENT once the fighting starts</small></span><span class="fc">FREE</span></div>
       </div></div>'''
     body = (bbar(rec="00:05:30", watching="3,981,554")
             + f'''<div class="topstrip"><div class="selpanel"><span class="selglyph">🃏</span><div class="selbody">
               <div class="selname">SASHA “LITTLE SHADOW” <small>JOINED AS-IS — CARRIES HER FIGHT</small></div>
               <div class="selrow">{pill("p-mute","⚜ UNSIGNED — gods circling")}{pill("p-danger","L-ARM 1/2")}{pill("p-purple","MIND 5")}</div>
-              <div class="selrow">{pill("p-gold","📸 CAMERA ×1")}{flag("f-cyan","NEW RECRUIT")}{flag("f-success","FREE TO WALK — NO MOMENT COST")}</div>
+              <div class="selrow">{pill("p-gold","📸 CAMERA ×1")}{flag("f-cyan","NEW RECRUIT")}{flag("f-success","FREE TO WALK — NO MOMENT COST")}{flag("f-purple","TIME RUNS")}</div>
               </div></div><div class="topcenter">{shortcuts()}{tl}</div>{odds}</div>'''
             + f'<div class="mid">{rail_party(active="none", sasha_state="SELECTED")}'
             + world(explore_board(), explore_tokens(),
-                    '<div class="phasetags">' + pill("p-cyan", "BROOD LANDING — CLEAR") + pill("p-success", "✦ FREE MOVEMENT — NO CLOCK RUNNING") + "</div>")
+                    '<div class="phasetags">' + pill("p-cyan", "BROOD LANDING — CLEAR") + pill("p-success", "✦ FREE MOVEMENT · TIME RUNNING") + "</div>")
             + f'<div class="rightcol">{right}{inspector}</div></div>'
             + f'<div class="bottomstrip">{chat_panel()}{launcher_exp}</div>'
-            + ticker("“Nobody is on a clock. Take your time. The hounds certainly are not going anywhere.”")
+            + ticker("“No turn order out here — but the hounds are walking, and the clock in your leg is still ticking.”")
             + watermark("FRAME 4 · MODE A — FREE-FORM EXPLORATION · R29 ROOM GRAPH"))
     return page("HUD v2 — Mode A (exploration)", body)
 
