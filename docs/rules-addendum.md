@@ -1896,18 +1896,41 @@ the numbers below are PLACEHOLDER (R14) as always.
     locks, voicebox throws, scouting) are free out of combat and only regain their
     Moment costs once the clock is running. The hype-chain carry (R29) is unchanged —
     exploration remains glue, not rest.
-  * **PROVISIONAL (mine, flagged):** what constitutes "contact" (sight? hearing? a
-    threshold crossing?) is not ruled — the mockup uses *entering the room*. The
-    RunState/room-graph engine work for free-form movement is **not built**; today's
-    sim is clock-driven end to end. Tracked as an open KAN-5/KAN-6 item.
+  * **CONTACT IS SIGHT OR HEARING (owner, 2026-08-19).** The clock starts the moment
+    either sense lands: an enemy **sees** a contestant (R20 sight, R30 front arc,
+    concealment respected) **or hears one** (R20 hearing/loudness). Both directions
+    count — a contestant walking into a mob's cone and a mob hearing a smashed door
+    are the same event. Consequences that follow from the existing substrates:
+    concealment (R20/S8) and quiet movement genuinely delay the fight, voicebox can
+    start one **somewhere else**, and a door heard through a wall can pull a room onto
+    you before you enter it. The mockup's "ENTER ▸ ⟨route⟩" remains the *deliberate*
+    way in; contact is the *involuntary* one.
+  * **Engine status: NOT BUILT.** Today's sim is clock-driven end to end and has no
+    out-of-combat mode. Tracked as a KAN-5/KAN-6 story.
 - **Free actions are limited per turn.** Camera Call, The Bit, and the rest stay
   inside the **Free Actions** category (spec §6 stands — no permanent extra buttons),
   but the category carries a **per-turn budget** shown on the button (`FREE ACTIONS
   1/2` in the mockups).
-  * **PROVISIONAL (mine, flagged):** the budget VALUE (2 per Clock in the mockups),
-    whether it resets per Clock or per actor window, and whether individual entries
-    cost more than one, are all unruled. **Not implemented** — today free actions are
-    uncapped in the resolver. Tracked as a KAN-2 follow-up.
+  * **THE BUDGET IS 2 PER TURN (owner, 2026-08-19)** — this **amends R3**, which gave
+    each combatant exactly **one** free action per Clock (`free_action_used`, a
+    boolean). The allowance becomes **two**; everything else in R3's free-action family
+    (what qualifies, the inventory-interaction rule) stands.
+  * **PROVISIONAL (mine, flagged, small):** "per turn" is read as **per combatant per
+    Clock**, matching R3's existing reset cadence — not per Moment window. Entries are
+    assumed to cost **one** each (no entry costs two) until an authored one says
+    otherwise.
+- **Vision cones carry state; attack cones never do (owner, 2026-08-19 — amends R30
+  presentation).** A sight cone renders **NEUTRAL** while its owner has spotted nobody
+  and **RED** the moment it holds a contestant. An **attack** cone stays hazard-orange
+  and is never recoloured. The colour therefore answers two questions at once: *is that
+  a threat area or an eyeline?* and *am I seen?* — the board becomes the
+  hidden/revealed readout, and stealth stops depending on a chip in a side panel.
+  * **View-layer only:** both facts already exist in the sim (`Stealth.sees()` and the
+    R30 front arc); this is a presentation contract, not new state. An enemy's
+    spotted-state is per-enemy, so one mob can hold you while another stays unaware
+    (shown in frame 1 — Sasha sits concealed inside a neutral cone).
+  * Paired with the per-enemy **👁 UNAWARE / HAS ⟨name⟩** chip on the token, so the
+    state survives when cones are hidden or overlapping.
 - **Merge parents cap at 5 (the upgrade is optional).** A skill that feeds a Gemstone
   merge **does not continue past Lv 5** unless that skill was *already* stated to be
   linear. Declining an offer therefore costs nothing but the ceiling — you keep both

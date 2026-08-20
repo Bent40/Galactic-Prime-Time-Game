@@ -159,6 +159,17 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .tok-conds{position:absolute;top:-9px;right:-9px;display:flex;gap:2px}
 .cond-dot{width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;
           justify-content:center;background:rgba(4,5,13,.95);border:1px solid var(--danger)}
+.conelegend{position:absolute;left:16px;top:44px;z-index:6;background:rgba(4,5,13,.82);
+             border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;
+             flex-direction:column;gap:5px}
+.lg-row{display:flex;align-items:center;gap:8px}
+.lg-sw{width:20px;height:12px;border:1.5px solid;border-radius:2px;flex:0 0 20px}
+.lg-l{font-size:8px;letter-spacing:1.5px;font-weight:800;color:var(--text);width:150px}
+.lg-n{font-size:8px;letter-spacing:.5px;color:var(--muted)}
+.eye{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;
+     border:1px solid var(--muted);font-size:7px;letter-spacing:1.5px;font-weight:800;color:var(--muted);
+     background:rgba(4,5,13,.9)}
+.eye.seen{border-color:rgba(255,34,85,.7);color:var(--danger)}
 .intent{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;margin-bottom:3px;
         background:rgba(4,5,13,.92);border:1px solid var(--border);white-space:nowrap}
 .intent b{font-size:15px;line-height:1}
@@ -272,7 +283,7 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .ticker .line{font-size:12px;font-style:italic;color:#d8c9e2}
 .ticker .hint{margin-left:auto;font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:700}
 /* overlays ------------------------------------------------------------------- */
-.watermark{position:absolute;left:240px;bottom:130px;z-index:5;font-size:8px;letter-spacing:2px;
+.watermark{position:absolute;left:242px;bottom:130px;z-index:5;font-size:8px;letter-spacing:2px;
            color:rgba(58,69,96,.9);font-weight:800;text-align:left;line-height:1.7}
 .dim{position:absolute;inset:0;background:rgba(2,3,8,.68);z-index:20;backdrop-filter:blur(2px)}
 .ask{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:24;width:560px;
@@ -326,7 +337,7 @@ def trashcan(x, y, burning=False):
              f'<circle cx="{x}" cy="{y-6}" r="7" fill="rgba(255,170,60,.55)"/>'
     return g
 
-def token(left, top, glyph, name, hp_pct, hp_col, cls="", conds=(), sub="", intent=None, tip=None):
+def token(left, top, glyph, name, hp_pct, hp_col, cls="", conds=(), sub="", intent=None, tip=None, eye=None):
     """intent: (icon, label, kind) — the Slay-the-Spire read of what this enemy does NEXT.
     tip: (title, kind_line, body, chips) — the hover explanation (rendered open on one token
     per frame to show the interaction)."""
@@ -344,10 +355,14 @@ def token(left, top, glyph, name, hp_pct, hp_col, cls="", conds=(), sub="", inte
         tip_html = (f'<div class="intent-tip"><div class="tt">{title}</div>'
                     f'<div class="tk">{kindline}</div><div class="tb">{body}</div>'
                     f'<div class="tr">{chips}</div></div>')
+    eye_html = ""
+    if eye:
+        seen, label = eye
+        eye_html = f'<span class="eye{" seen" if seen else ""}">👁 {label}</span>'
     return (f'<div class="token {cls}" style="left:{left}%;top:{top}%">{tip_html}{intent_html}'
             f'<div class="tok-g">{glyph}{condwrap}</div>'
             f'<span class="tok-name">{name}</span>'
-            f'<span class="tok-hp"><i style="width:{hp_pct}%;background:{hp_col}"></i></span>{subhtml}</div>')
+            f'<span class="tok-hp"><i style="width:{hp_pct}%;background:{hp_col}"></i></span>{eye_html}{subhtml}</div>')
 
 
 def pill(cls, txt): return f'<span class="pill {cls}">{txt}</span>'
@@ -421,6 +436,10 @@ def page(title, body):
 # --------------------------------------------------------- den board (1-3) ---
 FIRE_HEXES = {(7, 2), (8, 2), (8, 3)}
 def den_board(cone=False, sasha_ring=True):
+    """VISION CONES CARRY STATE (owner ruling 2026-08-19, decision 5 amendment):
+    a sight cone is NEUTRAL while its owner has spotted nobody, and turns RED the
+    moment it has someone — so the player reads 'am I seen?' off the board, and can
+    never confuse a vision cone with an ATTACK cone (which stays hazard-orange)."""
     svg_parts = [hexgrid(13, 7, 42, fire=FIRE_HEXES)]
     svg_parts.append(wall(180, 88, 150, -2))          # north wall segment
     svg_parts.append(wall(560, 60, 190, 0))
@@ -434,18 +453,38 @@ def den_board(cone=False, sasha_ring=True):
         cx, cy = hex_center(2, 4, 42)
         svg_parts.append(f'<circle cx="{cx}" cy="{cy}" r="86" fill="none" stroke="rgba(0,212,255,.35)" '
                          f'stroke-width="1.5" stroke-dasharray="6 6"/>')
-    # boss facing wedge (front arc = facing ±1 of 6 — R30), aimed south-west
     bx, by = hex_center(6, 2, 42)
+    # 1) the ATTACK cone — hazard orange, dashed. Never confusable with sight.
     if cone:
         svg_parts.append(f'<path d="M {bx} {by} L {bx-260} {by+190} A 330 330 0 0 0 {bx-40} {by+320} Z" '
-                         f'fill="rgba(255,122,47,.16)" stroke="rgba(255,122,47,.55)" stroke-width="1.6" stroke-dasharray="7 5"/>')
-    svg_parts.append(f'<path d="M {bx} {by} L {bx-150} {by+96} A 180 180 0 0 0 {bx-36} {by+176} Z" '
-                     f'fill="rgba(255,122,47,.10)" stroke="rgba(255,122,47,.4)" stroke-width="1.2"/>')
+                         f'fill="rgba(255,122,47,.16)" stroke="rgba(255,122,47,.6)" stroke-width="1.8" '
+                         f'stroke-dasharray="7 5"/>')
+    # 2) the boss's VISION cone — RED: it has the party (R30 front arc, sight 2xMind)
+    svg_parts.append(f'<path d="M {bx} {by} L {bx-196} {by+126} A 234 234 0 0 0 {bx-48} {by+230} Z" '
+                     f'fill="rgba(255,34,85,.13)" stroke="rgba(255,34,85,.6)" stroke-width="1.4"/>')
+    # 3) the unread add's VISION cone — NEUTRAL: it has spotted nobody (Sasha is concealed
+    #    inside it, which is exactly the state the colour is there to tell you)
+    ax, ay = hex_center(1, 2, 42)
+    svg_parts.append(f'<path d="M {ax} {ay} L {ax+150} {ay+96} A 180 180 0 0 0 {ax+176} {ay-36} Z" '
+                     f'fill="rgba(150,170,205,.10)" stroke="rgba(150,170,205,.45)" stroke-width="1.4"/>')
     svg = f'<svg width="900" height="560" viewBox="0 0 900 560">{"".join(svg_parts)}</svg>'
     tags = ('<span class="groundtag" style="left:70%;top:71%;border-color:rgba(200,168,75,.5);color:var(--gold)">SERVICE HATCH · CLOSED</span>'
             '<span class="groundtag" style="left:20%;top:82%;border-color:rgba(0,212,255,.45);color:var(--cyan)">KENNEL GATE · OPEN</span>'
-            '<span class="groundtag" style="left:76%;top:50%;border-color:rgba(255,122,47,.55);color:var(--fire)">🔥 BURNING CAN — FIRE HEALS IT</span>')
-    return f'<div class="stage"><div class="board">{svg}</div></div>{tags}'
+            '<span class="groundtag" style="left:59%;top:56%;border-color:rgba(255,122,47,.55);color:var(--fire)">🔥 FIRE HEALS IT</span>')
+    return f'<div class="stage"><div class="board">{svg}</div></div>{tags}{cone_legend()}'
+
+
+def cone_legend():
+    """Reading key for the three cone colours — the whole point of the ruling."""
+    rows = [("rgba(150,170,205,.55)", "rgba(150,170,205,.16)", "VISION · UNAWARE", "nobody spotted — you are hidden"),
+            ("rgba(255,34,85,.7)", "rgba(255,34,85,.16)", "VISION · HAS SOMEONE", "it sees a contestant — you are revealed"),
+            ("rgba(255,122,47,.7)", "rgba(255,122,47,.18)", "ATTACK CONE", "what the blow will cover")]
+    out = ""
+    for stroke, fill, label, note in rows:
+        out += (f'<div class="lg-row"><span class="lg-sw" style="background:{fill};border-color:{stroke}"></span>'
+                f'<span class="lg-l">{label}</span><span class="lg-n">{note}</span></div>')
+    return f'<div class="conelegend"><div class="lbl">cone reading</div>{out}</div>'
+
 
 def den_tokens(mode="ready"):
     """Every enemy carries an intent icon (owner ruling 2026-08-19, decision 2 — the
@@ -468,12 +507,12 @@ def den_tokens(mode="ready"):
                     '<span class="flag">FRONT ARC ONLY</span>')
         boss_conds = (("\U0001f525", "fire-fed"),)
     toks.append(token(52, 47, "\U0001f40a", "INCINE-DILE", 100, "var(--fire)", "boss", boss_conds,
-                      intent=boss_intent, tip=boss_tip))
+                      intent=boss_intent, tip=boss_tip, eye=(True, "HAS THE PARTY")))
     # the boss's adds — one read, one not yet read (discovery states, decision 6)
-    toks.append(token(66, 56, "\U0001fab3", "LITTLE BROTHER", 100, "var(--danger)", "",
-                      intent=("\u2694", "BITE \u00b7 2", "attack")))
+    toks.append(token(71, 63, "\U0001fab3", "LITTLE BROTHER", 100, "var(--danger)", "",
+                      intent=("\u2694", "BITE \u00b7 2", "attack"), eye=(True, "HAS DARIO")))
     toks.append(token(24, 55, "\U0001fab3", "LITTLE BROTHER", 100, "var(--danger)", "",
-                      intent=("\u2753", "UNREAD", "unknown")))
+                      intent=("\u2753", "UNREAD", "unknown"), eye=(False, "UNAWARE")))
     imani_cls = "ally-sel" if mode == "dodge" else ""
     toks.append(token(45, 63, "\U0001f6e1", "IMANI", 95, "var(--success)", imani_cls,
                       (("\U0001f4a2", "guard"),) if mode != "dodge" else (("\u2757", "incoming"),)))

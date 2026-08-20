@@ -39,17 +39,21 @@ offers. The gods/odds panel reuses the approved bid-screen cast (Hestia/Enyo/Are
 | 2 | ❌ **changed** | **intent icons on every enemy** (Slay-the-Spire), hover = full explanation; timeline keeps order/timing only; ⛔ undodgable now declared on the icon; unread enemies show **UNREAD ❓** |
 | 3 | ✅ approved | dodge-ask card unchanged (its footnote now points at the icon) |
 | 4 | ✅ approved | unchanged |
-| 5 | ✅ approved | unchanged |
+| 5 | ✅ approved **+ amendment** | **cones carry state**: a vision cone is NEUTRAL until its owner spots someone, then RED; attack cones stay hazard-orange. Plus a per-enemy 👁 UNAWARE / HAS ⟨name⟩ chip and an on-board cone-reading legend |
 | 6 | ✅ approved | unchanged — and now extended to intent (read vs unread) |
 | 7 | ✅ approved | unchanged |
 | 8 | ❌ **changed** | **exploration is free-form** — no Clock, no Moment order, no turn to end; route breadcrumb replaces the timing strip; WALK is free; the clock starts on contact; ENTER ▸ ⟨route⟩ is the commit |
 | 9 | ❌ **changed** | **parents cap at 5** unless already linear; declining costs nothing but the ceiling (Mod-Center copy corrected) |
 | 10 | ✅ approved **+ amendment** | free actions stay in the category **but carry a per-turn budget** — the button reads `FREE ACTIONS 1/2` |
 
-**Not built, tracked as follow-ups:** free-form exploration in the engine (today's sim
-is clock-driven end to end; "contact" is undefined), and the free-action budget (free
-actions are uncapped in the resolver). Both are recorded in R34 with their PROVISIONAL
-edges named.
+**Second ruling pass (same day):** **contact = sight OR hearing** (either sense starts
+the clock, both directions), **free actions = 2 per turn** (this *amends R3*, which
+allowed exactly one — they were never uncapped, an earlier note of mine said so
+wrongly), and the cone-colour semantics above. All three are in R34.
+
+**Engine status:** the free-action budget (1 → 2) and free-form exploration + contact
+detection are both **in build** as of 2026-08-19; the cone semantics are view-layer
+only and need no sim change.
 
 ## Decisions as originally put (superseded where the table above says changed)
 

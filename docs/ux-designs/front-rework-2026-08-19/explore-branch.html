@@ -140,6 +140,17 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .tok-conds{position:absolute;top:-9px;right:-9px;display:flex;gap:2px}
 .cond-dot{width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;
           justify-content:center;background:rgba(4,5,13,.95);border:1px solid var(--danger)}
+.conelegend{position:absolute;left:16px;top:44px;z-index:6;background:rgba(4,5,13,.82);
+             border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;
+             flex-direction:column;gap:5px}
+.lg-row{display:flex;align-items:center;gap:8px}
+.lg-sw{width:20px;height:12px;border:1.5px solid;border-radius:2px;flex:0 0 20px}
+.lg-l{font-size:8px;letter-spacing:1.5px;font-weight:800;color:var(--text);width:150px}
+.lg-n{font-size:8px;letter-spacing:.5px;color:var(--muted)}
+.eye{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;
+     border:1px solid var(--muted);font-size:7px;letter-spacing:1.5px;font-weight:800;color:var(--muted);
+     background:rgba(4,5,13,.9)}
+.eye.seen{border-color:rgba(255,34,85,.7);color:var(--danger)}
 .intent{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;margin-bottom:3px;
         background:rgba(4,5,13,.92);border:1px solid var(--border);white-space:nowrap}
 .intent b{font-size:15px;line-height:1}
@@ -253,7 +264,7 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .ticker .line{font-size:12px;font-style:italic;color:#d8c9e2}
 .ticker .hint{margin-left:auto;font-size:8px;letter-spacing:2px;color:var(--muted);font-weight:700}
 /* overlays ------------------------------------------------------------------- */
-.watermark{position:absolute;left:240px;bottom:130px;z-index:5;font-size:8px;letter-spacing:2px;
+.watermark{position:absolute;left:242px;bottom:130px;z-index:5;font-size:8px;letter-spacing:2px;
            color:rgba(58,69,96,.9);font-weight:800;text-align:left;line-height:1.7}
 .dim{position:absolute;inset:0;background:rgba(2,3,8,.68);z-index:20;backdrop-filter:blur(2px)}
 .ask{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:24;width:560px;
