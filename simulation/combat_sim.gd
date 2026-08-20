@@ -93,20 +93,43 @@ extends RefCounted
 ##       DEFAULT = "combat" — the key serializes only while exploring, so
 ##       every legacy save/hash/harness is byte-identical to the
 ##       pre-exploration engine.
-##       -> "exploration": stops the clock. Rejected while any scheduled
-##       action is still queued (combat_in_progress — you cannot stop the
-##       clock mid-swing). Emits exploration_started. While exploring:
-##         * the CLOCK NEVER ADVANCES and no Moment order exists —
-##           advance_tick, declare_action, combined_action, reaction,
-##           ai_decide, inventory, camera_call and bit are all rejected
-##           clock_stopped (each either advances the clock, schedules on it,
-##           or spends the R3 per-tick economy only a running clock resets).
-##         * the FREE-FORM set is exactly move / door / stealth: they charge
-##           NO free-action slot, NO Moments and NO tick (R34's "movement
-##           costs nothing" + "exploration-time actions ... are free out of
-##           combat"). The move command routes to _explore_move — a walk to
-##           any REACHABLE hex (Pathing over the arena's own blocking), no
-##           allowance, no moved_this_tick.
+##       -> "exploration": leaves combat. Rejected while any scheduled action
+##       is still queued (combat_in_progress — a pending swing means the
+##       fight is not over). Emits exploration_started. While exploring:
+##         * TIME STILL FLOWS (R35 revision, owner 2026-08-19 — "time should
+##           just be moving"): advance_tick is LEGAL and IS the exploration
+##           time step, running the ONE real tick path (R1: one tick ~ 0.5
+##           fictional seconds). What is gone is the MOMENT ORDER, not the
+##           clock: declare_action, combined_action, reaction, ai_decide (+
+##           the flagged camera_call / bit carry-over) still reject
+##           clock_stopped. R35 carves TWO holes in that family: a
+##           declare_action whose skill is voicebox or lockpicking
+##           (Exploration.is_free_form_declare), and the `inventory` command
+##           (the owner's item-use addition) — all three routed to their
+##           free-form resolver entry point instead: no Moment, no budget
+##           entry, no scheduling, resolved on the spot.
+##           PAUSE is the driver not issuing time steps — no sim state, for
+##           the manual pause and the inventory menu alike. THE DRIVER
+##           CONTRACT (KAN-6): stop the beat while an inventory UI is open.
+##         * the FREE-FORM set is move / door / stealth (R34) plus R35's
+##           voicebox / lockpicking / inventory: they charge NO free-action
+##           slot, NO Moments (and no R3 inventory_uses entry) and
+##           advance NO tick of their own (R34's "movement costs nothing" +
+##           "exploration-time actions ... are free out of combat"). The move
+##           command routes to _explore_move — a walk to any REACHABLE hex
+##           (Pathing over the arena's own blocking), no allowance, no
+##           moved_this_tick.
+##         * R35 — every TIME STEP is the PATROL BEAT: each patrolling mob
+##           (CombatantState.patrol, opt-in authored data) takes one
+##           deterministic, rng-free step, faces along it, and its moving cone
+##           feeds the same contact sweep below. A mob can therefore walk into
+##           a STANDING party — standing still never freezes the room. See
+##           _patrol_beat.
+##         * R35 — every party WALK is SCORED: the crowd watches exploration
+##           when something is at stake (danger nearby, good stealth, closing
+##           on a large boss). The points ride the walk's own `moved` event as
+##           the generic spectacle_points field. See
+##           Exploration.walk_spectacle.
 ##         * CONTACT is checked after EVERY command (_contact_checks, the
 ##           _post sweep): an AI-controlled enemy that SEES (R20 sight
 ##           through the R30 front arc, conceal + LOS respected) or HEARS
@@ -118,23 +141,46 @@ extends RefCounted
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
 
-## R34 — the commands rejected while the clock is STOPPED (exploration).
-## Each one either ADVANCES the clock (advance_tick), SCHEDULES on it
-## (declare_action / combined_action / reaction / ai_decide), or spends the
-## R3 per-tick economy that only a running clock resets (inventory /
-## camera_call / bit all consume the free-action slot, which never comes back
-## while no tick completes). Rejecting them is the honest reading of "out of
-## combat there is no Clock, no Moment order, and no turn to end" — everything
-## NOT listed here (staging, GM fiat, treatment, levelling, stance/prime)
-## passes through to its ordinary handler unchanged, and the three FREE-FORM
-## commands R34 names (move / door / stealth) run without charging anything.
-## DOWNSCOPED, flagged not hidden: the voicebox throw and the lockpick — both
-## named by R34 as exploration-time actions — are resolver-SCHEDULED declares
-## (ActionResolver owns their cost), so they ride the reject list with the
-## rest of declare_action until a resolver-side free-form seam exists.
+## The commands rejected while EXPLORING — the "no turn order" family.
+##
+## R35 REVISION (owner, 2026-08-19 — "time should just be moving"): R34 built
+## this list around a STOPPED clock and `advance_tick` headed it. That is
+## retired. Exploration now means "the clock RUNS, but there is no turn order
+## and nothing costs Moments", so **advance_tick is LEGAL out of combat** —
+## it is the exploration TIME STEP, the driver's logged heartbeat (R1: one
+## tick ~ 0.5 fictional seconds), and it runs the ONE real tick path, not a
+## parallel clock. PAUSE is simply the driver not issuing time steps; it
+## needs no sim state and has none.
+##
+## What still rejects, and why each one:
+##   declare_action / combined_action / reaction / ai_decide — these need a
+##     MOMENT ORDER (a schedule to declare into, a turn to react on, an enemy
+##     turn to spend). There is still none out of combat. R35 carves exactly
+##     ONE hole: a declare whose skill is voicebox or lockpicking
+##     (Exploration.is_free_form_declare) routes to
+##     ActionResolver.declare_free_form before this list is consulted.
+##   camera_call / bit — FLAGGED CARRY-OVER, not a fresh ruling. R34 rejected
+##     these (with `inventory`) because they spend the R3 per-tick economy
+##     "only a running clock resets"; with time flowing that rationale is
+##     void. The owner then ruled `inventory` OPEN (the R35 addition below),
+##     but said nothing about the two broadcast-plane free actions, so they
+##     stay rejected rather than being silently opened — the conservative half
+##     of an unruled choice. One owner sentence moves them.
+##
+## Everything NOT listed here (staging, GM fiat, treatment, levelling,
+## stance/prime) passes through to its ordinary handler unchanged — including
+## `treat` and `heal`, which is why a party could already patch itself up
+## between rooms. The FREE-FORM set R34/R35 name (move / door / stealth /
+## voicebox / lockpicking / inventory) runs without charging anything.
+##
+## THE REASON STRING is still "clock_stopped", deliberately: it is the stable
+## contract the HUD, the tests and the harnesses read, and R34 shipped it two
+## days ago. FLAGGED: the NAME is now legacy — it means "no Moment order out
+## of combat", not "the clock is stopped", which is no longer true. Rename it
+## with the KAN-6 HUD wiring, not in the middle of a sim story.
 const CLOCK_BOUND_COMMANDS: Array[String] = [
-	"advance_tick", "declare_action", "combined_action", "reaction",
-	"ai_decide", "inventory", "camera_call", "bit",
+	"declare_action", "combined_action", "reaction",
+	"ai_decide", "camera_call", "bit",
 ]
 
 var rng: RandomNumberGenerator
@@ -223,6 +269,28 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 	# A no-op in combat: `phase` is "combat" for every legacy sim ever built,
 	# so this whole block is two string compares that never fire.
 	if phase == Exploration.PHASE_EXPLORATION:
+		# R35 — the free-form DECLARE waiver, checked BEFORE the reject family:
+		# voicebox and lockpicking are exploration-shaped acts (throw a sound
+		# to pull a room; open a way through), so the owner waived their whole
+		# cost while the clock is stopped. Every OTHER declare still rejects
+		# clock_stopped, byte-identically — the predicate is one archetype
+		# lookup (Exploration.is_free_form_declare), no new command surface.
+		if cmd_type == "declare_action" \
+				and Exploration.is_free_form_declare(cmd.get("action", {})):
+			events = resolver.declare_free_form(
+				String(cmd.get("actor", "")), cmd.get("action", {}))
+			_post(events)
+			return events
+		# R35 (the inventory addition, owner 2026-08-19) — the third waived
+		# act: "Time can pause during inventory and item use in exploration
+		# mode so players can heal their characters and the likes." Free out
+		# of combat, R3's first-free/then-Moments ladder untouched for the
+		# fight (ActionResolver.inventory_free_form carries the contract,
+		# including the driver's pause obligation).
+		if cmd_type == "inventory":
+			events = resolver.inventory_free_form(String(cmd.get("actor", "")), cmd)
+			_post(events)
+			return events
 		if CLOCK_BOUND_COMMANDS.has(cmd_type):
 			events = [{"type": "command_rejected", "reason": "clock_stopped", "command": cmd_type}]
 			_post(events)
@@ -534,6 +602,23 @@ func _member_nominal_cost(act: Dictionary) -> int:
 ## 4. advance to the next tick and re-snapshot.
 func _advance_tick() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	# R35 — THE EXPLORATION TIME STEP. Out of combat this same command is the
+	# driver's heartbeat, and its one extra job is the patrol beat: every
+	# patrolling mob takes one deterministic step (see _patrol_beat). Nothing
+	# else forks — the rest of this function runs verbatim, which is the whole
+	# point of the owner's "reuse the one real tick path" instruction. In
+	# combat the call returns on its first line: no events, no rng, no state.
+	# CONSEQUENCE, DELIBERATE AND TESTED: exploration ticks really do run the
+	# per-tick sweeps — condition timers advance at a Clock reset (a burn
+	# burns while you walk, consistent with wounds persisting between
+	# encounters), zone durations count down, drowning ticks, the free-action
+	# budget refreshes (nothing spends it out of combat), and the broadcast
+	# plane's Clock-reset beat fires: hype DECAYS between beats and the crowd-
+	# goal director offers/expires goals, drawing its usual ONE goal_rng draw
+	# per completed Clock. That is the show staying on air while the party
+	# walks — and it makes "the crowd is bored by safety" (R35) literally
+	# true: an unspectacular stroll bleeds meter.
+	events.append_array(_patrol_beat())
 	var result: Dictionary = resolver.resolve_due(tick_snapshot)
 	events.append_array(result["events"])
 	for queued: Variant in result["forced"] as Array:
@@ -1180,9 +1265,135 @@ func _explore_move(cmd: Dictionary) -> Array[Dictionary]:
 	# emission point, no new loudness. "spaces" is the ROUTE length (the steps
 	# actually walked), and the additive "exploration" flag marks the free-form
 	# path for the view layer; neither key can ever reach a combat batch.
-	return [{
+	var moved: Dictionary = {
 		"type": "moved", "actor": actor.id, "to": [to.x, to.y],
 		"spaces": route.size(), "free": true, "exploration": true,
+	}
+	# R35 #3 — THE CROWD WATCHES EXPLORATION. The walk's own spectacle is
+	# computed on the board it just landed on (post-walk, PRE-patrol: the
+	# risk the party took is measured against the room as they found it) and
+	# stamped on this very event as the GENERIC "spectacle_points" field —
+	# the ingest hook HypeEngine has carried since v1 for authored content.
+	# NO new hype plumbing: the points land in the same meter, the same
+	# ledger, under the same Camera-Call/surge multipliers, and therefore
+	# ride the R29 chain carry unchanged. Only-when-earned: a walk through a
+	# cleared room adds NO key at all, so idle exploration is byte-identical
+	# to the pre-R35 engine (the ruling: "the crowd is bored by safety").
+	# Exploration.walk_spectacle owns every magnitude (PLACEHOLDER, R14).
+	var spectacle: Dictionary = Exploration.walk_spectacle(
+		actor, combatants, arena, clock.tick, from, to)
+	if not spectacle.is_empty():
+		moved["spectacle_points"] = int(spectacle["points"])
+		moved["spectacle"] = {
+			"danger": int(spectacle["danger"]),
+			"stealth": int(spectacle["stealth"]),
+			"boss": int(spectacle["boss"]),
+		}
+	# NOTE (R35 revision): the walk does NOT advance a patrol. Patrols ride
+	# the exploration TIME STEP (_advance_tick), so standing still never
+	# freezes the room and a mob can walk into a motionless party.
+	var events: Array[Dictionary] = [moved]
+	return events
+
+
+## R35 #2 (owner, 2026-08-19) — MOBS PATROL DURING EXPLORATION. "Enemies are
+## no longer statues waiting on their staged hex; they move, and their
+## eyelines move with them."
+##
+## THE BEAT IS THE TIME STEP (owner, 2026-08-19 — the R35 revision: "I think
+## time should just be moving... we have moment-to-time conversion units
+## already established"). The first cut of this story took the party's own
+## walks as the beat, which froze the room whenever the party stood still;
+## that is RETIRED. Exploration now runs the ordinary clock (R1: one tick ~
+## 0.5 fictional seconds), the driver issues advance_tick at whatever
+## real-time cadence it likes, and EVERY tick grants each patrolling mob one
+## step. Consequences that follow and are pinned in tests: a mob can walk
+## into a STANDING party and make contact, creeping past a sentry is a
+## question of TIMING rather than of command count, and PAUSE is simply the
+## driver not issuing time steps — no paused flag exists anywhere in the sim
+## because none is needed.
+##
+## DETERMINISM (the hard requirement — a patrol is a pure function of the
+## command log):
+##   * ZERO rng draws. Nothing in the patrol path touches any stream — no
+##     wander roll, no tie-break draw. Routes are authored waypoint cycles or
+##     the derived facing-axis pace (Exploration.patrol_step, pure/static).
+##   * The beat is a LOGGED COMMAND (advance_tick), never a wall-clock read:
+##     the sim never learns what time it is, only that a step happened.
+##   * SORTED-ID iteration, so a batch of steps always resolves in the same
+##     order; each mob sees the occupancy the earlier movers left behind.
+##   * The occupancy set is rebuilt per mob from live state, never cached.
+##
+## WHAT DOES NOT CHANGE: enemy_ai.gd is untouched — the combat decide flow,
+## its stances, its antagonism draw and its alert/investigate machinery are
+## not on this path at all (the strongest possible "combat is unaffected"
+## proof: the file has no edit). An ALERTED patroller does NOT divert to the
+## sound here either — hearing a hostile noise IS contact (R34), so the fight
+## has already started by the time an alert exists; investigation stays
+## _alert_or_wait's, in combat, where it was ruled.
+##
+## Facing follows every step (the R30 update table's voluntary-movement half),
+## which is exactly what makes a moving cone able to acquire someone; the
+## _post contact sweep then runs on the new board and the EXISTING sight
+## predicate does the rest — no duplicate predicate anywhere.
+## Provable no-op in combat (returns on its first line) and with no patrolling
+## mob staged (the loop finds nothing): no events, no rng, no state — the
+## legacy compat pin, which is why _advance_tick can call it unconditionally.
+func _patrol_beat() -> Array[Dictionary]:
+	if phase != Exploration.PHASE_EXPLORATION:
+		return []
+	var events: Array[Dictionary] = []
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var mob: CombatantState = combatants[id]
+		if mob.patrol.is_empty():
+			continue
+		if not EnemyAI.is_ai_controlled(mob):
+			continue
+		if not mob.can_act(clock.tick):
+			continue  # dead / removed / helpless walks no beat
+		if mob.grappled_by != "" or mob.grappling != "":
+			continue  # held bodies do not patrol (the _explore_move gate)
+		events.append_array(_patrol_one(mob))
+	return events
+
+
+## One patrolling mob's beat. The instruction comes from the pure
+## Exploration.patrol_step; this function owns the mutation (cursor, facing,
+## position) and the event. A step emits the ORDINARY `moved` row — so it
+## derives the same R20 QUIET footfall, triggers the same zone on_enter sweep
+## and reaches the same view layer — additively flagged "patrol" so
+## presentation can tell scenery from a contestant. A turn emits
+## patrol_turned (no hype weight: EVENT_WEIGHTS has no row for it, and the
+## crowd watches the CONTESTANTS, never the scenery).
+func _patrol_one(mob: CombatantState) -> Array[Dictionary]:
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var body: CombatantState = combatants[id]
+		if body.id == mob.id or not body.alive or body.removed_from_play:
+			continue
+		occupied[body.position] = true
+	var step: Dictionary = Exploration.patrol_step(mob, arena, occupied)
+	if step.is_empty():
+		return []
+	if step.has("index"):
+		mob.patrol["index"] = int(step["index"])
+	if step.has("facing"):
+		mob.facing = int(step["facing"])
+		return [{"type": "patrol_turned", "actor": mob.id, "facing": mob.facing}]
+	if not step.has("to"):
+		return []
+	var to: Vector2i = step["to"]
+	var facing_idx: int = HexGeometry.direction_index(mob.position, to)
+	if facing_idx >= 0:
+		mob.facing = facing_idx
+	mob.position = to
+	return [{
+		"type": "moved", "actor": mob.id, "to": [to.x, to.y],
+		"spaces": 1, "free": true, "exploration": true, "patrol": true,
 	}]
 
 

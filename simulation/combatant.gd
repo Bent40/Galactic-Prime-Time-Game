@@ -293,6 +293,21 @@ var conceal: Dictionary = {}
 ## RunState sanitizer never sees one (documented there-by-omission; the gate
 ## is the guarantee). Serialized ONLY while non-empty (same compat pin).
 var alerted: Dictionary = {}
+## R35 (owner, 2026-08-19) — the EXPLORATION PATROL record ({} = this body
+## holds its staged hex forever, the pre-R35 statue and the default for every
+## legacy save and every seeded enemy today). Two stored shapes, both written
+## by Exploration.patrol_from_spec off the spec/template `patrol` value:
+##   {"route": [[q, r], ...], "index": int}  the AUTHORED waypoint cycle
+##   {"anchor": [q, r], "reach": int}        the DERIVED facing-axis pace
+## Stepped ONLY while the sim is in the exploration phase, one step per
+## exploration TIME STEP (owner, 2026-08-19: "time should just be moving" —
+## advance_tick is the beat, so standing still never freezes the room), by
+## CombatSim._patrol_beat through the pure Exploration.patrol_step. PATROLLING IS OPT-IN DATA, deliberately: every
+## other behaviour in this engine is (personality.herder, pack_hunter,
+## abilities, phases), so a room's guard paces because its author said so —
+## and a combat-only fight can never grow the key. Serialized ONLY while
+## non-empty (the conceal/alerted compat pin).
+var patrol: Dictionary = {}
 ## sustained_channel (telekinesis, batch D): the live channel on the ACTOR —
 ## {"key": String, "target": String, "range": int, "sustained_tick": int}
 ## while gripping, {} otherwise. sustained_tick = the last tick a grip or
@@ -463,6 +478,13 @@ static func from_spec(spec: Dictionary, static_data: Dictionary) -> CombatantSta
 	# R23 personality (decision #29): spec override wins, else the enemy
 	# template's authored block, else {} (accessor defaults apply).
 	c.personality = (spec.get("personality", template.get("personality", {})) as Dictionary).duplicate(true)
+	# R35 exploration patrol (the personality grant pattern): spec override
+	# wins, else the enemy template's authored value, else absent = no patrol.
+	# Normalized through the pure model so both authored shapes (a waypoint
+	# route / the derived pace) reach state in one storage form.
+	if spec.has("patrol") or template.has("patrol"):
+		c.patrol = Exploration.patrol_from_spec(
+			spec.get("patrol", template.get("patrol", false)), c.position)
 	for ability_spec: Variant in spec.get("abilities", template.get("abilities", [])) as Array:
 		c.abilities.append((ability_spec as Dictionary).duplicate(true))
 	for phase_spec: Variant in spec.get("phases", template.get("phases", [])) as Array:
@@ -876,6 +898,12 @@ func to_dict() -> Dictionary:
 	# identically to the pre-hearing engine (hash-covered while live).
 	if not alerted.is_empty():
 		out["alerted"] = alerted.duplicate(true)
+	# R35 compat pin (the same only-when-set pattern): the PATROL record
+	# exists ONLY on a body some author told to walk a beat — a fight (or an
+	# exploration phase) with no patrolling mob serializes byte-identically to
+	# the pre-R35 engine (hash-covered whenever one is live).
+	if not patrol.is_empty():
+		out["patrol"] = patrol.duplicate(true)
 	if not channeling.is_empty():
 		out["channeling"] = channeling.duplicate(true)
 	if held_by != "":
@@ -1026,6 +1054,7 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.conceal = (data.get("conceal", {}) as Dictionary).duplicate(true)
 	# Pre-hearing saves lack the key: {} = nothing heard, the legacy default.
 	c.alerted = (data.get("alerted", {}) as Dictionary).duplicate(true)
+	c.patrol = (data.get("patrol", {}) as Dictionary).duplicate(true)
 	c.channeling = (data.get("channeling", {}) as Dictionary).duplicate(true)
 	c.held_by = String(data.get("held_by", ""))
 	# Pre-tier-2-wave-1 saves lack both: no live evasion window, never negated.
