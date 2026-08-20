@@ -98,6 +98,20 @@ func declare(sim: CombatSim, actor: String, action: Dictionary) -> Array[Diction
 	return sim.apply_command({"type": "declare_action", "actor": actor, "action": action})
 
 
+## THE DELIBERATE ENTRY (R34's "ENTER > <route>" commit), for run-path drives.
+## Since the 2026-08-20 run-loop wiring a staged room OPENS in exploration
+## (RunState.staging()'s `opens_in`), so a drive that intends to FIGHT has to
+## walk in on purpose — exactly like the player pressing ENTER. A no-op when
+## the room's own opening contact sweep already started the fight (or when the
+## def opted into "opens_in": "combat"), so it is safe after every
+## begin_encounter. Takes the GameController untyped (tests load it by path).
+func deliberate_enter(gc: Object) -> Array[Dictionary]:
+	var empty: Array[Dictionary] = []
+	if gc.get("sim") == null or gc.sim.phase != Exploration.PHASE_EXPLORATION:
+		return empty
+	return gc.apply_command({"type": "phase", "set": Exploration.PHASE_COMBAT})
+
+
 ## Basic single-target melee-style attack action.
 func attack_action(damage_type: String, amount: int, target_id: String, part: String, extra: Dictionary = {}) -> Dictionary:
 	var action: Dictionary = {

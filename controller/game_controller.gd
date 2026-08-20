@@ -569,6 +569,69 @@ func view_clock() -> Dictionary:
 	return {"tick": sim.clock.tick, "moment": sim.clock.moment()}
 
 
+## Read-only PHASE probe (R34/R35 — ADDITIVE, spectator contract). The one
+## projection a driver/HUD needs to know WHICH GAME IT IS PLAYING right now:
+## the approved front-rework mockups render their "OUT OF COMBAT · time runs ·
+## PAUSE" strip out of exactly these fields. Pure read, no mutation, {} before
+## start_combat. Deterministic (same state, same rows).
+##   phase:         "combat" | "exploration" — CombatSim.phase verbatim
+##   exploring:     phase == "exploration" (the one boolean the strip gates on)
+##   label:         "IN COMBAT" | "OUT OF COMBAT" — the mockup's own copy
+##                  (PLACEHOLDER, R14 — copy is a content call)
+##   tick / moment: the SAME clock in both phases. R34's TIME AMENDMENT is the
+##                  point: exploration does not stop time, it removes turn
+##                  order, so the HUD keeps one clock readout and never a
+##                  second "exploration timer".
+##   time_runs:     always true — the ruling, stated in the view so a renderer
+##                  cannot re-invent a frozen-clock mode.
+##   turn_order:    false while exploring (nothing is scheduled, no Moment
+##                  order exists — the turn-order rail hides)
+##   moment_costs:  false while exploring (nothing costs Moments)
+##   time_step:     the command the DRIVER issues to make time pass. It is
+##                  advance_tick in BOTH phases (R34: "the ONE real tick
+##                  path", never a parallel clock) — and out of combat that
+##                  same tick IS the patrol beat.
+##   pause:         "driver" — always. PAUSE IS NOT SIM STATE (R34/R35, twice
+##                  ruled): the driver pauses by not issuing time_step, and
+##                  MUST stop issuing it while an inventory / item-use UI is
+##                  open (R35's Pokemon clause). Named here so the contract
+##                  reaches the renderer through the API, not only the docs.
+##   enter_command: the deliberate "ENTER > <route>" commit while exploring
+##                  ({} in combat) — issuing it starts the fight with
+##                  combat_started {reason: "deliberate"} and NO contact
+##                  event. The involuntary way in stays the contact sweep.
+##   patrolling:    sorted ids of the mobs that take a patrol beat on each
+##                  time step (R35 opt-in authored data; [] in combat and in
+##                  any room whose mobs author no route) — so the HUD can
+##                  show a living room and tell scenery from a contestant.
+func view_phase() -> Dictionary:
+	if sim == null:
+		return {}
+	var exploring: bool = sim.phase == Exploration.PHASE_EXPLORATION
+	var patrolling: Array[String] = []
+	if exploring:
+		var ids: Array = sim.combatants.keys()
+		ids.sort()
+		for id: Variant in ids:
+			var c: CombatantState = sim.combatants[id]
+			if not c.patrol.is_empty() and EnemyAI.is_ai_controlled(c) and c.can_act(sim.clock.tick):
+				patrolling.append(String(id))
+	return {
+		"phase": sim.phase,
+		"exploring": exploring,
+		"label": "OUT OF COMBAT" if exploring else "IN COMBAT",
+		"tick": sim.clock.tick,
+		"moment": sim.clock.moment(),
+		"time_runs": true,
+		"turn_order": not exploring,
+		"moment_costs": not exploring,
+		"time_step": {"type": "advance_tick"},
+		"pause": "driver",
+		"enter_command": {"type": "phase", "set": Exploration.PHASE_COMBAT} if exploring else {},
+		"patrolling": patrolling,
+	}
+
+
 ## Read-only SCHEDULE probe (spectator contract — HUD v2 Phase 2): one plain
 ## row per PENDING scheduled entry, seq-ordered, deep-copied — the declared-
 ## action bars + the End-Turn "what resolves next" telegraph read this. Never
@@ -1321,3 +1384,21 @@ func _stage_encounter(staging: Dictionary) -> void:
 					break
 		sim = CombatSim.from_dict(snapshot)
 	command_log = []
+	# R34/R35 — THE OPENING PHASE (the run-loop wiring both rulings named as
+	# still open). The staged room is ENTERED, not dropped into: unless the def
+	# authors "opens_in": "combat" (the scripted-ambush opt-out), the encounter
+	# opens FREE-FORM, so patrols, exploration free actions, the exploration
+	# crowd sources and — above all — CONTACT are what decide when the fight
+	# actually starts. RunState.staging() owns the decision (its header carries
+	# the ruling and the rationale); the controller only executes it.
+	# WHY HERE, and why AFTER `command_log = []`: this is a real, LOGGED sim
+	# command, not a state poke — it is the encounter log's first entry, so a
+	# replay from the staged checkpoint reproduces the phase exactly like every
+	# other command, and its events (exploration_started, and the contact pair
+	# when the room's own staging already has an eyeline on a contestant) reach
+	# every listener through the ordinary funnel.
+	# Provable no-op for "opens_in": "combat" — no command is issued at all, so
+	# the sim keeps its default combat phase and serializes byte-identically to
+	# the pre-wiring engine.
+	if String(staging.get("opens_in", Exploration.PHASE_COMBAT)) == Exploration.PHASE_EXPLORATION:
+		apply_command({"type": "phase", "set": Exploration.PHASE_EXPLORATION})

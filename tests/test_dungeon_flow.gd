@@ -51,6 +51,7 @@ func _declare(gc: Node, actor: String, action: Dictionary) -> Array[Dictionary]:
 ## Encounter 1 (brood_landing) — the test_run_state.gd drive, verbatim.
 func _drive_encounter_one(gc: Node) -> void:
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_declare(gc, "roach_dog_1", attack_action("crushed", 4, "imani", "torso"))
 	_declare(gc, "roach_dog_2", attack_action("crushed", 3, "sasha", "torso"))
 	var pairs: Array = [["imani", "roach_dog_1"], ["dario", "roach_dog_3"], ["sasha", "roach_dog_2"]]
@@ -168,6 +169,7 @@ func _drive_branch(gc: Node, exit_key: String) -> Dictionary:
 	gc.apply_run_command({"type": "accept_recruit"})
 	gc.apply_run_command({"type": "choose_exit", "key": exit_key})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc)
 	if exit_key == "kennel_run":
 		_declare(gc, "war_hound_1", attack_action("bleeding", 1, "imani", "torso"))
@@ -177,6 +179,7 @@ func _drive_branch(gc: Node, exit_key: String) -> Dictionary:
 		_fight_corridor(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_lingering_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
@@ -309,6 +312,7 @@ func test_choose_exit_gating_and_exits_view() -> void:
 	assert_eq(String(first_event(too_early, "run_command_rejected").get("reason", "")), "no_exploration_beat",
 		"no beat before anything is cleared")
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	# Mid-combat.
 	var mid_combat: Array[Dictionary] = gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	assert_eq(String(first_event(mid_combat, "run_command_rejected").get("reason", "")), "encounter_active",
@@ -359,6 +363,7 @@ func test_choose_exit_gating_and_exits_view() -> void:
 	assert_eq(String(first_event(again, "run_command_rejected").get("reason", "")), "no_exploration_beat",
 		"the beat is spent — no second pick")
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	assert_true(gc.sim.combatants.has("roach_dog_1"), "begin stages the CHOSEN room (the corridor)")
 	assert_false(gc.sim.combatants.has("sasha"), "without the declined recruit")
 	assert_eq(int((gc.view_run().get("encounter", {}) as Dictionary).get("active_index", -1)), 2,
@@ -577,12 +582,14 @@ func test_save_restore_mid_exploration_beat_identical_continuation() -> void:
 func _continue_from_beat(gc: Node) -> void:
 	gc.apply_run_command({"type": "choose_exit", "key": "kennel_run"})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_carried_wounds(gc)
 	_declare(gc, "war_hound_1", attack_action("bleeding", 1, "imani", "torso"))
 	_declare(gc, "war_hound_2", attack_action("bleeding", 1, "sasha", "torso"))
 	_fight_hounds(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})
 	gc.apply_run_command({"type": "begin_encounter"})
+	deliberate_enter(gc)  # R34 deliberate ENTER (the room opens free-form)
 	_treat_lingering_wounds(gc)
 	_fight_boss(gc, MAX_FIGHT_TICKS)
 	gc.apply_run_command({"type": "end_encounter"})

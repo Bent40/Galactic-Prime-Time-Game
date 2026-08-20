@@ -97,10 +97,29 @@
         "name": "The Kennel Gauntlet",
         "enemies": [
           {
+            "_note": "PATROL ROUTES (R35 content half, authored 2026-08-20 on the owner's ruling \"give the hounds patrol routes\"). PER-INSTANCE, not on the war_hound TEMPLATE: a route is position-specific and data/enemies.json cannot know this room — putting `patrol` on the template would silently make every war hound anywhere pace (the failure R35's opt-in design exists to avoid). The count-2 row is therefore SPLIT into two count-1 rows so each hound can carry its OWN route; ids/names/positions are byte-identical to the pre-split staging (war_hound_1 at [2, 0], war_hound_2 at [2, -2]). EVERY WAYPOINT IS PLACEHOLDER (R14) AND PROVISIONAL — the owner redesigns rooms with the front, exactly like the arena block below. FICTION (compendium §4.6 + R11 #21 — the herder pack chases prey toward the gate and posts a hound on it): hound 1 WORKS THE RUN, hound 2 SWEEPS THE NORTH PENS, so quarry driven out of the pens lands in the run lane. The routes are deliberately DIFFERENT shapes so the pair reads as a pack with two jobs, not two clones.",
             "enemy_key": "war_hound",
-            "name": "War Hound",
-            "count": 2,
-            "positions": [[2, 0], [2, -2]]
+            "id": "war_hound_1",
+            "name": "War Hound 1",
+            "position": [2, 0],
+            "overrides": {
+              "patrol": {
+                "route": [[2, 0], [-3, 0]],
+                "_note": "THE RUN (a two-point cycle = pacing): from its post at the east pens [2, 0] straight down the r = 0 lane to the GATE MOUTH [-3, 0] — the hex just inside the open kennel_run_gate at [-4, 0] — and back. The waypoint is the MOUTH, not the doorway: a doorway is never a spawn hex, and a route waypoint ON the gate would strand the patrol the moment anyone closes it (a blocked waypoint HOLDS by design). Both waypoints are in bounds, off the west fence (q = -4) and off the kennel-muck row (r = 3). This is the lane R11 #21's cut-off denies — the hound that owns the escape."
+              }
+            }
+          },
+          {
+            "enemy_key": "war_hound",
+            "id": "war_hound_2",
+            "name": "War Hound 2",
+            "position": [2, -2],
+            "overrides": {
+              "patrol": {
+                "route": [[2, -2], [-2, -2], [-2, -4], [2, -4]],
+                "_note": "THE NORTH PENS (a four-point circuit, a different SHAPE from hound 1's pace on purpose): west along r = -2 from its post to [-2, -2], north to [-2, -4], east along r = -4 to [2, -4], then the cycle wraps back to the post — a box around the north pens. It stops two hexes short of the fence line (q >= -2) because the fence at q = -4 is solid except at the gate, so a waypoint past it would only ever be reached THROUGH hound 1's lane; keeping the circuit east of it is what makes the two beats independent. All waypoints in bounds, off walls, off the gate hex and clear of the kennel-muck row."
+              }
+            }
           }
         ],
         "party_positions": {
