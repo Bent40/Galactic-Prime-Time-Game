@@ -2079,6 +2079,17 @@ the mockup gate. Numbers PLACEHOLDER (R14) as always.
     per-tick sweeps run in exploration too — condition timers (a burn keeps burning
     while you walk), stealth/conceal sweeps, zone durations, and the per-tick
     free-action refresh. One clock, one code path; no parallel time system.
+  * **INVENTORY AND ITEM USE PAUSE TIME (owner, 2026-08-19 — the Pokémon precedent
+    named explicitly).** Conditions tick while you *walk*, not while you are in the
+    *menu*: opening the inventory or using an item during exploration stops the beat,
+    so a wounded party can heal between rooms without the burn racing the bandage.
+    `inventory` therefore joins voicebox and lockpicking in the exploration waiver —
+    it works out there at **no Moment cost and no free-action charge**, with R3's
+    first-free/second-costs ladder resuming the instant combat starts.
+    * **Still not sim state:** the pause is the driver declining to issue time steps
+      while the menu is open — the same mechanism as the manual pause. **Driver
+      contract for the KAN-6 wiring story: stop the beat whenever an inventory or
+      item-use surface is open.**
 - **The crowd watches exploration too (owner).** A free-form walk **can** feed hype
   when something is at stake. Ruled sources: **danger nearby**, **good stealth**,
   **approaching a large boss**, and **cross-party meetings**. Idle walking through a

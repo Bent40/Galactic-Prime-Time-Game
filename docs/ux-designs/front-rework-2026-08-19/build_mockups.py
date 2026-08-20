@@ -814,7 +814,7 @@ def frame_explore():
     launcher_exp = f'''<div class="launcher"><div class="whoclock"><span class="w">FREE MOVEMENT</span>
       <span class="n">PARTY WALKS TOGETHER</span></div>
       <span class="abtn">↔ WALK <b class="fa-count">FREE</b></span><span class="abtn open">INTERACT</span>
-      <span class="abtn">SKILLS <b class="fa-count">OUT-OF-COMBAT ONLY</b></span><span class="abtn">INVENTORY</span>
+      <span class="abtn">SKILLS <b class="fa-count">OUT-OF-COMBAT ONLY</b></span><span class="abtn">INVENTORY <b class="fa-count" style="color:var(--purple)">⏸ PAUSES TIME</b></span>
       <span class="abtn" style="border-color:rgba(200,168,75,.5);color:var(--gold)">⏸ PAUSE</span>
       <span class="endturn" style="border-color:rgba(0,212,255,.55);background:rgba(0,212,255,.07)">ENTER ▸ KENNEL</span>
       <div class="conseq">No turn to end — but the world does not wait. ENTER → locks the route ·
