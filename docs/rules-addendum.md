@@ -1455,6 +1455,41 @@ an exits-less encounter list behave (and serialize) byte-identically to wave
   owner-authored maps still pending.**
   Tests: `tests/test_doors.gd` + `tests/test_dungeon_flow.gd` (+ the updated
   run-engine pins in `tests/test_run_state.gd` / `tests/test_run_persistence.gd`).
+- **AMENDED 2026-08-20 — the room graph now has a FREE-FORM half (R34's
+  exploration ruling, SHIPPED at the sim layer).** R29 v1 could only be walked
+  with the clock running: `choose_exit` handed you the next room and the fight
+  began at tick 0. The owner's 2026-08-19 ruling splits that in two, and the sim
+  now carries an explicit **PHASE** (`"combat" | "exploration"`,
+  `simulation/exploration.gd` + `CombatSim.phase`):
+  * **Exploration is free-form.** With the phase set to `exploration` the clock
+    is STOPPED — no tick advances, no Moment order exists, nothing schedules —
+    and the three commands R34 makes free (**move / door / stealth**) charge
+    **no free-action slot, no Moments and no tick**. The free-form `move` is a
+    walk to any REACHABLE hex (`Pathing` over the arena's own blocking; no
+    allowance, no `moved_this_tick`), so R29's doors, walls and terrain gate
+    exploration exactly as they gate combat. Clock-BOUND commands
+    (`advance_tick`, `declare_action`, `combined_action`, `reaction`,
+    `ai_decide`, `inventory`, `camera_call`, `bit`) reject `clock_stopped`.
+  * **Deliberate entry is unchanged in spirit.** The `phase` command's combat
+    side is the "ENTER ▸ ⟨route⟩" commit: `combat_started {reason:
+    "deliberate"}`, **no contact event**. `choose_exit` stays the run-level way
+    to pick the route; wiring it to issue the phase command is the named
+    follow-up below.
+  * **Contact is the involuntary way in** — sight OR hearing, both built out of
+    the existing R20/R30 substrates, zero new rng: after **every** exploration
+    command the sim asks whether any AI-controlled enemy **sees** a contestant
+    (`Stealth.sees` — hostility, the R30 front arc, 2 × Mind, the R20/S8
+    conceal-radius cap, hex-line LOS through walls + **closed doors**) or
+    **hears** one (`Stealth.derive_noises` off that command's own event batch,
+    `Stealth.hears` against the R20 loudness table). First match wins in sorted
+    detector order, sight before hearing; it emits `contact {by, target,
+    sense}` + `combat_started {reason: "contact"}` and flips the phase.
+    **A door heard through a wall really does pull the room onto you** — the
+    ruled case, test-pinned.
+  * **Compat (the bar):** the `phase` key serializes **only while exploring**,
+    so every legacy save, the recorded stealth/hearing hashes and both CI
+    harnesses are byte-identical to the pre-R34 engine; the contact sweep
+    returns on its first line in combat. Tests: `tests/test_exploration.gd`.
 
 ## R30 — The facing primitive & R20 vision cones (decision #33, 2026-08-18)
 
@@ -1905,8 +1940,39 @@ the numbers below are PLACEHOLDER (R14) as always.
     start one **somewhere else**, and a door heard through a wall can pull a room onto
     you before you enter it. The mockup's "ENTER ▸ ⟨route⟩" remains the *deliberate*
     way in; contact is the *involuntary* one.
-  * **Engine status: NOT BUILT.** Today's sim is clock-driven end to end and has no
-    out-of-combat mode. Tracked as a KAN-5/KAN-6 story.
+  * **Engine status: SHIPPED at the SIM layer (2026-08-20) — PARTIAL, the gaps
+    named below.** `simulation/exploration.gd` + `CombatSim.phase` carry the
+    free-form mode and the contact predicate; the full contract is the R29
+    amendment above (`tests/test_exploration.gd`). What is REAL: the phase state
+    (serialized only-when-set, default combat — byte-identical legacy saves,
+    hashes and CI harnesses), free-form **move / door / stealth** at zero cost
+    and zero ticks, the clock-bound reject family, deliberate entry, and
+    **contact by sight OR hearing** off the existing R20/R30 substrates with
+    **zero new rng draws**.
+    **DOWNSCOPED, flagged not hidden — each needs a seam this story did not own:**
+    - **Run-loop + view/HUD wiring** — `RunState.choose_exit` does not yet issue
+      the phase command, `GameController` exposes no `view_phase`, and nothing
+      renders the mode. The sim is driver-ready; the driver is a KAN-6 story.
+    - **Voicebox throws and lockpicking out of combat** — R34 names both as
+      exploration-time free actions, but both are **ActionResolver-scheduled
+      declares** (the resolver owns their Moment cost), so they ride the
+      `clock_stopped` reject list with the rest of `declare_action` until a
+      resolver-side free-form cost waiver exists. Follow-up story.
+    - **Enemies do not act during exploration** — no patrol, wander or watch
+      behaviour; a mob holds its staged hex and facing until contact. R34
+      authors none, so none was invented (the R20 hearing/investigate machinery
+      still runs, it simply has no turn to spend).
+    - **The DIRECTION of contact** (a documented reading, owner call welcome):
+      R34's own examples are both *enemy detects contestant*, so a contestant
+      who SEES a mob does **not** start the fight — that is the stealth design
+      space R20 pays for. The mirror direction is one loop in
+      `Exploration.first_contact` if ruled otherwise.
+    - **Spectacle during exploration is UNRULED and currently ingests
+      normally** — the broadcast plane is untouched, so a free-form walk still
+      feeds the movement-streak tag and the "Zoomies!" `move_spaces` crowd goal.
+      Nothing ruled it either way; flagged rather than silently suppressed.
+    - Hearing keeps its inherited R20 downscopes (no per-creature acuity, no
+      wall muffling, no noise rows beyond the v1 loudness table).
 - **Free actions are limited per turn.** Camera Call, The Bit, and the rest stay
   inside the **Free Actions** category (spec §6 stands — no permanent extra buttons),
   but the category carries a **per-turn budget** shown on the button (`FREE ACTIONS

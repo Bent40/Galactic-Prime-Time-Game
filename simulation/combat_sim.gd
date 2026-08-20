@@ -86,8 +86,55 @@ extends RefCounted
 ##       — either side moving, a door opening...), "shout" (Shock T1), or
 ##       "downed" (death/removal). stealth_broken carries the reason (+
 ##       observer when seen).
+##   {"type": "phase", "set": "exploration"|"combat"}       R34 (free-form exploration)
+##       The out-of-combat MODE switch (rules-addendum R34 + the R29
+##       amendment; simulation/exploration.gd carries the full contract).
+##       DEFAULT = "combat" — the key serializes only while exploring, so
+##       every legacy save/hash/harness is byte-identical to the
+##       pre-exploration engine.
+##       -> "exploration": stops the clock. Rejected while any scheduled
+##       action is still queued (combat_in_progress — you cannot stop the
+##       clock mid-swing). Emits exploration_started. While exploring:
+##         * the CLOCK NEVER ADVANCES and no Moment order exists —
+##           advance_tick, declare_action, combined_action, reaction,
+##           ai_decide, inventory, camera_call and bit are all rejected
+##           clock_stopped (each either advances the clock, schedules on it,
+##           or spends the R3 per-tick economy only a running clock resets).
+##         * the FREE-FORM set is exactly move / door / stealth: they charge
+##           NO free-action slot, NO Moments and NO tick (R34's "movement
+##           costs nothing" + "exploration-time actions ... are free out of
+##           combat"). The move command routes to _explore_move — a walk to
+##           any REACHABLE hex (Pathing over the arena's own blocking), no
+##           allowance, no moved_this_tick.
+##         * CONTACT is checked after EVERY command (_contact_checks, the
+##           _post sweep): an AI-controlled enemy that SEES (R20 sight
+##           through the R30 front arc, conceal + LOS respected) or HEARS
+##           (the R20 loudness table vs. this batch's noise rows) any
+##           player-side body starts the fight — contact {by, target, sense}
+##           + combat_started {reason: "contact"}.
+##       -> "combat": the DELIBERATE entry (the R29 "ENTER > route" commit) —
+##       combat_started {reason: "deliberate"}, no contact event.
 ##
 ## Rejected commands emit a single command_rejected event and mutate nothing.
+
+## R34 — the commands rejected while the clock is STOPPED (exploration).
+## Each one either ADVANCES the clock (advance_tick), SCHEDULES on it
+## (declare_action / combined_action / reaction / ai_decide), or spends the
+## R3 per-tick economy that only a running clock resets (inventory /
+## camera_call / bit all consume the free-action slot, which never comes back
+## while no tick completes). Rejecting them is the honest reading of "out of
+## combat there is no Clock, no Moment order, and no turn to end" — everything
+## NOT listed here (staging, GM fiat, treatment, levelling, stance/prime)
+## passes through to its ordinary handler unchanged, and the three FREE-FORM
+## commands R34 names (move / door / stealth) run without charging anything.
+## DOWNSCOPED, flagged not hidden: the voicebox throw and the lockpick — both
+## named by R34 as exploration-time actions — are resolver-SCHEDULED declares
+## (ActionResolver owns their cost), so they ride the reject list with the
+## rest of declare_action until a resolver-side free-form seam exists.
+const CLOCK_BOUND_COMMANDS: Array[String] = [
+	"advance_tick", "declare_action", "combined_action", "reaction",
+	"ai_decide", "inventory", "camera_call", "bit",
+]
 
 var rng: RandomNumberGenerator
 var rng_seed: int = 0
@@ -111,6 +158,13 @@ var arena: Arena = null
 ## future wall-skill resolvers call (tests drive it directly). Serialized
 ## under "zones" ONLY once a zone has ever been created (the compat pin).
 var zones: Zones = null
+## R34 — the out-of-combat MODE (simulation/exploration.gd owns the contract).
+## "combat" (the DEFAULT) is the entire pre-R34 engine, unchanged in every
+## byte: the phase key never appears in a combat-only dict, so legacy saves,
+## the recorded hashes and both CI harnesses are untouched. "exploration"
+## stops the clock and makes move/door/stealth free (see the command header).
+var phase: String = Exploration.PHASE_COMBAT
+
 ## State snapshot taken at the START of the current tick — all resolutions at
 ## a tick compute against it (R2 simultaneity; simultaneous kills trade).
 var tick_snapshot: Dictionary = {}
@@ -161,7 +215,22 @@ func _goal_table() -> Array:
 
 func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	match String(cmd.get("type", "")):
+	var cmd_type := String(cmd.get("type", ""))
+	# R34 — the exploration gate. While the clock is stopped the CLOCK-BOUND
+	# commands are rejected as a family (see CLOCK_BOUND_COMMANDS) and the
+	# move command routes to the free-form walker instead of the R3 economy.
+	# A no-op in combat: `phase` is "combat" for every legacy sim ever built,
+	# so this whole block is two string compares that never fire.
+	if phase == Exploration.PHASE_EXPLORATION:
+		if CLOCK_BOUND_COMMANDS.has(cmd_type):
+			events = [{"type": "command_rejected", "reason": "clock_stopped", "command": cmd_type}]
+			_post(events)
+			return events
+		if cmd_type == "move":
+			events = _explore_move(cmd)
+			_post(events)
+			return events
+	match cmd_type:
 		"add_combatant":
 			events = _add_combatant(cmd.get("combatant", {}))
 		"advance_tick":
@@ -205,8 +274,10 @@ func apply_command(cmd: Dictionary) -> Array[Dictionary]:
 			events = _door(cmd)
 		"stealth":
 			events = _stealth(cmd)
+		"phase":
+			events = _set_phase(cmd)
 		_:
-			events = [{"type": "command_rejected", "reason": "unknown_command", "command": String(cmd.get("type", ""))}]
+			events = [{"type": "command_rejected", "reason": "unknown_command", "command": cmd_type}]
 	_post(events)
 	return events
 
@@ -274,6 +345,13 @@ func _post(events: Array[Dictionary]) -> void:
 	# hidden AND nobody is alerted — the legacy compat pin.
 	events.append_array(_noise_checks(events))
 	# ---- end hearing. -------------------------------------------------------
+	# R34 — the CONTACT sweep (free-form exploration): while the clock is
+	# stopped, an enemy that SEES or HEARS a contestant starts the fight.
+	# AFTER the sweeps above (a hider the enemy just saw is already revealed;
+	# alerts keep their own combat discipline) and BEFORE the broadcast plane,
+	# so hype/tags/evidence see contact/combat_started too. Provable no-op in
+	# combat — it returns on its first line (the legacy compat pin).
+	events.append_array(_contact_checks(events))
 	# Batch D (play_to_the_camera): close an outlived surge window BEFORE this
 	# batch is scored — expiry is tick-driven, scoring must never read a stale
 	# window. No-op while none is live — the legacy compat pin.
@@ -915,9 +993,14 @@ func _door(cmd: Dictionary) -> Array[Dictionary]:
 					"actor": actor.id, "key": key, "by": body.id}]
 	# R3 free-action economy: one free action per tick — checked LAST so a
 	# rejection for a bad ask never wastes the slot; the flip consumes it.
-	if actor.free_action_used:
-		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
-	actor.free_action_used = true
+	# R34: NOT while exploring — "opening doors ... are free out of combat and
+	# only regain their Moment costs once the clock is running". (The slot is
+	# a per-TICK budget; with the clock stopped it would never reset, so
+	# charging it would cap a whole exploration phase at one door.)
+	if phase != Exploration.PHASE_EXPLORATION:
+		if actor.free_action_used:
+			return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+		actor.free_action_used = true
 	door["state"] = to_state
 	return [{
 		"type": "door_changed",
@@ -992,6 +1075,140 @@ func pick_lock(actor_id: String, key: String, special: bool = false, moments_pai
 	}]
 
 
+# ------------------------------------------------- R34 free-form exploration
+
+## R34 — the PHASE command (contract in the class header; the ruled model,
+## the contact predicate and every seam decision live in
+## simulation/exploration.gd + rules-addendum R34/R29). Rejections mutate
+## nothing.
+##
+## -> "exploration" stops the clock. The one gate: a QUEUED scheduled action
+##    means a fight is mid-swing, and a stopped clock would strand it forever
+##    (its resolve tick could never arrive) — rejected combat_in_progress.
+##    Nothing else is gated: entering at tick 0 (the staged room) and
+##    re-entering after a cleared room are the same command.
+##    The _post sweep that follows runs the CONTACT check immediately, so
+##    declaring exploration while already inside a mob's cone bounces
+##    straight back to combat on the very command — the honest answer.
+## -> "combat" is the DELIBERATE entry (R34: the mockup's "ENTER > <route>"
+##    commit; R29's choose_exit is its run-level caller). combat_started
+##    carries reason "deliberate" and NO contact event is emitted — that is
+##    exactly what separates walking in from being caught.
+func _set_phase(cmd: Dictionary) -> Array[Dictionary]:
+	var to_state := String(cmd.get("set", ""))
+	if to_state != Exploration.PHASE_EXPLORATION and to_state != Exploration.PHASE_COMBAT:
+		return [{"type": "command_rejected", "reason": "unknown_phase", "phase": to_state}]
+	if to_state == phase:
+		return [{"type": "command_rejected", "reason": "already_in_phase", "phase": to_state}]
+	if to_state == Exploration.PHASE_EXPLORATION:
+		if not clock.queue.is_empty():
+			return [{"type": "command_rejected", "reason": "combat_in_progress"}]
+		phase = Exploration.PHASE_EXPLORATION
+		return [{"type": "exploration_started"}]
+	phase = Exploration.PHASE_COMBAT
+	return [{"type": "combat_started", "reason": "deliberate"}]
+
+
+## R34 — the FREE-FORM walk: "the party walks freely; movement costs
+## nothing". Deliberately NOT ActionResolver.move — that function IS the R3
+## movement economy (the free-action slot, the 1-3 space allowance, the
+## scheduled long move, moved_this_tick, terrain pricing), and none of it
+## applies while the clock is stopped. What survives from it:
+##  * the ACTOR gates verbatim (dead / removed / helpless / grappled — a body
+##    that cannot move still cannot move out of combat);
+##  * the ARENA gates verbatim (in bounds, off walls / closed doors / trash
+##    cans / blocking zones — Arena.blocks_movement, the one query);
+## and what is ADDED, because a free walk is a walk and not a hop:
+##  * OCCUPANCY — a living body's hex is not a destination (combat's move
+##    leaves occupancy unchecked as a documented pre-arena carry-over; out of
+##    combat there is no simultaneity excuse for standing inside someone);
+##  * REACHABILITY — the destination must be routable from here through
+##    unblocked hexes (Pathing, the existing planner; walking THROUGH a wall
+##    is not "walking freely"). Rejected unreachable. The budget is
+##    Exploration.WALK_BUDGET (the planner's own expansion cap — R34 prices
+##    the walk at nothing, so the budget only bounds the search).
+## FACING (R30): the walk ends facing along its LAST STEP — the route is
+## really known here, so the resolver's from->to ray approximation is not
+## needed. No tick, no slot, no Moments, no rng.
+func _explore_move(cmd: Dictionary) -> Array[Dictionary]:
+	var actor_id := String(cmd.get("actor", ""))
+	var actor: CombatantState = combatants.get(actor_id)
+	if actor == null:
+		return [{"type": "command_rejected", "reason": "unknown_actor", "actor": actor_id}]
+	if not actor.alive or actor.removed_from_play:
+		return [{"type": "command_rejected", "reason": "actor_dead", "actor": actor.id}]
+	if actor.is_helpless(clock.tick):
+		return [{"type": "command_rejected", "reason": "helpless", "actor": actor.id}]
+	if actor.grappled_by != "" or actor.grappling != "":
+		return [{"type": "command_rejected", "reason": "grappled", "actor": actor.id}]
+	var to_raw: Array = cmd.get("to", [0, 0])
+	if to_raw.size() != 2:
+		return [{"type": "command_rejected", "reason": "invalid_destination", "actor": actor.id}]
+	var to := Vector2i(int(to_raw[0]), int(to_raw[1]))
+	var from: Vector2i = actor.position
+	if to == from:
+		return [{"type": "command_rejected", "reason": "no_move", "actor": actor.id}]
+	if arena != null:
+		if not arena.in_bounds(to):
+			return [{"type": "command_rejected", "reason": "out_of_bounds", "actor": actor.id, "to": [to.x, to.y]}]
+		if arena.blocks_movement(to):
+			return [{"type": "command_rejected", "reason": "hex_blocked", "actor": actor.id, "to": [to.x, to.y]}]
+	var occupied: Dictionary = {}
+	var ids: Array = combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var body: CombatantState = combatants[id]
+		if body.id == actor.id or not body.alive or body.removed_from_play:
+			continue
+		occupied[body.position] = true
+	if occupied.has(to):
+		return [{"type": "command_rejected", "reason": "hex_blocked", "actor": actor.id, "to": [to.x, to.y]}]
+	var route: Array[Vector2i] = Pathing.next_steps(
+		from, to, Exploration.WALK_BUDGET, 0, occupied, arena)
+	if route.is_empty() or route[route.size() - 1] != to:
+		return [{"type": "command_rejected", "reason": "unreachable", "actor": actor.id, "to": [to.x, to.y]}]
+	var last_from: Vector2i = route[route.size() - 2] if route.size() >= 2 else from
+	var facing_idx: int = HexGeometry.direction_index(last_from, to)
+	if facing_idx >= 0:
+		actor.facing = facing_idx
+	actor.position = to
+	# The event is the ordinary `moved` row on purpose: Stealth.derive_noises
+	# already maps it to the QUIET(3) footfall the loudness table authors, so
+	# a free-form walk is audible through exactly the R20 substrate — no new
+	# emission point, no new loudness. "spaces" is the ROUTE length (the steps
+	# actually walked), and the additive "exploration" flag marks the free-form
+	# path for the view layer; neither key can ever reach a combat batch.
+	return [{
+		"type": "moved", "actor": actor.id, "to": [to.x, to.y],
+		"spaces": route.size(), "free": true, "exploration": true,
+	}]
+
+
+## R34 — THE CONTACT SWEEP (the involuntary way into a fight). Runs in _post
+## after every command WHILE EXPLORING, after the stealth sweep (a hider the
+## enemy just saw is already revealed) and after the noise sweep (alerts keep
+## their own combat discipline), and BEFORE the broadcast plane so
+## hype/tags/evidence see contact/combat_started like any other event.
+## Exploration.first_contact is the predicate — sight through the R30 front
+## arc or hearing off THIS batch's R20 noise rows; see that file for the
+## direction ruling and why hearing does not reuse _noise_checks' filter.
+## Provable no-op in combat (phase is "combat" for every legacy sim: the
+## function returns on its first line — no events, no rng, no state).
+func _contact_checks(events: Array[Dictionary]) -> Array[Dictionary]:
+	if phase != Exploration.PHASE_EXPLORATION:
+		return []
+	var contact: Dictionary = Exploration.first_contact(
+		combatants, arena, clock.tick, Stealth.derive_noises(events, combatants))
+	if contact.is_empty():
+		return []
+	phase = Exploration.PHASE_COMBAT
+	return [
+		{"type": "contact", "by": String(contact["by"]), "target": String(contact["target"]),
+			"sense": String(contact["sense"])},
+		{"type": "combat_started", "reason": "contact"},
+	]
+
+
 ## R20 (KAN-5 wave 4c) — the stealth command (contract in the class header;
 ## design + downscopes in the rules-addendum R20 IMPLEMENTED marker). HIDE
 ## gates in rejection-priority order (actor gates → state gates → the sight
@@ -1028,9 +1245,12 @@ func _stealth(cmd: Dictionary) -> Array[Dictionary]:
 		return [{"type": "command_rejected", "reason": "in_enemy_sight", "actor": actor.id, "observer": observer}]
 	# R3 free-action economy: checked LAST so a rejected ask never wastes the
 	# slot; the hide consumes it (one free action per tick — the door family).
-	if actor.free_action_used:
-		return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
-	actor.free_action_used = true
+	# R34: NOT while exploring — hiding IS the ruled "scouting" free action,
+	# and the per-tick slot never resets with the clock stopped (see _door).
+	if phase != Exploration.PHASE_EXPLORATION:
+		if actor.free_action_used:
+			return [{"type": "command_rejected", "reason": "free_action_used", "actor": actor.id}]
+		actor.free_action_used = true
 	actor.stealthed = true
 	return [{"type": "stealth_entered", "actor": actor.id}]
 
@@ -1708,6 +1928,11 @@ func to_dict() -> Dictionary:
 	# same next zone id a straight-through run would).
 	if zones != null and zones.next_id > 0:
 		out["zones"] = zones.to_dict()
+	# R34 compat pin: the "phase" key exists ONLY while exploring — a combat
+	# sim (every legacy save, every recorded hash, both CI harnesses)
+	# serializes byte-identically to the pre-exploration engine.
+	if phase != Exploration.PHASE_COMBAT:
+		out["phase"] = phase
 	return out
 
 
@@ -1765,6 +1990,9 @@ static func from_dict(data: Dictionary) -> CombatSim:
 		sim.zones.setup(sim.combatants, sim.cond)
 		if sim.arena != null:
 			sim.arena.zones = sim.zones
+	# R34: pre-exploration saves lack "phase" — "combat" is the default and
+	# matches a fresh sim exactly.
+	sim.phase = String(data.get("phase", Exploration.PHASE_COMBAT))
 	return sim
 
 
