@@ -68,8 +68,29 @@ of the next Clock. Order of operations at each tick:
 ## R3 — Action caps: free actions, movement, inventory, cooldowns (answers D1, D2, C6, F5, F10)
 
 - **PROVISIONAL (numbers; shape settled).** Per tick a combatant gets at most: **one
-  scheduled action** (the one due this tick) + **one free (0-Moment) action** + **one
-  reaction**. 0-cost skills are legal (F10) — they consume the free-action slot.
+  scheduled action** (the one due this tick) + ~~**one free (0-Moment) action**~~ **a
+  free-action BUDGET** + **one reaction**. 0-cost skills are legal (F10) — they consume
+  a free-action entry.
+- **AMENDED (owner, 2026-08-19 — decision #36 / R34's free-action bullet): the free-action
+  allowance is TWO, not one.** "Free actions are 2 per turn." Everything else in this
+  family is untouched: what qualifies (0-cost declares, the free 1–3 space move, the first
+  inventory interaction, 0-cost reactions, and the R29/S8 door · bit · voicebox · stealth
+  entries), the **single shared pool** across all of them (two entries, never two pools),
+  the inventory-interaction rule, and the rejection reason string —
+  still `free_action_used`, byte-identically, because the HUD, the harnesses and the tests
+  read it. Numbers stay PLACEHOLDER (R14). SHIPPED in the engine: the boolean
+  `free_action_used` became the counter `free_actions_used`, capped at
+  `CombatantState.FREE_ACTIONS_PER_CLOCK = 2`, with the old flag kept as a derived
+  "budget exhausted" view (`tests/test_free_action_budget.gd`). Serialized only when
+  spent, so pre-ruling saves and free-action-free fights hash byte-identically.
+  * **FLAGGED — cadence mismatch, owner call needed (not silently re-ruled).** R34 reads
+    "per turn" as "per combatant per **Clock**, matching R3's existing reset cadence", but
+    R3's cadence — as written above and as built — is **per tick** (`reset_tick_flags()`
+    clears the budget at every tick advance, which is why the free move is available every
+    Moment; a 2-per-Clock reading would cut every combatant to two free moves per ten
+    ticks and freeze the board). The engine therefore kept R3's live per-tick cadence and
+    only deepened the pool. If the owner meant a genuine per-Clock budget, that is a
+    separate, much larger ruling — it re-prices movement — and needs its own pass.
 - **SETTLED (kills infinite kiting).** Movement: a move of 1–3 spaces is free but consumes
   the free-action slot, **once per tick**. Longer moves cost `ceil((spaces - 3) / 4)`
   Moments as a scheduled action. You cannot move twice in one tick.
@@ -299,8 +320,9 @@ overturning one is a code change, not a rewrite.
 6. **Above-weight grapple still lands** (Forced Actions are always allowed; the grappler
    eats the Body roll) — size ≥2 gap and bosses still immune to grapple-Suffocation (R9).
 7. **The grappler can't reposition either** while holding (two-sided lock).
-8. **Combat's one free inventory interaction is literal** — if the tick's free slot is
-   already spent, the freebie is consumed as a paid action and never comes back.
+8. **Combat's one free inventory interaction is literal** — if the tick's free-action
+   budget (R3, amended 2026-08-19) is already spent, the freebie is consumed as a paid
+   action and never comes back.
 9. **Timers and partial Clocks:** timers created mid-Clock count the partial Clock at the
    first reset (harsh); bleed-out always gets one full Clock of grace (R5); timers created
    during a reset start at the next reset.
@@ -1415,10 +1437,11 @@ an exits-less encounter list behave (and serialize) byte-identically to wave
 - **The `door` command** (`{actor, key, set: "open"|"closed"}`): the actor
   must be alive/ready and **ADJACENT** (distance exactly 1 — standing ON an
   open door cannot close it under itself), and the flip **costs the
-  free-action slot** (R3, the inventory-interaction family: one free action
-  per combatant per tick, shared with The Bit / the free move / the first
-  inventory use / 0-cost reactions; v1 deliberately grants NO Moment-cost
-  fallback, so one door interaction per tick is the cap). Closing onto a hex
+  free-action slot** (R3, the inventory-interaction family: one entry of the
+  free-action BUDGET — two per combatant per tick since the 2026-08-19 ruling,
+  shared with The Bit / the free move / the first inventory use / 0-cost
+  reactions; v1 deliberately grants NO Moment-cost fallback, so the budget is
+  the only cap on door interactions per tick). Closing onto a hex
   with a live body rejects (`door_blocked_by_body`). **Enemies never issue
   it in v1** — the AI never decides doors (no enemy_ai path exists; a closed
   door honestly walls an enemy off — the greedy walker waits like any walled
@@ -1828,7 +1851,10 @@ Each line is a test target; ruling in brackets.
    an instant attack cannot be dodged by later movement [R2].
 5. Reaction resolves immediately and delays the reactor's next scheduled action by its
    cost; a second reaction in the same tick is rejected [R2].
-6. Second 0-cost action in one tick is rejected (free-slot consumed) [R3].
+6. ~~Second 0-cost action in one tick is rejected (free-slot consumed)~~ AMENDED by the
+   2026-08-19 budget ruling (R3/R34): a 0-cost action past the free-action BUDGET
+   (`FREE_ACTIONS_PER_CLOCK` = 2 per tick) is rejected — same `free_action_used` reason,
+   deeper pool [R3].
 7. Move of 3 spaces = free once per tick; second move same tick rejected; 7-space move
    costs 1 Moment [R3].
 8. First inventory interaction free, second costs 1 Moment, no reset exploit [R3].
@@ -1915,6 +1941,14 @@ the numbers below are PLACEHOLDER (R14) as always.
     each combatant exactly **one** free action per Clock (`free_action_used`, a
     boolean). The allowance becomes **two**; everything else in R3's free-action family
     (what qualifies, the inventory-interaction rule) stands.
+    **SHIPPED (sim):** counter `free_actions_used` capped at
+    `CombatantState.FREE_ACTIONS_PER_CLOCK = 2` (PLACEHOLDER R14), the old boolean kept
+    as the derived "budget exhausted" view the HUD/view API gate on (plus additive
+    `free_actions_used` / `free_actions_left` / `free_actions_per_clock` view fields for
+    the `FREE ACTIONS 1/2` readout); serialized only when spent, so legacy hashes are
+    untouched. Tests: `tests/test_free_action_budget.gd`. See R3's 2026-08-19 amendment
+    — including the FLAGGED cadence mismatch (the engine's window is R3's tick, not the
+    Clock this bullet's next line assumes).
   * **PROVISIONAL (mine, flagged, small):** "per turn" is read as **per combatant per
     Clock**, matching R3's existing reset cadence — not per Moment window. Entries are
     assumed to cost **one** each (no entry costs two) until an authored one says

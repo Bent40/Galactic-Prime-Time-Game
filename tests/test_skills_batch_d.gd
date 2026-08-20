@@ -632,7 +632,7 @@ func test_juggling_transfers_both_ways_with_range_gate() -> void:
 	var declared: Array[Dictionary] = juggle_declare(sim, "jug", "knife", {"to": "ally"})
 	assert_eq(int(assert_event(declared, "action_declared", "the pass declares").get("cost", -1)), 0,
 		"0 Moments — the free slot is the price")
-	assert_true(jug.free_action_used, "the free slot is spent")
+	assert_eq(jug.free_actions_used, 1, "one free-action entry is spent (R3/R34)")
 	var ev: Array[Dictionary] = advance(sim)
 	var passed: Dictionary = assert_event(ev, "item_passed", "the item moves")
 	assert_eq(String(passed.get("from", "")), "jug", "from the juggler")

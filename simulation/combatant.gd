@@ -8,6 +8,19 @@ extends RefCounted
 
 const SIZE_ORDER: Dictionary = {"Small": 0, "Medium": 1, "Large": 2, "Huge": 3}
 const TRAIT_KEYS: Array[String] = ["physique", "reflexes", "mind", "charm"]
+## R34 free-action budget (owner, 2026-08-19 — amends R3's single slot):
+## how many free (0-Moment) actions one combatant may spend per reset window.
+## PLACEHOLDER (R14) like every other authored number — the ruling's "2 per
+## turn" shown as `FREE ACTIONS 1/2` on the HUD button.
+##
+## NAME/CADENCE NOTE (flagged, not silently resolved): R34 names the window a
+## "Clock" ("per combatant per Clock, matching R3's existing reset cadence"),
+## but R3's cadence as written AND as built is per TICK — reset_tick_flags()
+## clears the budget at every tick advance (CombatSim._advance's sorted sweep),
+## and the whole free-action family (free moves above all) is priced per tick.
+## The constant keeps the ruling's vocabulary; the live window is the tick.
+## See docs/rules-addendum.md R3 (2026-08-19 amendment) for the flag.
+const FREE_ACTIONS_PER_CLOCK: int = 2
 
 var id: String = ""
 var display_name: String = ""
@@ -109,7 +122,31 @@ var removed_from_play: bool = false  # dissolution mind-collapse (R5) — never 
 # Scheduling / per-tick bookkeeping
 var next_action_tick: int = 0
 var windup_pending: bool = false
-var free_action_used: bool = false
+## R3/R34 free-action budget — how many free (0-Moment) actions this combatant
+## has spent in the current window (0..FREE_ACTIONS_PER_CLOCK). Spent by the
+## whole free-action family: 0-cost declares, the free 1-3 space move, the
+## first inventory interaction, 0-cost reactions, the bit, the door/voicebox
+## family and the stealth entry. Cleared with the other per-tick flags
+## (reset_tick_flags) — the cadence R3 has always run on, so no new sweep and
+## no Clock stamp: the existing per-tick reset already owns the window (the
+## treat_resolve_used_clock/negate_used_clock stamp idiom exists precisely
+## because those gates have NO sweep; this one does). Serialized ONLY while
+## > 0 (the negate_used_clock compat pin) so a fight that spends no free
+## action hashes byte-identically to the pre-R34 engine.
+var free_actions_used: int = 0
+## COMPAT VIEW of the budget, kept because the whole engine (CombatSim's bit /
+## door / voicebox paths, EnemyAI's free-move gate, the view API, the HUD, the
+## harnesses) reads and writes this boolean: true = the budget is EXHAUSTED,
+## `= true` SPENDS one entry, `= false` refunds the whole window. The
+## rejection reason string stays "free_action_used" byte-identically.
+var free_action_used: bool:
+	get:
+		return free_actions_used >= FREE_ACTIONS_PER_CLOCK
+	set(value):
+		if value:
+			spend_free_action()
+		else:
+			free_actions_used = 0
 var reaction_used: bool = false
 var moved_this_tick: bool = false
 ## G1 Tactical Roll marker (rules-addendum R25): set when the combatant
@@ -698,8 +735,24 @@ static func hex_distance(a: Vector2i, b: Vector2i) -> int:
 	return int((absi(dq) + absi(dr) + absi(dq + dr)) / 2.0)
 
 
+## R3/R34 free-action budget accessors — the counter's public surface. The
+## engine asks has_free_action() before a 0-cost path and spend_free_action()
+## when it takes one; free_actions_left() is what a HUD budget readout
+## ("FREE ACTIONS 1/2") is derived from.
+func free_actions_left() -> int:
+	return maxi(0, FREE_ACTIONS_PER_CLOCK - free_actions_used)
+
+
+func has_free_action() -> bool:
+	return free_actions_used < FREE_ACTIONS_PER_CLOCK
+
+
+func spend_free_action() -> void:
+	free_actions_used = mini(free_actions_used + 1, FREE_ACTIONS_PER_CLOCK)
+
+
 func reset_tick_flags() -> void:
-	free_action_used = false
+	free_actions_used = 0
 	reaction_used = false
 	moved_this_tick = false
 	rolled_this_window = false
@@ -756,7 +809,7 @@ func to_dict() -> Dictionary:
 		"removed_from_play": removed_from_play,
 		"next_action_tick": next_action_tick,
 		"windup_pending": windup_pending,
-		"free_action_used": free_action_used,
+		"free_action_used": free_action_used,  # DERIVED: budget exhausted (R34)
 		"reaction_used": reaction_used,
 		"moved_this_tick": moved_this_tick,
 		"rolled_this_window": rolled_this_window,
@@ -844,6 +897,13 @@ func to_dict() -> Dictionary:
 		out["counter_immunities"] = counter_immunities.duplicate(true)
 	if treat_resolve_used_clock >= 0:
 		out["treat_resolve_used_clock"] = treat_resolve_used_clock
+	# R34 compat pin (the same only-when-set pattern): the free-action COUNTER
+	# exists only once an entry has been spent this window — a fight in which
+	# nobody spends a free action serializes byte-identically to the pre-R34
+	# engine (the derived "free_action_used" bool above carries the legacy
+	# shape, and reads false for both 0 and 1 spent).
+	if free_actions_used > 0:
+		out["free_actions_used"] = free_actions_used
 	# Round 3a compat pin (the same only-when-set pattern): the quick_step
 	# stride window exists ONLY once declared — a fight that never strides
 	# serializes byte-identically to the pre-round engine.
@@ -916,7 +976,12 @@ static func from_dict(data: Dictionary) -> CombatantState:
 	c.removed_from_play = bool(data.get("removed_from_play", false))
 	c.next_action_tick = int(data.get("next_action_tick", 0))
 	c.windup_pending = bool(data.get("windup_pending", false))
-	c.free_action_used = bool(data.get("free_action_used", false))
+	# R34: the counter wins when present; pre-R34 saves carry only the boolean,
+	# where true = the (then single) slot was spent = the budget is exhausted.
+	if data.has("free_actions_used"):
+		c.free_actions_used = clampi(int(data["free_actions_used"]), 0, FREE_ACTIONS_PER_CLOCK)
+	else:
+		c.free_actions_used = FREE_ACTIONS_PER_CLOCK if bool(data.get("free_action_used", false)) else 0
 	c.reaction_used = bool(data.get("reaction_used", false))
 	c.moved_this_tick = bool(data.get("moved_this_tick", false))
 	# Pre-R25 saves lack the marker: false matches a fresh tick (no live roll).

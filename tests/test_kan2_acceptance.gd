@@ -114,18 +114,23 @@ func test_05_reaction_immediate_and_capped() -> void:
 	assert_rejected(second, "reaction_used", "max one reaction per combatant per tick")
 
 
-## 6. "Second 0-cost action in one tick is rejected (free-slot consumed) [R3]."
+## 6. "0-cost actions past the free-action BUDGET are rejected [R3, amended by
+##    R34 — owner 2026-08-19: CombatantState.FREE_ACTIONS_PER_CLOCK per tick,
+##    was exactly one]."
 func test_06_free_action_slot() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a", {"position": [0, 0]})
 	var first: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 0, "key": "taunt"})
 	assert_event(first, "action_declared", "0-cost skills are legal (F10)")
 	var second: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 0, "key": "flex"})
-	assert_rejected(second, "free_action_used", "one free (0-Moment) action per tick")
+	assert_event(second, "action_declared", "and the SECOND rides the R34 budget")
+	assert_eq(CombatantState.FREE_ACTIONS_PER_CLOCK, 2, "the ruled budget is 2 per turn (PLACEHOLDER R14)")
+	var third: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 0, "key": "flex2"})
+	assert_rejected(third, "free_action_used", "past the budget — the reason string is unchanged")
 	var next_tick: Array[Dictionary] = advance(sim)
-	assert_event(next_tick, "action_resolved", "the free action resolved on its tick")
+	assert_event(next_tick, "action_resolved", "the free actions resolved on their tick")
 	var again: Array[Dictionary] = declare(sim, "a", {"kind": "skill", "cost": 0, "key": "taunt2"})
-	assert_event(again, "action_declared", "slot refreshes next tick")
+	assert_event(again, "action_declared", "budget refreshes next tick")
 
 
 ## 7. "Move of 3 spaces = free once per tick; second move same tick rejected;

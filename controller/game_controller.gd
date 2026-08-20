@@ -299,11 +299,19 @@ func view_combatants() -> Array[Dictionary]:
 			# FEINTED badge reads this; attribution rides the feint_fallout event.
 			"feint_forced": c.feint_forced,
 			"breached": c.breached,
-			# R3 free-action economy (anti-spam ruling): true once this combatant
-			# has spent its one free (0-Moment) action this tick — The Bit, the
-			# free move, the first inventory use and 0-cost reactions all consume
-			# it. Straight off the state so UIs can gate 0-cost entries honestly.
+			# R3/R34 free-action economy (anti-spam ruling + the owner's
+			# 2026-08-19 budget ruling): true once this combatant has spent its
+			# WHOLE free-action budget this tick — The Bit, the free move, the
+			# first inventory use and 0-cost reactions all draw on it. Kept
+			# under its original name and meaning ("no free entry is legal any
+			# more") so existing UIs keep gating 0-cost entries honestly.
 			"free_action_used": c.free_action_used,
+			# R34 (ADDITIVE): the budget itself, for the mockup's
+			# `FREE ACTIONS 1/2` readout — spent, remaining, and the cap
+			# (PLACEHOLDER R14). Straight off the state; no HUD re-derivation.
+			"free_actions_used": c.free_actions_used,
+			"free_actions_left": c.free_actions_left(),
+			"free_actions_per_clock": CombatantState.FREE_ACTIONS_PER_CLOCK,
 			# R20 (ADDITIVE, wave 4c): true while this combatant is stealthed —
 			# concealed from HOSTILE targeting (AI exclusion + target_stealthed
 			# rejections), never from the broadcast: the cameras are omniscient
@@ -1269,6 +1277,13 @@ func _stage_encounter(staging: Dictionary) -> void:
 			carry.erase("facing")
 			if (combatants[String(id)] as Dictionary).has("facing"):
 				carry["facing"] = (combatants[String(id)] as Dictionary)["facing"]
+			# R34 (same shape as facing): the free-action BUDGET is per-tick
+			# combat state and the encounter's Clock died — the next room
+			# stages you with a full budget. RunState's sanitizer predates the
+			# counter and still zeroes only the legacy boolean, which no longer
+			# clears it (from_dict prefers the counter), so the only-when-set
+			# key is erased HERE. Nothing to re-derive: absent = untouched.
+			carry.erase("free_actions_used")
 			combatants[String(id)] = carry
 			# Keep the tick-start snapshot honest for the spliced member (the
 			# same fields _snapshot_entry derives, computed off the carry).

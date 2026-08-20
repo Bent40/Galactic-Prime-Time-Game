@@ -10,9 +10,10 @@ extends SimTestBase
 ##    lanes (end AND phase-3 bounce) inherit doors with zero consumer edits;
 ##    an OPEN door blocks nothing.
 ##  * the door command: adjacency (distance exactly 1 — no closing a door
-##    under yourself), alive/ready gates, the R3 free-action slot (the
-##    inventory-interaction family — one free action per tick, no Moment-cost
-##    fallback in v1), open->move-through, close-behind-you, the
+##    under yourself), alive/ready gates, the R3/R34 free-action BUDGET (the
+##    inventory-interaction family — CombatantState.FREE_ACTIONS_PER_CLOCK
+##    free actions per tick since the owner's 2026-08-19 ruling, no
+##    Moment-cost fallback in v1), open->move-through, close-behind-you, the
 ##    door_blocked_by_body doorway guard, door_changed events.
 ##  * serialization: doors ride the arena's to_dict (hash-covered, state
 ##    included mid-flip); the doors key is ABSENT on a door-less arena (the
@@ -225,26 +226,36 @@ func test_door_command_gates_and_free_slot_economy() -> void:
 		"distance 9: the actor must be ADJACENT to the door hex")
 	# Same-state flips reject without touching the slot.
 	assert_rejected(door(sim, "h", "hatch", "closed"), "door_already_closed", "no-op close rejects")
-	assert_false((sim.combatants["h"] as CombatantState).free_action_used,
-		"every rejection above left the free slot UNSPENT")
+	assert_eq((sim.combatants["h"] as CombatantState).free_actions_used, 0,
+		"every rejection above left the free-action budget UNSPENT")
 	# The flip: door_changed + the R3 free slot consumed.
 	var opened: Array[Dictionary] = door(sim, "h", "hatch", "open")
 	var changed: Dictionary = assert_event(opened, "door_changed", "the flip event")
 	assert_eq(String(changed.get("key", "")), "hatch", "which door")
 	assert_eq(changed.get("position", []), [1, 0], "where it is")
 	assert_eq(String(changed.get("state", "")), "open", "the new state")
-	assert_true((sim.combatants["h"] as CombatantState).free_action_used,
-		"the flip consumed the free-action slot (R3 inventory-interaction family)")
-	# Slot economy both ways: a second free action the same tick rejects; v1
-	# grants NO Moment-cost fallback for a second door interaction.
-	assert_rejected(move(sim, "h", [0, 1]), "free_action_used",
-		"the free move is gone — the door ate the slot")
+	assert_eq((sim.combatants["h"] as CombatantState).free_actions_used, 1,
+		"the flip consumed ONE free-action entry (R3 inventory-interaction family)")
+	assert_true((sim.combatants["h"] as CombatantState).has_free_action(),
+		"R34 (owner 2026-08-19): the second entry is still open — a door is no longer the whole tick")
+	# Budget economy: the door and the free move draw on ONE shared pool, so the
+	# second entry pays for the move and the THIRD rejects; v1 still grants NO
+	# Moment-cost fallback for a second door interaction.
+	assert_event(move(sim, "h", [0, 1]), "moved", "the free move rides the budget's second entry")
 	assert_rejected(door(sim, "h", "hatch", "closed"), "free_action_used",
-		"a second door interaction the same tick rejects (no Moment-cost fallback, v1)")
-	# And the mirror: a free move first forfeits the door this tick.
-	assert_event(move(sim, "bystander", [1, -1]), "moved", "the bystander spends the free move")
-	assert_rejected(door(sim, "bystander", "hatch", "closed"), "free_action_used",
-		"after a free move the door command rejects — one slot, shared")
+		"the third free action of the tick rejects (no Moment-cost fallback, v1)")
+	# And the mirror, on a throwaway board so this one keeps its open door:
+	# free move first, door second, third rejects — one pool, not one per family.
+	var mirror: CombatSim = make_sim()
+	set_arena(mirror, arena_cfg([], [], [door_row("hatch", [1, 0])]))
+	add_human(mirror, "m", {"team": "party", "position": [0, 0]})
+	assert_event(move(mirror, "m", [0, 1]), "moved", "entry 1: the free move")
+	assert_event(door(mirror, "m", "hatch", "open"), "door_changed",
+		"entry 2: the door still flips after a move (the R3 forfeit is gone — that IS the ruling)")
+	assert_rejected(door(mirror, "m", "hatch", "closed"), "free_action_used",
+		"entry 3 rejects — move + door spent the whole shared budget")
+	# The bystander walks into door reach for the body-guard checks below.
+	assert_event(move(sim, "bystander", [1, -1]), "moved", "the bystander spends a free move")
 	# Next tick the slot refreshes; closing onto a LIVE body in the doorway
 	# rejects; standing ON the open door cannot close it under yourself.
 	advance(sim, 1)
@@ -291,8 +302,10 @@ func test_open_move_through_close_behind_you() -> void:
 	var closed: Array[Dictionary] = door(sim, "h", "hatch", "closed")
 	assert_event(closed, "door_changed", "tick 3: close it behind you (adjacent from the far side)")
 	assert_true(sim.arena.is_closed_door(Vector2i(1, 0)), "the door is closed again")
-	assert_rejected(move(sim, "h", [3, 0]), "free_action_used",
-		"the close spent this tick's slot (the free move is forfeit — legal ground still rejects)")
+	assert_event(move(sim, "h", [3, 0]), "moved",
+		"R34: the close spent ONE entry — the budget's second still pays for the step away")
+	assert_false((sim.combatants["h"] as CombatantState).has_free_action(),
+		"close + step = the whole free-action budget for this tick")
 	advance(sim, 1)
 	assert_rejected(move(sim, "h", [1, 0]), "hex_blocked", "and the doorway blocks again next tick")
 	# The pursuer is honestly stuck on the far side.

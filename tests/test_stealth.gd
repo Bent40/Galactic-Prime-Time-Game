@@ -145,17 +145,22 @@ func test_stealth_entry_exit_and_free_action_slot() -> void:
 	var entered: Array[Dictionary] = stealth(sim, "h1")
 	assert_event(entered, "stealth_entered", "unseen hide succeeds")
 	assert_true(sim.combatants["h1"].stealthed, "state flag set")
-	assert_true(sim.combatants["h1"].free_action_used, "the hide consumed the R3 free-action slot")
+	assert_eq(sim.combatants["h1"].free_actions_used, 1,
+		"the hide consumed ONE R3/R34 free-action entry")
 	assert_rejected(stealth(sim, "h1"), "already_stealthed", "no double hide")
 	# Reveal is FREE (abandoning a state is not an act) and works slot-spent.
 	var revealed: Array[Dictionary] = stealth(sim, "h1", "reveal")
 	assert_eq(String(assert_event(revealed, "stealth_broken", "voluntary reveal").get("reason", "")),
 		"revealed_self", "reveal reason")
 	assert_false(sim.combatants["h1"].stealthed, "flag cleared")
-	# The slot is spent this tick — a re-hide waits for the next Moment.
-	assert_rejected(stealth(sim, "h1"), "free_action_used", "one free action per tick (door/bit family)")
+	# R34 (owner 2026-08-19): the budget's second entry pays for the re-hide;
+	# the THIRD free action of the tick is what rejects (door/bit family).
+	assert_event(stealth(sim, "h1"), "stealth_entered", "the re-hide rides the second entry")
+	assert_event(stealth(sim, "h1", "reveal"), "stealth_broken", "reveal is free — never an act")
+	assert_rejected(stealth(sim, "h1"), "free_action_used",
+		"past the budget the hide rejects — same reason string, deeper pool")
 	advance(sim, 1)
-	assert_event(stealth(sim, "h1"), "stealth_entered", "fresh tick, fresh slot")
+	assert_event(stealth(sim, "h1"), "stealth_entered", "fresh tick, fresh budget")
 
 
 func test_entry_gates_grapple_and_helpless() -> void:
