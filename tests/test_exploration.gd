@@ -168,12 +168,18 @@ func test_exploration_commands_advance_no_tick_and_charge_no_moments() -> void:
 	assert_eq(sim.clock.tick, 0, "no tick ever advanced")
 	assert_true(sim.clock.queue.is_empty(), "nothing was scheduled on the stopped clock")
 
-	# CONTRAST: back in combat the same second door flip costs the slot again.
+	# CONTRAST: back in combat the free-action BUDGET starts being charged again.
+	# The owner ruled two per window (R34, amending R3's one), so it is the THIRD
+	# flip that rejects — the point of the contrast is that exploration charges
+	# nothing at all while combat charges every one.
 	assert_event(enter_combat(sim), "combat_started", "deliberate entry")
-	assert_event(door(sim, "h1", "d", "closed"), "door_changed", "first combat flip pays the slot")
-	assert_true(sim.combatants["h1"].free_action_used, "R3 economy resumes the moment the clock runs")
-	assert_rejected(door(sim, "h1", "d", "open"), "free_action_used",
-		"one free action per tick again (R3)")
+	assert_eq(sim.combatants["h1"].free_actions_used, 0, "budget is untouched by everything above")
+	assert_event(door(sim, "h1", "d", "closed"), "door_changed", "first combat flip spends budget")
+	assert_eq(sim.combatants["h1"].free_actions_used, 1, "R3 economy resumes the moment the clock runs")
+	assert_event(door(sim, "h1", "d", "open"), "door_changed", "second flip spends the rest of it")
+	assert_true(sim.combatants["h1"].free_action_used, "budget exhausted at two (R34)")
+	assert_rejected(door(sim, "h1", "d", "closed"), "free_action_used",
+		"two free actions per window, then no more (R34 amending R3)")
 
 
 func test_clock_bound_commands_are_rejected_while_exploring() -> void:

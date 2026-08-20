@@ -45,11 +45,12 @@ extends RefCounted
 ##   {"type": "door", "actor", "key", "set": "open"|"closed"}  KAN-5 wave 4b (R29)
 ##       Flips an authored door. The actor must be alive/ready and ADJACENT
 ##       (distance exactly 1) to the door hex — standing ON an open door
-##       cannot close it under itself. Costs the FREE-ACTION SLOT (R3, the
-##       inventory-interaction family: one free action per combatant per
-##       tick, shared with The Bit / the free move / first inventory use /
-##       0-cost reactions; v1 deliberately grants NO Moment-cost fallback, so
-##       one door interaction per tick is the cap). Closing onto a hex with a
+##       cannot close it under itself. Spends from the FREE-ACTION BUDGET (R3
+##       as amended by R34: TWO free actions per combatant per tick, owner
+##       ruling 2026-08-19, shared with The Bit / the free move / first
+##       inventory use / 0-cost reactions; v1 deliberately grants NO
+##       Moment-cost fallback, so the budget is the cap). Out of combat the
+##       budget is not charged at all (Exploration). Closing onto a hex with a
 ##       live body in the doorway rejects (door_blocked_by_body). A LOCKED
 ##       door (K2 — an authored lock in state "locked") cannot be opened:
 ##       rejected door_locked naming the tier, slot untouched — the pick path
@@ -779,11 +780,12 @@ func _camera_call(cmd: Dictionary) -> Array[Dictionary]:
 ## The Bit (I-13, RULED item 8) — the signature action that is MECHANICALLY NULL
 ## by construction, with ONE deliberate, ruled exception (owner, anti-spam
 ## ruling): it is a FREE ACTION and pays R3's free-action economy — one free
-## (0-Moment) action per combatant per tick, the same slot 0-cost declares,
-## free moves, first inventory uses and 0-cost reactions consume. The slot IS
-## the cost: a second bit the same tick rejects "free_action_used", and doing
-## the bit forfeits the tick's free move / inventory / reaction (and vice
-## versa). Beyond that slot flag it still touches NO combatant state, the
+## (0-Moment) action per combatant per tick, drawn from the same budget 0-cost
+## declares, free moves, first inventory uses and 0-cost reactions consume.
+## The budget IS the cost: R3's single slot became TWO per tick under R34
+## (owner ruling 2026-08-19), so the THIRD such action in a tick rejects
+## "free_action_used", and spending on the bit is spending the budget others
+## wanted. Beyond that counter it still touches NO combatant state, the
 ## clock, the action RNG, scheduling, Moment cost, or conditions. Its ONLY
 ## other effect is one self-describing bit_performed event carrying escalating
 ## spectacle_points (base + bonus per prior bit this deployment, from the
