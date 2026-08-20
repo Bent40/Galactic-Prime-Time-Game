@@ -1864,3 +1864,55 @@ Each line is a test target; ruling in brackets.
 *Owner morning checklist: the PROVISIONAL rulings worth your eyes first — R2 miss/dodge
 model, R3 cap numbers, R4 Burn-T1-costs-Shock, R6 level pacing (engine-ready either way),
 R8 RPM numbers, R9 grapple gates, R10 requirements-halving + token-exchange cut.*
+
+## R34 — The HUD contract: intent icons, free-form exploration, free-action budget (decision #36, 2026-08-19)
+
+**Owner rulings on the front-rework mockup gate (2026-08-19).** These are UI-shaped
+rulings with engine consequences; the mockups are
+`docs/ux-designs/front-rework-2026-08-19/` (frames + gate README). Approved as stated;
+the numbers below are PLACEHOLDER (R14) as always.
+
+- **Enemy intent is read off the ENEMY, not off a timeline (Slay-the-Spire route).**
+  Every enemy carries an **intent icon** showing the *type* of action expected next
+  (attack · area · buff · debuff · unknown), and hovering it gives the full
+  explanation. The Moment/Clock timeline keeps **order and timing only** — it no
+  longer carries enemy telegraph bands.
+  * **R26 supersession (transparency moves, it does not weaken):** an undodgable
+    attack is declared on its **intent icon** (⛔ marker + the hover text saying so)
+    from the moment of windup. R26's mandate — the player must know before they die —
+    is now satisfied by the icon rather than the timeline band. Everything else in R26
+    stands.
+  * **Discovery states apply to intent (R30/R20 vocabulary):** an enemy the party has
+    not read shows **UNREAD (❓)** rather than a fabricated guess. Intent is *known
+    information*, never omniscience.
+  * **Engine note (view-layer only, no sim change):** the view API already exposes
+    scheduled/declared actions; an `intent` projection (kind + label + detail +
+    undodgable flag + read-state) is a presentation-side derivation. No new sim state.
+- **Exploration is FREE-FORM, not turn-based.** Out of combat there is **no Clock, no
+  Moment order, and no turn to end** — the party walks freely; movement costs nothing;
+  the clock starts **on contact**. Entering a room (the R29 exit choice) is the
+  explicit commit that starts the fight.
+  * **Consequence for R29/R3:** exploration-time actions (opening doors, picking
+    locks, voicebox throws, scouting) are free out of combat and only regain their
+    Moment costs once the clock is running. The hype-chain carry (R29) is unchanged —
+    exploration remains glue, not rest.
+  * **PROVISIONAL (mine, flagged):** what constitutes "contact" (sight? hearing? a
+    threshold crossing?) is not ruled — the mockup uses *entering the room*. The
+    RunState/room-graph engine work for free-form movement is **not built**; today's
+    sim is clock-driven end to end. Tracked as an open KAN-5/KAN-6 item.
+- **Free actions are limited per turn.** Camera Call, The Bit, and the rest stay
+  inside the **Free Actions** category (spec §6 stands — no permanent extra buttons),
+  but the category carries a **per-turn budget** shown on the button (`FREE ACTIONS
+  1/2` in the mockups).
+  * **PROVISIONAL (mine, flagged):** the budget VALUE (2 per Clock in the mockups),
+    whether it resets per Clock or per actor window, and whether individual entries
+    cost more than one, are all unruled. **Not implemented** — today free actions are
+    uncapped in the resolver. Tracked as a KAN-2 follow-up.
+- **Merge parents cap at 5 (the upgrade is optional).** A skill that feeds a Gemstone
+  merge **does not continue past Lv 5** unless that skill was *already* stated to be
+  linear. Declining an offer therefore costs nothing but the ceiling — you keep both
+  parents at 5.
+  * **Amends R31 / decision #35's framing:** LINEAR-past-5 is the **exception** (an
+    explicitly stated property of a given skill), not the default fallback for a
+    declined merge. `data/skills.json` `default_cap` 5 remains the norm; the
+    Mod-Center copy was corrected to match.

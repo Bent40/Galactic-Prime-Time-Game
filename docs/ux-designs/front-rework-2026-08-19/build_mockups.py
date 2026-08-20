@@ -130,7 +130,7 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .world{flex:1;position:relative;overflow:hidden;min-width:0}
 .stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
        perspective:1500px}
-.board{transform:rotateX(46deg) rotateZ(-2deg) translateY(-30px);transform-style:preserve-3d}
+.board{transform:rotateX(46deg) rotateZ(-2deg) translateY(40px);transform-style:preserve-3d}
 .feed{position:absolute;inset:0;pointer-events:none;
       background:repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 1px,transparent 1px 3px)}
 .vign{position:absolute;inset:0;pointer-events:none;
@@ -159,6 +159,27 @@ body{background:#000;font-family:system-ui,-apple-system,sans-serif;color:var(--
 .tok-conds{position:absolute;top:-9px;right:-9px;display:flex;gap:2px}
 .cond-dot{width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;
           justify-content:center;background:rgba(4,5,13,.95);border:1px solid var(--danger)}
+.intent{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;margin-bottom:3px;
+        background:rgba(4,5,13,.92);border:1px solid var(--border);white-space:nowrap}
+.intent b{font-size:15px;line-height:1}
+.intent .ilab{font-size:8px;letter-spacing:1.5px;font-weight:800;font-family:var(--num)}
+.intent.i-attack{border-color:rgba(255,34,85,.65)} .intent.i-attack .ilab{color:var(--danger)}
+.intent.i-aoe{border-color:rgba(255,122,47,.7)} .intent.i-aoe .ilab{color:var(--fire)}
+.intent.i-heavy{border-color:rgba(255,34,85,.85);box-shadow:0 0 14px rgba(255,34,85,.35)}
+.intent.i-heavy .ilab{color:#fff}
+.intent.i-buff{border-color:rgba(0,255,136,.6)} .intent.i-buff .ilab{color:var(--success)}
+.intent.i-debuff{border-color:rgba(168,85,247,.6)} .intent.i-debuff .ilab{color:var(--purple)}
+.intent.i-unknown{border-color:var(--muted)} .intent.i-unknown .ilab{color:var(--muted)}
+.intent.hov{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,212,255,.45)}
+.intent-tip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);z-index:12;
+            width:268px;background:rgba(4,5,13,.97);border:1px solid rgba(0,212,255,.55);border-radius:7px;
+            padding:10px 12px;text-align:left;box-shadow:0 6px 26px rgba(0,0,0,.6)}
+.intent-tip .tt{font-size:11px;font-weight:900;letter-spacing:1.5px;color:#eaf6ff}
+.intent-tip .tk{font-size:8px;letter-spacing:2px;font-weight:800;color:var(--muted);margin-top:2px}
+.intent-tip .tb{font-size:10px;line-height:1.6;color:var(--text);margin-top:6px}
+.intent-tip .tb b{color:var(--cyan)}
+.intent-tip .tr{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.fa-count{font-family:var(--num);font-size:10px;color:var(--gold);margin-left:6px}
 .groundtag{position:absolute;z-index:5;font-size:8px;letter-spacing:1.5px;font-weight:800;
            padding:2px 7px;border-radius:3px;background:rgba(4,5,13,.8);border:1px solid var(--border);
            transform:translate(-50%,-50%);white-space:nowrap}
@@ -305,14 +326,29 @@ def trashcan(x, y, burning=False):
              f'<circle cx="{x}" cy="{y-6}" r="7" fill="rgba(255,170,60,.55)"/>'
     return g
 
-def token(left, top, glyph, name, hp_pct, hp_col, cls="", conds=(), sub=""):
+def token(left, top, glyph, name, hp_pct, hp_col, cls="", conds=(), sub="", intent=None, tip=None):
+    """intent: (icon, label, kind) — the Slay-the-Spire read of what this enemy does NEXT.
+    tip: (title, kind_line, body, chips) — the hover explanation (rendered open on one token
+    per frame to show the interaction)."""
     cond = "".join(f'<span class="cond-dot" title="{c[1]}">{c[0]}</span>' for c in conds)
     condwrap = f'<span class="tok-conds">{cond}</span>' if cond else ""
     subhtml = f'<span class="tok-name" style="border-color:rgba(0,212,255,.4);color:var(--cyan)">{sub}</span>' if sub else ""
-    return (f'<div class="token {cls}" style="left:{left}%;top:{top}%">'
+    intent_html = ""
+    if intent:
+        icon, label, kind = intent
+        intent_html = (f'<span class="intent i-{kind}{" hov" if tip else ""}">'
+                       f'<b>{icon}</b><span class="ilab">{label}</span></span>')
+    tip_html = ""
+    if tip:
+        title, kindline, body, chips = tip
+        tip_html = (f'<div class="intent-tip"><div class="tt">{title}</div>'
+                    f'<div class="tk">{kindline}</div><div class="tb">{body}</div>'
+                    f'<div class="tr">{chips}</div></div>')
+    return (f'<div class="token {cls}" style="left:{left}%;top:{top}%">{tip_html}{intent_html}'
             f'<div class="tok-g">{glyph}{condwrap}</div>'
             f'<span class="tok-name">{name}</span>'
             f'<span class="tok-hp"><i style="width:{hp_pct}%;background:{hp_col}"></i></span>{subhtml}</div>')
+
 
 def pill(cls, txt): return f'<span class="pill {cls}">{txt}</span>'
 def flag(cls, txt): return f'<span class="flag {cls}">{txt}</span>'
@@ -406,27 +442,51 @@ def den_board(cone=False, sasha_ring=True):
     svg_parts.append(f'<path d="M {bx} {by} L {bx-150} {by+96} A 180 180 0 0 0 {bx-36} {by+176} Z" '
                      f'fill="rgba(255,122,47,.10)" stroke="rgba(255,122,47,.4)" stroke-width="1.2"/>')
     svg = f'<svg width="900" height="560" viewBox="0 0 900 560">{"".join(svg_parts)}</svg>'
-    tags = ('<span class="groundtag" style="left:70%;top:54%;border-color:rgba(200,168,75,.5);color:var(--gold)">SERVICE HATCH · CLOSED</span>'
-            '<span class="groundtag" style="left:26%;top:73%;border-color:rgba(0,212,255,.45);color:var(--cyan)">KENNEL GATE · OPEN</span>'
-            '<span class="groundtag" style="left:64%;top:38%;border-color:rgba(255,122,47,.55);color:var(--fire)">🔥 BURNING CAN — FIRE HEALS IT</span>')
+    tags = ('<span class="groundtag" style="left:70%;top:71%;border-color:rgba(200,168,75,.5);color:var(--gold)">SERVICE HATCH · CLOSED</span>'
+            '<span class="groundtag" style="left:20%;top:82%;border-color:rgba(0,212,255,.45);color:var(--cyan)">KENNEL GATE · OPEN</span>'
+            '<span class="groundtag" style="left:76%;top:50%;border-color:rgba(255,122,47,.55);color:var(--fire)">🔥 BURNING CAN — FIRE HEALS IT</span>')
     return f'<div class="stage"><div class="board">{svg}</div></div>{tags}'
 
 def den_tokens(mode="ready"):
+    """Every enemy carries an intent icon (owner ruling 2026-08-19, decision 2 — the
+    Slay-the-Spire read). One is shown hovered to demonstrate the full explanation."""
     toks = []
-    boss_conds = (("🔥", "fire-fed"),) if mode != "dodge" else (("⚡", "dashing"),)
-    toks.append(token(52, 34, "🐊", "INCINE-DILE", 100, "var(--fire)", "boss", boss_conds))
-    imani_cls = "ally-sel" if mode == "dodge" else ""
-    toks.append(token(45, 56, "🛡", "IMANI", 95, "var(--success)", imani_cls,
-                      (("💢", "guard"),) if mode != "dodge" else (("❗", "incoming"),)))
-    dario_cls = "ally-act"
-    toks.append(token(58, 74, "🎭", "DARIO", 88, "var(--gold)", dario_cls, (("🩸", "bleeding T1"),)))
-    toks.append(token(35, 60, "🃏", "SASHA", 100, "var(--success)", "conceal", (),
-                      sub="CONCEALED · r2"))
     if mode == "dodge":
-        toks.append('<div style="position:absolute;left:41%;top:44%;width:130px;height:3px;'
+        boss_intent = ("\u26a1", "DASH \u2192 IMANI", "attack")
+        boss_tip = ("DASH \u2014 CHARGE THROUGH", "HEAVY \u00b7 RESOLVING NOW \u00b7 DODGEABLE",
+                    "Barrels a lane and shoulders whatever it reaches \u2014 <b>4 CRUSH</b> to the torso. "
+                    "Next Clock it vents, and <b>that</b> one you cannot dodge.",
+                    '<span class="flag f-danger">4 CRUSH</span><span class="flag f-cyan">DODGE OPEN</span>'
+                    '<span class="flag f-fire">THEN: \u26d4 VALVE BLAST</span>')
+        boss_conds = (("\u26a1", "dashing"),)
+    else:
+        boss_intent = ("\U0001f525", "CONE \u00b7 WIDE", "aoe")
+        boss_tip = ("FLAMETHROWER \u2014 CONE", "AREA \u00b7 RESOLVES CLOCK 5 \u00b7 INTERRUPTIBLE",
+                    "Sprays the front arc. Everything caught takes <b>BURN</b> and keeps burning. "
+                    "Hit the <b>flamer hand</b> first and the whole thing collapses into a Forced Action.",
+                    '<span class="flag f-fire">BURN II</span><span class="flag f-success">INTERRUPT OPEN</span>'
+                    '<span class="flag">FRONT ARC ONLY</span>')
+        boss_conds = (("\U0001f525", "fire-fed"),)
+    toks.append(token(52, 47, "\U0001f40a", "INCINE-DILE", 100, "var(--fire)", "boss", boss_conds,
+                      intent=boss_intent, tip=boss_tip))
+    # the boss's adds — one read, one not yet read (discovery states, decision 6)
+    toks.append(token(66, 56, "\U0001fab3", "LITTLE BROTHER", 100, "var(--danger)", "",
+                      intent=("\u2694", "BITE \u00b7 2", "attack")))
+    toks.append(token(24, 55, "\U0001fab3", "LITTLE BROTHER", 100, "var(--danger)", "",
+                      intent=("\u2753", "UNREAD", "unknown")))
+    imani_cls = "ally-sel" if mode == "dodge" else ""
+    toks.append(token(45, 63, "\U0001f6e1", "IMANI", 95, "var(--success)", imani_cls,
+                      (("\U0001f4a2", "guard"),) if mode != "dodge" else (("\u2757", "incoming"),)))
+    toks.append(token(58, 81, "\U0001f3ad", "DARIO", 88, "var(--gold)", "ally-act",
+                      (("\U0001fa78", "bleeding T1"),)))
+    toks.append(token(35, 67, "\U0001f0cf", "SASHA", 100, "var(--success)", "conceal", (),
+                      sub="CONCEALED \u00b7 r2"))
+    if mode == "dodge":
+        toks.append('<div style="position:absolute;left:41%;top:51%;width:130px;height:3px;'
                     'background:linear-gradient(90deg,rgba(255,34,85,.9),transparent);transform:rotate(118deg);'
                     'z-index:5;box-shadow:0 0 12px rgba(255,34,85,.8)"></div>')
     return "".join(toks)
+
 
 def world(board, tokens, extra=""):
     return (f'<div class="world">{board}{tokens}'
@@ -457,17 +517,20 @@ def sel_imani_dodge():
 def rail_party(active="dario", sasha_state="CONCEALED"):
     cards = [f'<div class="lbl" style="padding:0 3px">Party — 3 / 6</div>']
     cards.append(pcard("🛡", "IMANI", "the door", 95, "var(--success)",
-                       [flag("f-gold", "⚜ HESTIA"), flag("f-success", "READY · CLK 4"),
+                       [flag("f-gold", "⚜ HESTIA"),
+                        flag("f-success", "READY · CLK 4") if active != "none" else flag("f-success", "✦ FREE"),
                         flag("f-danger", "❗ INCOMING") if active == "imani-dodge" else flag("", "GUARD ✓")],
                        "<span>PHY 5</span><span>RFX 2</span><span>MND 4</span><span>CHA 3</span>",
                        "selected" if active == "imani-dodge" else ""))
     cards.append(pcard("🎭", "DARIO", "encore", 88, "var(--gold)",
-                       [flag("f-gold", "⚜ ENYO"), flag("f-gold", "ACTING NOW"),
+                       [flag("f-gold", "⚜ ENYO"),
+                        flag("f-gold", "ACTING NOW") if active != "none" else flag("f-success", "✦ FREE"),
                         flag("f-danger", "🩸 R-ARM 1/2")],
                        "<span>PHY 2</span><span>RFX 5</span><span>MND 2</span><span>CHA 5</span>",
                        "active" if active == "dario" else ""))
     cards.append(pcard("🃏", "SASHA", "little shadow", 100, "var(--success)",
-                       [flag("f-cyan", sasha_state), flag("", "WAITS · CLK 5"),
+                       [flag("f-cyan", sasha_state),
+                        flag("", "WAITS · CLK 5") if active != "none" else flag("f-success", "✦ FREE"),
                         flag("f-purple", "MIND 5 · READS FEINTS")],
                        "<span>PHY 3</span><span>RFX 4</span><span>MND 5</span><span>CHA 2</span>"))
     cards.append('<div class="lbl" style="padding:6px 3px 0;opacity:.7">↕ scrolls at 4+ members</div>')
@@ -496,7 +559,7 @@ def inspector_boss(targeting=False):
     ]
     know = (flag("f-success", "VISIBLE") + flag("f-cyan", "KNOWN") + flag("f-purple", "SUSPECTED")
             + flag("", "HIDDEN") + flag("f-danger", "MISIDENTIFIED?"))
-    tele = ('<div class="telegraph"><div class="t">⚠ TELEGRAPH — FLAMETHROWER</div>'
+    tele = ('<div class="telegraph"><div class="t">⚠ CURRENT INTENT — FLAMETHROWER</div>'
             '<div class="d">Cone from the right hand · resolves <b class="mono">CLOCK 5</b> · '
             'interrupt window <b class="mono">OPEN</b> — a hit on the flamer hand before then forces the d6.</div></div>')
     resist = (f'<div class="knowrow">{flag("f-gold","AFFLICTION RES 2")}{flag("f-fire","FIRE HEALS — SUSPECTED")}'
@@ -535,7 +598,7 @@ def launcher(mode="ready"):
     return f'''<div class="launcher"><div class="whoclock"><span class="w">ON THE CLOCK</span>
       <span class="n">DARIO “ENCORE”</span></div>
       <span class="abtn">↔ MOVE</span><span class="abtn">ATTACK</span>{btn_skills}
-      <span class="abtn">FREE ACTIONS<span class="badge">!</span></span>{endturn}{conseq}{fly}</div>'''
+      <span class="abtn">FREE ACTIONS<b class="fa-count">1/2</b><span class="badge">!</span></span>{endturn}{conseq}{fly}</div>'''
 
 def chat_panel():
     return '''<div class="chat"><div class="hd"><span class="lbl">chat · party</span>
@@ -546,10 +609,9 @@ def chat_panel():
 # ---------------------------------------------------------------- frame 1 ----
 def frame_ready():
     tl = timeline(
-        chips=[(3.0, "DARIO ▸ NOW", "p-gold", 0), (4.0, "IMANI", "p-cyan", 1), (5.2, "SASHA", "p-cyan", 0),
-               (6.2, "🔥 BURN II → DARIO", "p-fire", 1)],
-        bands=[(3.4, 5.0, "rgba(255,122,47,.85)", "INCINE-DILE · FLAMETHROWER WINDUP")],
-        now=3.0)
+        chips=[(3.0, "DARIO ▸ NOW", "p-gold", 0), (4.0, "IMANI", "p-cyan", 1), (4.6, "🐊 BOSS", "p-fire", 0),
+               (5.4, "SASHA", "p-cyan", 1), (7.4, "🔥 BURN II", "p-fire", 1)],
+        bands=[], now=3.0)
     odds = odds_panel(
         [("Survival odds", "3 : 1", ""), ("Top bidder", "ENYO ×3.1 ▲", "color:var(--gold)"),
          ("Live wager", "Breach before MOMENT 20", "font-size:10px")],
@@ -571,9 +633,9 @@ def frame_ready():
 # ---------------------------------------------------------------- frame 2 ----
 def frame_targeting():
     tl = timeline(
-        chips=[(3.0, "DARIO ▸ NOW", "p-gold", 0), (4.0, "FEINT ⌖ PREVIEW", "p-cyan", 1), (5.6, "SASHA", "p-cyan", 0)],
-        bands=[(3.4, 5.0, "rgba(255,122,47,.85)", "FLAMETHROWER — INTERRUPTIBLE ✓")],
-        now=3.0)
+        chips=[(3.0, "DARIO ▸ NOW", "p-gold", 0), (4.0, "FEINT ⌖ YOUR PREVIEW", "p-cyan", 1),
+               (4.6, "🐊 BOSS", "p-fire", 0), (5.6, "SASHA", "p-cyan", 1)],
+        bands=[(3.0, 4.0, "rgba(0,212,255,.8)", "YOUR DECLARATION")], now=3.0)
     odds = odds_panel(
         [("Survival odds", "3 : 1", ""), ("Top bidder", "ENYO ×3.1 ▲", "color:var(--gold)"),
          ("Live wager", "Breach before MOMENT 20", "font-size:10px")],
@@ -597,9 +659,9 @@ def frame_targeting():
 # ---------------------------------------------------------------- frame 3 ----
 def frame_dodge():
     tl = timeline(
-        chips=[(3.0, "DASH → IMANI ⚡", "p-danger", 0), (4.2, "DARIO", "p-gold", 1), (5.4, "SASHA", "p-cyan", 0)],
-        bands=[(5.0, 6.6, "rgba(255,34,85,.9)", "⛔ VALVE BLAST — UNDODGABLE · DECLARED AT WINDUP")],
-        now=3.0)
+        chips=[(3.0, "🐊 BOSS ▸ NOW", "p-danger", 0), (4.2, "DARIO", "p-gold", 1),
+               (4.8, "🐊 BOSS", "p-danger", 0), (5.4, "SASHA", "p-cyan", 1)],
+        bands=[], now=3.0)
     odds = odds_panel(
         [("Survival odds", "5 : 1 ▼", "color:var(--danger)"), ("Top bidder", "ENYO ×3.4 ▲", "color:var(--gold)"),
          ("Live wager", "Imani eats the dash — 2:1", "font-size:10px")],
@@ -622,7 +684,7 @@ def frame_dodge():
         <span class="abtn" style="flex:1;text-align:center">BRACE <small style="display:block;font-size:8px;color:var(--muted)">halve it · hold the line</small></span>
         <span class="abtn" style="flex:1;text-align:center;color:var(--muted)">TAKE IT <small style="display:block;font-size:8px">4 CRUSH · torso</small></span></div>
       <div style="font-size:8px;color:var(--muted);margin-top:8px;letter-spacing:1px">
-        ⛔ THE VALVE BLAST ON THE TIMELINE CANNOT BE DODGED — IT SAYS SO ON THE WINDUP. MOVE OR EAT IT. (R26)</div></div>'''
+        ⛔ ITS NEXT INTENT IS THE VALVE BLAST — THE ICON SAYS UNDODGABLE BEFORE IT HAPPENS. MOVE OR EAT IT. (R26)</div></div>'''
     body = (bbar(rec="00:09:12", watching="4,388,020")
             + f'<div class="topstrip">{sel_imani_dodge()}<div class="topcenter">{shortcuts()}{tl}</div>{odds}</div>'
             + f'<div class="mid">{rail_party(active="imani-dodge")}'
@@ -651,11 +713,11 @@ def explore_board():
                      '<circle cx="180" cy="470" r="26"/><circle cx="180" cy="470" r="44" stroke-opacity=".6"/>'
                      '<circle cx="180" cy="470" r="62" stroke-opacity=".3"/></g>')
     svg = f'<svg width="900" height="560" viewBox="0 0 900 560">{"".join(svg_parts)}</svg>'
-    tags = ('<span class="groundtag" style="left:24%;top:76%;border-color:rgba(255,122,47,.6);color:var(--fire)">'
+    tags = ('<span class="groundtag" style="left:22%;top:84%;border-color:rgba(255,122,47,.6);color:var(--fire)">'
             '👂 BARKING · LOUD — 2 HOUNDS, HERDERS</span>'
-            '<span class="groundtag" style="left:67%;top:66%;border-color:rgba(200,168,75,.5);color:var(--gold)">'
+            '<span class="groundtag" style="left:64%;top:60%;border-color:rgba(200,168,75,.5);color:var(--gold)">'
             'SERVICE HATCH · CREW ROUTE</span>'
-            '<span class="groundtag" style="left:30%;top:84%;border-color:rgba(0,212,255,.3);color:var(--muted)">'
+            '<span class="groundtag" style="left:17%;top:92%;border-color:rgba(0,212,255,.3);color:var(--muted)">'
             'RUBBLE · DIFFICULT GROUND ×2</span>')
     return f'<div class="stage"><div class="board">{svg}</div></div>{tags}'
 
@@ -666,7 +728,21 @@ def explore_tokens():
     return "".join(toks)
 
 def frame_explore():
-    tl = timeline(chips=[(3.0, "EXPLORATION — CLOCKS HOLD", "p-mute")], bands=[], now=3.0)
+    # Owner ruling 2026-08-19 (decision 8): exploration is FREE-FORM, not turn-based.
+    # No clock, no Moment order, no ready/waits — the timing strip is replaced by a
+    # route breadcrumb, and the clock only starts when contact does.
+    tl = '''<div class="timeline" style="border-color:rgba(0,212,255,.35)">
+      <span class="pill p-cyan">✦ OUT OF COMBAT</span>
+      <span class="pill p-mute">FREE MOVEMENT — NO CLOCK</span>
+      <div class="track" style="height:44px;margin-top:2px">
+        <div class="rail-line" style="top:20px"></div>
+        <span class="tl-band" style="left:0%;width:26%;top:19px;background:rgba(0,255,136,.65)"></span>
+        <span class="tl-chip" style="left:11%;top:26px;border-color:rgba(0,255,136,.5);color:var(--success)">BROOD LANDING ✓</span>
+        <span class="nowmark" style="left:26%;top:10px"></span>
+        <span class="tl-chip" style="left:45%;top:26px;border-color:rgba(0,212,255,.5);color:var(--cyan)">⌖ YOU ARE HERE — 2 WAYS ON</span>
+        <span class="tl-chip" style="left:83%;top:26px;border-color:var(--border);color:var(--muted)">THE DEN · BOTH ROUTES END HERE</span>
+      </div>
+      <span class="lbl" style="white-space:nowrap">clock starts on contact</span></div>'''
     odds = odds_panel(
         [("Survival odds", "2 : 1 ▲", "color:var(--success)"), ("Top bidder", "ENYO ×3.1", "color:var(--gold)"),
          ("Room record", "BROOD LANDING — CLEAR", "font-size:10px")],
@@ -691,31 +767,33 @@ def frame_explore():
       <div class="d"><b>KENNEL GAUNTLET</b> — the hound pens. Elite pair, hunts as a pack, funnels prey into doors.
       Rich reward table.<br><b>SERVICE HATCH</b> — the crew corridor. Lighter fight, narrow ground,
       a locked supply cage (simple lock · 1 MOMENT pick).</div></div></div>'''
-    launcher_exp = f'''<div class="launcher"><div class="whoclock"><span class="w">EXPLORATION</span>
-      <span class="n">PARTY — PICK AN EXIT</span></div>
-      <span class="abtn">↔ MOVE</span><span class="abtn open">INTERACT</span><span class="abtn">SKILLS</span>
-      <span class="abtn">FREE ACTIONS</span>
-      <span class="endturn" style="border-color:rgba(0,212,255,.55);background:rgba(0,212,255,.07)">ADVANCE ▸ KENNEL</span>
-      <div class="conseq">ADVANCE → locks the route · <b>hype chain opens the next room at 27</b> · wounds persist</div>
+    launcher_exp = f'''<div class="launcher"><div class="whoclock"><span class="w">FREE MOVEMENT</span>
+      <span class="n">PARTY WALKS TOGETHER</span></div>
+      <span class="abtn">↔ WALK <b class="fa-count">FREE</b></span><span class="abtn open">INTERACT</span>
+      <span class="abtn">SKILLS <b class="fa-count">OUT-OF-COMBAT ONLY</b></span><span class="abtn">INVENTORY</span>
+      <span class="endturn" style="border-color:rgba(0,212,255,.55);background:rgba(0,212,255,.07)">ENTER ▸ KENNEL</span>
+      <div class="conseq">No turn to end — walk freely until you <b>enter</b>. ENTER → locks the route ·
+      <b>hype chain opens the fight at 27</b> · wounds persist · <span class="to">the clock starts</span></div>
       <div class="flyout" style="left:270px;border-color:rgba(0,212,255,.4)">
         <div class="fly-h">INTERACT</div>
         <div class="frow sel"><span class="fn">KENNEL GATE <small>enter the gauntlet — the pack is AWAKE</small></span><span class="fc">EXIT</span></div>
         <div class="frow"><span class="fn">SERVICE HATCH <small>the crew route — quieter, tighter</small></span><span class="fc">EXIT</span></div>
         <div class="frow"><span class="fn">SASHA — VOICEBOX <small>throw a bark down the corridor · mobs investigate THE SOUND</small></span><span class="fc">FREE</span></div>
+        <div class="frow"><span class="fn">SCOUT AHEAD <small>walk the party up without entering — the gate does not close behind you</small></span><span class="fc">FREE</span></div>
       </div></div>'''
     body = (bbar(rec="00:05:30", watching="3,981,554")
             + f'''<div class="topstrip"><div class="selpanel"><span class="selglyph">🃏</span><div class="selbody">
               <div class="selname">SASHA “LITTLE SHADOW” <small>JOINED AS-IS — CARRIES HER FIGHT</small></div>
               <div class="selrow">{pill("p-mute","⚜ UNSIGNED — gods circling")}{pill("p-danger","L-ARM 1/2")}{pill("p-purple","MIND 5")}</div>
-              <div class="selrow">{pill("p-gold","📸 CAMERA ×1")}{flag("f-cyan","NEW RECRUIT")}{flag("","DECLINE WAS: MAY RE-OFFER")}</div>
+              <div class="selrow">{pill("p-gold","📸 CAMERA ×1")}{flag("f-cyan","NEW RECRUIT")}{flag("f-success","FREE TO WALK — NO MOMENT COST")}</div>
               </div></div><div class="topcenter">{shortcuts()}{tl}</div>{odds}</div>'''
             + f'<div class="mid">{rail_party(active="none", sasha_state="SELECTED")}'
             + world(explore_board(), explore_tokens(),
-                    '<div class="phasetags">' + pill("p-cyan", "BROOD LANDING — CLEAR") + pill("p-purple", "FIRST EXPLORATION BEAT") + "</div>")
+                    '<div class="phasetags">' + pill("p-cyan", "BROOD LANDING — CLEAR") + pill("p-success", "✦ FREE MOVEMENT — NO CLOCK RUNNING") + "</div>")
             + f'<div class="rightcol">{right}{inspector}</div></div>'
             + f'<div class="bottomstrip">{chat_panel()}{launcher_exp}</div>'
-            + ticker("“Two doors, one good idea. The hounds have already voted. Door one.”")
-            + watermark("FRAME 4 · MODE A — EXPLORATION · R29 ROOM GRAPH"))
+            + ticker("“Nobody is on a clock. Take your time. The hounds certainly are not going anywhere.”")
+            + watermark("FRAME 4 · MODE A — FREE-FORM EXPLORATION · R29 ROOM GRAPH"))
     return page("HUD v2 — Mode A (exploration)", body)
 
 # ---------------------------------------------------------------- frame 5 ----
@@ -747,7 +825,7 @@ def frame_modcenter():
             crowd's mood, fused into one sustained deception — <i>the fight you show them was never the fight you
             were having.</i> Project the con at everyone watching you; their next move against you fumbles, and
             every fumble is a free step. The deception <b style="color:var(--gold)">pays the crowd while it holds</b>.</div>
-          <div class="knowrow">{flag("f-gold","TIER 2 — GEMSTONE MERGE")}{flag("f-danger","CONSUMES BOTH PARENTS")}{flag("","ARRIVES AT L1 · CAP 5")}{flag("f-purple","NAME PROVISIONAL")}</div>
+          <div class="knowrow">{flag("f-gold","TIER 2 — GEMSTONE MERGE")}{flag("f-danger","CONSUMES BOTH PARENTS")}{flag("","ARRIVES AT L1 · CAP 5")}{flag("f-cyan","OPTIONAL — PARENTS CAP AT 5 ANYWAY")}{flag("f-purple","NAME PROVISIONAL")}</div>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;gap:8px">
           <div class="lbl">requirements — DARIO</div>
@@ -756,7 +834,8 @@ def frame_modcenter():
           <div class="part"><span class="pn">PRICE</span><span class="ph" style="color:var(--purple)">KAN-7 — TBD</span><span class="st" style="border-color:rgba(168,85,247,.5);color:var(--purple)">LOUNGE ECONOMY</span></div>
           <div style="border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-size:9px;color:var(--muted);line-height:1.7">
             An offer is the recorded GM call on a broad-only pair — <b style="color:var(--text)">offered, never automatic</b>.
-            Say no and keep both parents linear past 5. Tier-3 merges exist. The house is patient.</div>
+            Parents stop at 5 either way (unless that skill was always linear); declining costs you nothing but
+            the ceiling. Tier-3 merges exist. The house is patient.</div>
           <span class="abtn" style="text-align:center;opacity:.5;border-color:var(--border)">NOT YET — 2 REQUIREMENTS SHORT</span>
         </div></div></div>'''
     body = (bbar(rec="00:11:04", watching="4,020,910")

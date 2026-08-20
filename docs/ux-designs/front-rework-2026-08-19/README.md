@@ -1,6 +1,8 @@
 # Front-rework mockups — the HUD v2 gate (owner-approval)
 
-**Status: AWAITING OWNER APPROVAL — nothing here is built into scenes.** Per working
+**Status: REVISED 2026-08-19 after the owner's ruling on all ten decisions (decision
+log #36, addendum R34) — awaiting sign-off on the revised frames. Nothing here is
+built into scenes.** Per working
 rule 4 (design/UI work ships a mockup + approval before building), these five frames
 are the front-rework mockup gate. They realize the owner's structural spec
 (`../hud-v2/ARCHITECTURE.md`, adopted 2026-07-22) in the APPROVED visual identity
@@ -18,8 +20,8 @@ viewport is ~95px shorter than `--window-size` in this build, so frames render i
 |---|---|---|
 | 1 | **B — party member ready** (den fight, Dario on the clock) | `hud-ready.html/.png` |
 | 2 | **C — targeting a body part** (Feint → Left Hand, full preview chain) | `hud-targeting.html/.png` |
-| 3 | **reaction** — the R22 dodge ask + R26 undodgable telegraph | `hud-dodge-ask.html/.png` |
-| 4 | **A — exploration** (R29 room-graph branch: Kennel vs Service Corridor) | `explore-branch.html/.png` |
+| 3 | **reaction** — the R22 dodge ask + the R26 undodgable **intent** | `hud-dodge-ask.html/.png` |
+| 4 | **A — free-form exploration** (R29 branch: Kennel vs Service Corridor, no clock) | `explore-branch.html/.png` |
 | 5 | **D — popup** (Mod-Center tier-2 special offers, all three BLESSED) | `mod-center.html/.png` |
 
 All content is real slice data: Imani/Dario (`data/demo_run.json` loadouts, verbatim
@@ -29,7 +31,27 @@ with her L-ARM 1/2), the Incine-Dile's true part list with the network hidden
 real doors/walls/cans, the Brood-Landing exits, and the three blessed Mod-Center
 offers. The gods/odds panel reuses the approved bid-screen cast (Hestia/Enyo/Ares).
 
-## Decisions the owner is asked to approve
+## The owner's ruling (2026-08-19) — what changed
+
+| # | verdict | what the frames do now |
+|---|---|---|
+| 1 | ✅ approved | layout unchanged |
+| 2 | ❌ **changed** | **intent icons on every enemy** (Slay-the-Spire), hover = full explanation; timeline keeps order/timing only; ⛔ undodgable now declared on the icon; unread enemies show **UNREAD ❓** |
+| 3 | ✅ approved | dodge-ask card unchanged (its footnote now points at the icon) |
+| 4 | ✅ approved | unchanged |
+| 5 | ✅ approved | unchanged |
+| 6 | ✅ approved | unchanged — and now extended to intent (read vs unread) |
+| 7 | ✅ approved | unchanged |
+| 8 | ❌ **changed** | **exploration is free-form** — no Clock, no Moment order, no turn to end; route breadcrumb replaces the timing strip; WALK is free; the clock starts on contact; ENTER ▸ ⟨route⟩ is the commit |
+| 9 | ❌ **changed** | **parents cap at 5** unless already linear; declining costs nothing but the ceiling (Mod-Center copy corrected) |
+| 10 | ✅ approved **+ amendment** | free actions stay in the category **but carry a per-turn budget** — the button reads `FREE ACTIONS 1/2` |
+
+**Not built, tracked as follow-ups:** free-form exploration in the engine (today's sim
+is clock-driven end to end; "contact" is undefined), and the free-action budget (free
+actions are uncapped in the resolver). Both are recorded in R34 with their PROVISIONAL
+edges named.
+
+## Decisions as originally put (superseded where the table above says changed)
 
 1. **The §2 layout, realized** — party rail left (3/6, scroll note), selected-actor
    summary top-left, popup shortcuts + Moment/Clock timeline + compact odds across the

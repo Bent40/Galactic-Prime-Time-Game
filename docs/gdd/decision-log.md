@@ -449,3 +449,33 @@
       growth wave).
     - **Q5: per-recipe min-levels** (no global convention; the proposed 5/3 pairs
       are each recipe's own authored values, changeable per recipe).
+
+## #36 — The front-rework gate: ten HUD decisions (owner, 2026-08-19)
+
+Reviewing the five mockup frames (`docs/ux-designs/front-rework-2026-08-19/`), the
+owner ruled on all ten questions. **Approved as built:** the §2 layout (1), the
+blocking dodge-ask card (3), status effects surfaced in five places (4), stealth and
+facing drawn on the board (5), the discovery-state vocabulary (6), targeting's three
+information levels (7), and Camera Call / The Bit staying inside Free Actions (10,
+with the amendment below). **Changed by ruling — full text in `docs/rules-addendum.md`
+R34:**
+
+- **(2) Enemy intent goes Slay-the-Spire, not timeline-band.** Every enemy carries an
+  intent icon (type of action expected) with a hover explanation; the timeline keeps
+  order/timing only. R26's undodgable transparency moves onto the icon. Unread enemies
+  show UNREAD rather than a guess.
+- **(8) Exploration is free-form.** No Clock, no Moment order, no turn to end out of
+  combat; the clock starts on contact, and entering a room is the commit. The
+  engine-side work is NOT built (today's sim is clock-driven end to end) — tracked as
+  an open KAN-5/KAN-6 item; "contact" is undefined and flagged PROVISIONAL.
+- **(9) Merge parents cap at 5.** A parent does not go past 5 unless that skill was
+  already stated to be linear; declining an offer costs nothing but the ceiling. This
+  amends #35's framing (LINEAR is the exception, not the fallback).
+- **(10, amendment) Free actions are limited per turn.** They stay in the Free Actions
+  category, but the category carries a per-turn budget shown on the button. The budget
+  value, reset cadence, and per-entry costs are unruled; NOT implemented (free actions
+  are uncapped in the resolver today) — tracked as a KAN-2 follow-up.
+
+The mockups were rebuilt to match the rulings the same day; the gate README carries
+the per-decision record. Scene-building (KAN-6) remains gated on the owner's sign-off
+of the revised frames.
