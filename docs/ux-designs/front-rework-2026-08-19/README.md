@@ -1,8 +1,11 @@
 # Front-rework mockups — the HUD v2 gate (owner-approval)
 
-**Status: REVISED 2026-08-19 after the owner's ruling on all ten decisions (decision
-log #36, addendum R34) — awaiting sign-off on the revised frames. Nothing here is
-built into scenes.** Per working
+**Status: ✅ APPROVED (owner, 2026-08-19) — the KAN-6 mockup gate is PASSED and
+scene-building is unblocked.** Ten decisions ruled (six as built, four changed), a
+second pass on contact / free actions / cone semantics, a third on flowing time — all
+applied, all rendered, all recorded (decision log #36–#38, addendum R34/R35). These
+frames are now the BUILD TARGET for KAN-6; changes from here are amendments to an
+approved design, not gate revisions. Per working
 rule 4 (design/UI work ships a mockup + approval before building), these five frames
 are the front-rework mockup gate. They realize the owner's structural spec
 (`../hud-v2/ARCHITECTURE.md`, adopted 2026-07-22) in the APPROVED visual identity
@@ -51,9 +54,12 @@ the clock, both directions), **free actions = 2 per turn** (this *amends R3*, wh
 allowed exactly one — they were never uncapped, an earlier note of mine said so
 wrongly), and the cone-colour semantics above. All three are in R34.
 
-**Engine status:** the free-action budget (1 → 2) and free-form exploration + contact
-detection are both **in build** as of 2026-08-19; the cone semantics are view-layer
-only and need no sim change.
+**Engine status (2026-08-19, all SHIPPED):** free-action budget (1 → 2) · free-form
+exploration + contact by sight or hearing · flowing time with driver-side pause ·
+exploration free actions (voicebox / lockpick / inventory) · mob patrols · the crowd
+watching the walk. The cone semantics are view-layer only and need no sim change.
+**Remaining for KAN-6:** the run-loop entering rooms in exploration, `view_phase`, and
+the scenes themselves.
 
 ## Decisions as originally put (superseded where the table above says changed)
 

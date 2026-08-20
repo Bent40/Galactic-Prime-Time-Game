@@ -526,3 +526,24 @@ started immediately.
 edit and both CI harnesses are byte-identical. Outstanding: the KAN-6 driver/HUD wiring,
 and no seeded enemy authors a patrol route yet (content, not engine).
 Full text: `docs/rules-addendum.md` R35 + R34's TIME AMENDMENT.
+
+## #38 — The mockup gate is PASSED (owner, 2026-08-19)
+
+*"Approved, hype decay is fine, give the hounds patrol routes"*
+
+- **The five HUD v2 frames are APPROVED.** `docs/ux-designs/front-rework-2026-08-19/`
+  is the build target for KAN-6; scene-building is unblocked. Changes from here are
+  amendments to an approved design, not gate revisions. (Emoji remain placeholder art
+  — ARCHITECTURE.md §7 still bans them from the final release — and every number is
+  still PLACEHOLDER R14.)
+- **Hype decay during exploration is RULED FINE** — the consequence R35 reported
+  (walking runs the real tick, so the broadcast plane's Clock reset fires: hype decays
+  and the crowd-goal director cycles). It stays as built; "the crowd is bored by
+  safety" is now literal.
+- **The hounds get patrol routes** — closing R35's "capability ships, content doesn't"
+  gap for the kennel pack.
+
+**Note recorded honestly:** patrol data alone is dormant in the shipped demo run,
+because the run loop still enters every room directly in combat. The gate's approval
+unblocks the wiring that makes it live, so the two ship together rather than leaving
+authored routes that nothing ever drives.
