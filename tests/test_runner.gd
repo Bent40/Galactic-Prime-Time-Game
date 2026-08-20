@@ -31,7 +31,19 @@ func _initialize() -> void:
 		for method_name: String in _test_methods(script):
 			test.begin_test(method_name)
 			test.call(method_name)
-			if test.failures.is_empty():
+			# A test that recorded ZERO checks is not a pass — it is either vacuous or
+			# it aborted mid-run. GDScript prints SCRIPT ERROR and returns from the
+			# call; nothing is recorded as a failure, so the old code happily printed
+			# PASS. A real instance of this shipped (a Dictionary cast `as Array` threw
+			# on line one of a patrol test, ran zero checks, and reported PASS for a
+			# whole round). Zero checks now FAILS, loudly.
+			if test.failures.is_empty() and test.checks == 0:
+				total_fail += 1
+				print("FAIL  %s :: %s" % [file_path.get_file(), method_name])
+				print("      - recorded ZERO checks — vacuous, or it aborted mid-run "
+					+ "(look for a SCRIPT ERROR above). A test that asserts nothing "
+					+ "must not report PASS.")
+			elif test.failures.is_empty():
 				total_pass += 1
 				print("PASS  %s :: %s  (%d checks)" % [file_path.get_file(), method_name, test.checks])
 			else:

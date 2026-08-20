@@ -25,5 +25,23 @@ if [ ! -f "$CACHE" ] || [ -n "$(find "$PROJECT_DIR/simulation" "$PROJECT_DIR/tes
 	"$GODOT" --headless --path "$PROJECT_DIR" --import >/dev/null 2>&1 || true
 fi
 
-"$GODOT" --headless --path "$PROJECT_DIR" -s tests/test_runner.gd
-exit $?
+# Run the suite, keeping the full output visible while we also inspect it.
+# GDScript reports a runtime/parse error on stderr and CARRIES ON — the runner
+# sees no recorded failure, so an aborted test could report PASS. The runner
+# now fails a zero-check test itself; this is the outer guard for anything that
+# errors WITHOUT costing a check (a broken _post sweep, a bad class_name, a
+# parse error in a file that never got to run).
+OUTPUT="$("$GODOT" --headless --path "$PROJECT_DIR" -s tests/test_runner.gd 2>&1)"
+STATUS=$?
+printf '%s\n' "$OUTPUT"
+
+if printf '%s' "$OUTPUT" | grep -qiE "SCRIPT ERROR|Parse Error|Cannot call method|Invalid access"; then
+	echo ""
+	echo "==== RUNNER GUARD: engine errors appeared during the run ===="
+	echo "A green suite is NOT green when the engine logged errors — a test that"
+	echo "aborts mid-run records no failure. Offending lines:"
+	printf '%s' "$OUTPUT" | grep -inE "SCRIPT ERROR|Parse Error|Cannot call method|Invalid access" | head -20
+	exit 1
+fi
+
+exit $STATUS
