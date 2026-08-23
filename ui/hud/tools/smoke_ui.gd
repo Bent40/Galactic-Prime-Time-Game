@@ -224,17 +224,43 @@ func _initialize() -> void:
 	var bitless_entry: Dictionary = hud._bit_entry()
 	_check("bit disabled for bitless Imani", not bool(bitless_entry.get("enabled", true)))
 
-	# 9b) FREE-ACTION ECONOMY (anti-spam ruling): performing the bit consumes
-	#     the R3 one-free-action-per-tick slot — the entry dims for the rest of
-	#     the Moment, off the view's free_action_used field.
+	# 9b) FREE-ACTION ECONOMY. R3's anti-spam slot, as AMENDED by R34 (owner,
+	#     2026-08-19): the allowance is TWO per tick, not one, and the window
+	#     refreshes per TICK ("per tick is correct, keep it"). So one bit no
+	#     longer exhausts the budget — it spends half of it, and the button
+	#     must say so. This probe was written against the retired boolean and
+	#     was failing on the shipped engine; it now pins the amended rule from
+	#     both ends: a partly-spent budget stays LIVE and reads n/2, and an
+	#     exhausted one dims off the derived free_action_used view field.
 	hud.set_active_actor("dario")
 	hud._on_bit()
 	await _settle()
 	hud.set_active_actor("dario")  # _issue's refresh re-derives the on-the-clock actor; pin Dario back
+	var spent_row: Dictionary = hud._find_combatant("dario")
+	var cap: int = int(spent_row.get("free_actions_per_clock", 2))
+	print("  9b free-action budget after one bit: used=%d left=%d cap=%d exhausted=%s" % [
+		int(spent_row.get("free_actions_used", -1)), int(spent_row.get("free_actions_left", -1)),
+		cap, str(bool(spent_row.get("free_action_used", false)))])
+	_check("one bit spends ONE of the %d-per-tick budget" % cap,
+		int(spent_row.get("free_actions_used", -1)) == 1
+		and int(spent_row.get("free_actions_left", -1)) == cap - 1)
+	var half_entry: Dictionary = hud._bit_entry()
+	_check("budget not exhausted -> the bit entry stays live (R34)",
+		bool(half_entry.get("enabled", false)))
+	_check("launcher shows the FREE ACTIONS budget off real state",
+		_panel_has_text(hud._shell.launcher, "%d/%d" % [cap - 1, cap]))
+	# Spend the rest of the budget the same honest way, then the entry dims.
+	for _i in cap:
+		hud.set_active_actor("dario")
+		hud._on_bit()
+		await _settle()
+	hud.set_active_actor("dario")
 	var used_entry: Dictionary = hud._bit_entry()
-	_check("bit dims when free action used",
+	_check("bit dims once the whole budget is spent",
 		not bool(used_entry.get("enabled", true))
 		and String(used_entry.get("sub", "")).contains("free action already used"))
+	_check("exhausted budget reads 0/%d on the launcher" % cap,
+		_panel_has_text(hud._shell.launcher, "0/%d" % cap))
 
 	hud.set_active_actor("dario")
 	hud._on_category("free")
@@ -259,10 +285,11 @@ func _initialize() -> void:
 	hud._close_log()
 	_check("event log closed", not hud._shell.event_log.visible)
 
-	# 12) Full-HUD evidence shot MID-WINDUP with the enemy telegraph: a real
-	#     ai_decide makes the boss declare; Imani's strong_strike is still
-	#     pending — both declared-action bars ride the strip. Saved OUTSIDE the
-	#     repo next to HUD_DIR's parent as preview_hud.png.
+	# 12) Full-HUD evidence shot MID-WINDUP: a real ai_decide makes the boss
+	#     declare while Imani's strong_strike is still pending. R34 (decision 2)
+	#     retired the ENEMY band from this strip — the boss's declaration now
+	#     rides its own intent icon on the board — so the lane below carries
+	#     Imani's bar alone. Saved OUTSIDE the repo as preview_hud.png.
 	gc.apply_command({"type": "ai_decide", "actor": "boss"})
 	await _settle()
 	_check("schedule pending for the full-HUD shot", not (gc.view_schedule() as Array).is_empty())

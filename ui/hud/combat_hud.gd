@@ -57,6 +57,20 @@ var _armed: Dictionary = {}   # armed action awaiting a target part ({} = none)
 var _open_cat := ""           # open flyout category ("" = closed)
 var _move_mode := false       # MOVE click-to-target armed?
 
+## R34/R35 FREE-FORM EXPLORATION (decision #36, approved frame 4).
+##
+## `_phase` is the live view_phase() projection — the one thing that decides
+## WHICH GAME the HUD is drawing. Everything else here is DRIVER state, which
+## is the whole point of the ruling: pause has no sim state and never will.
+##
+## `_explore_driver` is the missing half R34/R35 flagged: something must issue
+## the exploration time step at a real-time cadence and STOP issuing it while
+## paused or while an inventory / item-use surface is open. This facade owns
+## it because this facade owns the PAUSE button and the inventory surface; it
+## is pumped from _process and reads the phase off the same public projection.
+var _phase: Dictionary = {}
+var _explore_driver = null
+
 ## Phase 2 confirm flow. confirm_enabled is a plain toggle drivers may flip to
 ## collapse the interactive path onto the direct methods (drivers calling the
 ## direct methods bypass the panels anyway). _pending_confirm remembers what
@@ -150,6 +164,8 @@ func _ensure_built() -> void:
 	_shell.inspector.part_clicked.connect(_on_inspector_part_clicked)
 	_shell.launcher.category_pressed.connect(_on_category)
 	_shell.launcher.end_turn_pressed.connect(_on_end_turn_pressed)
+	_shell.launcher.pause_pressed.connect(_on_pause)
+	_shell.timeline.pause_toggled.connect(_on_pause)
 	_shell.flyout.entry_pressed.connect(_on_flyout_entry)
 	_shell.ticker.clicked.connect(_open_log)
 	_shell.event_log.close_requested.connect(_close_log)
@@ -170,7 +186,34 @@ func bind(game) -> void:
 		_gc.sim_event.connect(_on_sim_event)
 		_gc.clock_moment_changed.connect(_on_event)  # typed-signal wiring proof
 		_gc.hype_band_changed.connect(_on_event)
+	# R35 driver contract: stand the exploration time-step driver up with the
+	# binding. It advances NOTHING in combat (can_advance gates on the phase
+	# projection), so a combat-only HUD behaves exactly as it did before.
+	if _gc != null:
+		_explore_driver = ExplorationClockDriver.new()
+		_explore_driver.attach(_gc)
 	refresh()
+
+
+## The presentation loop, which is where the clock-driver contract says a
+## driver is pumped from ("call try_advance() from the presentation loop").
+## Out of combat this is what makes time run: one logged advance_tick every
+## SECONDS_PER_TICK real seconds — and therefore one patrol beat, one
+## condition sweep at the Clock reset, one crowd-goal draw per completed
+## Clock. It stops dead while PAUSE is on or an inventory surface is open.
+## Driver-facing escape hatch (the confirm_enabled idiom): flip this off and
+## the HUD stops pumping time automatically, so a capture driver or a test can
+## step the exploration clock by hand and assert exactly what one step does.
+var auto_time_steps := true
+
+
+func _process(delta: float) -> void:
+	if _explore_driver == null or not auto_time_steps:
+		return
+	if _explore_driver.tick_realtime(delta) > 0:
+		# The tick's own events already refreshed the HUD through sim_event;
+		# this keeps the elapsed readout live even on a silent tick.
+		refresh()
 
 
 ## Every sim event: append to the session event log (MomusTicker / overlay),
@@ -392,6 +435,12 @@ func _on_category(cat: String) -> void:
 		_close_flyout()
 		return
 	_open_cat = cat
+	# R35's Pokemon clause, honoured at the only place it can be: the driver
+	# stops issuing time steps while the inventory / item-use surface is OPEN.
+	# The sim has no pause state and never sees this — closing the flyout
+	# (_close_flyout) lifts it again.
+	if cat == "inventory" and _explore_driver != null:
+		_explore_driver.set_blocker("inventory", true)
 	_shell.show_flyout(_flyout_data(cat))
 	_update_launcher()
 
@@ -699,14 +748,51 @@ func _on_preview_back() -> void:
 
 ## INTERACTIVE END TURN (spec Area 12): the button opens the confirmation;
 ## its CONFIRM calls the direct _on_end_turn (v1 semantics, driver surface).
+## PAUSE (R34/R35). Driver-side ONLY: this flips whether the exploration driver
+## issues time steps. No command is sent, no sim state exists to send it to —
+## the ruling is explicit that pause is deliberately not modelled.
+func _on_pause() -> void:
+	if _explore_driver == null:
+		return
+	var paused: bool = _explore_driver.toggle_pause()
+	_momus("⏸ TIME PAUSED — the driver stops issuing time steps (nothing in the sim knows)"
+		if paused else "▶ TIME RUNNING — mobs patrol, conditions tick, the crowd watches")
+	refresh()
+
+
 func _on_end_turn_pressed() -> void:
-	if not confirm_enabled or _gc == null:
+	if _gc == null:
+		_on_end_turn()
+		return
+	# MODE A: there is no turn to end. The commit is the DELIBERATE ENTER —
+	# view_phase()'s own enter_command — which starts the fight with
+	# combat_started {reason: "deliberate"}. (The involuntary way in stays the
+	# contact sweep, which the running time steps drive.)
+	if _exploring():
+		_close_flyout()
+		_shell.hide_action_preview()
+		_shell.hide_end_turn_confirm()
+		_pending_confirm = {}
+		_on_enter_route()
+		return
+	if not confirm_enabled:
 		_on_end_turn()
 		return
 	_close_flyout()
 	_shell.hide_action_preview()
 	_pending_confirm = {}
 	_shell.show_end_turn_confirm(_end_turn_display())
+
+
+## Issues the ENTER commit exactly as the view API hands it over — the HUD
+## never authors the phase command's shape.
+func _on_enter_route() -> void:
+	var cmd: Dictionary = _phase.get("enter_command", {})
+	if cmd.is_empty():
+		_momus("DENIED · NO ROUTE TO ENTER — the room is already a fight")
+		return
+	_issue(cmd, "ENTER ▸ %s — the route locks, turn order starts, wounds persist"
+		% _route_name())
 
 
 func _on_end_turn_confirmed() -> void:
@@ -806,7 +892,12 @@ func _close_log() -> void:
 	_shell.event_log.hide_log()
 
 
+## The one place a flyout closes — so the inventory time-block is lifted here
+## and nowhere else (a blocker that outlives its surface would silently freeze
+## the room).
 func _close_flyout() -> void:
+	if _explore_driver != null:
+		_explore_driver.set_blocker("inventory", false)
 	_open_cat = ""
 	if _shell != null:
 		_shell.hide_flyout()
@@ -848,6 +939,9 @@ func refresh() -> void:
 	_ensure_built()
 	_last_combatants = _gc.view_combatants()
 	_recompute_identity()
+	# WHICH GAME are we drawing? (R34) Everything below branches off this one
+	# read — there is no turn order and nothing costs Moments out of combat.
+	_phase = _gc.view_phase()
 	var order: Array = _gc.view_turn_order()
 	# Derive the on-the-clock contestant (v1 rule: first ready contestant).
 	for e in order:
@@ -898,10 +992,19 @@ func _bind_timeline(order: Array) -> void:
 		})
 	# Phase 2 — declared-action bars (Area 4): one bar per pending schedule row,
 	# spanning declared -> resolve slot on the lap (clamped; carry-over marked).
+	#
+	# R34 (decision 2): PARTY ROWS ONLY. The enemy telegraph bands are retired
+	# from this strip — enemy intent is now read off the enemy's own INTENT
+	# ICON on the board (with R26's ⛔ undodgable declaration on it), and the
+	# strip keeps order and timing. Nothing is lost: every enemy row filtered
+	# out here is rendered by _intent_rows() below, which carries strictly MORE
+	# than the band did (kind, target, damage, interrupt state, undodgable).
 	var bars: Array = []
 	for rd in _gc.view_schedule():
 		var r: Dictionary = rd
 		var rid := String(r.get("actor", ""))
+		if not _is_party(rid):
+			continue
 		var from_raw := int(r.get("declared_tick", 0)) - lap0
 		var to_raw := int(r.get("resolve_tick", 0)) - lap0
 		var key_label := String(r.get("key", "")).replace("_", " ").to_upper()
@@ -910,7 +1013,6 @@ func _bind_timeline(order: Array) -> void:
 			"to_slot": clampi(maxi(to_raw, from_raw), 0, 9),
 			"carry": to_raw > 9,
 			"windup": bool(r.get("windup", false)),
-			"enemy": not _is_party(rid),
 			"emoji": _emoji_for_id(rid),
 			"label": key_label,
 			"name": "%s — %s · declared M%02d, resolves M%02d%s" % [
@@ -925,7 +1027,70 @@ func _bind_timeline(order: Array) -> void:
 		"next_reset": "NEXT RESET · CLOCK %d" % (clock_no + 1),
 		"markers": markers,
 		"bars": bars,
+		# Mode A swaps this whole slot (R34): out of combat the timing strip
+		# has nothing to time, so it becomes the exploration strip.
+		"explore": _explore_strip(),
 	})
+
+
+## MODE A strip data ({} in combat). Every field is real: the elapsed readout
+## is R0/R1's own tick->fiction conversion applied to the live tick, the pause
+## flag is the DRIVER's (never the sim's), and the breadcrumb comes off
+## view_run()'s encounter rows — with no run staged it degrades to the single
+## honest crumb rather than inventing a route.
+func _explore_strip() -> Dictionary:
+	if not _exploring():
+		return {}
+	var paused: bool = _explore_driver != null and _explore_driver.blocked()
+	var hold := "" if _explore_driver == null else String(_explore_driver.hold_reason())
+	var note := "NO TURN ORDER · NOTHING COSTS MOMENTS · TURNS START ON CONTACT"
+	if hold != "":
+		note = "⏸ %s — TIME HELD · the world waits with you (driver, not sim state)" % hold
+	return {
+		"elapsed": _elapsed_text(int(_phase.get("tick", 0))),
+		"paused": paused,
+		"note": note,
+		"crumbs": _route_crumbs(),
+	}
+
+
+## R0/R1 conversion, stated in the addendum and applied here verbatim: ONE TICK
+## IS ~0.5 FICTIONAL SECONDS (a Clock ~ 5s). This is elapsed FICTION off the
+## logged tick — never a wall clock, which the sim is forbidden to read and the
+## HUD has no business showing as if it were game time.
+const FICTIONAL_SECONDS_PER_TICK := 0.5
+
+
+func _elapsed_text(tick: int) -> String:
+	var secs := int(round(float(maxi(0, tick)) * FICTIONAL_SECONDS_PER_TICK))
+	return "%02d:%02d" % [secs / 60, secs % 60]
+
+
+## The route breadcrumb that replaces the timing strip (frame 4). Reads
+## view_run()'s encounter rows: cleared rooms behind you, the room you stand
+## in, what lies ahead. With NO run staged (the demo slice is a bare
+## start_combat) there is no route to draw, so it says exactly that.
+func _route_crumbs() -> Array:
+	var run: Dictionary = _gc.view_run() if _gc != null else {}
+	var rows: Array = run.get("encounters", [])
+	if rows.is_empty():
+		return [{"text": "⌖ YOU ARE HERE", "state": "here"},
+			{"text": "NO ROUTE STAGED — SINGLE-ENCOUNTER DRIVE", "state": "ahead"}]
+	var here := int((run.get("encounter", {}) as Dictionary).get("active_index", 0))
+	var out: Array = []
+	for raw: Variant in rows:
+		var row: Dictionary = raw
+		var idx := int(row.get("index", -1))
+		if absi(idx - here) > 1:
+			continue  # keep the crumb trail to the immediate neighbourhood
+		var label := String(row.get("key", "")).replace("_", " ").to_upper()
+		if idx < here:
+			out.append({"text": "%s ✓" % label, "state": "done"})
+		elif idx == here:
+			out.append({"text": "⌖ %s — YOU ARE HERE" % label, "state": "here"})
+		else:
+			out.append({"text": label, "state": "ahead"})
+	return out
 
 
 func _bind_party(order: Array, bc: Dictionary) -> void:
@@ -1115,6 +1280,7 @@ func _bind_inspector() -> void:
 func _bind_arena() -> void:
 	var boss := _find_combatant(_boss_id_cache)
 	var objective: Dictionary = (_gc.view_encounter() as Dictionary).get("objective", {})
+	var exploring := _exploring()
 	_shell.arena.update({
 		"combatants": _last_combatants,
 		"boss_id": _boss_id_cache,
@@ -1129,7 +1295,210 @@ func _bind_arena() -> void:
 		# per active condition / shock / state flag — same order and colours as the
 		# badge rows, so the board itself shows who is hurt or locked.
 		"status_pips": _status_pips(),
+		# R34 board surfaces (decision #36): the per-enemy intent icons, the
+		# per-enemy eyeline + 👁 chip, and the declared attack arcs.
+		"intents": _intent_rows(),
+		"vision": _vision_rows(),
+		"attack_cones": _attack_cone_rows(),
+		"mode_line": ("✦ FREE MOVEMENT · TIME %s" %
+			("HELD" if _time_held() else "RUNNING")) if exploring else "",
+		"hazard_line": "" if exploring else "🔥 FIRE HEALS IT — stop feeding the flame",
 	})
+
+
+# --------------------------------------------------- R34 intent icons (delta 1)
+## Emoji + label bucket per intent KIND. Emoji are PLACEHOLDER ART (approved
+## for the mockups; ARCHITECTURE.md §7 bans them from the final release only).
+const INTENT_GLYPH := {
+	"attack": "⚔", "aoe": "🔥", "buff": "💚", "debuff": "🕸",
+	"other": "👣", "unknown": "❓",
+}
+
+
+## The intent icon for every enemy on the board — R34 decision 2, the ruling
+## that moved the telegraph off the timeline and onto the enemy.
+##
+## THE READ RULE, and why it is this one. Intent is KNOWN INFORMATION, never
+## omniscience: "an enemy the party has not read shows UNREAD (❓) rather than
+## a fabricated guess". The only thing the view API can honestly say an enemy
+## WILL do is what it has already DECLARED — view_schedule's pending rows,
+## which are exactly the windup/telegraph R26 requires be shown loudly. So:
+##   * a pending declared row  -> READ: its real kind, target, damage, timing,
+##                                and the R26 undodgable flag if it carries one
+##   * no pending row          -> UNREAD ❓, with the hover saying why
+## Nothing here guesses from a stance, a personality or an ability list — the
+## AI's own `ai_stance` is deliberately NOT used, because R23/Batch-C rules it
+## FEELING, never intent (the lane rule), and reading it as intent would be
+## precisely the fabricated guess the ruling forbids.
+func _intent_rows() -> Dictionary:
+	var out := {}
+	if _gc == null:
+		return out
+	# Next pending declaration per actor (earliest resolve wins — it is the
+	# thing about to happen; ties keep schedule order, which is seq order).
+	var next_by_actor := {}
+	for raw: Variant in _gc.view_schedule():
+		var row: Dictionary = raw
+		var actor := String(row.get("actor", ""))
+		var prev: Dictionary = next_by_actor.get(actor, {})
+		if prev.is_empty() or int(row.get("resolve_tick", 0)) < int(prev.get("resolve_tick", 0)):
+			next_by_actor[actor] = row
+	for raw: Variant in _last_combatants:
+		var c: Dictionary = raw
+		var id := String(c.get("id", ""))
+		if _is_party(id) or not bool(c.get("alive", true)):
+			continue
+		out[id] = _intent_for(c, next_by_actor.get(id, {}))
+	return out
+
+
+func _intent_for(c: Dictionary, row: Dictionary) -> Dictionary:
+	var who := String(c.get("name", "")).to_upper()
+	if row.is_empty():
+		return {
+			"kind": "unknown", "glyph": INTENT_GLYPH["unknown"], "label": "UNREAD",
+			"undodgable": false,
+			"tip": ("%s — UNREAD\n\nIt has declared nothing you can see yet.\n" % who)
+				+ "Intent is known information, never a guess: this icon stays ❓ "
+				+ "until it commits to something, and then it says exactly what "
+				+ "that is. (R34)",
+		}
+	var key := String(row.get("key", ""))
+	var label := key.replace("_", " ").to_upper()
+	var kind := String(row.get("kind", "attack"))
+	var area: Dictionary = row.get("area", {})
+	var damage: Dictionary = row.get("damage", {})
+	var undodgable := bool(row.get("undodgable", false))
+	var bucket := "other"
+	if bool(row.get("heal", false)):
+		bucket = "buff"
+	elif not area.is_empty():
+		bucket = "aoe"
+		label += " · " + String(area.get("kind", "AREA")).to_upper()
+	elif kind == "attack":
+		bucket = "attack"
+	elif kind == "grapple":
+		bucket = "debuff"
+	elif kind == "skill":
+		bucket = "buff"
+
+	# --- the hover: the ruled "full explanation", built from facts only ---
+	var resolve_tick := int(row.get("resolve_tick", 0))
+	var timing := "RESOLVES CLOCK %d · MOMENT %02d" % [
+		resolve_tick / 10 + 1, 10 - (resolve_tick % 10)]
+	var windup := bool(row.get("windup", false))
+	var lines: Array = ["%s — %s" % [who, label],
+		"%s · %s · %s" % [bucket.to_upper(), timing,
+			"WINDUP — INTERRUPT OPEN" if windup else "COMMITTED"]]
+	var target_names: Array = []
+	for traw: Variant in row.get("targets", []):
+		var t: Dictionary = traw
+		var tname := _display_name_for(String(t.get("id", ""))).to_upper()
+		var part := String(t.get("part", ""))
+		target_names.append("%s (%s)" % [tname, _part_label(part)] if part != "" else tname)
+	if not target_names.is_empty():
+		lines.append("HITS: " + " · ".join(PackedStringArray(target_names)))
+	if not damage.is_empty():
+		lines.append("%d %s" % [int(damage.get("amount", 0)),
+			String(damage.get("type", "")).to_upper()])
+	if not area.is_empty():
+		lines.append("AREA — everything in the committed arc; leaving it before "
+			+ "it resolves still works (R2 re-check).")
+	if undodgable:
+		# R26's transparency half, relocated onto this icon by R34.
+		lines.append("⛔ UNDODGABLE — no threshold dodge, no Tactical Roll, no "
+			+ "authored dodge block. MOVEMENT IS NOT A DODGE: leaving the range "
+			+ "or arc before it resolves is still the counterplay. (R26)")
+	return {
+		"kind": bucket, "glyph": String(INTENT_GLYPH.get(bucket, "❓")),
+		"label": label, "undodgable": undodgable,
+		"tip": "\n".join(PackedStringArray(lines)),
+	}
+
+
+# ------------------------------------------ R34 cone semantics (delta 3)
+## Per-enemy eyeline + 👁 chip, straight off view_vision(). The COLOUR rule is
+## the owner's amendment to decision 5: neutral while it has spotted nobody,
+## red the moment it holds a contestant. The HUD never re-derives the stealth
+## predicate — it renders the sim's answer.
+func _vision_rows() -> Dictionary:
+	var out := {}
+	if _gc == null:
+		return out
+	for raw: Variant in _gc.view_vision():
+		var row: Dictionary = raw
+		var id := String(row.get("id", ""))
+		var seen_ids: Array = row.get("sees", [])
+		var reach := int(row.get("sight_range", 0))
+		var hexes: Array = []
+		for pair: Variant in row.get("watched", []):
+			var p: Array = pair
+			hexes.append(Vector2i(int(p[0]), int(p[1])))
+		var label := "UNAWARE"
+		if seen_ids.size() == 1:
+			label = "HAS %s" % _display_name_for(String(seen_ids[0])).to_upper()
+		elif seen_ids.size() > 1:
+			label = "HAS THE PARTY"
+		var note := ""
+		if seen_ids.is_empty() and reach <= 0:
+			# Honest content gap, stated rather than papered over: no enemy in
+			# data/enemies.json authors a `mind` trait, so Stealth.sight_range
+			# (2 x Mind) is 0 and the eyeline is genuinely empty. The HUD will
+			# not invent a radius to make the board look busier.
+			note = ("NO EYELINE — this enemy authors no Mind trait, so its sight "
+				+ "range is 0 (R20/R30). That is the seed data, not a HUD guess.")
+		elif seen_ids.is_empty():
+			note = ("UNAWARE — nobody is inside its front arc within %d hexes with "
+				+ "line of sight. Stay out and you stay hidden. (R20/R30)") % reach
+		else:
+			note = ("REVEALED — it holds %s inside its front arc (sight range %d). "
+				+ "Break the arc, the line of sight, or the range.") % [
+					", ".join(PackedStringArray(_names_of(seen_ids))), reach]
+		out[id] = {"seen": not seen_ids.is_empty(), "label": label,
+			"hexes": hexes, "note": note}
+	return out
+
+
+func _names_of(ids: Array) -> Array:
+	var out: Array = []
+	for id: Variant in ids:
+		out.append(_display_name_for(String(id)).to_upper())
+	return out
+
+
+## Declared AREA arcs (attack cones): hazard-orange always, never recoloured by
+## anyone's awareness — the ruling is explicit. The hexes come off the
+## COMMITTED area_shape the resolver re-checks at resolution, so what the board
+## paints is what will actually land.
+func _attack_cone_rows() -> Array:
+	var out: Array = []
+	if _gc == null:
+		return out
+	for raw: Variant in _gc.view_schedule():
+		var row: Dictionary = raw
+		var area: Dictionary = row.get("area", {})
+		if area.is_empty():
+			continue
+		var hexes: Array = []
+		for pair: Variant in area.get("hexes", []):
+			var p: Array = pair
+			hexes.append(Vector2i(int(p[0]), int(p[1])))
+		if hexes.is_empty():
+			continue
+		out.append({"hexes": hexes, "label": "%s %s TELEGRAPHED%s" % [
+			String(row.get("key", "")).replace("_", " ").to_upper(),
+			String(area.get("kind", "area")).to_upper(),
+			" · ⛔ UNDODGABLE" if bool(row.get("undodgable", false)) else ""]})
+	return out
+
+
+# ------------------------------------------------- phase helpers (delta 4)
+func _exploring() -> bool:
+	return bool(_phase.get("exploring", false))
+
+
+func _time_held() -> bool:
+	return _explore_driver != null and _explore_driver.blocked()
 
 
 func _update_launcher(order: Array = []) -> void:
@@ -1149,13 +1518,71 @@ func _update_launcher(order: Array = []) -> void:
 			String(_armed.get("label", "")), int(_armed.get("cost", 1))]
 	elif _move_mode:
 		hint = "↔ MOVE — pick a highlighted hex for %s (Esc cancels)" % _display_name_for(_active_actor)
+
+	# R34 delta 5 — the FREE-ACTION BUDGET on the button's face. Read straight
+	# off view_combatants (free_actions_left / free_actions_per_clock), which
+	# the sim refreshes every TICK per the owner's cadence ruling ("per tick is
+	# correct, keep it"), so this readout re-derives nothing and cannot drift.
+	# Shown as REMAINING/CAP — the button says what you can still spend, and
+	# greys out when the answer is nothing. (Which half of "1/2" the approved
+	# frame meant is not stated there; PROVISIONAL, flagged.)
+	var subs := {}
+	var dim := {}
+	var actor := _find_combatant(_active_actor)
+	var cap := int(actor.get("free_actions_per_clock", 2))
+	var left := int(actor.get("free_actions_left", cap))
+	if not actor.is_empty():
+		subs["free"] = "%d/%d" % [left, cap]
+		dim["free"] = left <= 0
+
+	var exploring := _exploring()
+	var commit := "END TURN"
+	var end_hint := ("%s ACTS NEXT" % next_name) if next_name != "" else ""
+	var who_title := "ON THE CLOCK"
+	var who := _display_name_for(_active_actor)
+	if exploring:
+		# Mode A (frame 4): no turn to end — the deliberate ENTER is the commit,
+		# and the free-form verbs state their own costs on their faces.
+		who_title = "FREE MOVEMENT"
+		who = "PARTY WALKS TOGETHER"
+		commit = "ENTER ▸ %s" % _route_name()
+		end_hint = "LOCKS THE ROUTE · TURN ORDER STARTS"
+		subs = {
+			"move": "FREE", "interact": "FREE OUT HERE",
+			"skills": "OUT-OF-COMBAT ONLY", "inventory": "⏸ PAUSES TIME",
+		}
+		var hold := "" if _explore_driver == null else String(_explore_driver.hold_reason())
+		hint = ("No turn to end — but the world does not wait: mobs patrol, "
+			+ "conditions tick, the crowd is bored by safety.")
+		if hold != "":
+			hint = "⏸ %s — no time steps are being issued. The sim holds no pause state; the driver simply stops." % hold
+
 	_shell.launcher.update({
-		"who": _display_name_for(_active_actor),
+		"who": who,
+		"who_title": who_title,
 		"open_cat": _open_cat,
 		"move_armed": _move_mode,
 		"hint": hint,
-		"end_hint": ("%s ACTS NEXT" % next_name) if next_name != "" else "",
+		"end_hint": end_hint,
+		"explore": exploring,
+		"paused": _time_held(),
+		"commit": commit,
+		"subs": subs,
+		"dim": dim,
 	})
+
+
+## The route the ENTER commit leads into: the run's ACTIVE encounter key. With
+## no run staged there is no route name to show, and the button says so plainly
+## rather than inventing one.
+func _route_name() -> String:
+	var run: Dictionary = _gc.view_run() if _gc != null else {}
+	var here := int((run.get("encounter", {}) as Dictionary).get("active_index", -1))
+	for raw: Variant in run.get("encounters", []):
+		var row: Dictionary = raw
+		if int(row.get("index", -2)) == here:
+			return String(row.get("key", "")).replace("_", " ").to_upper()
+	return "THE FIGHT"
 
 
 # ------------------------------------------------------------------ flyout data
@@ -1197,13 +1624,76 @@ func _flyout_data(cat: String) -> Dictionary:
 			return {"title": "SKILLS — %s (scrolls past 4)" % who, "entries": entries}
 		"free":
 			var bit := _bit_entry()
-			return {"title": "FREE ACTIONS — %s" % who, "entries": [
+			var actor := _find_combatant(_active_actor)
+			var left := int(actor.get("free_actions_left", 2))
+			var cap := int(actor.get("free_actions_per_clock", 2))
+			return {"title": "FREE ACTIONS — %s · %d/%d LEFT THIS MOMENT" % [who, left, cap],
+				"entries": [
 				{"id": "camera_call", "label": "📸 CAMERA CALL",
 					"sub": "CHARM-GATED · spotlights self · DOUBLES gains & losses",
-					"enabled": true, "accent": UI.col(UI.GOLD)},
+					"enabled": left > 0, "accent": UI.col(UI.GOLD)},
 				bit,
 			]}
+		"interact":
+			return {"title": "INTERACT — FREE OUT OF COMBAT", "entries": _interact_entries()}
+		"inventory":
+			return {"title": "INVENTORY — ⏸ TIME IS HELD WHILE THIS IS OPEN",
+				"entries": _inventory_entries()}
 	return {"title": "", "entries": []}
+
+
+## MODE A interact list. Real objects only: the arena's authored doors, live
+## state and lock included, off view_arena(). R34 rules exploration-time
+## actions free, and R35 waived voicebox / lockpick costs out here — so the
+## entries say FREE and mean it. Doors are the R29 exits; picking one is the
+## deliberate ENTER, which is the commit button, so these rows INSPECT rather
+## than silently commit: focusing an exit is a read, entering is a decision.
+func _interact_entries() -> Array:
+	var entries: Array = []
+	var arena: Dictionary = _gc.view_arena() if _gc != null else {}
+	for raw: Variant in arena.get("doors", []):
+		var door: Dictionary = raw
+		var key := String(door.get("key", "")).replace("_", " ").to_upper()
+		var state := String(door.get("state", "")).to_upper()
+		var lock: Dictionary = door.get("lock", {})
+		var sub := "DOOR · %s" % state
+		if not lock.is_empty():
+			sub += " · LOCK TIER %d (%s) — free to pick out here, %s once the fighting starts" % [
+				int(lock.get("tier", 1)), String(lock.get("state", "")).to_upper(),
+				"1 MOMENT"]
+		entries.append({"id": "", "label": "🚪 %s" % key, "sub": sub,
+			"enabled": false, "accent": UI.col(UI.CYAN)})
+	if entries.is_empty():
+		entries.append({"id": "", "label": "NOTHING TO INTERACT WITH",
+			"sub": "this encounter authors no arena doors — no exits, locks or props in the view API",
+			"enabled": false, "accent": UI.col(UI.MUTED)})
+	entries.append({"id": "", "label": "↔ WALK",
+		"sub": "FREE · no Moment cost, no turn order — the clock still runs (R34)",
+		"enabled": false, "accent": UI.col(UI.SUCCESS)})
+	return entries
+
+
+## MODE A inventory list. The rows are the ACTOR'S REAL carried items off
+## view_combatants — an empty pack says so instead of showing invented loot.
+## What matters mechanically is that this surface being OPEN holds time
+## (R35's Pokemon clause, enforced in _on_category / _close_flyout).
+func _inventory_entries() -> Array:
+	var entries: Array = []
+	for raw: Variant in _find_combatant(_active_actor).get("items", []):
+		var item: Dictionary = raw
+		var sub := "FREE out of combat · R3's inventory ledger is untouched out here"
+		if item.has("magazine_loaded"):
+			sub = "MAGAZINE %d · %s" % [int(item.get("magazine_loaded", 0)), sub]
+		entries.append({"id": "", "label": "🎒 %s" % String(item.get("name", "")).to_upper(),
+			"sub": sub, "enabled": false, "accent": UI.col(UI.TEXT)})
+	if entries.is_empty():
+		entries.append({"id": "", "label": "NOTHING CARRIED",
+			"sub": "this contestant carries no items — nothing to use, and nothing invented",
+			"enabled": false, "accent": UI.col(UI.MUTED)})
+	entries.append({"id": "", "label": "⏸ TIME IS HELD",
+		"sub": "the driver stops issuing time steps while this is open — a burn cannot tick while you rummage (R35)",
+		"enabled": false, "accent": UI.col(UI.PURPLE)})
+	return entries
 
 
 ## THE BIT flyout entry, gated on the widened view field (defensive — the field
@@ -1390,6 +1880,12 @@ func _overall_state(c: Dictionary) -> Dictionary:
 func _readiness_line(c: Dictionary, oe: Dictionary, compact: bool) -> String:
 	if not bool(c.get("alive", true)):
 		return "DOWN"
+	# MODE A (R34): there is no turn order and nothing costs Moments, so a
+	# readiness line would be a lie in both directions — "READY" implies a turn
+	# that does not exist, "ACTS AT CLOCK 4" implies a queue that does not
+	# either. The frame says what is actually true out here.
+	if _exploring():
+		return "✦ FREE" if compact else "✦ FREE TO WALK — NO MOMENT COST · TIME RUNS"
 	if oe.is_empty():
 		return ""
 	if bool(oe.get("windup_pending", false)):

@@ -278,6 +278,13 @@ func view_combatants() -> Array[Dictionary]:
 			# per grant, {key, level, name, cost, self} — see _view_skills. [] for
 			# enemies / anyone with no grants, never guessed.
 			"skills": _view_skills(c),
+			# R35 (ADDITIVE): what this combatant CARRIES — one sorted row per
+			# item ({key, name, magazine_loaded when the item is ranged}), []
+			# for the many combatants holding nothing. The exploration
+			# INVENTORY surface (R35's Pokemon clause: opening it pauses the
+			# driver's time steps) lists these; without the projection the HUD
+			# would have to invent an item list, which it must never do.
+			"items": _view_items(c),
 			"position": [c.position.x, c.position.y],
 			# R30 (ADDITIVE, decision #33): the facing direction index 0..5
 			# into HexGeometry.DIRECTIONS (0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE) —
@@ -441,6 +448,25 @@ func _pattern_rows_for(target_id: String, limit: int) -> Array:
 ##   cost:  the honest Moment cost from SkillBook.mechanics at the granted level
 ##   self:  SkillBook.is_self_skill — self-buff vs targeted (the HUD's flyout tag)
 ## Read-only over static authorities; [] for enemies / skill-less combatants.
+## R35 (ADDITIVE): one plain row per carried item, sorted by key — {key, name}
+## plus `magazine_loaded` only when the item is a ranged one that tracks it.
+## Presentation lists them; it never guesses what a combatant carries.
+func _view_items(c: CombatantState) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	var keys: Array = c.items.keys()
+	keys.sort()
+	for key: Variant in keys:
+		var item: Dictionary = c.items[key]
+		var row: Dictionary = {
+			"key": String(key),
+			"name": String(item.get("name", String(key).replace("_", " "))),
+		}
+		if item.has("magazine_loaded"):
+			row["magazine_loaded"] = int(item["magazine_loaded"])
+		rows.append(row)
+	return rows
+
+
 func _view_skills(c: CombatantState) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	for sk: Dictionary in c.skills:
@@ -569,6 +595,100 @@ func view_clock() -> Dictionary:
 	return {"tick": sim.clock.tick, "moment": sim.clock.moment()}
 
 
+## Presentational cap on the watched-hex set a single observer projects, so a
+## high-Mind observer can never make one refresh walk thousands of hexes. Only
+## ever binds ABOVE the authored sight range; `truncated` says so out loud
+## rather than letting the board quietly under-draw an eyeline. PLACEHOLDER
+## (R14) like every other number here.
+const VISION_HEX_CAP: int = 10
+
+
+## Read-only VISION probe (R34 cone semantics, decision #36 — ADDITIVE, the
+## board's hidden/revealed readout). The owner's amendment to decision 5: "a
+## sight cone renders NEUTRAL while its owner has spotted nobody and RED the
+## moment it holds a contestant", paired with the per-enemy 👁 UNAWARE /
+## HAS <name> chip. Both facts already exist in the sim — this projects them
+## so the HUD never re-derives the stealth rule (and never guesses a cone).
+##
+## One row per AI-CONTROLLED combatant, sorted by id. Pure read over
+## Stealth.sees / Stealth.has_los / Stealth.front_arc_contains and the R30
+## facing; ZERO mutation, ZERO rng, deterministic. [] before start_combat.
+##   id:          combatant id
+##   facing:      R30 facing index 0..5 (verbatim, as view_combatants carries)
+##   sight_range: Stealth.sight_range — 2 x the observer's Mind. NOTE this is
+##                honestly 0 for every enemy in data/enemies.json today (no
+##                seeded enemy authors a `mind` trait), so a live-seed cone is
+##                legitimately EMPTY. The renderer must show that, not invent
+##                a radius; the content gap is authoring work, not view work.
+##   sees:        sorted ids of the HOSTILE combatants this observer currently
+##                sees under the full Stealth.sees predicate (hostility,
+##                can-act, R30 front arc, sight range, concealment radius,
+##                LOS). [] = UNAWARE — the NEUTRAL cone.
+##   watched:     sorted hexes inside the observer's front arc AND sight range
+##                AND line of sight — the eyeline as the SIM computes it, so
+##                the board tints real hexes instead of a decorative wedge.
+##                Concealment is per-TARGET (it shrinks the range for that
+##                hider only) and therefore never shrinks this set; the `sees`
+##                list above is the per-target truth.
+##   truncated:   present (true) only when VISION_HEX_CAP clipped `watched`.
+func view_vision() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if sim == null:
+		return out
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var observer: CombatantState = sim.combatants[id]
+		if not EnemyAI.is_ai_controlled(observer):
+			continue
+		var reach: int = Stealth.sight_range(observer)
+		var seen: Array[String] = []
+		for other_id: Variant in ids:
+			if Stealth.sees(observer, sim.combatants[other_id], sim.arena, sim.clock.tick):
+				seen.append(String(other_id))
+		var row: Dictionary = {
+			"id": String(id),
+			"facing": observer.facing,
+			"sight_range": reach,
+			"sees": seen,
+			"watched": [],
+		}
+		if reach > VISION_HEX_CAP:
+			reach = VISION_HEX_CAP
+			row["truncated"] = true
+		# A blind observer (can_act false, or Mind 0) watches nothing at all —
+		# the same gate sees() opens with, so the tint and the chip never
+		# disagree about whether an eyeline exists.
+		if reach > 0 and observer.can_act(sim.clock.tick):
+			row["watched"] = _watched_hexes(observer, reach)
+		out.append(row)
+	return out
+
+
+## The hexes one observer's eyeline covers: every hex within `reach` that sits
+## in the R30 front arc and has line of sight from the observer. Sorted (q, r)
+## for a deterministic row. Pure geometry over the same Stealth statics the
+## detection gate uses — no re-implementation of the rule here.
+func _watched_hexes(observer: CombatantState, reach: int) -> Array:
+	var hexes: Array = []
+	var origin: Vector2i = observer.position
+	for dq: int in range(-reach, reach + 1):
+		for dr: int in range(-reach, reach + 1):
+			var hex := Vector2i(origin.x + dq, origin.y + dr)
+			if hex == origin:
+				continue
+			if CombatantState.hex_distance(origin, hex) > reach:
+				continue
+			if not Stealth.front_arc_contains(origin, observer.facing, hex):
+				continue
+			if not Stealth.has_los(sim.arena, origin, hex):
+				continue
+			hexes.append([hex.x, hex.y])
+	hexes.sort_custom(func(a: Array, b: Array) -> bool:
+		return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
+	return hexes
+
+
 ## Read-only PHASE probe (R34/R35 — ADDITIVE, spectator contract). The one
 ## projection a driver/HUD needs to know WHICH GAME IT IS PLAYING right now:
 ## the approved front-rework mockups render their "OUT OF COMBAT · time runs ·
@@ -646,6 +766,22 @@ func view_phase() -> Dictionary:
 ##   undodgable:    present (true) only when the declared action carries the
 ##                  R26 data-driven flag — declared loudly so the schedule
 ##                  never hides that no dodge-shaped escape exists (additive)
+##
+## R34 INTENT WIDENING (KAN-6 HUD reconcile — ADDITIVE, only-when-set). R34
+## moved the enemy telegraph off the timeline and onto a per-enemy INTENT ICON
+## whose hover "gives the full explanation", and named the icon as the
+## presentation-side derivation of what the schedule already knows. That
+## derivation needs the declared action's SHAPE, not just its key, so these
+## four facts ride the row — facts only, never the HUD's meaning:
+##   area:     {"kind": "cone"|"line", "toward": [q, r], "size": n} — the
+##             COMMITTED arc/lane the resolver re-checks at resolution (R2), so
+##             the board can draw the real attack cone instead of a decorative
+##             one. Absent for a single-target action.
+##   targets:  [{"id", "part"}, ...] in declared order (a single-target action
+##             normalizes to one row) — absent when the action names none.
+##   damage:   {"type", "amount"} verbatim off the action — absent when the
+##             action carries none (moves, buffs, heals). PLACEHOLDER (R14).
+##   heal:     true only when the action carries a heal block (the buff lane).
 func view_schedule() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if sim == null:
@@ -672,7 +808,68 @@ func view_schedule() -> Array[Dictionary]:
 			row["combo_id"] = String(action.get("combo_id", ""))
 		if bool(action.get("undodgable", false)):
 			row["undodgable"] = true
+		var shape: Dictionary = action.get("area_shape", {})
+		if not shape.is_empty():
+			var area: Dictionary = shape.duplicate(true)
+			area["hexes"] = _area_hexes(shape, String(entry.get("actor", "")))
+			row["area"] = area
+		var targets: Array = _schedule_targets(action)
+		if not targets.is_empty():
+			row["targets"] = targets
+		var damage: Dictionary = action.get("damage", {})
+		if not damage.is_empty():
+			row["damage"] = damage.duplicate(true)
+		if not (action.get("heal", {}) as Dictionary).is_empty():
+			row["heal"] = true
 		out.append(row)
+	return out
+
+
+## The GROUND a declared area action has committed to, as sorted [q, r] pairs.
+## Computed with the SAME authority the resolver's windup re-check uses — a
+## `cone` is HexGeometry.cone off the actor's live hex toward the committed
+## direction at the committed size; a `line` already carries its lane verbatim.
+## Presentation therefore draws the arc the sim will re-evaluate, never a
+## decorative approximation (R2/R26: what is telegraphed is what lands). []
+## when the shape is unknown or the actor has left the board.
+func _area_hexes(shape: Dictionary, actor_id: String) -> Array:
+	var out: Array = []
+	var kind := String(shape.get("kind", ""))
+	if kind == "line":
+		for pair: Variant in shape.get("lane", []) as Array:
+			var p: Array = pair
+			if p.size() == 2:
+				out.append([int(p[0]), int(p[1])])
+		return out
+	if kind != "cone":
+		return out
+	var actor: CombatantState = sim.combatants.get(actor_id)
+	var toward_raw: Array = shape.get("toward", [])
+	var size: int = int(shape.get("size", 0))
+	if actor == null or toward_raw.size() != 2 or size <= 0:
+		return out
+	var origin: Vector2i = actor.position
+	var dir := Vector2i(int(toward_raw[0]), int(toward_raw[1]))
+	var arc: Array[Vector2i] = HexGeometry.cone(origin, origin + dir, size)
+	arc.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.x < b.x if a.x != b.x else a.y < b.y)
+	for hex: Vector2i in arc:
+		out.append([hex.x, hex.y])
+	return out
+
+
+## Declared targets of one scheduled action, normalized to [{"id", "part"}] in
+## DECLARED order (never re-sorted — the cone's first target is the aim). Both
+## authored shapes fold in: the multi-target `targets` array (cones, RPM
+## rounds) and the single `target` id (+ optional `part`). [] when the action
+## names nobody (a move, a self buff).
+func _schedule_targets(action: Dictionary) -> Array:
+	var out: Array = []
+	for raw: Variant in action.get("targets", []) as Array:
+		var t: Dictionary = raw
+		out.append({"id": String(t.get("id", "")), "part": String(t.get("part", ""))})
+	if out.is_empty() and String(action.get("target", "")) != "":
+		out.append({"id": String(action.get("target", "")), "part": String(action.get("part", ""))})
 	return out
 
 
