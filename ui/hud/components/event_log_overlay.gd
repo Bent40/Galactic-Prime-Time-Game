@@ -4,6 +4,8 @@ extends Control
 ## (type + short line), newest last, scrollable. Esc or clicking the dimmed
 ## backdrop closes (close itself is handled by the facade via close_requested).
 
+const OVERLAY_Z := 20  ## clears the arena's z-raised token chips (see _ready)
+
 signal close_requested
 
 const UI := preload("res://ui/hud/components/hud_theme.gd")
@@ -24,6 +26,11 @@ func _ensure_built() -> void:
 	_built = true
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	# Same defect the Mode D popup carried (fixed in KAN-6 phase 2): the arena
+	# raises its token chips to z_index 3 so they clear the board, and z beats
+	# tree order — an overlay drawn at the default z has unit labels punching
+	# through it. A full-screen overlay's dim has to cover ALL of the HUD.
+	z_index = OVERLAY_Z
 
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
