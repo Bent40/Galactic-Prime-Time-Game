@@ -48,6 +48,16 @@ func _ensure_built() -> void:
 
 	var nrow := UI.hbox(8)
 	_name_lab = UI.lab("", UI.body(), 15, UI.col(UI.GOLD), 0.5, true)
+	# A long authored display name (Sasha "Little shadow" Marchenko) would
+	# otherwise widen this panel past its 330px slot and push the timeline and
+	# the whole right column off a 1600-wide HUD. Trimming makes the label
+	# shrinkable; `text` is untouched, so probes still read the full name.
+	_name_lab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# EXPAND_FILL is what gives the trimmed label the row's spare width back —
+	# a trimmed Label's minimum is ~1px, so without it the name renders as
+	# nothing at all.
+	_name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	nrow.add_child(_name_lab)
 	_patron_lab = UI.lab("", UI.body(), 9, UI.col(UI.PURPLE), 1.0, true)
 	_patron_lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER

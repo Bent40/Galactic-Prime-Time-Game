@@ -39,6 +39,14 @@ const SLOT_W := 38.0   # tick square min width (px)
 const SLOT_SEP := 4.0  # strip separation (px)
 const BAR_H := 13.0    # one bar lane (px)
 const MAX_LANES := 3
+## Condition-tick chip lane (approved frame 1, decision 2 + decision 4).
+const TICK_H := 15.0
+## How many chips the lane draws before it collapses into a "+N MORE" chip.
+## A wide fight can schedule a lot of bites; the strip is a fixed-width band,
+## so the overflow is stated rather than silently clipped.
+const MAX_TICK_CHIPS := 6
+## How many marker discs one tick cell draws before the rest become a "+N".
+const MAX_CELL_MARKERS := 4
 
 var _built := false
 var _clock_num: Label
@@ -46,6 +54,7 @@ var _moment_num: Label
 var _nextreset: Label
 var _strip: HBoxContainer
 var _bars_lane: Control
+var _ticks_lane: Control
 var _combat_row: Control
 var _explore_row: Control
 var _mode_lab: Label
@@ -95,6 +104,14 @@ func _ensure_built() -> void:
 	_bars_lane.custom_minimum_size = Vector2(10 * SLOT_W + 9 * SLOT_SEP, 0)
 	_bars_lane.clip_contents = true
 	strip_col.add_child(_bars_lane)
+	# The condition-tick lane sits BELOW the declared-action bars and never
+	# shares a row with them: a scheduled bite is a different kind of fact from
+	# a declared action, and frame 1 gives it its own lane for exactly that
+	# reason. Same left origin as the strip, so a chip's x IS its Moment.
+	_ticks_lane = Control.new()
+	_ticks_lane.custom_minimum_size = Vector2(10 * SLOT_W + 9 * SLOT_SEP, 0)
+	_ticks_lane.clip_contents = true
+	strip_col.add_child(_ticks_lane)
 	row.add_child(strip_col)
 
 	_nextreset = UI.lab("", UI.body(), 9, UI.col(UI.MUTED), 2.0)
@@ -145,7 +162,15 @@ func _build_explore_row() -> Control:
 ##        markers: [{slot: 0..9, emoji, name, active: bool, boss: bool,
 ##                   windup: bool, late: bool}],
 ##        bars: [{from_slot: 0..9, to_slot: 0..9, carry: bool, windup: bool,
-##                emoji, label, name}]  — PARTY rows only (R34, see above)}
+##                emoji, label, name}]  — PARTY rows only (R34, see above)
+##        ticks: [{slot: 0..9, emoji, label, color: Color, carry: bool,
+##                name}] — SCHEDULED CONDITION TICKS on their own lane
+##                (approved frame 1: "🔥 BURN II → DARIO"). A tick is TIMING,
+##                which is what this strip keeps; it is NOT enemy intent,
+##                which R34 moved onto the enemy's own icon. Conditions bite
+##                at the CLOCK RESET, so every chip lands on the lap's last
+##                slot; `carry` marks one whose reset is a LATER lap (an
+##                incubating poison, a delayed bleed) and draws it dim.}
 ##        explore: {} in combat, else {elapsed: "MM:SS", paused: bool,
 ##                 note: String, crumbs: [{text, state: "done"|"here"|"ahead"}]}
 ##                 — a non-empty `explore` swaps this slot to MODE A.
@@ -173,6 +198,7 @@ func update(data: Dictionary) -> void:
 	for i in 10:
 		_strip.add_child(_cell(i, i == slot_now, by_slot.get(i, [])))
 	_update_bars(data.get("bars", []))
+	_update_ticks(data.get("ticks", []))
 
 
 ## MODE A binding. PAUSED is DRIVER state, never sim state (R34/R35, twice
@@ -271,14 +297,116 @@ func _bar(b: Dictionary, from_slot: int, to_slot: int, lane: int) -> Control:
 	return bar
 
 
+## Condition-tick chips. Conditions bite at the CLOCK RESET, so every chip in a
+## group shares one slot: the group is packed so its RUN ENDS on that slot's
+## cell — the eye lands on "these all land there" instead of on a stack in the
+## corner. A group too wide for the band wraps onto another lane row, and a
+## lane with more chips than MAX_TICK_CHIPS says so with a "+N MORE" chip
+## rather than clipping the overflow into invisibility.
+func _update_ticks(ticks: Array) -> void:
+	for ch in _ticks_lane.get_children():
+		ch.queue_free()
+	if ticks.is_empty():
+		_ticks_lane.custom_minimum_size.y = 0.0
+		return
+	var shown: Array = ticks.slice(0, MAX_TICK_CHIPS)
+	var hidden: int = ticks.size() - shown.size()
+	var lane_w: float = 10.0 * SLOT_W + 9.0 * SLOT_SEP
+	# group by slot, preserving the facade's ordering within each group
+	var order: Array = []
+	var groups: Dictionary = {}
+	for raw: Variant in shown:
+		var t: Dictionary = raw
+		var slot: int = clampi(int(t.get("slot", 9)), 0, 9)
+		if not groups.has(slot):
+			groups[slot] = []
+			order.append(slot)
+		(groups[slot] as Array).append(_tick_chip(t))
+	if hidden > 0:
+		var more_slot: int = clampi(int((shown.back() as Dictionary).get("slot", 9)), 0, 9)
+		if not groups.has(more_slot):
+			groups[more_slot] = []
+			order.append(more_slot)
+		(groups[more_slot] as Array).append(_tick_chip({
+			"label": "+%d MORE" % hidden, "emoji": "⋯", "color": UI.col(UI.MUTED),
+			"name": "%d more scheduled condition ticks than the lane can draw" % hidden}))
+	var y: float = 0.0
+	var rows: int = 0
+	for slot_v: Variant in order:
+		var slot: int = slot_v
+		var chips: Array = groups[slot]
+		var total: float = 0.0
+		for c: Variant in chips:
+			total += (c as Control).custom_minimum_size.x + 4.0
+		total -= 4.0
+		# the right edge of this slot's cell — where the run should END
+		var edge: float = float(slot) * (SLOT_W + SLOT_SEP) + SLOT_W
+		var x: float = clampf(edge - total, 0.0, maxf(0.0, lane_w - total))
+		for c: Variant in chips:
+			var chip := c as Control
+			if x + chip.custom_minimum_size.x > lane_w and x > 0.0:
+				x = 0.0
+				y += TICK_H + 2.0
+				rows += 1
+			chip.position = Vector2(x, y)
+			_ticks_lane.add_child(chip)
+			x += chip.custom_minimum_size.x + 4.0
+		y += TICK_H + 2.0
+		rows += 1
+	_ticks_lane.custom_minimum_size.y = float(maxi(1, rows)) * (TICK_H + 2.0)
+
+
+func _tick_chip(t: Dictionary) -> Control:
+	var accent: Color = t.get("color", UI.col(UI.FIRE))
+	var carry := bool(t.get("carry", false))
+	var text := String(t.get("label", ""))
+	var chip := PanelContainer.new()
+	# Dark fill, bright rim, bright text: the condition's colour has to read as
+	# the TEXT, not as a slab — a chip filled at the same hue as its label is
+	# just a coloured bar with nothing legible on it.
+	chip.add_theme_stylebox_override("panel", UI.glow_sb(
+		Color(accent.r * 0.22, accent.g * 0.22, accent.b * 0.22, 0.92),
+		Color(accent.r, accent.g, accent.b, 0.40 if carry else 0.95), 3,
+		Color(0, 0, 0, 0) if carry else Color(accent.r, accent.g, accent.b, 0.40),
+		0 if carry else 4))
+	chip.clip_contents = true
+	chip.tooltip_text = String(t.get("name", ""))
+	var m := UI.margin(4, 4, 0, 0)
+	chip.add_child(m)
+	var h := UI.hbox(3)
+	m.add_child(h)
+	h.add_child(UI.emo(String(t.get("emoji", "")), 9))
+	var l := UI.lab(text, UI.body(), 8, accent, 0.5, not carry)
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# EXPAND_FILL is load-bearing, not decoration: a trimmed Label reports a
+	# minimum width of ~1px, so without it the row hands the label nothing and
+	# the chip renders as an emoji on an empty slab.
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(l)
+	# Width is the chip's own content, capped so one long name cannot eat the
+	# lane (~5.2px per char at size 7 + the emoji and padding).
+	chip.custom_minimum_size = Vector2(
+		minf(220.0, 32.0 + float(text.length()) * 5.9), TICK_H)
+	if carry:
+		chip.modulate.a = 0.6
+	return chip
+
+
 func _cell(i: int, now: bool, markers: Array) -> Control:
 	var v := UI.vbox(2)
 	v.alignment = BoxContainer.ALIGNMENT_END
 	v.custom_minimum_size = Vector2(38, 0)
-	# marker discs (may be several on one tick)
+	# marker discs (may be several on one tick). CAPPED: a cell's width is its
+	# content's width, so an unbounded pile of discs on one tick widens the
+	# whole strip and pushes the top band off a 1600-wide HUD. Past the cap the
+	# rest are counted, not drawn.
 	var mrow := UI.hbox(2)
 	mrow.alignment = BoxContainer.ALIGNMENT_CENTER
 	mrow.custom_minimum_size = Vector2(0, 26)
+	var overflow: int = maxi(0, markers.size() - MAX_CELL_MARKERS)
+	if overflow > 0:
+		markers = markers.slice(0, MAX_CELL_MARKERS)
 	for md in markers:
 		var m: Dictionary = md
 		var face := PanelContainer.new()
@@ -308,6 +436,11 @@ func _cell(i: int, now: bool, markers: Array) -> Control:
 			wm.add_child(UI.lab("W", UI.body(), 7, UI.col("#180a02"), 0.0, true))
 			wu.tooltip_text = "WINDUP — committed, resolves later"
 			mrow.add_child(wu)
+	if overflow > 0:
+		var more := UI.lab("+%d" % overflow, UI.mono(), 9, UI.col(UI.MUTED), 0.0, true)
+		more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		more.tooltip_text = "%d more combatants act on this Moment" % overflow
+		mrow.add_child(more)
 	v.add_child(mrow)
 	# the tick square, labelled with its MOMENT number (10..1 across the lap)
 	var sq := PanelContainer.new()

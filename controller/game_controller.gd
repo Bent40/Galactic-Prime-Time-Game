@@ -463,6 +463,15 @@ func _view_items(c: CombatantState) -> Array[Dictionary]:
 		}
 		if item.has("magazine_loaded"):
 			row["magazine_loaded"] = int(item["magazine_loaded"])
+		# KAN-6 phase 2 (ADDITIVE, only-when-set): the item is on the FLOOR —
+		# dropped by a Shock 3+ fumble (ConditionEngine._drop_held_items) and
+		# recoverable through the ordinary `inventory` interaction "pickup".
+		# Without it the exploration INVENTORY surface could not tell a usable
+		# item from one lying in the dirt, and would have to guess which
+		# interaction to send. Absent = in hand (the overwhelming default), so
+		# every existing consumer sees byte-identical rows.
+		if bool(item.get("dropped", false)):
+			row["dropped"] = true
 		rows.append(row)
 	return rows
 
@@ -871,6 +880,170 @@ func _schedule_targets(action: Dictionary) -> Array:
 	if out.is_empty() and String(action.get("target", "")) != "":
 		out.append({"id": String(action.get("target", "")), "part": String(action.get("part", ""))})
 	return out
+
+
+## Read-only CONDITION-TICK SCHEDULE (KAN-6 phase 2 — ADDITIVE, spectator
+## contract). Frame 1's timeline carries scheduled condition ticks as chips on
+## their own lane ("🔥 BURN II → DARIO"): approved decision 2 keeps the timeline
+## as the ORDER-AND-TIMING surface and decision 4 makes status effects
+## load-bearing everywhere, and a scheduled tick is TIMING — it belongs there,
+## unlike enemy intent (which R34 moved onto the enemy's own icon).
+##
+## Nothing exposed WHEN a condition next bites, so presentation had no honest
+## source for that lane; this is it. Every field is read off live state through
+## ConditionEngine's own public queries (def_for / max_tier / effect_value) —
+## the rule is never re-implemented here, only READ, so a HUD chip and the
+## reset that follows it can never disagree.
+##
+## THE TIMEBASE. Conditions do not tick per Moment: they advance at the CLOCK
+## RESET, which fires when the tick displaying Moment 1 (tick % 10 == 9)
+## completes (Clock's own contract). So every row's `at_tick` is a reset
+## boundary, `clocks_away` counts whole Clocks (1 = this lap's reset), and the
+## chip lands on the LAST slot of its lap — which is exactly when the bite
+## happens. A row `clocks_away` > 1 is a future lap's reset, marked `carry`.
+##
+## THE SKIP LADDER, verbatim from ConditionEngine.on_clock_reset's own order:
+## an `activation_delay` consumes one reset each (the poison incubation), then
+## a `delayed` instance consumes one more per banked `delay_clocks` + 1 (batch
+## C's ally treatment). The row reports where the bite ACTUALLY lands, plus
+## `skips` so the HUD can say why it is not this Clock.
+##
+## `effect` — what the reset will DO, the four branches on_clock_reset takes:
+##   advance    — spread_rules.advances_on_clock_reset: tier `tier` -> `to_tier`
+##                (capped at max_tier; `steps` carries the infected-T2
+##                accelerates_conditions rider, read off effect_value, so an
+##                accelerated burn reports the double step it will really take)
+##   resolve    — resolves_if_not_reapplied and NOT reapplied this Clock
+##   hold       — the same rule but reapplied this Clock (it survives; the
+##                flag is what the reset consumes) — nothing bites
+##   step_down  — recovers_when_resting, resting, tier > 1 (tier -> tier - 1);
+##                at tier 1 the same rule reads `resolve`
+##   dormant    — a live condition whose def schedules NOTHING at the reset
+##                (it is on the body, it just does not move on its own)
+##   timer_tick / timer_expires — the `timers` array (suffocation, dissolution,
+##                bleed-out death clocks): a countdown row, expiring at 0. A
+##                PAUSED timer reports `paused` and no `at_tick`.
+##
+## Deterministic, sorted (combatant id, then part, then condition id; timers
+## after conditions per combatant), deep-copied, ZERO mutation, ZERO rng.
+## [] before start_combat and for the very common no-condition fight.
+func view_condition_schedule() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if sim == null:
+		return out
+	var reset_tick: int = sim.clock.tick - (sim.clock.tick % Clock.TICKS_PER_CLOCK) \
+		+ (Clock.TICKS_PER_CLOCK - 1)
+	var ids: Array = sim.combatants.keys()
+	ids.sort()
+	for id: Variant in ids:
+		var c: CombatantState = sim.combatants[id]
+		if not c.alive:
+			continue
+		# The infected-T2 rider, snapshotted the way on_clock_reset snapshots it.
+		var extra: int = sim.cond.effect_value(c, "accelerates_conditions")
+		var part_keys: Array = c.conditions.keys()
+		part_keys.sort()
+		for part_key: Variant in part_keys:
+			var on_part: Dictionary = c.conditions.get(part_key, {})
+			var cond_ids: Array = on_part.keys()
+			cond_ids.sort()
+			for cond_id: Variant in cond_ids:
+				out.append(_condition_tick_row(c, String(part_key), String(cond_id),
+					on_part[cond_id], extra, reset_tick))
+		for timer: Dictionary in c.timers:
+			out.append(_timer_tick_row(c, timer, reset_tick))
+	return out
+
+
+## One condition instance projected onto the next reset that touches it.
+func _condition_tick_row(c: CombatantState, part_key: String, condition_id: String,
+		instance: Dictionary, extra: int, reset_tick: int) -> Dictionary:
+	var spread: Dictionary = sim.cond.def_for(condition_id).get("spread_rules", {})
+	var tier: int = int(instance.get("tier", 1))
+	# The skip ladder, in on_clock_reset's own order.
+	var skips: int = maxi(0, int(instance.get("activation_delay", 0)))
+	if bool(instance.get("delayed", false)):
+		skips += 1 + maxi(0, int(instance.get("delay_clocks", 0)))
+	var effect := "dormant"
+	var to_tier: int = tier
+	var steps: int = 0
+	if bool(spread.get("resolves_if_not_reapplied", false)):
+		if bool(instance.get("reapplied_this_clock", false)):
+			effect = "hold"
+		else:
+			effect = "resolve"
+			to_tier = 0
+	elif bool(spread.get("recovers_when_resting", false)):
+		if not c.took_scheduled_action_this_clock:
+			if tier <= 1:
+				effect = "resolve"
+				to_tier = 0
+			else:
+				effect = "step_down"
+				to_tier = tier - 1
+		else:
+			effect = "hold"
+	elif bool(spread.get("advances_on_clock_reset", false)):
+		steps = 1 + (extra if condition_id != "infected" else 0)
+		to_tier = mini(tier + steps, sim.cond.max_tier(condition_id))
+		effect = "advance" if to_tier != tier else "hold"
+	var row: Dictionary = {
+		"combatant": c.id,
+		"name": c.display_name,
+		"team": c.team,
+		"part": part_key,
+		"condition": condition_id,
+		"condition_name": String(sim.cond.def_for(condition_id).get("name", condition_id)),
+		"tier": tier,
+		"to_tier": to_tier,
+		"max_tier": sim.cond.max_tier(condition_id),
+		"effect": effect,
+		"steps": steps,
+		"skips": skips,
+		"clocks_away": skips + 1,
+		"at_tick": reset_tick + skips * Clock.TICKS_PER_CLOCK,
+		"carry": skips > 0,
+	}
+	if int(instance.get("activation_delay", 0)) > 0:
+		row["activation_delay"] = int(instance["activation_delay"])
+	if bool(instance.get("delayed", false)):
+		row["delayed"] = true
+	if String(instance.get("type", "")) != "":
+		row["type"] = String(instance["type"])  # the poison toxin family
+	return row
+
+
+## One `timers` row (suffocation / dissolution / bleed-out death clocks)
+## projected onto the reset it next moves on. `fresh` is the "created during
+## this reset — starts next reset" grace _advance_timers applies verbatim.
+func _timer_tick_row(c: CombatantState, timer: Dictionary, reset_tick: int) -> Dictionary:
+	var remaining: int = maxi(0, int(timer.get("clocks_remaining", 1)))
+	var skips: int = (1 if bool(timer.get("fresh", false)) else 0) \
+		+ maxi(0, int(timer.get("delay", 0)))
+	var row: Dictionary = {
+		"combatant": c.id,
+		"name": c.display_name,
+		"team": c.team,
+		"part": String(timer.get("part", "")),
+		"condition": String(timer.get("condition", timer.get("kind", ""))),
+		"condition_name": String(timer.get("kind", "")).replace("_", " ").capitalize(),
+		"timer": String(timer.get("kind", "")),
+		"clocks_remaining": remaining,
+		"effect": "timer_expires" if remaining <= 1 else "timer_tick",
+		"tier": 0,
+		"to_tier": 0,
+		"steps": 0,
+		"skips": skips,
+		"clocks_away": skips + 1,
+		"at_tick": reset_tick + skips * Clock.TICKS_PER_CLOCK,
+		"carry": skips > 0,
+	}
+	if bool(timer.get("paused", false)):
+		row["effect"] = "paused"
+		row["paused"] = true
+		row.erase("at_tick")
+		row.erase("clocks_away")
+	return row
 
 
 ## Read-only ACTION PREVIEW probe (spectator contract — HUD v2 Phase 2):
@@ -1414,6 +1587,279 @@ func view_run() -> Dictionary:
 	if run.phase == "combat" and sim != null:
 		out["combat"] = combat_status()
 	return out
+
+
+## Read-only R29 HYPE-CHAIN projection (KAN-6 phase 2 — ADDITIVE, spectator
+## contract). Approved frame 4's crowd panel states the carry math in words —
+## "the next room opens at 40% of your ending meter — 68 -> 27" — and frame 1
+## carries the compact form as a goal chip ("CHAIN NEXT ROOM · KEEPS 40%").
+## Both need three facts nothing exposed together: WHICH rung of the retention
+## ladder the next link sits on, the LIVE meter it will be taken from, and the
+## number that falls out.
+##
+## THE LADDER IS READ, NEVER RETYPED. `pct` is RunState.CHAIN_RETENTION_PCT
+## indexed exactly as RunState.chain_hype_start indexes it — decision #32's
+## 40 / 60 / 80 / 100 ladder lives in ONE place and this projection borrows it,
+## so a re-ruling changes the banner for free and the HUD can never drift from
+## the engine. `opens_at` uses the same floor rounding chain_hype_start uses.
+##
+## WHICH LINK. `index` is the run's live hype_chain_index — the link the
+## CURRENT room is (it advances only at end_encounter), so the NEXT room is
+## rung index + 1 and the one after it index + 2 (`then_pct`, the frame's
+## "chain the den after and it keeps 60%").
+##
+## ARMED. A chain is armed only while there is somewhere to carry the meter TO:
+## in the authored room graph that is the relevant room having exits; in a
+## linear def set it is simply another encounter after this one. A TERMINAL
+## room reports armed false + terminal true — the meter is not carried, it is
+## banked into the verdict, and the banner must say so rather than promising a
+## carry that will not happen.
+##
+## {} with no run staged (a bare start_combat demo drive) — there is no chain,
+## and presentation is expected to say exactly that instead of inventing one.
+## Deterministic, deep-copied, ZERO mutation.
+func view_hype_chain() -> Dictionary:
+	if run == null:
+		return {}
+	var ladder: Array = []
+	for rung: int in RunState.CHAIN_RETENTION_PCT:
+		ladder.append(rung)
+	var top: int = ladder.size() - 1
+	var index: int = run.hype_chain_index
+	var pct: int = int(ladder[mini(index + 1, top)])
+	var then_pct: int = int(ladder[mini(index + 2, top)])
+	var meter: int = int(sim.hype.meter) if sim != null else 0
+
+	# The room whose exits decide where the meter goes next: the room being
+	# fought while an encounter is live, else the room just cleared (the
+	# exploration beat / between-rooms state).
+	var from_index: int = run.active_index
+	if from_index < 0 and not run.records.is_empty():
+		from_index = int((run.records.back() as Dictionary).get("index", -1))
+	var from_def: Dictionary = {}
+	if from_index >= 0 and from_index < run.encounters.size():
+		from_def = run.encounters[from_index]
+	var graph: bool = false
+	for def: Dictionary in run.encounters:
+		if def.has("exits"):
+			graph = true
+			break
+	var next_rooms: Array = []
+	for entry: Variant in from_def.get("exits", []) as Array:
+		var e: Dictionary = entry
+		next_rooms.append({
+			"key": String(e.get("key", "")),
+			"to": String(e.get("to", "")),
+			"label": String(e.get("label", "")),
+		})
+	var terminal: bool = graph and from_def.has("exits") and next_rooms.is_empty()
+	var armed: bool = run.phase != "finished"
+	if graph:
+		armed = armed and not next_rooms.is_empty()
+	else:
+		terminal = run.completed >= run.encounters.size() - 1 and run.active_index < 0
+		armed = armed and (run.completed < run.encounters.size() - (1 if run.active_index >= 0 else 0))
+	return {
+		"armed": armed,
+		"terminal": terminal,
+		"graph": graph,
+		"index": index,
+		"next_index": index + 1,
+		"ladder": ladder,
+		"pct": pct,
+		"then_pct": then_pct,
+		"meter": meter,
+		"opens_at": int(floor(meter * pct / 100.0)),
+		# The meter THIS room actually opened at — the previous link's carry,
+		# straight off RunState (the same read view_run's hype_chain makes).
+		"carried_in": run.chain_hype_start(),
+		"from": String(from_def.get("key", "")),
+		"next_rooms": next_rooms,
+	}
+
+
+## Read-only MOD-CENTER OFFER projection (KAN-6 phase 2 — ADDITIVE, spectator
+## contract). Approved frame 5 is the Mode D popup: the three BLESSED
+## broad-only offers side by side, the focused one expanded with a requirement
+## row per parent (IN PROGRESS / NOT LEARNED against the real granted levels),
+## the CONSUMES-BOTH-PARENTS warning and the "offered, never automatic"
+## framing. NOTHING in controller/ or ui/ reached data/mod_center_offers.json
+## before this — the engine side (SkillForge.find_offer / validate_offer /
+## validate_mutation) existed with no consumer at all. This is that consumer,
+## and it stays a READ: no command is emitted, no roster is touched.
+##
+## `for_id` is the character the requirement rows are measured against. Their
+## granted skills come from the LIVE combatant when they are in the fight
+## (CombatantState.skills — the normalized {key, level} grant rows, exactly the
+## shape SkillForge validates), else from the RUN ROSTER's spec rows when a run
+## is staged and the character is on it but not in this room. Neither source is
+## re-derived or guessed: with no source at all the projection reports
+## `known: false` and every parent as "UNKNOWN", never as "NOT LEARNED" (a
+## missing roster is not the same fact as a missing skill).
+##
+## THE VERDICT IS THE ENGINE'S, NOT THE HUD'S. Per-parent state comes from
+## SkillForge._granted_level and per-offer legality from
+## SkillForge.validate_mutation — the very call a real redemption would have to
+## pass — so "2 REQUIREMENTS SHORT" on screen is the same arithmetic the forge
+## would do. `authoring` carries validate_offer's own verdict on the DATA (a
+## narrow-shared pair is an authoring error, not a player-facing state).
+##
+## PRICE IS KAN-7 AND STAYS UNPRICED. `price` carries no number and no
+## currency — only the scope stamp and the data file's own note that
+## when/where an offer appears in the Lounge flow and what it costs is KAN-7.
+## Inventing one here is precisely what the frame's "KAN-7 — TBD" forbids.
+##
+## REDEMPTION IS NOT WIRED, AND SAYS SO. `redemption.available` is false for
+## every offer, and `redemption.missing` names each piece that does not exist
+## yet (see the block below). This is a fact about the repo, verified rather
+## than assumed: SkillForge's WRITE half (apply_mutation / apply_absorption)
+## has zero non-test callers — this projection only ever calls its read half —
+## RunState's command surface carries no redeem/mutate command, and no
+## persisted roster-skill write path exists anywhere. Presentation renders that
+## gate honestly instead of faking a working button.
+##
+## Deterministic (offers in authored file order, parents in recipe order),
+## deep-copied, ZERO mutation, ZERO rng. [] when the data file is absent.
+func view_offers(for_id: String = "") -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var doc: Dictionary = dal.mod_center_offers()
+	var keywords: Dictionary = dal.skill_keywords()
+	var roster_skills: Array = _offer_roster_skills(for_id)
+	var known: bool = not roster_skills.is_empty() or _offer_roster_known(for_id)
+	for raw: Variant in doc.get("offers", []) as Array:
+		var offer: Dictionary = raw
+		var parents: Array = []
+		var short: int = 0
+		for parent_raw: Variant in offer.get("parents", []) as Array:
+			var parent: Dictionary = parent_raw
+			var key := String(parent.get("key", ""))
+			var min_level: int = int(parent.get("min_level", 1))
+			var owned: int = SkillForge._granted_level(roster_skills, key)
+			var state := "UNKNOWN"
+			if known:
+				if owned <= 0:
+					state = "NOT LEARNED"
+				elif owned < min_level:
+					state = "IN PROGRESS"
+				else:
+					state = "MET"
+			if state != "MET":
+				short += 1
+			var display := String(dal.skill(key).get("name", ""))
+			if display == "":
+				display = _titlecase(key)
+			parents.append({
+				"key": key,
+				"name": display,
+				"min_level": min_level,
+				"owned_level": owned,
+				"met": state == "MET",
+				"state": state,
+				# The frame labels the first parent the IDENTITY parent and the
+				# rest SECONDARY — that is the authored min-level shape
+				# (identity-primary Lv5 + secondary Lv3, the file's own _meta),
+				# read off the recipe rather than assumed.
+				"role": "identity" if parents.is_empty() else "secondary",
+			})
+		var violations: Array = []
+		if known:
+			for v: Dictionary in SkillForge.validate_mutation(roster_skills, offer, keywords):
+				violations.append(v.duplicate(true))
+		var authoring: Array = []
+		for v: Dictionary in SkillForge.validate_offer(offer, keywords):
+			authoring.append(v.duplicate(true))
+		var result: Dictionary = offer.get("result", {})
+		out.append({
+			"key": String(offer.get("key", "")),
+			"name": String(offer.get("name", "")),
+			"note": String(offer.get("note", "")),
+			"status": String(offer.get("status", "")),
+			"provisional": bool(offer.get("provisional", false)),
+			# The broad group(s) the pair shares — the frame's BROAD-ONLY chip.
+			"shared_broad": (offer.get("shared_broad", []) as Array).duplicate(),
+			"broad_only": true,
+			# G3, machine-readable: the offer IS the recorded GM call past the
+			# narrow rule, carried in data as compatibility_override.
+			"override": bool(offer.get("compatibility_override", false)),
+			"result": {"key": String(result.get("key", "")),
+				"level": int(result.get("level", 1))},
+			"parents": parents,
+			# Book §4.5 / G6, stated loudly because it is irreversible: a
+			# mutation eats BOTH parents.
+			"consumes_parents": true,
+			"for": for_id,
+			"for_name": _combatant_name(for_id) if for_id != "" else "",
+			"known": known,
+			"requirements_short": short,
+			"eligible": known and violations.is_empty(),
+			"violations": violations,
+			"authoring": authoring,
+			"authored_ok": authoring.is_empty(),
+			# Decision #36 corrected the Mod-Center copy: parents cap at 5
+			# unless the skill was always linear, and DECLINING an offer costs
+			# nothing but the ceiling.
+			"parent_cap": 5,
+			"declining_costs": "ceiling_only",
+			"price": {
+				"priced": false,
+				"scope": "KAN-7",
+				"note": "when/where an offer appears in the Lounge flow and what it COSTS is KAN-7 pricing scope (data/mod_center_offers.json _meta)",
+			},
+			"redemption": {
+				"available": false,
+				"reason": "no_command_path",
+				"missing": OFFER_REDEMPTION_MISSING.duplicate(),
+			},
+		})
+	return out
+
+
+## Exactly what a working redemption would need and does not have. Verified
+## against the tree, not guessed: SkillForge's only callers are tests, RunState
+## exposes no mutation command, and nothing persists a changed roster grant.
+const OFFER_REDEMPTION_MISSING: Array[String] = [
+	"a RunState command (the reducer owns roster mutation, and its whole command surface is start_run / begin_encounter / end_encounter / offer_recruit / accept_recruit / decline_recruit / choose_exit / end_run — no redeem_offer, no mutate)",
+	"a roster-skill write path (SkillForge.apply_mutation returns a NEW skills array and has zero non-test callers; nothing writes one back onto a roster row's spec, and CombatantState.from_spec drops progression annotations by design)",
+	"the KAN-7 price + the Lounge beat that charges it (unpriced by ruling — data/mod_center_offers.json _meta)",
+	"result skill content (all three results are DATA-DECLARED ONLY — no data/skills.json rows; the_unseen and the_long_con have SkillBook mechanics, phantom_grasp has none)",
+]
+
+
+## The granted-skill rows `for_id`'s requirement math is measured against:
+## the live combatant's normalized grants first, else the run roster's spec
+## rows. [] when neither exists (the honest UNKNOWN case).
+func _offer_roster_skills(for_id: String) -> Array:
+	if for_id == "":
+		return []
+	if sim != null and sim.combatants.has(for_id):
+		var rows: Array = []
+		for row: Dictionary in (sim.combatants[for_id] as CombatantState).skills:
+			rows.append(row.duplicate(true))
+		return rows
+	if run != null:
+		for member: Dictionary in run.roster:
+			if String(member.get("id", "")) != for_id:
+				continue
+			var rows: Array = []
+			for raw: Variant in (member.get("spec", {}) as Dictionary).get("skills", []) as Array:
+				rows.append((raw as Dictionary).duplicate(true))
+			return rows
+	return []
+
+
+## True when `for_id` is a character we can honestly measure (in the fight or
+## on the roster) even though the grant list came back empty — an empty loadout
+## is "NOT LEARNED", an absent character is "UNKNOWN".
+func _offer_roster_known(for_id: String) -> bool:
+	if for_id == "":
+		return false
+	if sim != null and sim.combatants.has(for_id):
+		return true
+	if run != null:
+		for member: Dictionary in run.roster:
+			if String(member.get("id", "")) == for_id:
+				return true
+	return false
 
 
 ## Restores a run from serialized state (in-memory resume — the test/driver

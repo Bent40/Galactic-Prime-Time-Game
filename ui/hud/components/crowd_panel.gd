@@ -16,6 +16,12 @@ var _goal_pay: Label
 var _goal_time: Label
 var _spot_lab: Label
 var _tag_lab: Label
+var _chain_flag: PanelContainer
+var _chain_box: PanelContainer
+var _chain_title: Label
+var _chain_body: RichTextLabel
+var _chain_foot: Label
+var _chain_chip: PanelContainer
 
 
 func _ready() -> void:
@@ -50,8 +56,51 @@ func _ensure_built() -> void:
 	_hype_bar.add_theme_stylebox_override("fill",
 		UI.glow_sb(UI.col(UI.GOLD), UI.col(UI.GOLD, 0.0), 5, UI.col(UI.GOLD, 0.4), 5))
 	v.add_child(_hype_bar)
+	var bandrow := UI.hbox(6)
 	_hype_band = UI.lab("", UI.body(), 11, UI.col(UI.GOLD), 2.0, true)
-	v.add_child(_hype_band)
+	bandrow.add_child(_hype_band)
+	var bandspacer := Control.new()
+	bandspacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bandrow.add_child(bandspacer)
+	# The armed flag rides the band line (frame 4's HYPE CHAIN ARMED chip).
+	_chain_flag = UI.chip(UI.lab("HYPE CHAIN ARMED", UI.body(), 8, UI.col(UI.MYTHIC), 1.5, true),
+		UI.col(UI.MYTHIC, 0.12), UI.col(UI.MYTHIC, 0.6)) as PanelContainer
+	_chain_flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_chain_flag.visible = false
+	bandrow.add_child(_chain_flag)
+	v.add_child(bandrow)
+
+	# ---- R29 HYPE-CHAIN banner (approved frame 4) ------------------------
+	_chain_box = PanelContainer.new()
+	_chain_box.add_theme_stylebox_override("panel",
+		UI.sb(UI.col(UI.MYTHIC, 0.07), UI.col(UI.MYTHIC, 0.45), 5))
+	_chain_box.visible = false
+	var cm := UI.margin(10, 10, 7, 7)
+	_chain_box.add_child(cm)
+	var cv := UI.vbox(4)
+	cm.add_child(cv)
+	_chain_title = UI.lab("", UI.body(), 11, UI.col(UI.MYTHIC), 1.5, true)
+	cv.add_child(_chain_title)
+	# RichText so the carry ARITHMETIC can be emphasised inside the sentence
+	# the way the frame emphasises it, without splitting it into fake fields.
+	_chain_body = RichTextLabel.new()
+	_chain_body.bbcode_enabled = true
+	_chain_body.fit_content = true
+	_chain_body.scroll_active = false
+	_chain_body.custom_minimum_size = Vector2(0, 0)
+	_chain_body.add_theme_font_override("normal_font", UI.body())
+	_chain_body.add_theme_font_override("bold_font", UI.body())
+	_chain_body.add_theme_font_override("mono_font", UI.mono())
+	_chain_body.add_theme_font_size_override("normal_font_size", 9)
+	_chain_body.add_theme_font_size_override("bold_font_size", 9)
+	_chain_body.add_theme_font_size_override("mono_font_size", 9)
+	_chain_body.add_theme_color_override("default_color", UI.col(UI.TEXT))
+	cv.add_child(_chain_body)
+	_chain_foot = UI.lab("", UI.body(), 8, UI.col(UI.GOLD), 1.5, true)
+	_chain_chip = UI.chip(_chain_foot, UI.col(UI.GOLD, 0.10), UI.col(UI.GOLD, 0.55)) as PanelContainer
+	_chain_chip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	cv.add_child(_chain_chip)
+	v.add_child(_chain_box)
 
 	UI.border_line(v)
 
@@ -79,13 +128,37 @@ func _ensure_built() -> void:
 
 
 ## data: {hype_meter: int, band_display, goal: {title, desc, pay, time} or {},
-##        spot_line, tag_line}
+##        spot_line, tag_line,
+##        chain: {} | {armed: bool, title, body (bbcode), foot}}
+##
+## R29 HYPE CHAIN (approved frame 4). `chain` is the carry banner: while a
+## chain is armed the panel states the math in words — which rung of the
+## retention ladder the next room sits on, the live meter, and the head start
+## that falls out — and flags the band line ARMED. {} hides the whole block
+## (nothing to chain, or no run staged); an unarmed non-empty block still
+## renders, because "this room ends the run, the meter is banked" is a fact
+## the crowd panel owes the player just as much as the carry.
 func update(data: Dictionary) -> void:
 	_ensure_built()
 	var meter := int(data.get("hype_meter", 0))
 	_hype_val.text = str(meter)
 	_hype_bar.value = clampi(meter, 0, 100)
 	_hype_band.text = "CROWD: %s" % String(data.get("band_display", ""))
+	var chain: Dictionary = data.get("chain", {})
+	_chain_box.visible = not chain.is_empty()
+	_chain_flag.visible = bool(chain.get("armed", false))
+	if not chain.is_empty():
+		var armed := bool(chain.get("armed", false))
+		var accent: Color = UI.col(UI.MYTHIC) if armed else UI.col(UI.MUTED)
+		_chain_box.add_theme_stylebox_override("panel",
+			UI.sb(Color(accent.r, accent.g, accent.b, 0.07),
+				Color(accent.r, accent.g, accent.b, 0.45), 5))
+		_chain_title.text = String(chain.get("title", ""))
+		_chain_title.add_theme_color_override("font_color", accent)
+		_chain_title.add_theme_color_override("font_outline_color", accent)
+		_chain_body.text = String(chain.get("body", ""))
+		_chain_foot.text = String(chain.get("foot", ""))
+		_chain_chip.visible = _chain_foot.text != ""
 	var goal: Dictionary = data.get("goal", {})
 	if goal.is_empty():
 		_goal_title.text = "NO ACTIVE GOAL"

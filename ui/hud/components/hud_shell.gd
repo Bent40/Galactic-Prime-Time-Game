@@ -21,6 +21,7 @@ const TickerScene := preload("res://ui/hud/components/momus_ticker.tscn")
 const EventLogScene := preload("res://ui/hud/components/event_log_overlay.tscn")
 const ActionPreviewScene := preload("res://ui/hud/components/action_preview.tscn")
 const EndTurnConfirmationScene := preload("res://ui/hud/components/end_turn_confirmation.tscn")
+const ModCenterScene := preload("res://ui/hud/components/mod_center_popup.tscn")
 
 # Component refs are deliberately UNTYPED: each holds an instantiated component
 # scene and is driven dynamically by the facade (typed as Node/Control they would
@@ -37,6 +38,7 @@ var ticker
 var event_log
 var action_preview    # ActionPreview confirm panel (Phase 2, spec Area 10)
 var end_turn_confirm  # EndTurnConfirmation panel (Phase 2, spec Area 12)
+var mod_center        # ModCenterPopup — MODE D (spec Areas 3/4, approved frame 5)
 
 var _built := false
 var _launcher_row: Control
@@ -134,6 +136,12 @@ func _ensure_built() -> void:
 	event_log = EventLogScene.instantiate()
 	add_child(event_log)
 
+	# MODE D lives ABOVE every other overlay: it dims the whole HUD, including
+	# any flyout that was open when it opened, which is exactly what "Background
+	# HUD dimmed" means. Added last = drawn last.
+	mod_center = ModCenterScene.instantiate()
+	add_child(mod_center)
+
 	# Phase 2 confirm panels: overlays above the launcher (like the flyout, so
 	# they never cover the selected target in the arena — spec Area 10 rule).
 	action_preview = ActionPreviewScene.instantiate()
@@ -191,6 +199,19 @@ func show_end_turn_confirm(data: Dictionary) -> void:
 func hide_end_turn_confirm() -> void:
 	if end_turn_confirm != null:
 		end_turn_confirm.visible = false
+
+
+## MODE D — the Modification Center popup. Full-screen overlay with its own
+## dim; the shell only shows and hides it, the facade owns its data and the
+## pause it declares.
+func show_mod_center(data: Dictionary) -> void:
+	_ensure_built()
+	mod_center.show_popup(data)
+
+
+func hide_mod_center() -> void:
+	if mod_center != null:
+		mod_center.hide_popup()
 
 
 func _place_flyout() -> void:

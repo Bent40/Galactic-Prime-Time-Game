@@ -52,6 +52,11 @@ var _active_id := ""
 var _emoji := {}                 # id -> token emoji (facade-computed)
 var _pips := {}                  # id -> Array[Color] status pips (facade-computed)
 var _move_mode := false
+## MOVE's walking allowance (PLACEHOLDER R14 — the v1 highlight radius).
+const MOVE_ALLOWANCE := 3
+## Radius the click-to-target highlight is painted at: MOVE_ALLOWANCE for a
+## walk, the calling skill's own reach for a pick (see set_pick_mode).
+var _pick_radius := MOVE_ALLOWANCE
 
 ## R34 board surfaces (decision #36) — all facade-computed, this node only
 ## paints them. See update()'s contract for the exact dict shapes.
@@ -293,9 +298,25 @@ func _legend_row(tint: Color, label: String, note: String) -> Control:
 
 func set_move_mode(on: bool) -> void:
 	_ensure_built()
+	_pick_radius = MOVE_ALLOWANCE
 	_move_mode = on
 	_click_catcher.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 	_layout()  # repaint the reachable-hex highlight
+
+
+## KAN-6 phase 2 — the same click-to-target board at an EXPLICIT radius, for a
+## pick that is not a walk. The voicebox throw is the first caller: R35 waived
+## the throw's cost, never its range, so the highlight must be the skill's own
+## authored throw_range rather than MOVE's walking allowance. Identical
+## machinery otherwise (same catcher, same highlight, same pixel_to_hex), so
+## `move_mode()` keeps reading true while a pick is armed and every existing
+## probe behaves as it did.
+func set_pick_mode(on: bool, radius: int) -> void:
+	_ensure_built()
+	_pick_radius = maxi(1, radius) if on else MOVE_ALLOWANCE
+	_move_mode = on
+	_click_catcher.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
+	_layout()
 
 
 func move_mode() -> bool:
@@ -465,7 +486,7 @@ func _reachable_hexes() -> Array:
 	if actor.is_empty():
 		return out
 	var ap := _axial_of(actor)
-	var allowance := 3
+	var allowance := _pick_radius
 	var occ := {}
 	for cd in _combatants:
 		occ[_axial_of(cd)] = true
