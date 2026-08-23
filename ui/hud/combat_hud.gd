@@ -56,6 +56,14 @@ var _focus_id := ""           # inspector focus (card / token / boss click)
 var _armed: Dictionary = {}   # armed action awaiting a target part ({} = none)
 var _open_cat := ""           # open flyout category ("" = closed)
 var _move_mode := false       # MOVE click-to-target armed?
+# KAN-6 phase 2 — the VOICEBOX throw's hex pick. R35 waives the throw's whole
+# cost out of combat but never its RANGE, so the throw needs a target hex like
+# any other: this arms the same board click-catcher MOVE uses, at the skill's
+# own authored throw_range, and the click becomes the real declare's `at`.
+var _throw := {}              # {} = not throwing, else {key, level, range}
+# MODE D — the Mod-Center popup. Open state + which offer is expanded.
+var _mod_center_open := false
+var _mod_focus := ""
 
 ## R34/R35 FREE-FORM EXPLORATION (decision #36, approved frame 4).
 ##
@@ -173,6 +181,8 @@ func _ensure_built() -> void:
 	_shell.action_preview.back_requested.connect(_on_preview_back)
 	_shell.end_turn_confirm.confirmed.connect(_on_end_turn_confirmed)
 	_shell.end_turn_confirm.cancelled.connect(_on_end_turn_cancelled)
+	_shell.mod_center.close_requested.connect(_close_mod_center)
+	_shell.mod_center.offer_focused.connect(_on_offer_focused)
 	_momus("—and Dario bows mid-combat, the absolute professional!")
 
 
@@ -349,6 +359,245 @@ func _on_bit() -> void:
 		"%s drops the Bit — pure spectacle for the crowd" % _display_name_for(_active_actor))
 
 
+# =====================================================================
+# KAN-6 phase 2 — THE EXPLORATION ROWS THAT COMMIT (approved frame 4)
+#
+# Phase 1 shipped Mode A's shape and left these rows INSPECT-ONLY. R35 shipped
+# the engine half of all three: the voicebox throw and the lockpick take the
+# free-form declare waiver through ActionResolver.declare_free_form, and the
+# inventory interaction takes its own through inventory_free_form. So there is
+# nothing left to invent — these handlers emit the SAME commands the engine's
+# own tests drive, and the sim adjudicates every gate (range, lock tier,
+# adjacency, ownership) exactly as it does in combat. The HUD stays
+# presentation: it names the actor, the hex, the door or the item, and reads
+# the result back out of the event batch.
+#
+# WHAT THE RESULTS LOOK LIKE, and why they are worth showing:
+#   * a throw emits `sound_thrown`, and CombatSim's own R20 noise sweep turns
+#     it into `noise_heard` / `alerted` for anything in earshot — R34's "a door
+#     heard through a wall can pull a room onto you before you enter it", live.
+#   * a free-form pick emits `lock_picked` with `moments: 0` — that zero IS the
+#     waiver, so the ticker says it out loud rather than hiding it.
+#   * an inventory interaction emits `inventory_used {free: true, exploration:
+#     true}` and really runs its effect (a dropped item comes back through
+#     `item_recovered`) — never an acceptance stub.
+# =====================================================================
+
+## Arms the VOICEBOX throw: the board takes a click at the skill's own authored
+## throw_range (SkillBook, never a HUD number) and that hex becomes the real
+## declare's `at`. Esc / re-pressing INTERACT disarms.
+func _arm_throw() -> void:
+	var level := _granted_level_of(_active_actor, "voicebox")
+	if level <= 0:
+		_momus("DENIED · %s HAS NO VOICEBOX GRANT — nothing to throw"
+			% _display_name_for(_active_actor).to_upper())
+		return
+	var reach := int(SkillBook.mechanics("voicebox", level).get("throw_range", 10))
+	_move_mode = false
+	_throw = {"key": "voicebox", "level": level, "range": reach}
+	if _shell != null:
+		_shell.arena.set_pick_mode(true, reach)
+	_momus("🔊 VOICEBOX — pick a hex within %d for %s to throw the sound at (Esc cancels)"
+		% [reach, _display_name_for(_active_actor)])
+	_update_launcher()
+
+
+## Disarms the throw pick without issuing anything.
+func _cancel_throw() -> void:
+	if _throw.is_empty():
+		return
+	_throw = {}
+	if _shell != null:
+		_shell.arena.set_pick_mode(false, 0)
+	_update_launcher()
+
+
+## The picked hex -> the real free-form declare. Out of combat CombatSim routes
+## this through Exploration.is_free_form_declare to declare_free_form, which
+## resolves it on the spot at zero cost; in combat the identical command pays
+## the full R3 free-action budget. The HUD sends ONE command either way.
+func _throw_at(hex: Vector2i) -> void:
+	var throw := _throw
+	_cancel_throw()
+	_issue({
+		"type": "declare_action",
+		"actor": _active_actor,
+		"action": {"kind": "skill", "key": String(throw.get("key", "voicebox")),
+			"level": int(throw.get("level", 1)), "at": [hex.x, hex.y]},
+	}, "%s throws a mimicked shout at hex %d,%d — anything in earshot investigates THE SOUND" % [
+		_display_name_for(_active_actor), hex.x, hex.y])
+
+
+## PICK THE <DOOR> — the R35 free-form lockpick. The command is the ordinary
+## lockpicking declare naming the door key; the resolver prices it (0 out here,
+## the substrate's tier table once the clock runs) and rejects an out-of-reach
+## tier / unknown door / non-adjacent actor in its own vocabulary.
+func _pick_lock(door_key: String) -> void:
+	var level := _granted_level_of(_active_actor, "lockpicking")
+	if level <= 0:
+		_momus("DENIED · %s HAS NO LOCKPICKING GRANT"
+			% _display_name_for(_active_actor).to_upper())
+		return
+	_issue({
+		"type": "declare_action",
+		"actor": _active_actor,
+		"action": {"kind": "skill", "key": "lockpicking", "level": level, "door": door_key},
+	}, "%s works the %s lock" % [_display_name_for(_active_actor),
+		door_key.replace("_", " ").to_upper()])
+
+
+## SCOUT AHEAD — "walk the party up without entering; the gate does not close
+## behind you" (frame 4). The commit is deliberately NOT issued: this is only
+## the free-form walk, one real `move` per living contestant toward the nearest
+## authored exit, and the sim's own walker decides every step (bounds, walls,
+## occupancy, reachability). PROVISIONAL, and presentation-side by construction:
+## WHICH hex each contestant is sent to is a UI convenience (the free hex
+## adjacent to the door nearest that contestant, deterministic by sorted id and
+## fixed direction order) — nothing about it is a rule, and a rejection is
+## surfaced rather than retried. With no authored door there is nothing to
+## scout toward and the row says so instead of walking somewhere invented.
+func _scout_ahead() -> void:
+	var door := _nearest_exit_door()
+	if door.is_empty():
+		_momus("NOTHING TO SCOUT — this room authors no exits in the view API")
+		return
+	var pos: Array = door.get("position", [0, 0])
+	var gate := Vector2i(int(pos[0]), int(pos[1]))
+	var walkers: Array = []
+	for cd in _last_combatants:
+		var c: Dictionary = cd
+		if String(c.get("team", "")) == "party" and bool(c.get("alive", false)):
+			walkers.append(String(c.get("id", "")))
+	# WHO LEADS. The contestant you are acting with goes first and takes the
+	# slot closest to the way out; the rest follow by their own distance to it,
+	# id-tie-broken. Order matters mechanically, not cosmetically: the walk is
+	# the sim's own free-form walker, which does not re-plan around a body, so
+	# a far walker claiming a near slot can wall the ones behind it out of
+	# their own. Deterministic either way — same board, same order, same walk.
+	walkers.sort_custom(func(a: String, b: String) -> bool:
+		if (a == _active_actor) != (b == _active_actor):
+			return a == _active_actor
+		var da := _hex_distance(_hex_of(a), gate)
+		var db := _hex_distance(_hex_of(b), gate)
+		return da < db if da != db else a < b)
+	var taken: Dictionary = {}
+	var moved := 0
+	for id_v: Variant in walkers:
+		var id := String(id_v)
+		var dest := _scout_hex_for(id, gate, taken)
+		if dest == Vector2i(9999, 9999):
+			continue
+		taken[dest] = true
+		var events: Array = _gc.apply_command(
+			{"type": "move", "actor": id, "to": [dest.x, dest.y]})
+		for e in events:
+			if String((e as Dictionary).get("type", "")) == "moved":
+				moved += 1
+	refresh()
+	if moved > 0:
+		_momus("👣 SCOUTED — %d of %d walk up to the %s. Nothing is committed; the way stays open." % [
+			moved, walkers.size(), String(door.get("key", "")).replace("_", " ").to_upper()])
+	else:
+		_momus("SCOUT FAILED — nobody could reach the %s from here"
+			% String(door.get("key", "")).replace("_", " ").to_upper())
+
+
+## The exit the party would scout toward: the authored door NEAREST the active
+## contestant (sorted-key tie-break), off view_arena. {} when none is authored.
+func _nearest_exit_door() -> Dictionary:
+	var arena: Dictionary = _gc.view_arena() if _gc != null else {}
+	var me := _hex_of(_active_actor)
+	var best: Dictionary = {}
+	var best_d := 1 << 30
+	var doors: Array = arena.get("doors", [])
+	for raw: Variant in doors:
+		var door: Dictionary = raw
+		var pos: Array = door.get("position", [0, 0])
+		var d := _hex_distance(me, Vector2i(int(pos[0]), int(pos[1])))
+		if d < best_d or (d == best_d and String(door.get("key", "")) < String(best.get("key", "~"))):
+			best_d = d
+			best = door
+	return best
+
+
+## A free hex adjacent to `gate` for `id` to walk to — nearest first, skipping
+## hexes already claimed by an earlier walker, standing on a body, or OUTSIDE
+## the arena's authored bounds (a doorway on the room's edge has fewer than six
+## usable neighbours, and asking the sim to walk off the board would only earn
+## an out_of_bounds rejection). Returns the sentinel (9999, 9999) when the
+## doorway's ring has nothing left.
+func _scout_hex_for(id: String, gate: Vector2i, taken: Dictionary) -> Vector2i:
+	var occupied: Dictionary = {}
+	for cd in _last_combatants:
+		var c: Dictionary = cd
+		if String(c.get("id", "")) == id or not bool(c.get("alive", false)):
+			continue
+		occupied[_hex_of(String(c.get("id", "")))] = true
+	var from := _hex_of(id)
+	var best := Vector2i(9999, 9999)
+	var best_d := 1 << 30
+	for dir: Vector2i in HexGeometry.DIRECTIONS:
+		var hex: Vector2i = gate + dir
+		if taken.has(hex) or occupied.has(hex) or not _in_bounds(hex):
+			continue
+		var d := _hex_distance(from, hex)
+		if d < best_d:
+			best_d = d
+			best = hex
+	return best
+
+
+## Is the hex inside the arena's authored bounds? Read off view_arena's own
+## bounds block (both shapes it publishes: the axial rect and the explicit hex
+## set). An arena with no bounds block is the unbounded legacy combat, where
+## every hex is in bounds.
+func _in_bounds(hex: Vector2i) -> bool:
+	var bounds: Dictionary = (_gc.view_arena() if _gc != null else {}).get("bounds", {})
+	if bounds.is_empty():
+		return true
+	if String(bounds.get("kind", "")) == "hexes":
+		for raw: Variant in bounds.get("hexes", []) as Array:
+			var h: Array = raw
+			if h.size() == 2 and int(h[0]) == hex.x and int(h[1]) == hex.y:
+				return true
+		return false
+	var origin: Array = bounds.get("origin", [0, 0])
+	var q0 := int(origin[0]) if origin.size() == 2 else 0
+	var r0 := int(origin[1]) if origin.size() == 2 else 0
+	return hex.x >= q0 and hex.x < q0 + int(bounds.get("width", 0)) \
+		and hex.y >= r0 and hex.y < r0 + int(bounds.get("height", 0))
+
+
+## USE / TAKE an item — R35's inventory waiver. `use` is the ordinary
+## interaction (free and ledger-free out of combat, R3's first-free ladder
+## resumed the instant the clock runs); `pickup` is the recovery path for an
+## item on the floor, which really puts it back in hand (`item_recovered`).
+func _use_item(item_key: String, interaction: String) -> void:
+	var label := item_key.replace("_", " ").to_upper()
+	for raw: Variant in _find_combatant(_active_actor).get("items", []):
+		if String((raw as Dictionary).get("key", "")) == item_key:
+			label = String((raw as Dictionary).get("name", label)).to_upper()
+			break
+	_issue({"type": "inventory", "actor": _active_actor,
+		"interaction": interaction, "item": item_key},
+		("%s picks the %s back up" if interaction == "pickup" else "%s uses the %s") % [
+			_display_name_for(_active_actor), label])
+
+
+## Axial hex of a combatant off the view row ((0, 0) when unknown).
+func _hex_of(id: String) -> Vector2i:
+	var pos: Array = _find_combatant(id).get("position", [0, 0])
+	if pos.size() != 2:
+		return Vector2i.ZERO
+	return Vector2i(int(pos[0]), int(pos[1]))
+
+
+func _hex_distance(a: Vector2i, b: Vector2i) -> int:
+	var dq := a.x - b.x
+	var dr := a.y - b.y
+	return int((absi(dq) + absi(dr) + absi(dq + dr)) / 2.0)
+
+
 ## MOVE arms click-to-target (v1 semantics): the arena highlights reachable
 ## hexes and the next click issues a real move. Toggling MOVE off disarms.
 func _on_move() -> void:
@@ -371,9 +620,12 @@ func _on_arena_input(event: InputEvent) -> void:
 ## Local pixel -> axial hex -> real move command. Rejections surface in the
 ## Momus ticker via _issue — never a crash. (v1 semantics.)
 func _arena_click_local(local_pos: Vector2) -> void:
-	if not _move_mode:
+	if _throw.is_empty() and not _move_mode:
 		return
 	var hex: Vector2i = _shell.arena.pixel_to_hex(local_pos)
+	if not _throw.is_empty():
+		_throw_at(hex)
+		return
 	_move_mode = false
 	_shell.arena.set_move_mode(false)
 	_issue({"type": "move", "actor": _active_actor, "to": [hex.x, hex.y]},
@@ -426,6 +678,7 @@ func _on_category(cat: String) -> void:
 	if _shell != null:
 		_shell.hide_action_preview()
 		_shell.hide_end_turn_confirm()
+	_cancel_throw()
 	_pending_confirm = {}
 	if cat == "move":
 		_close_flyout()
@@ -464,6 +717,17 @@ func _on_flyout_entry(id: String) -> void:
 		_on_camera_call()
 	elif id == "bit":
 		_on_bit()
+	# ---- KAN-6 phase 2: the exploration rows that COMMIT (frame 4) ----------
+	elif id == "voicebox":
+		_arm_throw()
+	elif id == "scout":
+		_scout_ahead()
+	elif id.begins_with("pick:"):
+		_pick_lock(id.substr(5))
+	elif id.begins_with("use:"):
+		_use_item(id.substr(4), "use")
+	elif id.begins_with("take:"):
+		_use_item(id.substr(5), "pickup")
 	elif id.begins_with("skill:"):
 		var key := id.substr(6)
 		if SkillBook.is_self_skill(key):
@@ -888,6 +1152,89 @@ func _open_log() -> void:
 	_shell.event_log.show_log(_event_log)
 
 
+# =====================================================================
+# MODE D — THE MODIFICATION CENTER POPUP (approved frame 5)
+#
+# ARCHITECTURE.md Area 3 requires every popup to DECLARE whether it pauses,
+# and Mode D requires the pause state to be "clearly shown". This one pauses,
+# and the declaration is enforced, not decorative: while it is open the
+# exploration driver holds its time steps through the SAME named-blocker
+# mechanism R35's inventory clause uses, so nothing ticks behind the popup.
+# In combat there is nothing to hold — the combat clock only advances on END
+# TURN, which is unreachable behind a modal — so the popup is honestly paused
+# in both modes.
+#
+# ENTRY POINT: opened by the facade (key M, and directly by drivers). WHERE it
+# appears in the run flow is KAN-7 scope by ruling (the approved frames' own
+# note), and Area 3's popup-shortcut ROW is still deferred, so there is no
+# shortcut button to highlight yet — flagged rather than invented.
+# =====================================================================
+
+func _open_mod_center() -> void:
+	if _mod_center_open:
+		_close_mod_center()
+		return
+	_mod_center_open = true
+	# The declared pause, made real (R35's blocker set — a named surface, so two
+	# overlapping holds cannot un-pause each other on close).
+	if _explore_driver != null:
+		_explore_driver.set_blocker("mod center", true)
+	_shell.show_mod_center(_mod_center_data())
+	_momus("⬡ MODIFICATION CENTER — the house makes three offers. Time is held while you read.")
+
+
+func _close_mod_center() -> void:
+	if not _mod_center_open:
+		return
+	_mod_center_open = false
+	if _explore_driver != null:
+		_explore_driver.set_blocker("mod center", false)
+	_shell.hide_mod_center()
+	_update_launcher()
+
+
+func _on_offer_focused(key: String) -> void:
+	_mod_focus = key
+	if _mod_center_open:
+		_shell.show_mod_center(_mod_center_data())
+
+
+## The popup's display dict. Offers come straight off view_offers() measured
+## against the FOCUSED contestant (the inspector's focus when it is a party
+## member, else the on-the-clock contestant) — so the requirement rows are that
+## character's real granted levels, and switching who you have selected
+## re-measures them.
+func _mod_center_data() -> Dictionary:
+	var who := _selected_id if _is_party(_selected_id) else _active_actor
+	var offers: Array = _gc.view_offers(who) if _gc != null else []
+	if _mod_focus == "":
+		# Default focus: the offer this character is CLOSEST to — the most
+		# parents actually STARTED (owned at any level), then the fewest
+		# requirements outstanding, then authored order. Derived from the
+		# character's real grants, never picked at random, and stable: the same
+		# roster always lands on the same offer.
+		var best_started := -1
+		var best_short := 1 << 30
+		for raw: Variant in offers:
+			var o: Dictionary = raw
+			var started := 0
+			for praw: Variant in o.get("parents", []):
+				if int((praw as Dictionary).get("owned_level", 0)) > 0:
+					started += 1
+			var short := int(o.get("requirements_short", 99))
+			if started > best_started or (started == best_started and short < best_short):
+				best_started = started
+				best_short = short
+				_mod_focus = String(o.get("key", ""))
+	return {
+		"offers": offers,
+		"focus": _mod_focus,
+		"for_name": _display_name_for(who),
+		"paused": true,
+		"pause_note": "driver",
+	}
+
+
 func _close_log() -> void:
 	_shell.event_log.hide_log()
 
@@ -905,20 +1252,34 @@ func _close_flyout() -> void:
 
 
 ## Esc / right-click: close the topmost transient thing (log > end-turn
-## confirmation > action preview [= BACK, one step] > armed action > flyout >
-## move targeting) — spec Areas 3/10/12 close rules.
+## confirmation > action preview [= BACK, one step] > armed throw > armed
+## action > flyout > move targeting) — spec Areas 3/10/12 close rules.
 func _unhandled_input(event: InputEvent) -> void:
+	# M toggles MODE D. A provisional binding: Area 3's popup-shortcut row is
+	# still deferred and the Mod-Center's place in the run flow is KAN-7, so
+	# this is a way IN, not the ruled entry point.
+	if event is InputEventKey and event.pressed and event.keycode == KEY_M \
+			and not event.is_echo():
+		_open_mod_center()
+		get_viewport().set_input_as_handled()
+		return
 	var esc: bool = event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE
 	var rmb: bool = event is InputEventMouseButton and event.pressed \
 		and event.button_index == MOUSE_BUTTON_RIGHT
 	if not (esc or rmb):
 		return
-	if _shell != null and _shell.event_log.visible:
+	if _mod_center_open:
+		_close_mod_center()
+	elif _shell != null and _shell.event_log.visible:
 		_close_log()
 	elif _shell != null and _shell.end_turn_confirm.visible:
 		_on_end_turn_cancelled()
 	elif _shell != null and _shell.action_preview.visible:
 		_on_preview_back()
+	elif not _throw.is_empty():
+		_cancel_throw()
+		_momus("Throw cancelled.")
+		refresh()
 	elif not _armed.is_empty():
 		_armed = {}
 		_momus("Cancelled.")
@@ -943,12 +1304,27 @@ func refresh() -> void:
 	# read — there is no turn order and nothing costs Moments out of combat.
 	_phase = _gc.view_phase()
 	var order: Array = _gc.view_turn_order()
-	# Derive the on-the-clock contestant (v1 rule: first ready contestant).
-	for e in order:
-		var ed: Dictionary = e
-		if bool(ed.get("ready", false)) and bool(ed.get("is_contestant", false)):
-			_active_actor = String(ed.get("id", ""))
-			break
+	# WHO IS ACTING. In combat: the on-the-clock contestant (v1 rule — first
+	# ready contestant). OUT OF COMBAT there is no turn order at all (R34: "no
+	# Moment order, the party walks together"), so deriving an actor from one
+	# is meaningless — worse, it silently overrides the player's choice every
+	# refresh. Mode A's acting contestant is therefore the SELECTED one, which
+	# is what makes the free-form rows (voicebox, lockpick, item use) belong to
+	# the contestant whose card you clicked and be measured against THEIR real
+	# grants. Falls back to the turn-order derivation before anything is
+	# selected, so a driver that never selects behaves exactly as it did.
+	var explore_actor := ""
+	if _exploring() and _is_party(_selected_id) \
+			and bool(_find_combatant(_selected_id).get("alive", false)):
+		explore_actor = _selected_id
+	if explore_actor != "":
+		_active_actor = explore_actor
+	else:
+		for e in order:
+			var ed: Dictionary = e
+			if bool(ed.get("ready", false)) and bool(ed.get("is_contestant", false)):
+				_active_actor = String(ed.get("id", ""))
+				break
 	# Selection / focus defaults + cleanup of vanished ids.
 	if _selected_id == "" or _find_combatant(_selected_id).is_empty() or not _is_party(_selected_id):
 		_selected_id = _active_actor
@@ -964,6 +1340,8 @@ func refresh() -> void:
 	_bind_arena()
 	_update_launcher(order)
 	_shell.ticker.update({"recent_line": _recent_events_line()})
+	if _mod_center_open:
+		_shell.show_mod_center(_mod_center_data())
 	if _open_cat != "":
 		_shell.show_flyout(_flyout_data(_open_cat))  # keep entries (combo dim etc.) honest
 
@@ -1027,6 +1405,7 @@ func _bind_timeline(order: Array) -> void:
 		"next_reset": "NEXT RESET · CLOCK %d" % (clock_no + 1),
 		"markers": markers,
 		"bars": bars,
+		"ticks": _condition_tick_chips(lap0),
 		# Mode A swaps this whole slot (R34): out of combat the timing strip
 		# has nothing to time, so it becomes the exploration strip.
 		"explore": _explore_strip(),
@@ -1091,6 +1470,109 @@ func _route_crumbs() -> Array:
 		else:
 			out.append({"text": label, "state": "ahead"})
 	return out
+
+
+## SCHEDULED CONDITION TICKS as timeline chips (approved frame 1's own example,
+## "🔥 BURN II → DARIO"). Decision 2 keeps this strip as the order-and-timing
+## surface and decision 4 makes status effects load-bearing everywhere: a
+## scheduled TICK is timing — when the burn bites — not enemy intent, which R34
+## moved onto the enemy's icon. So it belongs here, on its own lane.
+##
+## SOURCED, NEVER DERIVED. Every row comes off view_condition_schedule(), which
+## reads ConditionEngine's own rules (which conditions advance at the reset,
+## the infected-T2 acceleration rider, the activation-delay and delay ladders,
+## the timer countdowns). This function only turns a row into a chip: the
+## Clock-reset tick becomes a slot on the lap, the condition's own theme colour
+## and emoji become the chip's, and the tooltip states the whole fact.
+##
+## WHAT IS SHOWN: the rows that actually BITE (advance / resolve / step-down /
+## a timer moving or expiring). A `hold` row (a condition reapplied this Clock,
+## or one resting through the reset) and a `dormant` row schedule nothing, so
+## drawing them would be noise pretending to be a warning. A PAUSED timer has
+## no tick to point at and is skipped for the same reason. Party rows sort
+## first — your own bites are the ones you can still act on.
+func _condition_tick_chips(lap0: int) -> Array:
+	if _gc == null:
+		return []
+	var rows: Array = []
+	for raw: Variant in _gc.view_condition_schedule():
+		var r: Dictionary = raw
+		var effect := String(r.get("effect", ""))
+		if effect == "hold" or effect == "dormant" or effect == "paused":
+			continue
+		if not r.has("at_tick"):
+			continue
+		rows.append(r)
+	# Party first, then soonest, then by combatant — deterministic every frame.
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var pa := 0 if String(a.get("team", "")) == "party" else 1
+		var pb := 0 if String(b.get("team", "")) == "party" else 1
+		if pa != pb:
+			return pa < pb
+		if int(a.get("at_tick", 0)) != int(b.get("at_tick", 0)):
+			return int(a.get("at_tick", 0)) < int(b.get("at_tick", 0))
+		return String(a.get("combatant", "")) < String(b.get("combatant", "")))
+	var out: Array = []
+	for raw: Variant in rows:
+		var r: Dictionary = raw
+		var cond := String(r.get("condition", ""))
+		var who := _display_name_for(String(r.get("combatant", ""))).to_upper()
+		var slot := clampi(int(r.get("at_tick", 0)) - lap0, 0, 9)
+		var effect := String(r.get("effect", ""))
+		var label := ""
+		var tip := ""
+		var part := String(r.get("part", "")).replace("_", " ").to_upper()
+		match effect:
+			"advance":
+				label = "%s %s → %s" % [UI.cond_abbr(cond),
+					_roman(int(r.get("to_tier", 1))), who]
+				tip = "%s: %s on the %s goes T%d → T%d at the Clock reset%s" % [
+					who, String(r.get("condition_name", cond)).to_upper(), part,
+					int(r.get("tier", 0)), int(r.get("to_tier", 0)),
+					" (×%d — INFECTED T2 acceleration)" % int(r.get("steps", 1)) \
+						if int(r.get("steps", 1)) > 1 else ""]
+			"resolve":
+				label = "%s CLEARS → %s" % [UI.cond_abbr(cond), who]
+				tip = "%s: %s on the %s RESOLVES at the Clock reset" % [
+					who, String(r.get("condition_name", cond)).to_upper(), part]
+			"step_down":
+				label = "%s ↓ %s → %s" % [UI.cond_abbr(cond),
+					_roman(int(r.get("to_tier", 1))), who]
+				tip = "%s: %s on the %s eases T%d → T%d (resting) at the Clock reset" % [
+					who, String(r.get("condition_name", cond)).to_upper(), part,
+					int(r.get("tier", 0)), int(r.get("to_tier", 0))]
+			"timer_expires":
+				label = "⏳ %s ENDS → %s" % [String(r.get("timer", "")).to_upper(), who]
+				tip = "%s: the %s timer EXPIRES at the next Clock reset" % [
+					who, String(r.get("timer", "")).replace("_", " ").to_upper()]
+			"timer_tick":
+				label = "⏳ %s %d → %s" % [String(r.get("timer", "")).to_upper(),
+					int(r.get("clocks_remaining", 0)), who]
+				tip = "%s: the %s timer counts down (%d Clock%s left)" % [
+					who, String(r.get("timer", "")).replace("_", " ").to_upper(),
+					int(r.get("clocks_remaining", 0)),
+					"" if int(r.get("clocks_remaining", 0)) == 1 else "s"]
+			_:
+				continue
+		var carry := bool(r.get("carry", false))
+		if carry:
+			tip += " — %d Clocks out (%s)" % [int(r.get("clocks_away", 1)),
+				"incubating" if r.has("activation_delay") else "delayed"]
+		out.append({
+			"slot": slot,
+			"emoji": String(COND_EMOJI.get(cond, "⏳")),
+			"label": label,
+			"color": UI.cond_col(cond),
+			"carry": carry,
+			"name": tip,
+		})
+	return out
+
+
+## Tier as a numeral the frame's own way ("BURN II"); past IV it degrades to
+## the plain number rather than inventing deeper Roman.
+func _roman(tier: int) -> String:
+	return ["", "I", "II", "III", "IV"][tier] if tier >= 1 and tier <= 4 else str(tier)
 
 
 func _bind_party(order: Array, bc: Dictionary) -> void:
@@ -1205,7 +1687,60 @@ func _bind_crowd(bc: Dictionary) -> void:
 		"goal": goal_view,
 		"spot_line": spot_line,
 		"tag_line": tag_line,
+		"chain": _chain_banner(),
 	})
+
+
+## THE R29 HYPE-CHAIN BANNER (approved frame 4's crowd panel). The frame states
+## the carry in words — "the next room opens at 40% of your ending meter —
+## 68 -> 27 head start. Chain the den after and it keeps 60%." — and this is
+## that sentence, built from view_hype_chain().
+##
+## NOTHING HERE IS HARDCODED. The percentages are the LIVE rungs of decision
+## #32's retention ladder as the projection read them off
+## RunState.CHAIN_RETENTION_PCT (40 / 60 / 80 / 100 today); the meter is the
+## live one; the head start is the projection's floor(meter x pct), the same
+## arithmetic RunState.chain_hype_start does when the next room actually
+## stages. Re-rule the ladder and this banner follows for free.
+##
+## {} — the banner is hidden — only when there is no run at all (a bare
+## start_combat demo drive has no chain to speak of and the HUD says nothing
+## rather than inventing one). A TERMINAL room reports armed false and the
+## banner says the meter is banked, not carried.
+func _chain_banner() -> Dictionary:
+	var chain: Dictionary = _gc.view_hype_chain() if _gc != null else {}
+	if chain.is_empty():
+		return {}
+	var meter := int(chain.get("meter", 0))
+	if not bool(chain.get("armed", false)):
+		var why := "This room is TERMINAL — there is no next room to carry into." \
+			if bool(chain.get("terminal", false)) \
+			else "No next room is staged — nothing to carry the meter into."
+		return {
+			"armed": false,
+			"title": "⛓ HYPE CHAIN — R29",
+			"body": "%s The meter you end on (%d) is banked into the verdict, not carried." % [why, meter],
+			"foot": "",
+		}
+	var pct := int(chain.get("pct", 0))
+	var opens := int(chain.get("opens_at", 0))
+	var body := ("Exploration is glue, not rest. The next room opens at [b]%d%%[/b] "
+		+ "of your ending meter — [b]%d → %d[/b] head start.") % [pct, meter, opens]
+	var then_pct := int(chain.get("then_pct", 0))
+	if then_pct != pct:
+		body += " Chain the room after that and it keeps [b]%d%%[/b]." % then_pct
+	var rooms: Array = chain.get("next_rooms", [])
+	if rooms.size() > 1:
+		body += "\n[color=#8892b0]Both routes carry the same %d%% — the branch is the fight, not the meter.[/color]" % pct
+	elif rooms.size() == 1:
+		body += "\n[color=#8892b0]Next: %s[/color]" % \
+			String((rooms[0] as Dictionary).get("to", "")).replace("_", " ").to_upper()
+	return {
+		"armed": true,
+		"title": "⛓ HYPE CHAIN — R29",
+		"body": body,
+		"foot": "CHAINING IS REWARDED",
+	}
 
 
 func _bind_inspector() -> void:
@@ -1513,7 +2048,10 @@ func _update_launcher(order: Array = []) -> void:
 			next_name = String(ed.get("name", "")).to_upper()
 			break
 	var hint := "Pick a category — every entry shows its honest Moment cost."
-	if not _armed.is_empty():
+	if not _throw.is_empty():
+		hint = "🔊 VOICEBOX — pick a hex within %d for %s to throw the sound at (Esc cancels)" % [
+			int(_throw.get("range", 10)), _display_name_for(_active_actor)]
+	elif not _armed.is_empty():
 		hint = "🎯 ARMED: %s · COST %d — pick a part in the inspector (Esc cancels)" % [
 			String(_armed.get("label", "")), int(_armed.get("cost", 1))]
 	elif _move_mode:
@@ -1554,7 +2092,12 @@ func _update_launcher(order: Array = []) -> void:
 		var hold := "" if _explore_driver == null else String(_explore_driver.hold_reason())
 		hint = ("No turn to end — but the world does not wait: mobs patrol, "
 			+ "conditions tick, the crowd is bored by safety.")
-		if hold != "":
+		if not _throw.is_empty():
+			# An armed pick outranks the standing Mode A line: it is the thing
+			# the player is being asked to do right now.
+			hint = "🔊 VOICEBOX — pick a hex within %d for %s to throw the sound at (Esc cancels)" % [
+				int(_throw.get("range", 10)), _display_name_for(_active_actor)]
+		elif hold != "":
 			hint = "⏸ %s — no time steps are being issued. The sim holds no pause state; the driver simply stops." % hold
 
 	_shell.launcher.update({
@@ -1642,57 +2185,144 @@ func _flyout_data(cat: String) -> Dictionary:
 	return {"title": "", "entries": []}
 
 
-## MODE A interact list. Real objects only: the arena's authored doors, live
-## state and lock included, off view_arena(). R34 rules exploration-time
-## actions free, and R35 waived voicebox / lockpick costs out here — so the
-## entries say FREE and mean it. Doors are the R29 exits; picking one is the
-## deliberate ENTER, which is the commit button, so these rows INSPECT rather
-## than silently commit: focusing an exit is a read, entering is a decision.
+## MODE A interact list (approved frame 4). Real objects only: the arena's
+## authored doors with their LIVE state and lock, off view_arena(). R34 rules
+## exploration-time actions free and R35 waived the voicebox / lockpick costs
+## out here, so the entries say FREE and mean it.
+##
+## WHICH ROWS COMMIT, and why the split is not arbitrary. An EXIT row still
+## inspects: walking through a door is the deliberate ENTER, which is the
+## commit button with its own consequence line — a flyout row must never
+## silently start a fight. Everything else on this list is a real act with a
+## real command behind it, and phase 2 wires all three:
+##   PICK THE <DOOR>   -> the lockpicking declare (free-form out here)
+##   <ACTOR> - VOICEBOX -> arms the throw's hex pick, then the real declare
+##   SCOUT AHEAD       -> free-form `move` commands toward the nearest exit
+## Each row is enabled only when it is honestly available: the pick and the
+## throw need the ACTUAL grant on the acting contestant (the shipped roster
+## carries neither skill — the frame's rows presuppose grants the seed data
+## does not author, so the rows say so instead of pretending), and a lock the
+## grant cannot reach is left to the sim to reject rather than pre-judged.
 func _interact_entries() -> Array:
 	var entries: Array = []
 	var arena: Dictionary = _gc.view_arena() if _gc != null else {}
-	for raw: Variant in arena.get("doors", []):
+	var pick_level := _granted_level_of(_active_actor, "lockpicking")
+	# The frame's own row reads "SASHA — VOICEBOX": the FIRST name, so the act
+	# stays legible in a flyout row. The full authored display name lives on the
+	# summary panel and the inspector, which have room for it.
+	var who := _display_name_for(_active_actor).split(" ")[0].to_upper()
+	var doors: Array = arena.get("doors", [])
+	for raw: Variant in doors:
 		var door: Dictionary = raw
-		var key := String(door.get("key", "")).replace("_", " ").to_upper()
+		var key := String(door.get("key", ""))
+		var label := key.replace("_", " ").to_upper()
 		var state := String(door.get("state", "")).to_upper()
 		var lock: Dictionary = door.get("lock", {})
 		var sub := "DOOR · %s" % state
 		if not lock.is_empty():
-			sub += " · LOCK TIER %d (%s) — free to pick out here, %s once the fighting starts" % [
-				int(lock.get("tier", 1)), String(lock.get("state", "")).to_upper(),
-				"1 MOMENT"]
-		entries.append({"id": "", "label": "🚪 %s" % key, "sub": sub,
+			# The substrate stores the tier as its ENUM STRING ("simple" ..
+			# "magical"), not a number — read it as one.
+			sub += " · %s LOCK (%s)" % [
+				String(lock.get("tier", "")).to_upper(), String(lock.get("state", "")).to_upper()]
+		entries.append({"id": "", "label": "🚪 %s" % label, "sub": sub + " — EXIT: entering is the ENTER commit, not a menu row",
 			"enabled": false, "accent": UI.col(UI.CYAN)})
-	if entries.is_empty():
-		entries.append({"id": "", "label": "NOTHING TO INTERACT WITH",
+		# The pick row rides its door (frame 4's "PICK THE SUPPLY CAGE").
+		if lock.is_empty() or String(lock.get("state", "")) != "locked":
+			continue
+		var tier := String(lock.get("tier", "simple"))
+		if pick_level > 0:
+			entries.append({"id": "pick:" + key,
+				"label": "🔓 PICK THE %s" % label,
+				"sub": "%s LOCK · LOCKPICKING LV %d · FREE out here, %d MOMENT%s once the fighting starts" % [
+					tier.to_upper(), pick_level, _lock_moments(tier),
+					"" if _lock_moments(tier) == 1 else "S"],
+				"enabled": true, "accent": UI.col(UI.GOLD)})
+		else:
+			entries.append({"id": "", "label": "🔓 PICK THE %s" % label,
+				"sub": "%s LOCK — %s HAS NO LOCKPICKING GRANT (no roster loadout authors one)" % [
+					tier.to_upper(), who],
+				"enabled": false, "accent": UI.col(UI.MUTED)})
+	if doors.is_empty():
+		entries.append({"id": "", "label": "NO DOORS IN THIS ROOM",
 			"sub": "this encounter authors no arena doors — no exits, locks or props in the view API",
 			"enabled": false, "accent": UI.col(UI.MUTED)})
+
+	# ---- VOICEBOX: the decoy throw (R35's first waived act) ----------------
+	var throw_level := _granted_level_of(_active_actor, "voicebox")
+	if throw_level > 0:
+		var reach := int(SkillBook.mechanics("voicebox", throw_level).get("throw_range", 10))
+		entries.append({"id": "voicebox", "label": "🔊 %s — VOICEBOX" % who,
+			"sub": "throw a mimicked shout up to %d hexes · mobs investigate THE SOUND, not you · FREE" % reach,
+			"enabled": true, "accent": UI.col(UI.MYTHIC)})
+	else:
+		entries.append({"id": "", "label": "🔊 %s — VOICEBOX" % who,
+			"sub": "%s has no voicebox grant — no roster loadout authors one (the throw is real; the grant is not)" % who,
+			"enabled": false, "accent": UI.col(UI.MUTED)})
+
+	# ---- SCOUT AHEAD: walk up without entering ----------------------------
+	var gate := _nearest_exit_door()
+	if not gate.is_empty():
+		entries.append({"id": "scout", "label": "👣 SCOUT AHEAD",
+			"sub": "walk the party up to the %s without entering — the way does not close behind you · FREE" % 				String(gate.get("key", "")).replace("_", " ").to_upper(),
+			"enabled": true, "accent": UI.col(UI.SUCCESS)})
+	else:
+		entries.append({"id": "", "label": "👣 SCOUT AHEAD",
+			"sub": "nothing to scout toward — this room authors no exits",
+			"enabled": false, "accent": UI.col(UI.MUTED)})
+
 	entries.append({"id": "", "label": "↔ WALK",
 		"sub": "FREE · no Moment cost, no turn order — the clock still runs (R34)",
 		"enabled": false, "accent": UI.col(UI.SUCCESS)})
 	return entries
 
 
+## The substrate's own Moments-to-pick for a lock tier (Arena.LOCK_PICK_MOMENTS
+## — read, never retyped), so the row can state the COMBAT price the waiver
+## is suspending. 1 for an unknown tier (the substrate's floor).
+func _lock_moments(tier: String) -> int:
+	return int(Arena.LOCK_PICK_MOMENTS.get(tier, 1))
+
+
 ## MODE A inventory list. The rows are the ACTOR'S REAL carried items off
 ## view_combatants — an empty pack says so instead of showing invented loot.
 ## What matters mechanically is that this surface being OPEN holds time
 ## (R35's Pokemon clause, enforced in _on_category / _close_flyout).
+##
+## PHASE 2 — the rows COMMIT. R35's third waived act is the `inventory` command
+## itself: out of combat it is free every time and leaves R3's first-free
+## ledger untouched, so an out-of-combat heal never charges the next fight.
+## A row therefore issues the real interaction and the effect really runs —
+## `use` for an item in hand, `pickup` for one on the floor (the `dropped`
+## projection), which genuinely puts it back (`item_recovered`). In COMBAT the
+## same rows still commit; the sim simply charges R3's ladder instead.
 func _inventory_entries() -> Array:
 	var entries: Array = []
+	var exploring := _exploring()
 	for raw: Variant in _find_combatant(_active_actor).get("items", []):
 		var item: Dictionary = raw
-		var sub := "FREE out of combat · R3's inventory ledger is untouched out here"
+		var key := String(item.get("key", ""))
+		var dropped := bool(item.get("dropped", false))
+		var sub := "FREE out of combat · R3's inventory ledger is untouched out here" if exploring \
+			else "IN COMBAT: R3's ladder applies — first interaction free, every later one a Moment"
 		if item.has("magazine_loaded"):
 			sub = "MAGAZINE %d · %s" % [int(item.get("magazine_loaded", 0)), sub]
-		entries.append({"id": "", "label": "🎒 %s" % String(item.get("name", "")).to_upper(),
-			"sub": sub, "enabled": false, "accent": UI.col(UI.TEXT)})
+		if dropped:
+			entries.append({"id": "take:" + key,
+				"label": "🫳 PICK UP %s" % String(item.get("name", key)).to_upper(),
+				"sub": "ON THE FLOOR (dropped) · " + sub,
+				"enabled": key != "", "accent": UI.col(UI.GOLD)})
+		else:
+			entries.append({"id": "use:" + key,
+				"label": "🎒 USE %s" % String(item.get("name", key)).to_upper(),
+				"sub": sub, "enabled": key != "", "accent": UI.col(UI.TEXT)})
 	if entries.is_empty():
 		entries.append({"id": "", "label": "NOTHING CARRIED",
 			"sub": "this contestant carries no items — nothing to use, and nothing invented",
 			"enabled": false, "accent": UI.col(UI.MUTED)})
-	entries.append({"id": "", "label": "⏸ TIME IS HELD",
-		"sub": "the driver stops issuing time steps while this is open — a burn cannot tick while you rummage (R35)",
-		"enabled": false, "accent": UI.col(UI.PURPLE)})
+	if exploring:
+		entries.append({"id": "", "label": "⏸ TIME IS HELD",
+			"sub": "the driver stops issuing time steps while this is open — a burn cannot tick while you rummage (R35)",
+			"enabled": false, "accent": UI.col(UI.PURPLE)})
 	return entries
 
 
@@ -1809,6 +2439,19 @@ func _skill_level_of(id: String, skill_key: String) -> int:
 		if String(r.get("key", "")) == skill_key:
 			return maxi(1, int(r.get("level", 1)))
 	return 1
+
+
+## The GRANTED level for a skill, or 0 when the combatant does not own it.
+## _skill_level_of deliberately floors at 1 (its callers already know the actor
+## owns the skill — it answers "at what level"), so it cannot answer "does this
+## contestant own it at all". Every exploration row that must be OFFERED ONLY
+## TO AN OWNER asks this instead.
+func _granted_level_of(id: String, skill_key: String) -> int:
+	for rd in _skills_of(id):
+		var r: Dictionary = rd
+		if String(r.get("key", "")) == skill_key:
+			return maxi(1, int(r.get("level", 1)))
+	return 0
 
 
 func _part_label(key: String) -> String:
@@ -2108,6 +2751,36 @@ func _broadcast_announce(e: Dictionary) -> String:
 				_display_name_for(String(e.get("combatant", "")))
 		"breach_reset":
 			return "The network RETREATS deeper — the breach seals; the wounds remain"
+		# ---- KAN-6 phase 2: the exploration acts, read back off their events.
+		"sound_thrown":
+			# R20's reserved no-visible-source LOUD lane. Loudness off the event.
+			return "🔊 %s THROWS A SOUND onto %s — loudness %d, and it came from nowhere" % [
+				_display_name_for(String(e.get("actor", ""))).to_upper(),
+				str(e.get("position", [])), int(e.get("loudness", 0))]
+		"noise_heard":
+			# The pull R34 names: a sound can bring a room onto you before you
+			# enter it. The hearer knows the HEX, never the thrower.
+			return "👂 %s HEARS IT at %s — alerted, not located: it walks toward the sound" % [
+				_display_name_for(String(e.get("combatant", ""))).to_upper(),
+				str(e.get("position", []))]
+		"lock_picked":
+			# `moments: 0` IS the R35 waiver — stated, never hidden.
+			var moments := int(e.get("moments", 0))
+			if moments == 0:
+				return "🔓 THE %s LOCK GIVES — 0 MOMENTS: out of combat the pick is free (R35)" % \
+					String(e.get("door", "")).replace("_", " ").to_upper()
+			return "🔓 THE %s LOCK GIVES — %d Moment%s charged (R3 price, the clock is running)" % [
+				String(e.get("door", "")).replace("_", " ").to_upper(), moments,
+				"" if moments == 1 else "s"]
+		"item_recovered":
+			return "🫳 %s HAS THE %s BACK IN HAND" % [
+				_display_name_for(String(e.get("actor", ""))).to_upper(),
+				String(e.get("item", "")).replace("_", " ").to_upper()]
+		"inventory_used":
+			if not bool(e.get("exploration", false)):
+				return ""
+			return "🎒 %s rummages — free out here, and R3's first-free ledger stays untouched" % \
+				_display_name_for(String(e.get("actor", "")))
 	return ""
 
 

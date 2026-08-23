@@ -1,10 +1,13 @@
 extends SceneTree
-## OWNER-REVIEW SCREENSHOT CAPTURE DRIVER — stages fourteen representative game
+## OWNER-REVIEW SCREENSHOT CAPTURE DRIVER — stages eighteen representative game
 ## states (title, HUD shell, flyout, confirm preview, boss dash windup, the
 ## pressure-valve telegraph -> blast -> knockout beat, the boss inspector, the
 ## R24 feint-read, bid screen, WIN verdict card, rich status badges, the R34
-## intent icons + cone-state colours, and R34/R35 free-form exploration) and grabs
-## one evidence PNG each off the real framebuffer.
+## intent icons + cone-state colours, R34/R35 free-form exploration, and — the
+## KAN-6 PHASE 2 set — the exploration rows that COMMIT, the scheduled
+## condition-tick chips on the timeline, the MODE D Modification Center popup
+## and the R29 hype-chain banner) and grabs one evidence PNG each off the real
+## framebuffer.
 ##
 ## DRIVER/CONSUMER ONLY — never touches simulation/, controller/, data/ or
 ## tests/. Every state is staged through the real command funnel
@@ -77,6 +80,10 @@ func _initialize() -> void:
 	await _capture_12_status_badges()
 	await _capture_13_intent_board()
 	await _capture_14_exploration_mode()
+	await _capture_15_exploration_acts()
+	await _capture_16_condition_ticks()
+	await _capture_17_mod_center()
+	await _capture_18_hype_chain()
 
 	print("")
 	if failures.is_empty():
@@ -723,6 +730,12 @@ func _shown_text(node: Node, needle: String) -> bool:
 		return false
 	if node is Label and String((node as Label).text).contains(needle):
 		return true
+	# KAN-6 phase 2: some surfaces state their fact in a RichTextLabel (the
+	# hype-chain carry sentence, the Mod-Center prose) — a Label-only walk would
+	# report those as MISSING while the player is reading them. get_parsed_text
+	# is the rendered string, so bbcode markup can never fake a match.
+	if node is RichTextLabel and String((node as RichTextLabel).get_parsed_text()).contains(needle):
+		return true
 	for ch in node.get_children():
 		if _shown_text(ch, needle):
 			return true
@@ -732,6 +745,8 @@ func _shown_text(node: Node, needle: String) -> bool:
 ## True when any Label under `node` contains `needle` (panel-content probe).
 func _panel_has_text(node: Node, needle: String) -> bool:
 	if node is Label and String((node as Label).text).contains(needle):
+		return true
+	if node is RichTextLabel and String((node as RichTextLabel).get_parsed_text()).contains(needle):
 		return true
 	for ch in node.get_children():
 		if _panel_has_text(ch, needle):
@@ -760,3 +775,590 @@ func _render(fname: String) -> void:
 		push_error("save_png failed (%d) -> %s" % [err, path])
 	else:
 		print("render -> %s  %s" % [path, str(img.get_size())])
+
+
+# ============ 15 · KAN-6 PHASE 2 — THE EXPLORATION ROWS THAT COMMIT =========
+## Phase 1 shipped Mode A's shape with its INTERACT / INVENTORY rows
+## deliberately inert. This is the evidence that they now issue REAL commands
+## and render REAL results — the whole of phase 2 item 1.
+##
+## Staged on the AUTHORED SERVICE CORRIDOR (data/demo_run.json), through the
+## real run loop: start_run -> begin_encounter opens the room FREE-FORM by
+## itself (RunState.staging()'s opens_in default), so the arena, its supply
+## cage door, its simple lock, the party positions and the hype chain are all
+## the shipped data rather than a fixture.
+##
+## THREE DOCUMENTED DRIVER-SIDE STAGING CHOICES (the capture-header idiom —
+## staging only; no engine, controller or data file is touched):
+##  1. The roach pair is staged at the corridor's FAR END instead of beside the
+##     party. Not cosmetic: footfalls are QUIET(3) noise and R34's contact
+##     predicate is live, so with the authored positions the very first scouted
+##     step is heard and the room flips to combat before any of the free-form
+##     acts can be shown. Moving them proves the acts; the pull is then proved
+##     DELIBERATELY at the end of the stage, with the voicebox.
+##  2. Sasha joins from her authored brood_landing ally spec (the same spec the
+##     run's own recruit beat stages), so the frame's "SASHA — VOICEBOX" row
+##     has the character it names.
+##  3. She is granted VOICEBOX and LOCKPICKING. This is the honest finding the
+##     stage exists to expose as much as to work around: NO shipped loadout
+##     (demo_loadouts.json or recruit_loadouts.json) grants either skill, so
+##     the approved frame's rows presuppose grants the seed data does not
+##     author. Without the grant the HUD says so and disables the row — which
+##     is the ungranted half of the same evidence, checked below first.
+func _capture_15_exploration_acts() -> void:
+	var def: Dictionary = _run_def()
+	var corridor: Dictionary = _encounter_def(def, "service_corridor").duplicate(true)
+	var den: Dictionary = _encounter_def(def, "incinedile_den").duplicate(true)
+	# staging choice 1 — the pair walks the far end of the corridor
+	var enemies: Array = (corridor.get("enemies", []) as Array).duplicate(true)
+	(enemies[0] as Dictionary)["positions"] = [[-6, 0], [-6, 1]]
+	corridor["enemies"] = enemies
+	# staging choices 2 + 3 — Sasha, with the two exploration grants
+	var party: Array = (def.get("party", []) as Array).duplicate(true)
+	var sasha: Dictionary = _sasha_spec(def)
+	var sasha_skills: Array = (sasha.get("skills", []) as Array).duplicate(true)
+	sasha_skills.append({"key": "voicebox", "level": 1})
+	sasha_skills.append({"key": "lockpicking", "level": 1})
+	sasha["skills"] = sasha_skills
+	# One item, DROPPED — so the inventory row can prove the recovery path.
+	sasha["items"] = [{"key": "bandage", "name": "Bandage", "base_moment_cost": 2, "dropped": true}]
+	party.append(sasha)
+
+	gc = GameControllerScript.new()
+	gc.name = "CaptureControllerI"
+	root_node.add_child(gc)
+	gc.start_run(int(def.get("run_seed", 0)), party, [corridor, den], _static_data())
+	gc.apply_run_command({"type": "begin_encounter"})
+	_record_events()
+	_attach_hud()
+	hud.auto_time_steps = false  # hand-stepped, so probes never race the beat
+	await _settle()
+
+	var phase: Dictionary = gc.view_phase()
+	print("  15 view_phase: %s" % str(phase))
+	_check("15: the corridor opened FREE-FORM through the real run loop",
+		bool(phase.get("exploring", false)))
+	_check("15: the authored supply cage door is on the board",
+		_door_row("supply_cage_door").has("lock"))
+
+	# ---- the UNGRANTED half: Imani owns neither skill, and the rows say so.
+	# Selecting her card IS the gesture: out of combat there is no turn order,
+	# so the acting contestant is the selected one.
+	hud._on_card_clicked("imani")
+	hud._on_category("interact")
+	await _settle()
+	print("  15 active actor: %s" % hud._active_actor)
+	for e in hud._interact_entries():
+		print("    15 interact row: %s | %s | enabled=%s" % [
+			String((e as Dictionary).get("label", "")), String((e as Dictionary).get("sub", "")),
+			str((e as Dictionary).get("enabled", false))])
+	_check("15: an ungranted contestant gets an honest disabled VOICEBOX row",
+		_shown_text(hud._shell.flyout, "no voicebox grant"))
+	_check("15: …and an honest disabled PICK row",
+		_shown_text(hud._shell.flyout, "NO LOCKPICKING GRANT"))
+	hud._close_flyout()
+	await _settle()
+
+	# ---- the GRANTED half: Sasha's rows are live.
+	hud._on_card_clicked("sasha")
+	hud._on_category("interact")
+	await _settle()
+	_check("15: selecting a card really moves the acting contestant out of combat",
+		hud._active_actor == "sasha")
+	await _settle()
+	_check("15: PICK THE SUPPLY CAGE DOOR is offered",
+		_shown_text(hud._shell.flyout, "PICK THE SUPPLY CAGE DOOR"))
+	_check("15: the row states the COMBAT price the waiver is suspending",
+		_shown_text(hud._shell.flyout, "1 MOMENT once the fighting starts"))
+	_check("15: SASHA — VOICEBOX is offered", _shown_text(hud._shell.flyout, "VOICEBOX"))
+	_check("15: SCOUT AHEAD is offered", _shown_text(hud._shell.flyout, "SCOUT AHEAD"))
+	await _render("18_explore_interact_live.png")
+
+	# ---- SCOUT AHEAD — real free-form walks toward the authored exit --------
+	var before: Array = _party_hexes()
+	var scout_tick := int((gc.view_phase() as Dictionary).get("tick", -1))
+	hud._on_flyout_entry("scout")
+	await _settle()
+	var after: Array = _party_hexes()
+	print("  15 scout: %s -> %s" % [str(before), str(after)])
+	print("  15 gate hex: %s · sasha items: %s" % [str(_door_hex("supply_cage_door")),
+		str(_row("sasha").get("items", []))])
+	var scout_reject: Dictionary = _last_event("command_rejected")
+	if not scout_reject.is_empty():
+		print("  15 scout rejection: %s" % str(scout_reject))
+	_check("15: SCOUT AHEAD really walked the party", str(before) != str(after))
+	_check("15: …and the walk cost no Moment and burned no tick",
+		int((gc.view_phase() as Dictionary).get("tick", -1)) == scout_tick)
+	_check("15: the room is still free-form (nothing was committed)",
+		bool((gc.view_phase() as Dictionary).get("exploring", false)))
+	_check("15: the walk went through the REAL move command",
+		String((gc.command_log.back() as Dictionary).get("type", "")) == "move")
+	await _render("19_explore_scouted.png")
+
+	# ---- PICK THE SUPPLY CAGE — the free-form lockpick ---------------------
+	_check("15: the scout put Sasha in reach of the lock",
+		_hex_dist_ids("sasha", _door_hex("supply_cage_door")) == 1)
+	var locked_before := String((_door_row("supply_cage_door").get("lock", {}) as Dictionary).get("state", ""))
+	hud._on_category("interact")
+	await _settle()
+	hud._on_flyout_entry("pick:supply_cage_door")
+	await _settle()
+	var picked: Dictionary = _last_event("lock_picked")
+	print("  15 lock_picked: %s" % str(picked))
+	_check("15: the pick RESOLVED (it is not an inspect row any more)", not picked.is_empty())
+	_check("15: it reports moments 0 — the R35 waiver, stated honestly",
+		int(picked.get("moments", -1)) == 0)
+	_check("15: the lock really is open now (live view state)",
+		locked_before == "locked"
+			and String((_door_row("supply_cage_door").get("lock", {}) as Dictionary).get("state", "")) == "unlocked")
+	_check("15: the ticker says the zero out loud", _shown_text(hud._shell.ticker, "0 MOMENTS"))
+	_check("15: nothing was scheduled and no tick burned",
+		gc.view_schedule().is_empty()
+			and int((gc.view_phase() as Dictionary).get("tick", -1)) == scout_tick)
+	await _render("20_explore_lock_picked.png")
+
+	# ---- INVENTORY — the item really comes back ---------------------------
+	hud._on_category("inventory")
+	await _settle()
+	_check("15: the dropped item is offered as a PICK UP row",
+		_shown_text(hud._shell.flyout, "PICK UP BANDAGE"))
+	_check("15: an open inventory still holds time (phase 1 parity)",
+		hud._explore_driver.tick_realtime(hud._explore_driver.SECONDS_PER_TICK * 4.0) == 0)
+	hud._on_flyout_entry("take:bandage")
+	await _settle()
+	_check("15: the interaction ran and was FREE out of combat",
+		bool(_last_event("inventory_used").get("free", false)))
+	_check("15: the item was genuinely recovered", not _last_event("item_recovered").is_empty())
+	_check("15: R3's first-free ledger is untouched by the out-of-combat use",
+		not _shown_text(hud._shell.ticker, "DENIED"))
+	hud._on_category("inventory")
+	await _settle()
+	_check("15: …and the row flipped to USE now that it is in hand",
+		_shown_text(hud._shell.flyout, "USE BANDAGE"))
+	await _render("21_explore_inventory_used.png")
+	hud._close_flyout()
+	await _settle()
+
+	# ---- VOICEBOX — a quiet throw, then the throw that PULLS THE ROOM ------
+	hud._on_category("interact")
+	await _settle()
+	hud._on_flyout_entry("voicebox")
+	await _settle()
+	_check("15: the throw armed the board pick", hud._shell.arena.move_mode())
+	_check("15: the launcher states the skill's own authored range",
+		_shown_text(hud._shell.launcher, "VOICEBOX — pick a hex within 10"))
+	await _render("22_explore_voicebox_armed.png")
+	hud._throw_at(Vector2i(5, 2))
+	await _settle()
+	var thrown: Dictionary = _last_event("sound_thrown")
+	print("  15 sound_thrown (quiet corner): %s" % str(thrown))
+	_check("15: the throw RESOLVED on the spot", not thrown.is_empty())
+	_check("15: at the R20 table's LOUD loudness, unchanged by the waiver",
+		int(thrown.get("loudness", 0)) == Stealth.NOISE_LOUD)
+	_check("15: a throw out of earshot pulls nobody — the room stays free-form",
+		bool((gc.view_phase() as Dictionary).get("exploring", false))
+			and _last_event("noise_heard").is_empty())
+
+	# The pull, on purpose: a hex the pack CAN hear.
+	hud._on_category("interact")
+	await _settle()
+	hud._on_flyout_entry("voicebox")
+	await _settle()
+	hud._throw_at(Vector2i(-4, 0))
+	await _settle()
+	var heard: Dictionary = _last_event("noise_heard")
+	var contact: Dictionary = _last_event("contact")
+	print("  15 noise_heard: %s" % str(heard))
+	print("  15 contact    : %s" % str(contact))
+	_check("15: the pack HEARD the thrown sound", not heard.is_empty())
+	_check("15: …and it pulled the room onto the party (contact by HEARING)",
+		String(contact.get("sense", "")) == "hearing")
+	_check("15: the fight really started", not bool((gc.view_phase() as Dictionary).get("exploring", true)))
+	_check("15: the timing strip came back with it", hud._shell.timeline._combat_row.visible)
+	await _render("23_explore_voicebox_pulled_the_room.png")
+
+	await _teardown()
+
+
+# ============ 16 · SCHEDULED CONDITION TICKS ON THE TIMELINE ================
+## Approved frame 1 puts scheduled condition ticks on the timeline as chips on
+## their own lane ("🔥 BURN II → DARIO"). Decision 2 keeps this strip as the
+## ORDER-AND-TIMING surface and decision 4 makes status effects load-bearing
+## everywhere; a scheduled tick is timing, so it lives here — unlike enemy
+## intent, which R34 moved onto the enemy's own icon and which stage 13 pins as
+## still absent from the strip.
+##
+## Everything staged through the real apply_condition command; every chip is
+## read back off the new view_condition_schedule() projection, which in turn
+## reads ConditionEngine's own rules. Nothing about WHEN a condition bites is
+## re-implemented in the HUD, and the stage proves that by advancing the clock
+## to the reset and checking the chip's prediction against what actually fired.
+func _capture_16_condition_ticks() -> void:
+	_stand_up("CaptureControllerJ", false)
+	_attach_hud()
+	await _settle()
+	for i in 3:  # a few real Moments so the strip reads mid-fight
+		hud._on_end_turn()
+		await _settle()
+
+	gc.apply_command({"type": "apply_condition", "target": "dario", "part": "right_arm",
+		"condition": "burn", "tier": 1})
+	gc.apply_command({"type": "apply_condition", "target": "imani", "part": "torso",
+		"condition": "bleeding", "tier": 2})
+	for e in gc.apply_command({"type": "apply_condition", "target": "boss", "part": "left_hand",
+			"condition": "chilled", "tier": 1}):
+		print("  16 chilled staging event: %s" % str(e))
+	for e in gc.apply_command({"type": "apply_condition", "target": "imani", "part": "left_leg",
+			"condition": "exhausted", "tier": 2}):
+		print("  16 exhausted staging event: %s" % str(e))
+	await _settle()
+
+	var sched: Array = gc.view_condition_schedule()
+	print("  16 boss parts: %s" % str(_row("boss").get("parts", [])))
+	for row in sched:
+		print("  16 tick row: %s" % str(row))
+	_check("16: the projection reports scheduled ticks", not sched.is_empty())
+	var burn: Dictionary = _tick_row(sched, "dario", "burn")
+	_check("16: Dario's burn is scheduled to ADVANCE",
+		String(burn.get("effect", "")) == "advance" and int(burn.get("to_tier", 0)) == 2)
+	_check("16: …at the CLOCK RESET, which is where conditions actually bite",
+		int(burn.get("at_tick", -1)) % 10 == 9 and int(burn.get("clocks_away", 0)) == 1)
+	# A condition whose def does NOT advance at the reset reads its own rule,
+	# not "advance": chilled resolves unless it was reapplied this Clock, and
+	# exhausted eases off when its owner rested. Both are ConditionEngine's
+	# rules, read through the projection — the point of sourcing it there.
+	print("  16 chilled row : %s" % str(_tick_row(sched, "boss", "chilled")))
+	print("  16 exhausted   : %s" % str(_tick_row(sched, "imani", "exhausted")))
+	# The boss RESISTED the chilled staging (condition_resisted — its own
+	# resistance rule), so the non-advancing branch is proved on the one that
+	# actually landed: exhausted does not advance at the reset, it EASES.
+	_check("16: a non-advancing condition reads its OWN rule, not 'advance'",
+		String(_tick_row(sched, "imani", "exhausted").get("effect", "")) == "step_down"
+			and int(_tick_row(sched, "imani", "exhausted").get("to_tier", -1)) == 1)
+	_check("16: …and a resisted condition schedules NOTHING (no phantom chip)",
+		_tick_row(sched, "boss", "chilled").is_empty())
+
+	var chips: Array = hud._condition_tick_chips(
+		int(gc.view_clock().get("tick", 0)) - (int(gc.view_clock().get("tick", 0)) % 10))
+	for c in chips:
+		print("  16 chip: %s" % str((c as Dictionary).get("label", "")))
+	_check("16: the lane is populated", not chips.is_empty())
+	_check("16: it carries the frame's own chip shape (BRN II → DARIO)",
+		_chips_contain(chips, "BRN II → DARIO"))
+	_check("16: chips are DRAWN on the strip's own lane",
+		hud._shell.timeline._ticks_lane.get_child_count() > 0)
+	_check("16: and the enemy-intent bands are still retired (phase 1 parity)",
+		hud._shell.timeline._bars_lane.get_child_count() == 0)
+	await _render("24_timeline_condition_ticks.png")
+
+	# THE PREDICTION IS CHECKED AGAINST REALITY: run the Clock out and confirm
+	# the burn advanced exactly as the chip said it would.
+	var predicted := int(burn.get("to_tier", 0))
+	while int(gc.view_clock().get("tick", 0)) <= int(burn.get("at_tick", 0)):
+		gc.apply_command({"type": "advance_tick"})
+	await _settle()
+	_check("16: the chip told the truth — the burn really is T%d after the reset" % predicted,
+		_part_condition_tier("dario", "right_arm", "burn") == predicted)
+
+	await _teardown()
+
+
+# ============ 17 · MODE D — THE MODIFICATION CENTER POPUP ===================
+## Approved frame 5. The popup itself, over the live HUD: three BLESSED
+## broad-only offers with their group chips, the focused offer expanded, the
+## requirement rows measured against a REAL character's granted levels, the
+## CONSUMES-BOTH-PARENTS warning, the "offered, never automatic" framing, the
+## KAN-7 price stamp with no number on it, and the declared PAUSED state.
+##
+## Dario is the focus on purpose: his authored loadout carries FEINT at Lv3,
+## which makes THE LONG CON read exactly as the approved frame renders it —
+## FEINT 3/5 IN PROGRESS, VIBE CONTROL –/3 NOT LEARNED, two requirements short.
+## That match is the point: the frame's numbers were drawn from this data, and
+## the popup now reproduces them from the data rather than from the frame.
+func _capture_17_mod_center() -> void:
+	_stand_up("CaptureControllerK", false)
+	_attach_hud()
+	await _settle()
+	hud._on_card_clicked("dario")
+	await _settle()
+
+	var offers: Array = gc.view_offers("dario")
+	for o in offers:
+		print("  17 offer: %s short=%s parents=%s" % [
+			String((o as Dictionary).get("key", "")),
+			str((o as Dictionary).get("requirements_short", -1)),
+			str((o as Dictionary).get("parents", []))])
+	_check("17: all three authored offers project", offers.size() == 3)
+	_check("17: every one is well-authored (SkillForge.validate_offer)",
+		_all_authored_ok(offers))
+	var long_con: Dictionary = _offer_row(offers, "the_long_con")
+	_check("17: THE LONG CON reads Dario's REAL feint grant (3 / 5, IN PROGRESS)",
+		_parent_state(long_con, "feint") == "IN PROGRESS"
+			and _parent_owned(long_con, "feint") == 3)
+	_check("17: …and an unlearned parent is NOT LEARNED, not a fake zero",
+		_parent_state(long_con, "vibe_control") == "NOT LEARNED"
+			and _parent_owned(long_con, "vibe_control") == 0)
+	_check("17: the gate is two requirements short, exactly as the frame reads",
+		int(long_con.get("requirements_short", -1)) == 2)
+	_check("17: the price is UNPRICED and stamped KAN-7",
+		not bool((long_con.get("price", {}) as Dictionary).get("priced", true))
+			and String((long_con.get("price", {}) as Dictionary).get("scope", "")) == "KAN-7")
+	_check("17: redemption is NOT wired, and the projection says why",
+		not bool((long_con.get("redemption", {}) as Dictionary).get("available", true))
+			and not ((long_con.get("redemption", {}) as Dictionary).get("missing", []) as Array).is_empty())
+
+	hud._open_mod_center()
+	await _settle()
+	_check("17: MODE D is open", hud._shell.mod_center.visible)
+	_check("17: it focuses the offer Dario is closest to (THE LONG CON)",
+		hud._mod_focus == "the_long_con")
+	_check("17: the header declares the PAUSED state",
+		_shown_text(hud._shell.mod_center, "PAUSED"))
+	_check("17: …and Escape is offered as the way out",
+		_shown_text(hud._shell.mod_center, "ESC CLOSES"))
+	_check("17: all three offers are on screen side by side",
+		_shown_text(hud._shell.mod_center, "THE UNSEEN")
+			and _shown_text(hud._shell.mod_center, "THE LONG CON")
+			and _shown_text(hud._shell.mod_center, "PHANTOM GRASP"))
+	_check("17: the broad-only group chips are real (off shared_broad)",
+		_shown_text(hud._shell.mod_center, "BROAD-ONLY · PERFORMANCE")
+			and _shown_text(hud._shell.mod_center, "BROAD-ONLY · INFILTRATION"))
+	_check("17: the CONSUMES BOTH PARENTS warning is up",
+		_shown_text(hud._shell.mod_center, "CONSUMES BOTH PARENTS"))
+	_check("17: the offered-never-automatic framing is up",
+		_shown_text(hud._shell.mod_center, "offered, never automatic"))
+	_check("17: the requirement rows read as the frame does",
+		_shown_text(hud._shell.mod_center, "IN PROGRESS")
+			and _shown_text(hud._shell.mod_center, "NOT LEARNED"))
+	_check("17: the price row carries the KAN-7 stamp and no number",
+		_shown_text(hud._shell.mod_center, "KAN-7 — TBD"))
+	_check("17: the gate is the honest one",
+		_shown_text(hud._shell.mod_center, "NOT YET — 2 REQUIREMENTS SHORT"))
+	await _render("25_mod_center_mode_d.png")
+
+	# Focus another offer — the popup re-expands without touching anything.
+	hud._on_offer_focused("the_unseen")
+	await _settle()
+	_check("17: focusing another offer expands it",
+		_shown_text(hud._shell.mod_center, "The ghost and the prowler fuse"))
+	await _render("26_mod_center_focus_switch.png")
+
+	# A different character re-measures the SAME offers against THEIR grants.
+	hud._on_card_clicked("imani")
+	hud._mod_focus = "the_long_con"
+	hud.refresh()
+	await _settle()
+	_check("17: Imani owns no LONG CON parent — both rows read NOT LEARNED",
+		_parent_state(_offer_row(gc.view_offers("imani"), "the_long_con"), "feint") == "NOT LEARNED")
+	await _render("27_mod_center_other_character.png")
+
+	# Escape closes (Mode D's own rule) and time is released again.
+	hud._close_mod_center()
+	await _settle()
+	_check("17: Escape closes MODE D", not hud._shell.mod_center.visible)
+	_check("17: …and the driver's hold is released",
+		not hud._explore_driver.blockers.has("mod center"))
+
+	await _teardown()
+
+
+# ============ 18 · THE R29 HYPE-CHAIN BANNER ================================
+## Approved frame 4's crowd panel states the carry math in words. Staged on the
+## REAL demo run (start_run -> begin_encounter), so `hype_chain_index`, the
+## retention rung and the room graph are the shipped ones; the meter is raised
+## by REAL play (declares resolving through the funnel), never poked.
+func _capture_18_hype_chain() -> void:
+	var def: Dictionary = _run_def()
+	gc = GameControllerScript.new()
+	gc.name = "CaptureControllerL"
+	root_node.add_child(gc)
+	gc.start_run(int(def.get("run_seed", 0)), def.get("party", []),
+		def.get("encounters", []), _static_data())
+	gc.apply_run_command({"type": "begin_encounter"})
+	_record_events()
+	_attach_hud()
+	hud.auto_time_steps = false
+	await _settle()
+
+	var chain: Dictionary = gc.view_hype_chain()
+	print("  18 view_hype_chain (fresh): %s" % str(chain))
+	_check("18: a chain is ARMED — brood landing has two exits to carry into",
+		bool(chain.get("armed", false)))
+	_check("18: the rung is the LADDER's, read off RunState (link 1 = 40%)",
+		int(chain.get("pct", 0)) == int(RunState.CHAIN_RETENTION_PCT[1]))
+	_check("18: the ladder itself is the engine's, not a HUD copy",
+		(chain.get("ladder", []) as Array).size() == RunState.CHAIN_RETENTION_PCT.size())
+	_check("18: the banner is up in MODE A", _shown_text(hud._shell.crowd, "HYPE CHAIN"))
+	await _render("28_hype_chain_exploration.png")
+
+	# The deliberate ENTER, then real play to move the meter.
+	hud._on_end_turn_pressed()
+	await _settle()
+	_check("18: the room is fighting now", not bool((gc.view_phase() as Dictionary).get("exploring", true)))
+	# Real play, not a poke: a camera call for the multiplier, then genuine
+	# strikes on the brood until the crowd actually reacts.
+	gc.apply_command({"type": "camera_call", "actor": "dario", "target": "dario"})
+	for i in 14:
+		if int((gc.view_broadcast().get("hype", {}) as Dictionary).get("meter", 0)) > 0:
+			break
+		for attacker: String in ["imani", "dario", "sasha"]:
+			gc.apply_command({"type": "declare_action", "actor": attacker, "action": {
+				"kind": "attack", "key": "unarmed_strike", "cost": 1, "attack_range": 1,
+				"damage": {"type": "crushed", "amount": 2},
+				"targets": [{"id": "roach_dog_%d" % ((i % 3) + 1), "part": "carapace"}]}})
+		hud._on_end_turn()
+		await _settle()
+	var live: Dictionary = gc.view_hype_chain()
+	print("  18 view_hype_chain (live): %s" % str(live))
+	var meter := int(live.get("meter", 0))
+	var expect := int(floor(meter * int(live.get("pct", 0)) / 100.0))
+	_check("18: real play actually moved the crowd (a 0 → 0 carry proves nothing)",
+		meter > 0)
+	_check("18: the meter the banner quotes is the LIVE one",
+		meter == int((gc.view_broadcast().get("hype", {}) as Dictionary).get("meter", -1)))
+	_check("18: the head start is floor(pct x meter) — chain_hype_start's own arithmetic",
+		int(live.get("opens_at", -1)) == expect)
+	_check("18: the banner states the carry in the frame's words",
+		_shown_text(hud._shell.crowd, "%d → %d" % [meter, expect]))
+	_check("18: …and names the rung after it (the frame's 'keeps 60%')",
+		_shown_text(hud._shell.crowd, "%d%%" % int(live.get("then_pct", 0))))
+	_check("18: CHAINING IS REWARDED rides the banner",
+		_shown_text(hud._shell.crowd, "CHAINING IS REWARDED"))
+	await _render("29_hype_chain_combat.png")
+
+	await _teardown()
+
+
+# ----------------------------------------------- phase-2 staging/probe helpers
+
+func _run_def() -> Dictionary:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/demo_run.json"))
+	return (parsed as Dictionary).get("run", {}) if parsed is Dictionary else {}
+
+
+func _encounter_def(def: Dictionary, key: String) -> Dictionary:
+	for raw: Variant in def.get("encounters", []) as Array:
+		if String((raw as Dictionary).get("key", "")) == key:
+			return raw
+	return {}
+
+
+## Sasha's authored party spec — the very row brood_landing stages her with.
+func _sasha_spec(def: Dictionary) -> Dictionary:
+	for raw: Variant in _encounter_def(def, "brood_landing").get("allies", []) as Array:
+		var spec: Dictionary = (raw as Dictionary).get("spec", {})
+		if String(spec.get("id", "")) == "sasha":
+			return spec.duplicate(true)
+	return {}
+
+
+func _static_data() -> Dictionary:
+	return Dal.new().static_data_for_sim()
+
+
+func _door_row(key: String) -> Dictionary:
+	for raw: Variant in (gc.view_arena() as Dictionary).get("doors", []):
+		if String((raw as Dictionary).get("key", "")) == key:
+			return raw
+	return {}
+
+
+func _door_hex(key: String) -> Vector2i:
+	var pos: Array = _door_row(key).get("position", [0, 0])
+	return Vector2i(int(pos[0]), int(pos[1]))
+
+
+func _hex_dist_ids(id: String, to: Vector2i) -> int:
+	var pos: Array = _row(id).get("position", [0, 0])
+	var a := Vector2i(int(pos[0]), int(pos[1]))
+	var dq := a.x - to.x
+	var dr := a.y - to.y
+	return int((absi(dq) + absi(dr) + absi(dq + dr)) / 2.0)
+
+
+func _party_hexes() -> Array:
+	var out: Array = []
+	for cd in gc.view_combatants():
+		var c: Dictionary = cd
+		if String(c.get("team", "")) == "party":
+			out.append([String(c.get("id", "")), c.get("position", [])])
+	return out
+
+
+## Raw sim events this stage has seen, recorded off the SAME signal the HUD
+## subscribes to — so a probe checks the events the player's HUD reacted to,
+## not a re-derivation.
+var _captured_events: Array = []
+
+
+func _record_events() -> void:
+	_captured_events = []
+	if gc != null and not gc.sim_event.is_connected(_on_captured_event):
+		gc.sim_event.connect(_on_captured_event)
+
+
+func _on_captured_event(e: Dictionary = {}) -> void:
+	if not e.is_empty():
+		_captured_events.append(e)
+
+
+## The most recent event of a type since _record_events() was called.
+func _last_event(event_type: String) -> Dictionary:
+	var found: Dictionary = {}
+	for raw: Variant in _captured_events:
+		var e: Dictionary = raw
+		if String(e.get("type", "")) == event_type:
+			found = e
+	return found
+
+
+func _tick_row(rows: Array, combatant: String, condition: String) -> Dictionary:
+	for raw: Variant in rows:
+		var r: Dictionary = raw
+		if String(r.get("combatant", "")) == combatant and String(r.get("condition", "")) == condition:
+			return r
+	return {}
+
+
+func _chips_contain(chips: Array, needle: String) -> bool:
+	for raw: Variant in chips:
+		if String((raw as Dictionary).get("label", "")).contains(needle):
+			return true
+	return false
+
+
+func _part_condition_tier(id: String, part: String, condition: String) -> int:
+	for pd in _row(id).get("parts", []):
+		var p: Dictionary = pd
+		if String(p.get("key", "")) == part:
+			return int((p.get("conditions", {}) as Dictionary).get(condition, 0))
+	return 0
+
+
+func _offer_row(offers: Array, key: String) -> Dictionary:
+	for raw: Variant in offers:
+		if String((raw as Dictionary).get("key", "")) == key:
+			return raw
+	return {}
+
+
+func _parent_row(offer: Dictionary, key: String) -> Dictionary:
+	for raw: Variant in offer.get("parents", []):
+		if String((raw as Dictionary).get("key", "")) == key:
+			return raw
+	return {}
+
+
+func _parent_state(offer: Dictionary, key: String) -> String:
+	return String(_parent_row(offer, key).get("state", ""))
+
+
+func _parent_owned(offer: Dictionary, key: String) -> int:
+	return int(_parent_row(offer, key).get("owned_level", -1))
+
+
+func _all_authored_ok(offers: Array) -> bool:
+	for raw: Variant in offers:
+		if not bool((raw as Dictionary).get("authored_ok", false)):
+			return false
+	return true

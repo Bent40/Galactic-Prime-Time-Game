@@ -62,6 +62,28 @@ func demo_loadouts() -> Dictionary:
 	return _cache["demo_loadouts"]
 
 
+## Mod-Center SPECIAL OFFERS (decision #35 Q1 route (a) — the three BLESSED
+## broad-only pairs). Like tag_effects this file is an OBJECT
+## ({_meta, offers:[...]}), so it loads outside _collection; SkillForge's
+## find_offer / validate_offer consume the whole object. Read-only: no code
+## anywhere writes this file.
+func mod_center_offers() -> Dictionary:
+	if not _cache.has("mod_center_offers"):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/mod_center_offers.json"))
+		_cache["mod_center_offers"] = parsed if parsed is Dictionary else {}
+	return _cache["mod_center_offers"]
+
+
+## The G3 keyword tree (data/skill_keywords.json — {taxonomy, skills}), the doc
+## every SkillKeywords / SkillForge query takes as its authority. OBJECT-shaped,
+## so it loads outside _collection like tag_effects.
+func skill_keywords() -> Dictionary:
+	if not _cache.has("skill_keywords"):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/skill_keywords.json"))
+		_cache["skill_keywords"] = parsed if parsed is Dictionary else {}
+	return _cache["skill_keywords"]
+
+
 ## By-key lookup (rows are keyed by "key" across all collections; "" -> {}).
 func by_key(collection: String, key: String) -> Dictionary:
 	for row: Variant in _collection(collection):
