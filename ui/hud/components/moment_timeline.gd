@@ -9,11 +9,29 @@ extends PanelContainer
 ## live combatant at its next_action_tick, the current slot highlighted and
 ## windup flags marked. Dumb component: renders the marker dicts it is handed.
 ##
-## Phase 2 — DECLARED-ACTION BARS (spec Area 4): under the strip, one
-## horizontal bar per pending view_schedule row spanning declared -> resolve
-## slot on the lap (clamped; carry-over past the lap marked "▸"), labelled
-## actor token + action key. Windup bars are visually distinct (bright border +
-## W tag) and ENEMY windup bars ride the danger accent — the telegraph.
+## R34 (decision #36, 2026-08-19) — THE TELEGRAPH LEFT THIS STRIP. Enemy
+## declared-action bands are RETIRED here: enemy intent is read off the ENEMY
+## now (the per-token intent icon on the board, hover = the full explanation),
+## and R26's ⛔ undodgable declaration moved onto that icon. This strip keeps
+## ORDER AND TIMING ONLY.
+##
+## What survives, and why: the PARTY's own declared-action bars (spec Area 4).
+## Your own declaration's span is timing — it is where "your feint lands on
+## Moment 05" is legible — not a telegraph of someone else's move, and the
+## approved frame 2 keeps exactly this one band ("YOUR DECLARATION"). Frames 1
+## and 3 carry no bands at all, which is what an all-enemy schedule now draws.
+## The facade filters: it hands this component party rows only.
+##
+## MODE A — FREE-FORM EXPLORATION (R34 TIME AMENDMENT / R35, approved frame 4).
+## Out of combat there is no turn order and nothing costs Moments, so the timing
+## strip has nothing to time: this component swaps to the EXPLORATION strip in
+## the same slot — "OUT OF COMBAT", the elapsed readout, the PAUSE control, the
+## no-turn-order statement and the route breadcrumb. Time still RUNS (the ruling
+## is "the clock runs, there is no turn ORDER"), which is why the elapsed
+## readout is here at all and why PAUSE is a real control: pausing is the DRIVER
+## declining to issue time steps, and this chip is how the player asks for it.
+
+signal pause_toggled          ## the strip's PAUSE / RESUME control was clicked
 
 const UI := preload("res://ui/hud/components/hud_theme.gd")
 
@@ -28,6 +46,14 @@ var _moment_num: Label
 var _nextreset: Label
 var _strip: HBoxContainer
 var _bars_lane: Control
+var _combat_row: Control
+var _explore_row: Control
+var _mode_lab: Label
+var _pause_lab: Label
+var _pause_chip: PanelContainer
+var _elapsed_lab: Label
+var _crumbs: HBoxContainer
+var _explore_note: Label
 
 
 func _ready() -> void:
@@ -41,9 +67,12 @@ func _ensure_built() -> void:
 	add_theme_stylebox_override("panel", UI.sb(UI.col(UI.PANEL), UI.col(UI.BORDER), 5))
 	var pad := UI.margin(14, 14, 5, 5)
 	add_child(pad)
+	var stack := UI.vbox(0)
+	pad.add_child(stack)
 	var row := UI.hbox(12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	pad.add_child(row)
+	stack.add_child(row)
+	_combat_row = row
 
 	_clock_num = UI.lab("1", UI.mono(), 19, UI.col(UI.PURPLE), 0.0, true)
 	row.add_child(_kv_pill("CLOCK", _clock_num, UI.col(UI.PURPLE), UI.col(UI.PURPLE, 0.13), UI.col(UI.PURPLE, 0.55)))
@@ -72,14 +101,62 @@ func _ensure_built() -> void:
 	_nextreset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_nextreset)
 
+	_explore_row = _build_explore_row()
+	_explore_row.visible = false
+	stack.add_child(_explore_row)
+
+
+## Builds the MODE A strip (frame 4): mode chip + PAUSE control · elapsed ·
+## route breadcrumb · the no-turn-order statement.
+func _build_explore_row() -> Control:
+	var row := UI.hbox(14)
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	row.custom_minimum_size = Vector2(0, 56)
+
+	var modes := UI.vbox(4)
+	modes.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_mode_lab = UI.lab("✦ OUT OF COMBAT", UI.body(), 11, UI.col(UI.SUCCESS), 2.0, true)
+	modes.add_child(UI.chip(_mode_lab, UI.col(UI.SUCCESS, 0.10), UI.col(UI.SUCCESS, 0.55)))
+	_pause_lab = UI.lab("⏸ PAUSE", UI.body(), 10, UI.col(UI.GOLD), 2.0, true)
+	_pause_chip = UI.chip(_pause_lab, UI.col(UI.GOLD, 0.10), UI.col(UI.GOLD, 0.6)) as PanelContainer
+	UI.attach_click(_pause_chip, func() -> void: pause_toggled.emit())
+	modes.add_child(_pause_chip)
+	row.add_child(modes)
+
+	# Elapsed: R0/R1's own conversion (one tick ~ 0.5 fictional seconds) applied
+	# to the live tick — a real readout of the running clock, not a wall clock.
+	_elapsed_lab = UI.lab("⏱ 00:00", UI.mono(), 15, UI.col(UI.PURPLE), 0.0, true)
+	var elapsed_chip := UI.chip(_elapsed_lab, UI.col(UI.PURPLE, 0.13), UI.col(UI.PURPLE, 0.55))
+	elapsed_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(elapsed_chip)
+
+	var mid := UI.vbox(5)
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_crumbs = UI.hbox(8)
+	mid.add_child(_crumbs)
+	_explore_note = UI.lab("", UI.body(), 8, UI.col(UI.MUTED), 1.5)
+	mid.add_child(_explore_note)
+	row.add_child(mid)
+	return row
+
 
 ## data: {clock_no: int, moment: int, slot_now: int (0..9), next_reset: String,
 ##        markers: [{slot: 0..9, emoji, name, active: bool, boss: bool,
 ##                   windup: bool, late: bool}],
 ##        bars: [{from_slot: 0..9, to_slot: 0..9, carry: bool, windup: bool,
-##                enemy: bool, emoji, label, name}]}
+##                emoji, label, name}]  — PARTY rows only (R34, see above)}
+##        explore: {} in combat, else {elapsed: "MM:SS", paused: bool,
+##                 note: String, crumbs: [{text, state: "done"|"here"|"ahead"}]}
+##                 — a non-empty `explore` swaps this slot to MODE A.
 func update(data: Dictionary) -> void:
 	_ensure_built()
+	var explore: Dictionary = data.get("explore", {})
+	_combat_row.visible = explore.is_empty()
+	_explore_row.visible = not explore.is_empty()
+	if not explore.is_empty():
+		_bind_explore(explore)
+		return
 	_clock_num.text = str(int(data.get("clock_no", 1)))
 	_moment_num.text = "%02d" % int(data.get("moment", 10))
 	_nextreset.text = String(data.get("next_reset", ""))
@@ -96,6 +173,35 @@ func update(data: Dictionary) -> void:
 	for i in 10:
 		_strip.add_child(_cell(i, i == slot_now, by_slot.get(i, [])))
 	_update_bars(data.get("bars", []))
+
+
+## MODE A binding. PAUSED is DRIVER state, never sim state (R34/R35, twice
+## ruled) — the facade hands it down; this component only shows and asks.
+func _bind_explore(explore: Dictionary) -> void:
+	var paused := bool(explore.get("paused", false))
+	_mode_lab.text = "✦ OUT OF COMBAT"
+	_pause_lab.text = "▶ RESUME TIME" if paused else "⏸ PAUSE"
+	var accent: Color = UI.col(UI.SUCCESS) if paused else UI.col(UI.GOLD)
+	_pause_lab.add_theme_color_override("font_color", accent)
+	_pause_lab.add_theme_color_override("font_outline_color", accent)
+	_pause_chip.add_theme_stylebox_override("panel",
+		UI.sb(Color(accent.r, accent.g, accent.b, 0.10), Color(accent.r, accent.g, accent.b, 0.6), 4))
+	_elapsed_lab.text = "⏸ %s" % String(explore.get("elapsed", "00:00")) if paused \
+		else "⏱ %s" % String(explore.get("elapsed", "00:00"))
+	_explore_note.text = String(explore.get("note", ""))
+	for ch in _crumbs.get_children():
+		ch.queue_free()
+	for raw: Variant in explore.get("crumbs", []):
+		var crumb: Dictionary = raw
+		var state := String(crumb.get("state", "ahead"))
+		var tint: Color = UI.col(UI.MUTED)
+		if state == "done":
+			tint = UI.col(UI.SUCCESS)
+		elif state == "here":
+			tint = UI.col(UI.CYAN)
+		var lab := UI.lab(String(crumb.get("text", "")), UI.body(), 9, tint, 1.5, state != "ahead")
+		_crumbs.add_child(UI.chip(lab, Color(tint.r, tint.g, tint.b, 0.10),
+			Color(tint.r, tint.g, tint.b, 0.5)))
 
 
 ## Declared-action bars: greedy first-fit lane packing (bars that overlap in
@@ -133,15 +239,10 @@ func _update_bars(bars: Array) -> void:
 
 func _bar(b: Dictionary, from_slot: int, to_slot: int, lane: int) -> Control:
 	var windup := bool(b.get("windup", false))
-	var enemy := bool(b.get("enemy", false))
 	var carry := bool(b.get("carry", false))
-	# The telegraph accents: enemy windups = DANGER; party windups = FIRE;
-	# instants/moves = muted cyan. Windups get the bright border + W tag.
-	var accent := UI.col(UI.CYAN)
-	if windup:
-		accent = UI.col(UI.DANGER) if enemy else UI.col(UI.FIRE)
-	elif enemy:
-		accent = UI.col("#ff6b88")
+	# Accents (party-only now — the enemy DANGER accent retired with the enemy
+	# bands): a committed windup burns FIRE, an instant/move is muted cyan.
+	var accent := UI.col(UI.FIRE) if windup else UI.col(UI.CYAN)
 	var bar := PanelContainer.new()
 	bar.position = Vector2(float(from_slot) * (SLOT_W + SLOT_SEP), float(lane) * (BAR_H + 2.0))
 	bar.custom_minimum_size = Vector2(

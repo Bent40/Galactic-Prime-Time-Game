@@ -1,8 +1,9 @@
 extends SceneTree
-## OWNER-REVIEW SCREENSHOT CAPTURE DRIVER — stages twelve representative game
+## OWNER-REVIEW SCREENSHOT CAPTURE DRIVER — stages fourteen representative game
 ## states (title, HUD shell, flyout, confirm preview, boss dash windup, the
 ## pressure-valve telegraph -> blast -> knockout beat, the boss inspector, the
-## R24 feint-read, bid screen, WIN verdict card, rich status badges) and grabs
+## R24 feint-read, bid screen, WIN verdict card, rich status badges, the R34
+## intent icons + cone-state colours, and R34/R35 free-form exploration) and grabs
 ## one evidence PNG each off the real framebuffer.
 ##
 ## DRIVER/CONSUMER ONLY — never touches simulation/, controller/, data/ or
@@ -74,6 +75,8 @@ func _initialize() -> void:
 	await _capture_10_bid_screen()
 	await _capture_11_verdict_win()
 	await _capture_12_status_badges()
+	await _capture_13_intent_board()
+	await _capture_14_exploration_mode()
 
 	print("")
 	if failures.is_empty():
@@ -153,8 +156,14 @@ func _capture_02_04_slice() -> void:
 
 # ------------------------------------------------------- 05 · boss dash windup
 ## A LONE contestant inside dash range: the cone sweep needs 2+ targets in
-## reach, so the boss's real ai_decide declares the cost-2 DASH windup — the
-## telegraph rides the Moment timeline's declared-action bars.
+## reach, so the boss's real ai_decide declares the cost-2 DASH windup.
+##
+## R34 (decision #36, 2026-08-19) RETIRED the telegraph this stage used to
+## check. The enemy declared-action BAND is gone from the Moment timeline; the
+## telegraph now rides the enemy's own INTENT ICON. The probes below are the
+## pin for BOTH halves of that move: the strip must carry NO enemy band, and
+## the icon must carry the declaration instead. A green "bars lane populated"
+## here would now mean the ruling had been un-done.
 func _capture_05_dash_windup() -> void:
 	_stand_up("CaptureControllerB", false, false)
 	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [2, 0],
@@ -180,7 +189,21 @@ func _capture_05_dash_windup() -> void:
 				int(r.get("resolve_tick", -1)), str(bool(r.get("windup", false)))])
 	_check("05: dash windup on the schedule", windup_row)
 	await _settle()
-	_check("05: timeline bars lane populated", hud._shell.timeline._bars_lane.get_child_count() > 0)
+	# R34 half 1 — the strip carries order and timing only. Only the boss has
+	# declared, so the party-only bar filter must leave the lane EMPTY.
+	_check("05: no enemy band on the timeline (R34 decision 2)",
+		hud._shell.timeline._bars_lane.get_child_count() == 0)
+	# R34 half 2 — the telegraph is on the enemy instead, and it is READ (not
+	# UNREAD): the boss has committed, so the icon names what is coming.
+	var boss_intent: Dictionary = (hud._intent_rows() as Dictionary).get("boss", {})
+	print("  05 boss intent icon: %s" % str(boss_intent))
+	_check("05: boss intent icon reads the declared dash",
+		String(boss_intent.get("label", "")).contains("DASH")
+			and String(boss_intent.get("kind", "")) != "unknown")
+	_check("05: intent hover carries the full explanation",
+		String(boss_intent.get("tip", "")).contains("RESOLVES CLOCK"))
+	_check("05: intent chip is on the board",
+		_panel_has_text(hud._shell.arena, "DASH"))
 	await _render("05_dash_windup.png")
 
 	await _teardown()
@@ -226,6 +249,16 @@ func _capture_06_08_valve_beat() -> void:
 	await _settle()
 	_check("06: explosion_telegraph reached the log", _log_has("explosion_telegraph"))
 	_check("06: phase change reached the log", _log_has("boss_phase_changed"))
+	# R26 x R34: the undodgable declaration MOVED onto the intent icon and must
+	# be there from the windup on — "the player must know before they die".
+	var valve_intent: Dictionary = (hud._intent_rows() as Dictionary).get("boss", {})
+	print("  06 boss intent during the valve windup: %s" % str(valve_intent))
+	if bool(valve_intent.get("undodgable", false)):
+		_check("06: ⛔ UNDODGABLE declared on the intent icon (R26 via R34)",
+			String(valve_intent.get("tip", "")).contains("UNDODGABLE"))
+	else:
+		print("  06 NOTE: the boss's pending declaration at this beat carries no "
+			+ "R26 undodgable flag — the icon honestly says nothing it does not know.")
 	hud._open_log()
 	await _settle()
 	await _render("06_explosion_telegraph.png")
@@ -393,6 +426,214 @@ func _capture_12_status_badges() -> void:
 ## Fresh controller + the demo-slice roster. strip_dodge follows the
 ## hud_interact/verdict_preview/slice_playtest driver-side spec choice; the
 ## duo flag drops the standard Imani/Dario pair for stages that stage their own.
+# --------------------------- 13 · R34 intent icons + cone-state colours
+## THE DELTA-1/2/3 EVIDENCE SHOT (front-rework decisions 2 and 5-amended).
+##
+## Staged so the frame's own contrast is REAL, not arranged in the renderer:
+##   * the boss DECLARES through its own ai_decide, so its intent icon is READ
+##     and (when the sweep picks the cone) an attack arc is committed;
+##   * a second enemy is added FAR AWAY and declares nothing, so its icon is
+##     honestly UNREAD ❓ and its eyeline holds nobody — the NEUTRAL cone;
+##   * the boss stands nose-to-nose with the party, so its eyeline DOES hold
+##     contestants — the RED cone and the 👁 HAS ... chip.
+## Everything the shot shows comes from view_schedule / view_vision; nothing is
+## poked into the sim and no cone geometry is invented in the HUD.
+func _capture_13_intent_board() -> void:
+	_stand_up("CaptureControllerG", false)
+	# The unread, unaware second enemy. Far outside the boss's own arc and
+	# range, and it is never asked to decide.
+	gc.apply_command({"type": "add_combatant", "combatant": {
+		"id": "roach", "name": "Little Brother", "enemy": "little_brother_roach",
+		"team": "enemies", "position": [-4, 3]}})
+	_attach_hud()
+	await _settle()
+
+	gc.apply_command({"type": "ai_decide", "actor": "boss"})
+	await _settle()
+
+	var intents: Dictionary = hud._intent_rows()
+	var boss_intent: Dictionary = intents.get("boss", {})
+	var roach_intent: Dictionary = intents.get("roach", {})
+	print("  13 boss intent : %s" % str(boss_intent))
+	print("  13 roach intent: %s" % str(roach_intent))
+	_check("13: boss carries a READ intent icon",
+		String(boss_intent.get("kind", "unknown")) != "unknown"
+			and String(boss_intent.get("label", "")) != "UNREAD")
+	_check("13: undeclared enemy shows UNREAD ❓ (never a fabricated guess)",
+		String(roach_intent.get("kind", "")) == "unknown"
+			and String(roach_intent.get("label", "")) == "UNREAD")
+	_check("13: UNREAD hover explains itself",
+		String(roach_intent.get("tip", "")).contains("never a guess"))
+
+	var vision: Dictionary = hud._vision_rows()
+	var boss_eye: Dictionary = vision.get("boss", {})
+	var roach_eye: Dictionary = vision.get("roach", {})
+	print("  13 boss vision : %s" % str({"seen": boss_eye.get("seen"),
+		"label": boss_eye.get("label"), "watched": (boss_eye.get("hexes", []) as Array).size()}))
+	print("  13 roach vision: %s" % str({"seen": roach_eye.get("seen"),
+		"label": roach_eye.get("label"), "watched": (roach_eye.get("hexes", []) as Array).size()}))
+	_check("13: the boss's vision cone is HOT (holds a contestant -> RED)",
+		bool(boss_eye.get("seen", false))
+			and String(boss_eye.get("label", "")).begins_with("HAS"))
+	_check("13: the distant enemy's cone is NEUTRAL (👁 UNAWARE)",
+		not bool(roach_eye.get("seen", true))
+			and String(roach_eye.get("label", "")) == "UNAWARE")
+	_check("13: eyelines are real hexes off view_vision, not a drawn wedge",
+		not (boss_eye.get("hexes", []) as Array).is_empty())
+	_check("13: both chips are on the board",
+		_panel_has_text(hud._shell.arena, "UNAWARE")
+			and _panel_has_text(hud._shell.arena, "UNREAD"))
+	_check("13: the cone-reading legend is up", hud._shell.arena._legend.visible)
+
+	var cones: Array = hud._attack_cone_rows()
+	print("  13 declared attack arcs: %s" % str(cones.size()))
+	if not cones.is_empty():
+		_check("13: the attack arc is the COMMITTED shape (real hexes)",
+			not ((cones[0] as Dictionary).get("hexes", []) as Array).is_empty())
+	else:
+		print("  13 NOTE: the boss's chosen action declares no area_shape at this "
+			+ "staging, so no attack arc is drawn — correct, not a miss.")
+	_check("13: timeline carries no enemy band (R34 decision 2)",
+		hud._shell.timeline._bars_lane.get_child_count() == 0)
+	await _render("13_intent_icons_and_cones.png")
+
+	await _teardown()
+
+
+# ------------------------------- 14 · R34/R35 Mode A — free-form exploration
+## THE DELTA-4/5 EVIDENCE SHOT. The room is put into free-form exploration
+## through the LOGGED phase command (the same one GameController._stage_encounter
+## issues when a room opens), then the HUD is asked to prove the whole contract:
+##   * the timing strip becomes the exploration strip (no turn order, nothing
+##     costs Moments, elapsed off R0's tick->fiction conversion, PAUSE control);
+##   * the launcher becomes the free-form verb set and ENTER becomes the commit;
+##   * THE DRIVER REALLY RUNS: tick_realtime issues logged advance_ticks, and
+##     stops dead under PAUSE and under an open inventory surface (R35's
+##     Pokemon clause). That last pair is the half R34/R35 flagged as missing.
+func _capture_14_exploration_mode() -> void:
+	# The party is staged WELL CLEAR of the boss. That is not decoration: R34's
+	# contact predicate runs on the phase command itself, so a party already
+	# inside a mob's eyeline bounces straight back to combat "in the same
+	# breath" (R35 names exactly this for the kennel). Out of the cone, the
+	# room genuinely stays free-form and can be walked.
+	_stand_up("CaptureControllerH", false, false)
+	_add_contestant("imani", "Imani", {"physique": 5, "reflexes": 2, "mind": 4, "charm": 3}, [8, 0],
+		{"skills": IMANI_SKILLS})
+	_add_contestant("dario", "Dario", {"physique": 2, "reflexes": 5, "mind": 2, "charm": 5}, [8, 1],
+		{"bit": {"key": "the_bow", "name": "The Bow", "line": "Dario bows mid-combat — the applause is the point."},
+		"skills": DARIO_SKILLS})
+	_attach_hud()
+	# Hand-step the clock for the driver assertions below (the HUD's own
+	# per-frame pump would otherwise race the probes).
+	hud.auto_time_steps = false
+	await _settle()
+
+	var phase_events: Array = gc.apply_command({"type": "phase", "set": "exploration"})
+	for e in phase_events:
+		print("  14 phase command event: %s" % str(e))
+	await _settle()
+	var phase: Dictionary = gc.view_phase()
+	print("  14 view_phase: %s" % str(phase))
+	_check("14: the sim is in free-form exploration", bool(phase.get("exploring", false)))
+	_check("14: no turn order, no Moment costs",
+		not bool(phase.get("turn_order", true)) and not bool(phase.get("moment_costs", true)))
+	# VISIBLE text only — the combat strip and the exploration strip both exist
+	# in the tree at all times, so a plain text walk would pass on a hidden one.
+	_check("14: OUT OF COMBAT strip is up",
+		_shown_text(hud._shell.timeline, "OUT OF COMBAT"))
+	_check("14: the timing strip is GONE (no turn order to time)",
+		not hud._shell.timeline._combat_row.visible)
+	_check("14: the strip states the ruling",
+		_shown_text(hud._shell.timeline, "NO TURN ORDER")
+			and _shown_text(hud._shell.timeline, "NOTHING COSTS MOMENTS"))
+	_check("14: the elapsed readout is up", _shown_text(hud._shell.timeline, "⏱"))
+	_check("14: the PAUSE control is on the strip",
+		_shown_text(hud._shell.timeline, "PAUSE"))
+	_check("14: the route breadcrumb replaced the timing strip",
+		_shown_text(hud._shell.timeline, "YOU ARE HERE"))
+	_check("14: the launcher swapped to the free-form verbs",
+		_shown_text(hud._shell.launcher, "WALK")
+			and _shown_text(hud._shell.launcher, "INTERACT")
+			and _shown_text(hud._shell.launcher, "INVENTORY"))
+	_check("14: WALK is marked FREE", _shown_text(hud._shell.launcher, "FREE"))
+	_check("14: INVENTORY declares that it pauses time",
+		_shown_text(hud._shell.launcher, "PAUSES TIME"))
+	_check("14: ENTER replaced END TURN as the commit",
+		_shown_text(hud._shell.launcher, "ENTER"))
+	_check("14: the board says free movement / time running",
+		_shown_text(hud._shell.arena, "FREE MOVEMENT"))
+	await _render("14_exploration_mode.png")
+
+	# ---- THE DRIVER (R35's named gap). Real logged time steps, no wall clock.
+	var driver = hud._explore_driver
+	var t0 := int((gc.view_phase() as Dictionary).get("tick", -1))
+	var issued: int = driver.tick_realtime(driver.SECONDS_PER_TICK)
+	await _settle()
+	var t1 := int((gc.view_phase() as Dictionary).get("tick", -1))
+	print("  14 driver step: issued=%d tick %d -> %d" % [issued, t0, t1])
+	_check("14: the driver issues a real exploration time step", issued == 1 and t1 == t0 + 1)
+	_check("14: the step is the ONE real tick path (advance_tick)",
+		String((gc.command_log.back() as Dictionary).get("type", "")) == "advance_tick")
+
+	# PAUSE: the driver simply stops issuing. Nothing in the sim knows.
+	hud._on_pause()
+	await _settle()
+	var paused_issued: int = driver.tick_realtime(driver.SECONDS_PER_TICK * 4.0)
+	var t2 := int((gc.view_phase() as Dictionary).get("tick", -1))
+	_check("14: PAUSE stops the time steps", paused_issued == 0 and t2 == t1)
+	_check("14: pause is DRIVER state — the sim holds none",
+		String((gc.view_phase() as Dictionary).get("pause", "")) == "driver")
+	_check("14: the strip shows the held state", _shown_text(hud._shell.timeline, "TIME HELD"))
+	await _render("15_exploration_paused.png")
+	hud._on_pause()
+	await _settle()
+
+	# R35's Pokemon clause: an OPEN inventory surface holds time the same way.
+	hud._on_category("inventory")
+	await _settle()
+	_check("14: the inventory surface is open", hud._shell.flyout.visible)
+	var inv_issued: int = driver.tick_realtime(driver.SECONDS_PER_TICK * 4.0)
+	var t3 := int((gc.view_phase() as Dictionary).get("tick", -1))
+	_check("14: an open inventory holds time (R35's Pokemon clause)",
+		inv_issued == 0 and t3 == t1)
+	await _render("16_exploration_inventory_holds_time.png")
+	hud._close_flyout()
+	await _settle()
+	var resumed: int = driver.tick_realtime(driver.SECONDS_PER_TICK)
+	_check("14: closing the surface releases time again", resumed == 1)
+
+	# WALK is not a relabelled MOVE button: the HUD issues the SAME {"type":
+	# "move"} command it always did, and the sim's phase gate routes it to the
+	# free-form walk — zero Moment cost, zero ticks. The button says FREE
+	# because the engine makes it free, not because the label says so.
+	hud.set_active_actor("imani")
+	hud._on_move()
+	await _settle()
+	_check("14: WALK arms the click-to-target board", hud._shell.arena.move_mode())
+	var walk_tick := int((gc.view_phase() as Dictionary).get("tick", -1))
+	var walk_events: Array = gc.apply_command(
+		{"type": "move", "actor": "imani", "to": [7, 0]})
+	var walk_ok := false
+	for e in walk_events:
+		var ev: Dictionary = e
+		print("  14 walk event: %s" % str(ev))
+		if String(ev.get("type", "")) == "moved":
+			walk_ok = true
+	_check("14: the free-form walk is accepted out of combat", walk_ok)
+	_check("14: walking costs no Moment and burns no tick",
+		int((gc.view_phase() as Dictionary).get("tick", -1)) == walk_tick)
+
+	# The commit: ENTER is the deliberate way in, straight off view_phase.
+	hud._on_end_turn_pressed()
+	await _settle()
+	_check("14: ENTER started the fight",
+		not bool((gc.view_phase() as Dictionary).get("exploring", true)))
+	_check("14: the timing strip came back", hud._shell.timeline._combat_row.visible)
+	await _render("17_exploration_entered_combat.png")
+
+	await _teardown()
+
+
 func _stand_up(cname: String, strip_dodge: bool, duo := true) -> void:
 	gc = GameControllerScript.new()
 	gc.name = cname
@@ -470,6 +711,20 @@ func _network_hp() -> int:
 func _log_has(event_type: String) -> bool:
 	for ed in hud._event_log:
 		if String((ed as Dictionary).get("type", "")) == event_type:
+			return true
+	return false
+
+
+## True when any VISIBLE Label under `node` contains `needle` — the strict
+## sibling of _panel_has_text, needed once a component keeps two mutually
+## exclusive strips (combat / exploration) alive in the same tree.
+func _shown_text(node: Node, needle: String) -> bool:
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return false
+	if node is Label and String((node as Label).text).contains(needle):
+		return true
+	for ch in node.get_children():
+		if _shown_text(ch, needle):
 			return true
 	return false
 
