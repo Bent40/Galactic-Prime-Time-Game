@@ -104,6 +104,26 @@ Gates on: dod.product_competitiveness_gate · dod.runs_from_clean_clone. Re-scan
   read its data (canonical content: 44 skills, 28 items, 100 tags, 27 affixes, enemies),
   never break it from here.
 
+## Dissolution — R36 is LIVE in the sim (2026-08-25)
+
+The TTRPG book's §8.2/§10 errata is implemented, not just documented. **The flat 2-Clock
+timer is gone.** One Clock of grace (+1 per psychic tier), then a **free per-Moment Hold
+check** against `1 + moments × escalation`, on R22/R24's threshold machinery against **Mind**.
+One failure is permanent removal (`mind_collapsed`, never `died` — R5 unchanged).
+
+- **Escalation rides the SOURCE**, not the victim: `apply_condition` takes `"escalation"`
+  — 1 haunted object · 2 noble-class · 3 divine. That is the knob that keeps the condition
+  lethal against a Mind farmed into the 20s.
+- **The per-Moment hook is `cond.on_moment()`**, called from `_advance_tick` over sorted ids.
+  It is the engine's first per-Moment condition hook — reuse it, don't add a second.
+- **§14 disclosure is an EVENT, not a UI concern**: `dissolution_hold` rows carry the
+  threshold and set `unreachable: true` the moment holding becomes impossible;
+  `dissolution_moments_left()` answers it directly. A silent Dissolution is a rules bug.
+- **Freeze, never reset**: `freeze_dissolution(c, frozen)`. Thawing resumes from the stored
+  number. Automatic cause-tracking (knowing a contestant left the aura) is still unbuilt.
+- Determinism held — auto-hold and unreachable consume **no rng**, so existing hash pins did
+  not move. Full detail: `docs/rules-addendum.md` **R36**.
+
 ## Running tests
 
 `bash scripts/run_sim_tests.sh` — runs the headless sim test suite; requires a Godot 4.7

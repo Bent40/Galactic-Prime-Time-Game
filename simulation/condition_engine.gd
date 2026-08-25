@@ -31,9 +31,12 @@ var combatants: Dictionary = {}  # id -> CombatantState (shared ref, wired by Co
 ## True only while on_clock_reset() runs — timers created mid-reset are marked
 ## "fresh" so the same reset cannot immediately decrement them.
 var in_clock_reset: bool = false
+## R36's Hold check rolls the Mind threshold die when Mind alone is not enough.
+## Shared with CombatSim so the draw stays inside the one command-stream stream.
+var hold_rng: RandomNumberGenerator = null
 
 
-func setup(condition_defs: Variant, combatants_ref: Dictionary) -> void:
+func setup(condition_defs: Variant, combatants_ref: Dictionary, rng: RandomNumberGenerator = null) -> void:
 	defs = {}
 	if condition_defs is Array:
 		for entry: Variant in condition_defs as Array:
@@ -42,6 +45,7 @@ func setup(condition_defs: Variant, combatants_ref: Dictionary) -> void:
 	elif condition_defs is Dictionary:
 		defs = condition_defs
 	combatants = combatants_ref
+	hold_rng = rng
 
 
 static func normalize_condition_id(damage_type: String) -> String:
@@ -249,7 +253,27 @@ func _apply_timer_condition(c: CombatantState, part_key: String, condition_id: S
 				return events  # already running; re-application is a no-op
 	var clocks: int = int(spread.get("clock_timer", 2))
 	if condition_id == "dissolution":
-		clocks += Resistance.dissolution_extra_clocks(c)  # R6: psychic slows it
+		# R36 — Dissolution is no longer a countdown. One Clock of grace (+1 per
+		# psychic resistance tier, the re-pointed R6 reward), then a free per-Moment
+		# Hold check against a threshold that climbs at the SOURCE's escalation rate.
+		# `moments` counts checks already made, so the first threshold is exactly 1.
+		var escalation: int = maxi(1, int(ctx.get("escalation", 1)))
+		c.timers.append({
+			"kind": condition_id,
+			"condition": condition_id,
+			"part": part_key,
+			"grace_clocks": 1 + Resistance.dissolution_extra_clocks(c),
+			"moments": 0,
+			"escalation": escalation,
+			"frozen": false,
+			"delay": 0,
+			"paused": false,
+			"fresh": in_clock_reset,
+			"source": String(ctx.get("attacker", "")),
+		})
+		events.append({"type": "dissolution_started", "combatant": c.id, "part": part_key,
+			"grace_clocks": 1 + Resistance.dissolution_extra_clocks(c), "escalation": escalation})
+		return events
 	c.timers.append({
 		"kind": condition_id,
 		"condition": condition_id,
@@ -768,6 +792,15 @@ func _advance_timers(c: CombatantState) -> Array[Dictionary]:
 		if bool(timer.get("paused", false)):
 			kept.append(timer)
 			continue
+		if String(timer.get("kind", "")) == "dissolution":
+			# R36: no clocks_remaining. A Clock reset only burns grace; the danger
+			# lives in on_moment(). A frozen threshold does not thaw here either.
+			if int(timer.get("grace_clocks", 0)) > 0:
+				timer["grace_clocks"] = int(timer["grace_clocks"]) - 1
+				events.append({"type": "dissolution_grace_spent", "combatant": c.id,
+					"grace_clocks": int(timer["grace_clocks"])})
+			kept.append(timer)
+			continue
 		if int(timer.get("delay", 0)) > 0:
 			timer["delay"] = int(timer["delay"]) - 1
 			events.append({"type": "timer_delay_consumed", "combatant": c.id, "kind": String(timer.get("kind", ""))})
@@ -799,6 +832,97 @@ func _advance_timers(c: CombatantState) -> Array[Dictionary]:
 ## exposed — a lethal part still hidden behind an un-breached surface immunity
 ## (the boss's mycelium network) is undiscovered and cannot yet end the combatant.
 ## This is the single F2 principle: death routes ONLY through a lethal, exposed part.
+## R36 — the free per-Moment Hold check. Called once per combatant per tick by
+## CombatSim, in sorted-id order, AFTER the Moment's actions resolve.
+##
+## Threshold = 1 + moments_already_checked * escalation, resolved on R22/R24's
+## machinery against MIND:
+##   Mind >= threshold          -> auto-hold, NO rng consumed.
+##   Mind + die >= threshold    -> roll the Mind threshold die (default 1d4).
+##   Mind + die max < threshold -> UNREACHABLE. No roll, and §14 obliges us to say
+##                                 so out loud, so it is an event, not silence.
+## One failure is permanent removal — no second roll, no grace Moment. The R5
+## terminal is unchanged: mind_collapse, never death, and only through a lethal,
+## exposed part (a puppet's cosmetic head still cannot be collapsed).
+func on_moment(c: CombatantState, tick: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not c.alive or c.removed_from_play:
+		return events
+	for timer: Dictionary in c.timers:
+		if String(timer.get("kind", "")) != "dissolution":
+			continue
+		if bool(timer.get("frozen", false)) or bool(timer.get("paused", false)):
+			continue
+		if int(timer.get("grace_clocks", 0)) > 0 or bool(timer.get("fresh", false)):
+			continue
+		var escalation: int = maxi(1, int(timer.get("escalation", 1)))
+		var threshold: int = 1 + int(timer.get("moments", 0)) * escalation
+		timer["moments"] = int(timer.get("moments", 0)) + 1
+		var mind: int = c.trait_total("mind")
+		var die: int = c.threshold_die("mind")
+		var row: Dictionary = {"type": "dissolution_hold", "combatant": c.id, "tick": tick,
+			"part": String(timer.get("part", "")), "threshold": threshold, "mind": mind,
+			"die": die, "escalation": escalation}
+		if mind >= threshold:
+			row["held"] = true
+			row["auto"] = true
+			row["roll"] = 0
+			events.append(row)
+			continue
+		if mind + die < threshold:
+			# §14's disclosure rule, which is what earns R36's harshness: the table
+			# is told the moment holding became impossible. No roll is made.
+			row["held"] = false
+			row["auto"] = false
+			row["roll"] = 0
+			row["unreachable"] = true
+			events.append(row)
+		else:
+			var roll: int = 1 if hold_rng == null else hold_rng.randi_range(1, die)
+			row["roll"] = roll
+			row["auto"] = false
+			row["held"] = mind + roll >= threshold
+			events.append(row)
+			if bool(row["held"]):
+				continue
+		# Failed. R5's terminal, through the same lethal-exposed gate as every
+		# other removal — dissolution on a cosmetic part still cannot collapse.
+		if _lethal_exposed(c, String(timer.get("part", ""))):
+			events.append_array(_mind_collapse(c))
+			return events
+	return events
+
+
+## R36 — removing the CAUSE freezes the threshold where it stands; it never
+## resets. Re-entering the aura thaws it and the climb resumes from that number.
+## Curing is a different thing and still goes through resolve().
+func freeze_dissolution(c: CombatantState, frozen: bool = true) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for timer: Dictionary in c.timers:
+		if String(timer.get("kind", "")) != "dissolution":
+			continue
+		if bool(timer.get("frozen", false)) == frozen:
+			continue
+		timer["frozen"] = frozen
+		events.append({"type": "dissolution_frozen" if frozen else "dissolution_thawed",
+			"combatant": c.id, "moments": int(timer.get("moments", 0))})
+	return events
+
+
+## Moments a combatant has left before the Hold becomes unreachable — the number
+## §14 obliges the GM to say out loud. -1 when no live Dissolution is running.
+func dissolution_moments_left(c: CombatantState) -> int:
+	for timer: Dictionary in c.timers:
+		if String(timer.get("kind", "")) != "dissolution" or bool(timer.get("frozen", false)):
+			continue
+		var escalation: int = maxi(1, int(timer.get("escalation", 1)))
+		var ceiling: int = c.trait_total("mind") + c.threshold_die("mind")
+		# Largest m with 1 + m*escalation <= ceiling, minus the checks already made.
+		var reachable: int = int(floor(float(ceiling - 1) / float(escalation))) + 1
+		return maxi(0, reachable - int(timer.get("moments", 0)))
+	return -1
+
+
 func _lethal_exposed(c: CombatantState, part_key: String) -> bool:
 	var part: Dictionary = c.parts.get(part_key, {})
 	return bool(part.get("lethal", false)) and not bool(part.get("hidden", false))
