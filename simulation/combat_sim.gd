@@ -21,7 +21,9 @@ extends RefCounted
 ##   {"type": "treat", "target", "part", "condition", "mode": "delay"|"resolve"} (R4/R10)
 ##   {"type": "heal", "target", "part", "amount"}            explicit field healing only
 ##   {"type": "apply_condition", "target", "part", "condition", "tier"?, "poison_type"?,
-##            "activation_delay"?}                           environment/GM source
+##            "activation_delay"?, "escalation"?}            environment/GM source
+##       escalation (R30, dissolution only): the SOURCE's climb rate per Moment —
+##       1 haunted object / 2 noble-class / 3 divine. Default 1.
 ##   {"type": "grant_level", "actor"} / {"type": "spend_level_point", "actor", "trait"} (R6)
 ##   {"type": "set_status", "target", "status": "overwhelmed"|"prone"|"slowed", "value"}
 ##   {"type": "set_stance", "actor", "stance"}                  0-cost stance for STANCE primes (R3)
@@ -107,7 +109,7 @@ func _init(sim_seed: int = 0, data: Dictionary = {}) -> void:
 	static_data = data.duplicate(true)
 	clock = Clock.new()
 	cond = ConditionEngine.new()
-	cond.setup(static_data.get("conditions", []), combatants)
+	cond.setup(static_data.get("conditions", []), combatants, rng)
 	ai = EnemyAI.new()
 	ai.setup(combatants, clock, sim_seed)
 	resolver = ActionResolver.new()
@@ -364,6 +366,13 @@ func _advance_tick() -> Array[Dictionary]:
 			continue
 		events.append_array(ForcedAction.apply_consequence(
 			forced["rolled"], actor, forced.get("ctx", {}), cond, combatants, clock.tick))
+	# R30 — the free per-Moment Dissolution Hold check, in sorted-id order so the
+	# rng draws stay deterministic. Runs AFTER the Moment's actions resolve and
+	# BEFORE the Clock boundary, so a Clock's last Moment is still checked.
+	var hold_ids: Array = combatants.keys()
+	hold_ids.sort()
+	for id: Variant in hold_ids:
+		events.append_array(cond.on_moment(combatants[id], clock.tick))
 	if clock.completes_clock():
 		events.append({"type": "clock_reset", "tick": clock.tick})
 		var ids: Array = combatants.keys()
@@ -449,6 +458,10 @@ func _apply_condition(cmd: Dictionary) -> Array[Dictionary]:
 		ctx["poison_type"] = String(cmd["poison_type"])
 	if cmd.has("activation_delay"):
 		ctx["activation_delay"] = int(cmd["activation_delay"])
+	if cmd.has("escalation"):
+		# R30 — Dissolution's climb rate rides the SOURCE: haunted object +1,
+		# noble-class +2, divine +3. Ignored by every other condition.
+		ctx["escalation"] = int(cmd["escalation"])
 	return cond.apply(target, String(cmd.get("part", "")), String(cmd.get("condition", "")), clock.tick, ctx)
 
 
@@ -1067,7 +1080,7 @@ static func from_dict(data: Dictionary) -> CombatSim:
 	# restored above.
 	sim.ai.wire(sim.combatants, sim.clock)
 	sim.resolver.setup(sim.clock, sim.combatants, sim.cond, sim.rng, sim.ai)
-	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants)
+	sim.cond.setup(sim.static_data.get("conditions", []), sim.combatants, sim.rng)
 	sim.hype.set_goal_table(sim._goal_table())
 	sim.hype.wire(sim.combatants)  # R11 #14 v2 team-awareness ref
 	# Re-wire the tag engine (effect table is static data, never saved; the

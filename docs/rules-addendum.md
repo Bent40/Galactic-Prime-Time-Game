@@ -1393,23 +1393,29 @@ the countdown is never hidden.
 **Sim consequence:** the engine must emit the remaining-Moments figure as an event, not
 leave it implicit. A silent Dissolution is a rules violation, not a UI gap.
 
-### Sim implementation status — ⛔ NOT IMPLEMENTED
+### Sim implementation status — ✅ IMPLEMENTED 2026-08-25
 
-`simulation/condition_engine.gd` still runs the old model: `_apply_timer_condition` pushes a
-`clocks_remaining` timer seeded from `spread_rules.clock_timer` plus
-`Resistance.dissolution_extra_clocks`, and `_advance_timers` fires `_mind_collapse` on
-expiry. What R30 needs that the engine does not yet have:
+`simulation/condition_engine.gd` no longer builds a `clocks_remaining` timer for
+dissolution. It builds the R30 shape and runs the check per Moment:
 
-| Need | Where |
+| Piece | Where |
 |---|---|
-| A **per-Moment** hook (the engine only has `on_clock_reset`) | `condition_engine.gd` + the Moment loop |
-| Timer shape carrying `grace_clocks`, `moments_elapsed`, `escalation`, `frozen` | `combatant.gd` timer dict + `to_dict`/`from_dict` |
-| The Mind hold check | reuse `enemy_ai.gd`'s `check_feint_read` shape verbatim — R24 already *is* §14 |
-| `dissolution_hold` / `dissolution_unreachable` events | the disclosure rule above |
-| Freeze-on-cause-removal | `resolve()` / cause tracking (still on the "not yet implemented" list) |
-| Determinism: a new per-Moment rng draw **changes existing hash pins** | every test with a hash assertion |
+| Timer shape `{grace_clocks, moments, escalation, frozen}` | `condition_engine.gd` `_apply_timer_condition` — dissolution returns early with its own dict |
+| Grace burns at the Clock boundary, and only grace | `_advance_timers` skips dissolution before the `clocks_remaining` path |
+| **The per-Moment hook** | `combat_sim.gd` `_advance_tick` calls `cond.on_moment()` over sorted ids, after the Moment's actions resolve and before the Clock boundary — so a Clock's last Moment is still checked |
+| The Mind hold check | `on_moment()`, mirroring R24's `check_feint_read` exactly: auto-hold consumes no rng, unreachable rolls nothing, only the middle band draws |
+| §14 disclosure | `dissolution_hold` events carry `threshold`/`mind`/`die`/`roll`/`auto`, and set `unreachable: true` when holding has become impossible. `dissolution_moments_left()` answers the question before the table asks it |
+| Freeze on cause removal | `freeze_dissolution(c, frozen)` — thawing **resumes from the stored number**, never resets |
+| Escalation from the source | `apply_condition` accepts `"escalation"` (1/2/3); every other condition ignores it |
 
-⚠️ **That last row is the real cost** and the reason this ships as a specified ruling rather
-than a code change: the sim is command-stream deterministic with hash coverage, and adding
-an rng draw per afflicted combatant per Moment moves hashes across the suite. It wants a
-session with a **working Godot 4.7 binary** and a full-suite re-pin, not a blind edit.
+**Determinism held.** The rng is the sim's own stream, shared into the engine via
+`setup(defs, combatants, rng)`. **Existing hash pins did not move** — the auto-hold and
+unreachable paths consume no rng at all, so a fight without a live Dissolution draws exactly
+what it drew before. Verified: **583 passed, 0 failed** on Godot 4.7.1 (was 570 before this
+change; the 13 new checks are `tests/test_dissolution_hold.gd`), including a two-run
+determinism test and a `to_dict`/`from_dict` round-trip over a mid-climb timer.
+
+**Still not implemented, and correctly so:** automatic cause-tracking. Nothing in the engine
+yet knows that a contestant *walked out of an aura* — `freeze_dissolution()` is the API and
+the caller is content that does not exist yet. It stays on the "not yet implemented" list
+beside poison spread topology.
