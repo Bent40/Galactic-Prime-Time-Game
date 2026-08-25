@@ -133,8 +133,12 @@ of the next Clock. Order of operations at each tick:
     taking no scheduled actions; fully resolves out of combat.
   - **Infected**: T1 prevents healing/resolution of other conditions; T2 all other active
     conditions advance one extra tier at Clock reset; T3 starts a 2-Clock death timer.
-  - **Suffocation / Dissolution**: stay tierless timers (book). Items saying "Suffocation
+  - **Suffocation**: stays a tierless timer (book). Items saying "Suffocation
     Tier 1" (E4) are re-read as "delay Suffocation by 1 Clock".
+  - **Dissolution**: ⚠️ **AMENDED by R30 (v1 §8.2 errata, owner 2026-08-18).** It is no
+    longer a flat timer at all — one Clock of grace, then a per-Moment **Hold Threshold**
+    against Mind. See R30; it supersedes this line, R6's "+1 Clock per tier" wording, and
+    R12's "starts the Mind timer".
 - **Burn-cure dominance (D3) is closed by the above:** cauterizing costs HP + Shock and the
   Burn itself advances at Clock resets like everything else — a desperate trade, no longer
   strictly dominant over bandages/antitoxins.
@@ -178,10 +182,11 @@ of the next Clock. Order of operations at each tick:
 - **SETTLED (app rule wins over the book's N — C4).** Skill points per trait =
   `max(0, traitTotal - 1 - spent)`; multi-stat skills cost 1 point from **each** listed
   stat; refunds follow the instance's `traitCosts` history.
-- **SETTLED (A3).** Psychic resistance tiers: tier N = immunity to psychic effects of tier
-  ≤ N; the Dissolution *timer* is not tiered — psychic resistance instead **slows** it
-  (+1 Clock per tier). (This makes the Mind-15 reward real without inventing tiers the
-  condition doesn't have.)
+- **SETTLED (A3), ⚠️ RESTATED BY R30.** Psychic resistance tiers: tier N = immunity to
+  psychic effects of tier ≤ N. Dissolution is not tiered — psychic resistance buys
+  **+1 Clock of GRACE per tier** (R30), which under the old flat-timer model was written as
+  "slows it +1 Clock per tier". Same number, different thing: it delays when the Hold
+  Threshold starts climbing; it never slows the climb.
 
 ## R7 — States glossary (answers B2, B3, B4, B7, E5)
 
@@ -565,10 +570,12 @@ designs, adopted as canon; engine/content implementation lands with their epics.
   Lounge upgrades persist. Non-PC party members can permanently die.
 - **Character-exclusive skills exist** (Full Potential, Heroic Punch → Mario): the skills
   schema needs an `exclusive_to` lock field (content pass).
-- **Dissolution encounter pattern:** noble presence starts the Mind timer + a personal
+- **Dissolution encounter pattern:** noble presence starts the Dissolution + a personal
   emotional "song"; embrace = removed-from-play (ghoul persists as story object); escape =
   survive with a permanent scar (one emotion amplified near demons). Matches R5's
-  mind-collapse event model.
+  mind-collapse event model. ⚠️ **R30:** "the Mind timer" is now the Hold Threshold, and
+  **noble-class presence is escalation +2/Moment** — that is where a noble's danger lives,
+  not in a shorter clock.
 - **Tank-kit drafts** (Intercept: take an adjacent ally's hit, 0-Moment, Physique-based;
   Iron Stance: declare, don't move, adjacent-ally-targeting attacks retarget to you,
   Physique 5): PENDING finalization (questionnaire), then seed as skills.
@@ -1335,3 +1342,74 @@ Each line is a test target; ruling in brackets.
 *Owner morning checklist: the PROVISIONAL rulings worth your eyes first — R2 miss/dodge
 model, R3 cap numbers, R4 Burn-T1-costs-Shock, R6 level pacing (engine-ready either way),
 R8 RPM numbers, R9 grapple gates, R10 requirements-halving + token-exchange cut.*
+
+---
+
+## R30 — Dissolution: grace, then a climbing Hold Threshold (owner, 2026-08-18 · v1 §8.2 + §10 errata)
+
+**SETTLED.** The flat 2-Clock Dissolution timer is **deleted from both the book and the
+sim.** It was a countdown that a high-Mind contestant could simply outlive, and the campaign
+has not met the mechanic yet, so the change is clean rather than a migration.
+
+Source of truth: the v1 rulebook, `rulebook/gpt-system-v1.0.md` §8.2 and §10, in the TTRPG
+repo. This section is the digital restatement. **Supersedes** R4's "Dissolution stays a
+tierless timer", R6's "+1 Clock per tier" phrasing, and R12's "starts the Mind timer".
+
+### The mechanic
+
+1. **One Clock of grace.** Nothing is checked during it. Psychic resistance buys
+   **+1 Clock of grace per tier** — the R6 reward, re-pointed.
+2. **After grace, every Moment, a free check.** No Moment cost, no free-action slot, no
+   scheduled action. It simply happens.
+3. **Hold Threshold = `1 + (Moments elapsed since grace ended) × escalation`.**
+4. **Resolved on R22/R24's threshold mechanism, against MIND:**
+   - `Mind >= threshold` → **auto-hold.** No rng consumed.
+   - `Mind + threshold die >= threshold` → roll the Mind threshold die (default 1d4).
+   - `Mind + die max < threshold` → **impossible.** No roll — and see the disclosure rule.
+5. **One failure is permanent removal.** There is no second roll and no grace Moment.
+   The terminal is R5's mind-collapse: `mind_collapsed`, never `died`.
+6. **Removing the cause FREEZES the threshold. It never resets.** Walk out of the aura and
+   the number stops where it stands; walk back in and it resumes from there.
+
+### 🔴 Escalation rides the SOURCE, not the victim
+
+| Source | Escalation |
+|---|---|
+| Haunted object / minor | **+1 per Moment** |
+| Noble-class presence | **+2 per Moment** |
+| Divine | **+3 per Moment** |
+
+**This is the knob that keeps Dissolution lethal against a Mind farmed into the 20s.** The
+victim's stat is *not* where difficulty is expressed — a Mind 24 contestant in a divine aura
+is auto-holding for eight Moments and then in serious trouble, which is the intent.
+
+### The disclosure rule is the bargain
+
+§14 already obliges the GM to announce when a threshold has become unreachable. Applied
+here, **the table is told exactly how many Moments remain** before the check becomes
+impossible. That disclosure is what earns the harshness: one failure ends a character, so
+the countdown is never hidden.
+
+**Sim consequence:** the engine must emit the remaining-Moments figure as an event, not
+leave it implicit. A silent Dissolution is a rules violation, not a UI gap.
+
+### Sim implementation status — ⛔ NOT IMPLEMENTED
+
+`simulation/condition_engine.gd` still runs the old model: `_apply_timer_condition` pushes a
+`clocks_remaining` timer seeded from `spread_rules.clock_timer` plus
+`Resistance.dissolution_extra_clocks`, and `_advance_timers` fires `_mind_collapse` on
+expiry. What R30 needs that the engine does not yet have:
+
+| Need | Where |
+|---|---|
+| A **per-Moment** hook (the engine only has `on_clock_reset`) | `condition_engine.gd` + the Moment loop |
+| Timer shape carrying `grace_clocks`, `moments_elapsed`, `escalation`, `frozen` | `combatant.gd` timer dict + `to_dict`/`from_dict` |
+| The Mind hold check | reuse `enemy_ai.gd`'s `check_feint_read` shape verbatim — R24 already *is* §14 |
+| `dissolution_hold` / `dissolution_unreachable` events | the disclosure rule above |
+| Freeze-on-cause-removal | `resolve()` / cause tracking (still on the "not yet implemented" list) |
+| Determinism: a new per-Moment rng draw **changes existing hash pins** | every test with a hash assertion |
+
+⚠️ **That last row is the real cost** and the reason this ships as a specified ruling rather
+than a code change: the sim is command-stream deterministic with hash coverage, and adding
+an rng draw per afflicted combatant per Moment moves hashes across the suite. It wants a
+session with a **working Godot 4.7 binary** and a full-suite re-pin, not a blind edit.
