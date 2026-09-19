@@ -213,8 +213,9 @@
 - **Single HP bar** (total 50).
 - **Phase 1 — Ignition (HP 50→36):** Flamethrower (10-hex cone, 2 Burn); Dash (straight-line charge, knocks targets aside, 3 Crush to Torso on contact); Death Spin (3 Moments: M1 Grab — 5 damage to the hand releases; M2 Chew — 2 Crush both arms; M3 spin-and-kill).
 - **Phase 2 — Pressure Valve I:** explosion, 5-space radius, 2-Moment escape window, instant KO inside radius, visible steam telegraph 1 Moment before. Network retreats deeper — breach threshold resets.
-- **Phase 3 — Frenzy (HP 35→19):** all P1 abilities; flamethrower pops trash cans instantly on contact; Dash bounces off walls up to 2 bounces; Death Spin grab range +1 hex.
+- **Phase 3 — Frenzy (HP 34→19):** all P1 abilities; flamethrower pops trash cans instantly on contact; Dash bounces off walls up to 2 bounces; Death Spin grab range +1 hex.
 - **Phase 4 — Pressure Valve II:** explosion, 7-space radius, 2-Moment window, instant KO; network fully exposed after — damage open without breach conditions.
+- *Correction 2026-09-19: Phase 3 read `35→19`, so HP 35 sat in a band and in Valve I's trigger at once. The bands run contiguously — 50–36 / 35 / 34–19 / 18 / 17–0 / 0. Full write-up: `Galactic-Prime-Time/rulebook/tutorial-enemy-pass.md` T-9.*
 - **Reflexes counters** to (likely Dash): Reflexes 7 auto-dodge + move 1 space; Reflexes 9 auto-dodge + counterattack; lower: roll 4+ to dodge.
 - **Arena:** 41×60 hex layout.
 - Design intent: boss punishes inaction (flamethrower/dash pressure); early struggle is intentional so later growth feels earned.
