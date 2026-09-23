@@ -67,6 +67,14 @@ of the next Clock. Order of operations at each tick:
 
 ## R3 — Action caps: free actions, movement, inventory, cooldowns (answers D1, D2, C6, F5, F10)
 
+> ⚠️ **BOOK CHANGED 2026-09-23 (rulebook v1.15) — SIM NOT YET UPDATED.** Owner ruling: **the free
+> move is 1–4 spaces** (was 1–3) and a longer move costs `ceil((spaces − 4) / 4)` Moments.
+> Slowed still drops the allowance to 1. The sim still prices 3
+> (`simulation/action_resolver.gd` ~L2354 and the `- 3` at ~L2436; tests in
+> `tests/test_kan2_acceptance.gd` L137–142 and `tests/test_zones.gd` L253–266 pin the old
+> number). Port when a Godot binary is available to run the suite — no Godot in the
+> 2026-09-23 container, so this is recorded rather than changed.
+
 - **PROVISIONAL (numbers; shape settled).** Per tick a combatant gets at most: **one
   scheduled action** (the one due this tick) + ~~**one free (0-Moment) action**~~ **a
   free-action BUDGET** + **one reaction**. 0-cost skills are legal (F10) — they consume
