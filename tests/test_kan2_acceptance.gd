@@ -133,20 +133,20 @@ func test_06_free_action_slot() -> void:
 	assert_event(again, "action_declared", "budget refreshes next tick")
 
 
-## 7. "Move of 3 spaces = free once per tick; second move same tick rejected;
-##    7-space move costs 1 Moment [R3]." (cost = ceil((spaces - 3) / 4))
+## 7. "Move of 1–4 spaces = free once per tick (rulebook v1.15; was 3); second move same tick rejected;
+##    7-space move costs 1 Moment [R3]." (cost = ceil((spaces - 4) / 4))
 func test_07_movement_costs() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "a", {"position": [0, 0]})
 	var free_move: Array[Dictionary] = sim.apply_command({"type": "move", "actor": "a", "to": [3, 0]})
-	var moved: Dictionary = assert_event(free_move, "moved", "1–3 spaces is free")
+	var moved: Dictionary = assert_event(free_move, "moved", "1–4 spaces is free")
 	assert_true(bool(moved.get("free", false)), "consumed the free slot, no Moments")
 	var second: Array[Dictionary] = sim.apply_command({"type": "move", "actor": "a", "to": [4, 0]})
 	assert_rejected(second, "already_moved", "you cannot move twice in one tick")
 	advance(sim)
 	var long_move: Array[Dictionary] = sim.apply_command({"type": "move", "actor": "a", "to": [10, 0]})
 	var long_decl: Dictionary = assert_event(long_move, "action_declared", "7-space move is a scheduled action")
-	assert_eq(int(long_decl.get("cost", -1)), 1, "ceil((7-3)/4) = 1 Moment")
+	assert_eq(int(long_decl.get("cost", -1)), 1, "ceil((7-4)/4) = 1 Moment")
 	var resolve_events: Array[Dictionary] = advance(sim)
 	assert_event(resolve_events, "moved", "scheduled move resolves")
 	var a: CombatantState = sim.combatants["a"]

@@ -75,25 +75,25 @@ func advance_to_reset(sim: CombatSim) -> Array[Dictionary]:
 
 func test_free_move_pays_destination_cost() -> void:
 	var sim: CombatSim = make_sim()
-	set_arena(sim, terrain_arena([{"type": "difficult", "hexes": [[2, 0], [3, 0]]}]))
+	set_arena(sim, terrain_arena([{"type": "difficult", "hexes": [[3, 0], [4, 0]]}]))
 	add_human(sim, "runner")
-	# 2 spaces + destination surcharge 1 = 3 <= allowance 3: still FREE.
-	var ok: Array[Dictionary] = move(sim, "runner", [2, 0])
-	assert_event(ok, "moved", "2 spaces ending on difficult ground fits the 3 allowance")
+	# 3 spaces + destination surcharge 1 = 4 <= allowance 4: still FREE.
+	var ok: Array[Dictionary] = move(sim, "runner", [3, 0])
+	assert_event(ok, "moved", "3 spaces ending on difficult ground fits the 4 allowance")
 	assert_true(bool(first_event(ok, "moved").get("free", false)), "within allowance = free move")
 	advance(sim)
-	# Sanity: the same 3-space distance onto NORMAL ground stays free.
-	assert_event(move(sim, "runner", [2, 3]), "moved", "a 3-space hop onto normal ground is free")
+	# Sanity: the same 4-space distance onto NORMAL ground stays free.
+	assert_event(move(sim, "runner", [3, 4]), "moved", "a 4-space hop onto normal ground is free")
 	advance(sim)
-	# 3 spaces + surcharge 1 = 4 > 3: the hop spills into a SCHEDULED move.
-	var onto: Array[Dictionary] = move(sim, "runner", [3, 0])
+	# 4 spaces + surcharge 1 = 5 > 4: the hop spills into a SCHEDULED move.
+	var onto: Array[Dictionary] = move(sim, "runner", [4, 0])
 	var declared: Dictionary = assert_event(onto, "action_declared",
-		"3 spaces ending on difficult = priced 4 = a scheduled 1-Moment move")
-	assert_eq(int(declared.get("cost", 0)), 1, "ceil((4-3)/4) = 1 Moment")
+		"4 spaces ending on difficult = priced 5 = a scheduled 1-Moment move")
+	assert_eq(int(declared.get("cost", 0)), 1, "ceil((5-4)/4) = 1 Moment")
 	assert_no_event(onto, "moved", "the priced hop is not immediate")
 	advance(sim)
 	assert_eq([sim.combatants["runner"].position.x, sim.combatants["runner"].position.y],
-		[3, 0], "the scheduled move resolves onto the difficult hex")
+		[4, 0], "the scheduled move resolves onto the difficult hex")
 
 
 func test_interior_terrain_is_free_documented_coarseness() -> void:
@@ -141,9 +141,9 @@ func test_no_terrain_arena_byte_compat_pin() -> void:
 func test_quick_step_covers_difficult_and_rough_not_water() -> void:
 	var sim: CombatSim = make_sim()
 	set_arena(sim, terrain_arena([
-		{"type": "difficult", "hexes": [[3, 0]]},
-		{"type": "rough", "hexes": [[-3, 0]]},
-		{"type": "water", "hexes": [[0, 3]]},
+		{"type": "difficult", "hexes": [[4, 0]]},
+		{"type": "rough", "hexes": [[-4, 0]]},
+		{"type": "water", "hexes": [[0, 4]]},
 	]))
 	add_human(sim, "dancer")
 	var opened: Array[Dictionary] = declare(sim, "dancer", skill("quick_step", 1))
@@ -151,28 +151,28 @@ func test_quick_step_covers_difficult_and_rough_not_water() -> void:
 	assert_eq(int(stride.get("moments", 0)), 1, "L1 covers this Moment")
 	assert_rejected(declare(sim, "dancer", skill("quick_step", 1)), "already_active",
 		"no stacking model is authored")
-	assert_event(move(sim, "dancer", [3, 0]), "moved",
-		"difficult reads 1 inside the stride window — the 3-space hop stays free")
+	assert_event(move(sim, "dancer", [4, 0]), "moved",
+		"difficult reads 1 inside the stride window — the 4-space hop stays free")
 	advance(sim)
 	# The L1 window died with its Moment; get home and stride the ROUGH lane.
 	move(sim, "dancer", [0, 0])
 	advance(sim)
 	declare(sim, "dancer", skill("quick_step", 1))
-	assert_event(move(sim, "dancer", [-3, 0]), "moved", "rough reads 1 inside the window too")
+	assert_event(move(sim, "dancer", [-4, 0]), "moved", "rough reads 1 inside the window too")
 	advance(sim)
 	move(sim, "dancer", [0, 0])
 	advance(sim)
 	# WATER is not covered (swim's lane): even at L4 the hop prices.
 	declare(sim, "dancer", skill("quick_step", 4))
-	var wet: Array[Dictionary] = move(sim, "dancer", [0, 3])
+	var wet: Array[Dictionary] = move(sim, "dancer", [0, 4])
 	var declared: Dictionary = assert_event(wet, "action_declared",
-		"water stays priced under quick_step — the 3-space hop schedules")
-	assert_eq(int(declared.get("cost", 0)), 1, "priced 4 -> 1 Moment")
+		"water stays priced under quick_step — the 4-space hop schedules")
+	assert_eq(int(declared.get("cost", 0)), 1, "priced 5 -> 1 Moment")
 
 
 func test_quick_step_duration_and_movement_gate() -> void:
 	var sim: CombatSim = make_sim()
-	set_arena(sim, terrain_arena([{"type": "difficult", "hexes": [[3, 0]]}]))
+	set_arena(sim, terrain_arena([{"type": "difficult", "hexes": [[4, 0]]}]))
 	add_human(sim, "dancer")
 	# "Must have movement remaining": declaring after this tick's move rejects.
 	move(sim, "dancer", [1, 0])
@@ -184,15 +184,15 @@ func test_quick_step_duration_and_movement_gate() -> void:
 	# L2 = 2 Moments: the window survives one tick advance.
 	declare(sim, "dancer", skill("quick_step", 2))
 	advance(sim)
-	assert_event(move(sim, "dancer", [3, 0]), "moved",
+	assert_event(move(sim, "dancer", [4, 0]), "moved",
 		"the L2 window still prices difficult as 1 a Moment later")
 	# L1's window is gone the Moment after (a fresh sim pins the expiry).
 	var sim2: CombatSim = make_sim()
-	set_arena(sim2, terrain_arena([{"type": "difficult", "hexes": [[3, 0]]}]))
+	set_arena(sim2, terrain_arena([{"type": "difficult", "hexes": [[4, 0]]}]))
 	add_human(sim2, "dancer")
 	declare(sim2, "dancer", skill("quick_step", 1))
 	advance(sim2)
-	assert_event(move(sim2, "dancer", [3, 0]), "action_declared",
+	assert_event(move(sim2, "dancer", [4, 0]), "action_declared",
 		"the L1 window died with its Moment — the hop prices again")
 
 
@@ -200,17 +200,17 @@ func test_quick_step_duration_and_movement_gate() -> void:
 
 func test_swimmer_crosses_water_unpenalized() -> void:
 	var sim: CombatSim = make_sim()
-	set_arena(sim, terrain_arena([{"type": "water", "hexes": [[3, 0], [0, 3]]}]))
+	set_arena(sim, terrain_arena([{"type": "water", "hexes": [[4, 0], [0, 4]]}]))
 	add_human(sim, "fish", {"skills": [{"key": "swim", "level": 1}]})
 	add_human(sim, "brick", {"position": [0, 0], "id": "brick"})
-	# The swimmer's 3-space hop into the pool stays free…
-	assert_event(move(sim, "fish", [3, 0]), "moved",
-		"water reads 1 for the swim owner — the 3-space hop stays free")
+	# The swimmer's 4-space hop into the pool stays free…
+	assert_event(move(sim, "fish", [4, 0]), "moved",
+		"water reads 1 for the swim owner — the 4-space hop stays free")
 	# …the non-swimmer's identical hop prices into a scheduled Moment.
-	var sink: Array[Dictionary] = move(sim, "brick", [0, 3])
+	var sink: Array[Dictionary] = move(sim, "brick", [0, 4])
 	var declared: Dictionary = assert_event(sink, "action_declared",
-		"the non-swimmer pays the water surcharge — priced 4 = 1 Moment")
-	assert_eq(int(declared.get("cost", 0)), 1, "ceil((4-3)/4) = 1")
+		"the non-swimmer pays the water surcharge — priced 5 = 1 Moment")
+	assert_eq(int(declared.get("cost", 0)), 1, "ceil((5-4)/4) = 1")
 
 
 func test_non_swimmer_drowns_r9_capped() -> void:
@@ -285,18 +285,18 @@ func test_swim_grace_delays_death_and_surfacing_cancels() -> void:
 func test_acrobatics_rough_immunity_and_roll_bonus() -> void:
 	var sim: CombatSim = make_sim()
 	set_arena(sim, terrain_arena([
-		{"type": "rough", "hexes": [[3, 0]]},
-		{"type": "difficult", "hexes": [[0, 3]]},
+		{"type": "rough", "hexes": [[4, 0]]},
+		{"type": "difficult", "hexes": [[0, 4]]},
 	]))
 	add_human(sim, "tumbler", {"skills": [{"key": "acrobatics", "level": 3}]})
 	add_human(sim, "walker", {"position": [-2, 0]})
-	assert_event(move(sim, "tumbler", [3, 0]), "moved",
+	assert_event(move(sim, "tumbler", [4, 0]), "moved",
 		"rough reads 1 for the acrobatics owner — the hop stays free")
 	advance(sim)
 	move(sim, "tumbler", [0, 0])
 	advance(sim)
 	# Difficult is NOT acrobatics' lane (quick_step's): it still prices.
-	var hard: Array[Dictionary] = move(sim, "tumbler", [0, 3])
+	var hard: Array[Dictionary] = move(sim, "tumbler", [0, 4])
 	assert_event(hard, "action_declared", "difficult still prices for the acrobat — lanes stay distinct")
 	# Passives never declare (the aura rule).
 	assert_rejected(declare(sim, "walker", skill("acrobatics", 1)), "passive_skill",

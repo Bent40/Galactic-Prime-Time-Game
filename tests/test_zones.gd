@@ -251,7 +251,7 @@ func test_dash_ending_inside_the_zone_is_an_entry_not_a_pass() -> void:
 
 
 func test_free_moves_are_destination_only_no_pass() -> void:
-	# The standing wall contract, honestly inherited: a 1-3 space free move is
+	# The standing wall contract, honestly inherited: a 1-4 space free move is
 	# a destination hop (the resolver validates the destination only), so
 	# hopping OVER a zone hex fires nothing — traversal is only real on lanes.
 	var sim: CombatSim = make_sim()

@@ -1211,7 +1211,7 @@ func _set_phase(cmd: Dictionary) -> Array[Dictionary]:
 
 ## R34 — the FREE-FORM walk: "the party walks freely; movement costs
 ## nothing". Deliberately NOT ActionResolver.move — that function IS the R3
-## movement economy (the free-action slot, the 1-3 space allowance, the
+## movement economy (the free-action slot, the 1-4 space allowance, the
 ## scheduled long move, moved_this_tick, terrain pricing), and none of it
 ## applies while the clock is stopped. What survives from it:
 ##  * the ACTOR gates verbatim (dead / removed / helpless / grappled — a body

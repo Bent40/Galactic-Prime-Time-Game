@@ -67,13 +67,14 @@ of the next Clock. Order of operations at each tick:
 
 ## R3 — Action caps: free actions, movement, inventory, cooldowns (answers D1, D2, C6, F5, F10)
 
-> ⚠️ **BOOK CHANGED 2026-09-23 (rulebook v1.15) — SIM NOT YET UPDATED.** Owner ruling: **the free
-> move is 1–4 spaces** (was 1–3) and a longer move costs `ceil((spaces − 4) / 4)` Moments.
-> Slowed still drops the allowance to 1. The sim still prices 3
-> (`simulation/action_resolver.gd` ~L2354 and the `- 3` at ~L2436; tests in
-> `tests/test_kan2_acceptance.gd` L137–142 and `tests/test_zones.gd` L253–266 pin the old
-> number). Port when a Godot binary is available to run the suite — no Godot in the
-> 2026-09-23 container, so this is recorded rather than changed.
+> ✅ **PORTED 2026-10-13 — the free move is 1–4 spaces** (rulebook v1.15 §5.5, owner ruling
+> 2026-09-23; was 1–3). A longer move costs `ceil((spaces − 4) / 4)` Moments; Slowed still drops
+> the allowance to 1. `ActionResolver.FREE_MOVE_SPACES = 4` drives both. Five terrain tests in
+> `tests/test_kan5_skills.gd` were re-staged one hex further out so they still pin the
+> priced-hop boundary. **918 passed, 0 failed** on Godot 4.7.1.
+> 🔴 **Enemy PLANNING still uses 3** (`EnemyAI.FREE_MOVE_SPACES`). The resolver would let an enemy
+> move 4; the AI simply never asks. Switching it moves 19 AI-geometry tests and the legacy
+> byte-identical hash pins, so enemy pacing waits on an owner call.
 
 - **PROVISIONAL (numbers; shape settled).** Per tick a combatant gets at most: **one
   scheduled action** (the one due this tick) + ~~**one free (0-Moment) action**~~ **a
