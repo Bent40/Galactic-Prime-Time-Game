@@ -11,6 +11,10 @@ extends RefCounted
 ## range before its resolution tick dodges it; an invalidated action collapses
 ## into Forced Action – Tool (book rule).
 
+## R3 free-move allowance (rulebook v1.15 §5.5, owner 2026-09-23: was 3).
+## EnemyAI plans with the same number.
+const FREE_MOVE_SPACES: int = 4
+
 const STAT_REQUIREMENT_KEYS: Array[String] = ["physique", "reflexes", "mind", "charm"]
 
 ## Content pass batch A: the encoded strike-shaped skill archetypes. They all
@@ -2290,10 +2294,10 @@ func _attack_range(action: Dictionary, item: Dictionary) -> int:
 ##   contract: only the destination hex is validated — interior hexes are
 ##   never walked, for walls or terrain alike) and pays the DESTINATION
 ##   hex's entry cost against its budget: priced spaces = hex distance +
-##   (move_cost(destination) − 1). The free move's allowance (3; 1 while
-##   Prone/Slowed) and the scheduled conversion (ceil((spaces − 3) / 4)
-##   Moments, Slowed ×2) both read the PRICED spaces — a 3-allowance move
-##   ENDING on difficult ground covers at most 2 hexes; a Prone/Slowed
+##   (move_cost(destination) − 1). The free move's allowance (4; 1 while
+##   Prone/Slowed) and the scheduled conversion (ceil((spaces − 4) / 4)
+##   Moments, Slowed ×2) both read the PRICED spaces — a 4-allowance move
+##   ENDING on difficult ground covers at most 3 hexes; a Prone/Slowed
 ##   budget-1 crawler cannot afford an adjacent cost-2 hex (the EnemyAI
 ##   budget walker's exact rule, mirrored) — Prone rejects
 ##   prone_can_only_crawl, Slowed spills into a (doubled) scheduled Moment.
@@ -2350,8 +2354,8 @@ func _acrobatic_move_bonus(mover: CombatantState) -> int:
 	return clampi(mover.skill_level("acrobatics") - 1, 0, 3)
 
 
-## R3: 1–3 spaces free (consumes the free slot), once per tick; longer moves
-## cost ceil((spaces - 3) / 4) Moments as a scheduled action. Slowed (R7):
+## R3: 1–4 spaces free (consumes the free slot), once per tick; longer moves
+## cost ceil((spaces - 4) / 4) Moments as a scheduled action. Slowed (R7):
 ## allowance 1, Moment costs double. Prone (R7): crawl 1 space only.
 ## Round 3a: both paths read the PRICED spaces (the destination-cost
 ## terrain contract above) — a terrain-less arena prices every hex 1, so
@@ -2413,7 +2417,7 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 			return _reject("hex_blocked", {"actor": actor_id, "to": [to.x, to.y]})
 	var prone: bool = bool(actor.statuses.get("prone", false))
 	var slowed: bool = bool(actor.statuses.get("slowed", false))
-	var allowance: int = 1 if (prone or slowed) else 3
+	var allowance: int = 1 if (prone or slowed) else FREE_MOVE_SPACES
 	# Round 3a: the destination hex's terrain entry cost counts against the
 	# budget (the destination-cost contract in the section header).
 	var priced_spaces: int = spaces + (_move_cost_for(actor, to) - 1)
@@ -2433,7 +2437,7 @@ func move(actor_id: String, to: Vector2i) -> Array[Dictionary]:
 		return events
 	if prone:
 		return _reject("prone_can_only_crawl", {"actor": actor_id})
-	var cost: int = maxi(1, ceili((priced_spaces - 3) / 4.0))
+	var cost: int = maxi(1, ceili((priced_spaces - FREE_MOVE_SPACES) / 4.0))
 	if slowed:
 		cost *= 2
 	if clock.tick < actor.next_action_tick:
