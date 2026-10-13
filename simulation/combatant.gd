@@ -124,7 +124,7 @@ var next_action_tick: int = 0
 var windup_pending: bool = false
 ## R3/R34 free-action budget — how many free (0-Moment) actions this combatant
 ## has spent in the current window (0..FREE_ACTIONS_PER_CLOCK). Spent by the
-## whole free-action family: 0-cost declares, the free 1-3 space move, the
+## whole free-action family: 0-cost declares, the free 1-4 space move, the
 ## first inventory interaction, 0-cost reactions, the bit, the door/voicebox
 ## family and the stealth entry. Cleared with the other per-tick flags
 ## (reset_tick_flags) — the cadence R3 has always run on, so no new sweep and

@@ -333,9 +333,9 @@ func test_stances_write_at_decide_time_from_real_decisions() -> void:
 	# move -> hunting (victim out of step+bite reach).
 	var sim2: CombatSim = make_sim()
 	add_human(sim2, "victim", {"team": "party", "position": [0, 0]})
-	add_roach(sim2, "roach", [5, 0])
+	add_roach(sim2, "roach", [6, 0])
 	assert_eq(String(first_event(ai_decide(sim2, "roach"), "ai_decision").get("choice", "")),
-		"move", "distance 5: the step cannot close to bite range")
+		"move", "distance 6: the step cannot close to bite range")
 	assert_eq(String(sim2.ai.stances.get("roach", "")), "hunting", "a closing roach reads hunting")
 	# wait -> defensive (no opponents on the board).
 	var sim3: CombatSim = make_sim()

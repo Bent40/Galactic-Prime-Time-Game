@@ -229,24 +229,24 @@ func test_terrain_free_gates_and_billing_unchanged() -> void:
 
 func test_ai_walker_budget_consumes_move_cost() -> void:
 	# THE CORRIDOR (1 hex tall — the only route is straight): M mob (0,0),
-	# d = difficult (1,0), V victim (4,0). The story's own example pinned: a
-	# 3-budget walker crosses 1 difficult + 1 normal hex (2+1=3), NOT 3 hexes.
+	# d = difficult (1,0), V victim (5,0). A 4-budget walker (rulebook v1.15)
+	# crosses 1 difficult + 2 normal hexes (2+1+1=4), NOT 4 hexes.
 	#
-	#   r=0   .  M  d  .  .  V  .  .  .  .  .    q in [-1, 9]
+	#   r=0   .  M  d  .  .  .  V  .  .  .  .    q in [-1, 9]
 	#
 	var sim: CombatSim = make_sim()
 	set_arena(sim, {"bounds": {"width": 11, "height": 1, "origin": [-1, 0]},
 		"terrain": [{"type": "difficult", "hexes": [[1, 0]]}]})
-	add_human(sim, "vic", {"team": "party", "position": [4, 0]})
+	add_human(sim, "vic", {"team": "party", "position": [5, 0]})
 	add_mob(sim, "mob", [0, 0])
 	var first: Array[Dictionary] = ai_decide(sim, "mob")
 	assert_eq(String(first_event(first, "ai_decision").get("choice", "")), "move",
 		"decide 1: out of reach — the mob closes")
-	assert_eq(first_event(first, "moved").get("to", []), [2, 0],
-		"budget 3 buys the difficult hex (2) + one normal (1) — two hexes, not three")
+	assert_eq(first_event(first, "moved").get("to", []), [3, 0],
+		"budget 4 buys the difficult hex (2) + two normal (1+1) — three hexes, not four")
 	advance(sim, 1)
 	var second: Array[Dictionary] = ai_decide(sim, "mob")
-	assert_eq(first_event(second, "moved").get("to", []), [3, 0],
+	assert_eq(first_event(second, "moved").get("to", []), [4, 0],
 		"decide 2: one normal step onto the stop ring")
 	assert_eq(String(first_event(second, "ai_decision").get("choice", "")), "attack",
 		"...and the bite declares on arrival")

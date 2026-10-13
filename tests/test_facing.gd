@@ -306,8 +306,8 @@ func test_herding_respects_the_cone() -> void:
 	# chase — the exact pre-herding route, position-pinned.
 	var sim: CombatSim = make_sim()
 	sim.apply_command({"type": "set_arena", "arena": {
-		"bounds": {"width": 5, "height": 3, "origin": [0, 0]},
-		"walls": [[1, 1], [3, 1]],
+		"bounds": {"width": 6, "height": 4, "origin": [0, 0]},
+		"walls": [[1, 1], [3, 1], [1, 2], [4, 1]],
 		"doors": [{"key": "kennel_gate", "position": [2, 2], "state": "open"}]}})
 	add_human(sim, "prey", {"team": "party", "position": [1, 0]})
 	sim.apply_command({"type": "add_combatant", "combatant": {
@@ -320,7 +320,7 @@ func test_herding_respects_the_cone() -> void:
 	var db: Dictionary = assert_event(events, "ai_decision", "the blind-side herder decides")
 	assert_eq(String(db.get("choice", "")), "move", "still a move — the chase")
 	var moved: Dictionary = assert_event(events, "moved", "the chase step resolves")
-	assert_eq(moved.get("to", []), [0, 2], "the NORMAL chase route — a rear-arc quarry is chased, never herded")
+	assert_eq(moved.get("to", []), [0, 3], "the NORMAL chase route — a rear-arc quarry is chased, never herded")
 	assert_no_event(events, "pack_herding", "no funnel without eyes on the quarry (the cone gate)")
 
 

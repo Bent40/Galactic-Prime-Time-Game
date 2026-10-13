@@ -136,7 +136,7 @@ func test_boss_closes_distance_when_nothing_in_reach() -> void:
 	var decision: Dictionary = first_event(events, "ai_decision")
 	assert_eq(String(decision.get("choice", "")), "move", "out of reach -> close distance")
 	var moved: Dictionary = assert_event(events, "moved", "the free move executed")
-	assert_eq(moved.get("to", []), [3, 0], "greedy hex steps toward the party")
+	assert_eq(moved.get("to", []), [4, 0], "greedy hex steps toward the party")
 
 
 func test_phase_behavior_list_filters_the_ability_set() -> void:

@@ -146,15 +146,15 @@ func _predicted_pick(sim: CombatSim, actor_id: String) -> String:
 
 func test_mob_closes_distance_then_attacks() -> void:
 	var sim: CombatSim = make_sim()
-	add_human(sim, "h", {"team": "party", "position": [5, 0]})
+	add_human(sim, "h", {"team": "party", "position": [6, 0]})
 	add_enemy(sim, "roach", "roach_dog")
-	# Tick 0: 5 hexes out — free-move 3, still out of reach, no attack.
+	# Tick 0: 6 hexes out — free-move 4, still out of reach, no attack.
 	var events: Array[Dictionary] = ai_decide(sim, "roach")
 	var decision: Dictionary = first_event(events, "ai_decision")
 	assert_eq(String(decision.get("choice", "")), "move", "out of reach -> close distance")
 	var moved: Dictionary = assert_event(events, "moved", "the free move executed")
-	assert_eq(moved.get("to", []), [3, 0], "greedy steps straight toward the target")
-	assert_true(bool(moved.get("free", false)), "1–3 spaces ride the free slot (R3)")
+	assert_eq(moved.get("to", []), [4, 0], "greedy steps straight toward the target")
+	assert_true(bool(moved.get("free", false)), "1–4 spaces ride the free slot (R3)")
 	assert_no_event(events, "action_declared", "no attack from out of reach")
 	# Same tick again: cannot move twice — the mob has nothing left to do.
 	var again: Dictionary = first_event(ai_decide(sim, "roach"), "ai_decision")
