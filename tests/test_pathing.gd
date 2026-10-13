@@ -124,7 +124,7 @@ func test_u_trap_optimal_path_found_and_pinned() -> void:
 
 func test_ai_walks_around_u_wall_across_decides() -> void:
 	# The same map through the REAL sim: the mob navigates the trap across two
-	# decides (allowance 3 per tick) and bites on arrival — the stranded-
+	# decides (allowance 4 per tick) and bites on arrival — the stranded-
 	# forever wait of wave 3d is gone.
 	var sim: CombatSim = make_sim()
 	set_arena(sim, U_WALLS, U_BOUNDS)
@@ -133,12 +133,12 @@ func test_ai_walks_around_u_wall_across_decides() -> void:
 	var first: Array[Dictionary] = ai_decide(sim, "mob")
 	assert_eq(String(first_event(first, "ai_decision").get("choice", "")), "move",
 		"decide 1: still out of reach — the mob closes along the route")
-	assert_eq(first_event(first, "moved").get("to", []), [2, -2],
-		"decide 1 lands on the route's 3rd hex (allowance 3)")
+	assert_eq(first_event(first, "moved").get("to", []), [3, -2],
+		"decide 1 lands on the route's 4th hex (allowance 4)")
 	advance(sim, 1)
 	var second: Array[Dictionary] = ai_decide(sim, "mob")
 	assert_eq(String(first_event(second, "ai_decision").get("choice", "")), "attack",
-		"decide 2: the replanned 2 steps reach the stop ring — bite declared")
+		"decide 2: the replanned step reaches the stop ring — bite declared")
 	assert_eq(first_event(second, "moved").get("to", []), [3, -1],
 		"decide 2 finishes the route on (3,-1), adjacent to the victim")
 	var resolved: Array[Dictionary] = advance(sim, 1)

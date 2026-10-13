@@ -170,17 +170,17 @@ func test_war_hound_data_contract() -> void:
 func test_hound_hunts_then_bites_via_ai_decide() -> void:
 	var sim: CombatSim = make_sim()
 	add_human(sim, "victim", {"team": "party", "position": [0, 0]})
-	add_hound(sim, "hound", [6, 0])
+	add_hound(sim, "hound", [7, 0])
 	# Decide 1: out of step+bite reach — the hound CLOSES (choice move) and the
 	# stance substrate reads "hunting". Single candidate -> zero rng draws.
 	var pre_rng: int = sim.ai.ai_rng.state
 	var first: Array[Dictionary] = ai_decide(sim, "hound")
 	var d1: Dictionary = assert_event(first, "ai_decision", "the hound decides")
 	assert_eq(String(d1.get("tier", "")), "elite", "war hound decides on the ELITE policy")
-	assert_eq(String(d1.get("choice", "")), "move", "distance 6: the free step cannot close to bite range")
+	assert_eq(String(d1.get("choice", "")), "move", "distance 7: the free step cannot close to bite range")
 	assert_eq(String(sim.ai.stances.get("hound", "")), "hunting", "a closing hound reads hunting")
 	assert_eq((sim.combatants["hound"] as CombatantState).position, Vector2i(3, 0),
-		"free-move allowance 3 closed 6 -> 3")
+		"free-move allowance 4 closed 7 -> 3")
 	advance(sim, 1)
 	# Decide 2: the step closes the gap — move THEN bite in the same decide.
 	var second: Array[Dictionary] = ai_decide(sim, "hound")

@@ -66,8 +66,13 @@ extends SimTestBase
 ## other byte (rng states, decisions, events, h1's key-set: h1 only ever
 ## moves/attacks EAST, facing 0, no key) unchanged. One honest new serialized
 ## field; zero behavior drift (both CI harnesses byte-diff clean).
+## RE-PINNED 2026-10-13 (ARENA_DOOR only): the free move went from 3 to 4
+## spaces (rulebook v1.15, owner ruling that enemies move 4 too). The mob in
+## sequence B now closes one hex further per Moment, so the fight itself
+## changed — a rules change, not drift. PLAIN did not move. The new value was
+## reproduced on two separate full-suite runs.
 const LEGACY_HASH_PLAIN: String = "6d8046456d4aee1059e775d8d08f6eee2519c511f2e36df4b5c8ee25ca9b6a70"
-const LEGACY_HASH_ARENA_DOOR: String = "f6f64238efd4596bcba526c5a32d60583d6c5d7c55e599aa328b2f41658680d5"
+const LEGACY_HASH_ARENA_DOOR: String = "b9e7437c50e2e485ff50d38aa2a8df5bddaab76bdde6269ab3de6ab8c4800b20"
 
 
 func stealth(sim: CombatSim, actor: String, to_state: String = "hide") -> Array[Dictionary]:

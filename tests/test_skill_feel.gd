@@ -173,7 +173,7 @@ func test_prone_boss_cone_locked_and_standing_costs_the_moment() -> void:
 func test_prone_ai_crawls_at_allowance_one() -> void:
 	# The _step_toward allowance-1 crawl, verified through a mob decision (the
 	# boss now stands before it would ever crawl): a prone roach closes ONE hex
-	# toward a distant target where a standing one closes three.
+	# toward a distant target where a standing one closes four.
 	var sim: CombatSim = make_sim()
 	add_human(sim, "h", {"team": "party", "position": [6, 0]})
 	add_enemy(sim, "roach", "roach_dog")
@@ -182,14 +182,14 @@ func test_prone_ai_crawls_at_allowance_one() -> void:
 	var decision: Dictionary = assert_event(ev_prone, "ai_decision", "prone mob decided")
 	assert_eq(String(decision.get("choice", "")), "move", "out of reach -> close distance")
 	var moved: Dictionary = assert_event(ev_prone, "moved", "the crawl is a real move")
-	assert_eq(moved.get("to", []), [1, 0], "prone allowance 1: one hex, not three")
+	assert_eq(moved.get("to", []), [1, 0], "prone allowance 1: one hex, not four")
 	# Control: the same layout standing covers the full free-move allowance.
 	var sim2: CombatSim = make_sim()
 	add_human(sim2, "h", {"team": "party", "position": [6, 0]})
 	add_enemy(sim2, "roach", "roach_dog")
 	var ev_stand: Array[Dictionary] = ai_decide(sim2, "roach")
 	var moved2: Dictionary = assert_event(ev_stand, "moved", "standing mob moves too")
-	assert_eq(moved2.get("to", []), [3, 0], "standing allowance 3: three hexes")
+	assert_eq(moved2.get("to", []), [4, 0], "standing allowance 4: four hexes")
 
 
 func test_stand_state_serializes_mid_beat() -> void:

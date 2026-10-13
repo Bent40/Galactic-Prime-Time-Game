@@ -35,25 +35,27 @@ extends SimTestBase
 ##     kennel-run fence + the OPEN kennel_run_gate — exists, off every spawn
 ##     (the run drive still WINs in test_run_state/test_dungeon_flow).
 ##
-## THE LADDER (the hand-built map — a 5x3 axial rect, origin [0,0], two wall
-## posts making three rungs; D = the OPEN kennel_gate door, W = wall,
-## P = prey (party human), A/B = war hounds):
+## THE LADDER (the hand-built map — a 6x4 axial rect, origin [0,0]; D = the
+## OPEN kennel_gate door, W = wall, P = prey (party human), A/B = war hounds).
+## Widened 2026-10-13 when the free move went from 3 to 4 (rulebook v1.15):
+## the old 5x3 ladder let B reach bite range in exactly 4 steps.
 ##
-##       q=0    q=1    q=2    q=3    q=4
-##   r=0  .      P      A      B      .
-##   r=1    .      W      .      W      .
-##   r=2      .      .      D      .      .
+##       q=0    q=1    q=2    q=3    q=4    q=5
+##   r=0  .      P      A      B      .      .
+##   r=1    .      W      .      W      W      .
+##   r=2      .      W      D      .      .      .
+##   r=3        .      .      .      .      .      .
 ##
 ## B stands 2 from P (sight 2 = 2 x Mind 1 — SEEN; bodies never block LOS)
 ## but cannot strike this Moment: A's body plugs (2,0) and the walls force
-## the long way round (4+ steps to bite range > allowance 3). The chase would
-## step B to (0,2) (the A* route (2,1),(1,2),(0,2) truncated); the FUNNEL
+## the long way round (6 steps to bite range > allowance 4). The chase would
+## step B to (0,3) (the A* route (2,1),(2,2),(1,3),(0,3) truncated); the FUNNEL
 ## instead posts B on the open door at (2,2) — (2,1), (2,2) — ON the quarry's
 ## escape in one Moment.
 
 const LADDER_ARENA: Dictionary = {
-	"bounds": {"width": 5, "height": 3, "origin": [0, 0]},
-	"walls": [[1, 1], [3, 1]],
+	"bounds": {"width": 6, "height": 4, "origin": [0, 0]},
+	"walls": [[1, 1], [3, 1], [1, 2], [4, 1]],
 	"doors": [{"key": "kennel_gate", "position": [2, 2], "state": "open"}],
 }
 
@@ -101,7 +103,7 @@ func test_role_split_closest_chases_second_cuts_off() -> void:
 	assert_no_event(first, "pack_herding", "the chaser never herds")
 	assert_eq(String(sim.ai.stances.get("hound_a", "")), "aggressive", "a biting chaser reads aggressive")
 	# B (distance 2, SEEN — sight 2, LOS through A's body) cannot strike this
-	# Moment (A plugs (2,0), the walls force the 4-step way round): the funnel
+	# Moment (A plugs (2,0), the walls force the 6-step way round): the funnel
 	# rewrites its chase into the cut-off move ONTO the open door.
 	var second: Array[Dictionary] = ai_decide(sim, "hound_b")
 	var db: Dictionary = assert_event(second, "ai_decision", "the cut-off herder decides")
@@ -175,14 +177,15 @@ func test_nearest_open_door_closed_skipped_and_authored_order_ties() -> void:
 func test_no_open_door_falls_back_to_the_normal_chase() -> void:
 	# The ladder with the door CLOSED: same geometry, no escape to deny — B's
 	# decide IS the normal chase move (the A* route toward bite range,
-	# truncated at allowance 3), pinned exactly.
+	# truncated at allowance 4), pinned exactly. With the door shut the only
+	# way round is the right-hand side and along the bottom row.
 	var sim: CombatSim = ladder_sim(1234, "closed")
 	ai_decide(sim, "hound_a")
 	var events: Array[Dictionary] = ai_decide(sim, "hound_b")
 	var db: Dictionary = assert_event(events, "ai_decision", "B decides")
 	assert_eq(String(db.get("choice", "")), "move", "still a move — the chase")
 	var moved: Dictionary = assert_event(events, "moved", "the chase step resolves")
-	assert_eq(moved.get("to", []), [0, 2], "the NORMAL chase step — (2,1),(1,2),(0,2) truncated, pinned")
+	assert_eq(moved.get("to", []), [4, 2], "the NORMAL chase step — the long way round the right side, (4,0),(5,0),(5,1),(4,2) truncated, pinned")
 	assert_no_event(events, "pack_herding", "no open door -> no funnel")
 
 
@@ -259,8 +262,8 @@ func test_quarry_outside_sight_two_is_chased_not_herded() -> void:
 	var db: Dictionary = assert_event(events, "ai_decision", "the far hound decides")
 	assert_eq(String(db.get("choice", "")), "move", "a plain chase move")
 	var moved: Dictionary = assert_event(events, "moved", "the chase step resolves")
-	assert_eq(moved.get("to", []), [1, 2],
-		"the NORMAL chase route — (3,2),(2,2),(1,2) truncated, pinned — not the door post")
+	assert_eq(moved.get("to", []), [0, 3],
+		"the NORMAL chase route — (3,2),(2,2),(1,3),(0,3) truncated, pinned — not the door post")
 	assert_no_event(events, "pack_herding", "unseen quarry -> no funnel")
 
 
@@ -280,7 +283,7 @@ func test_single_herder_chases_normally() -> void:
 	var db: Dictionary = assert_event(events, "ai_decision", "the lone hound decides")
 	assert_eq(String(db.get("choice", "")), "move", "a plain chase move")
 	var moved: Dictionary = assert_event(events, "moved", "the chase step resolves")
-	assert_eq(moved.get("to", []), [0, 2], "the normal chase route — no cut-off for a lone herder")
+	assert_eq(moved.get("to", []), [0, 3], "the normal chase route — no cut-off for a lone herder")
 	assert_no_event(events, "pack_herding", "a pack of one never funnels")
 
 
@@ -297,7 +300,7 @@ func test_non_herder_pack_is_unchanged() -> void:
 	var db: Dictionary = assert_event(events, "ai_decision", "the second roach decides")
 	assert_eq(String(db.get("choice", "")), "move", "a plain chase move")
 	var moved: Dictionary = assert_event(events, "moved", "the chase step resolves")
-	assert_eq(moved.get("to", []), [0, 2], "byte-identical to the pre-herding chase")
+	assert_eq(moved.get("to", []), [0, 3], "the same route the chase always takes")
 	assert_no_event(events, "pack_herding", "non-herders never funnel")
 
 

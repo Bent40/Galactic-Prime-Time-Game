@@ -123,10 +123,8 @@ const SPIN_FLING_HEXES: int = 3
 ## this much on the boss mid-sequence forces the release and aborts the spin.
 const RELEASE_HIT_THRESHOLD: int = 5
 ## R3 free-move allowance the policy plans with (resolver enforces the real cap).
-## DELIBERATELY still 3 while the resolver allows 4 (rulebook v1.15): planning
-## with ActionResolver.FREE_MOVE_SPACES moves every enemy route and the legacy
-## hash pins, so enemy pacing waits on an owner call (rules-addendum R3).
-const FREE_MOVE_SPACES: int = 3
+## Same number as the resolver (owner 2026-10-13: enemies move 4 too).
+const FREE_MOVE_SPACES: int = ActionResolver.FREE_MOVE_SPACES
 ## Axial hex neighbors in fixed order — deterministic movement tie-break.
 const HEX_NEIGHBORS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),

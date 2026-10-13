@@ -43,7 +43,7 @@ extends SimTestBase
 ## sequences; re-pin all three files together via test_stealth's documented
 ## re-record procedure).
 const LEGACY_HASH_PLAIN: String = "6d8046456d4aee1059e775d8d08f6eee2519c511f2e36df4b5c8ee25ca9b6a70"
-const LEGACY_HASH_ARENA_DOOR: String = "f6f64238efd4596bcba526c5a32d60583d6c5d7c55e599aa328b2f41658680d5"
+const LEGACY_HASH_ARENA_DOOR: String = "b9e7437c50e2e485ff50d38aa2a8df5bddaab76bdde6269ab3de6ab8c4800b20"
 
 
 # ---------------------------------------------------------------- helpers

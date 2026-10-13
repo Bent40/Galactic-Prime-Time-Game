@@ -72,9 +72,11 @@ of the next Clock. Order of operations at each tick:
 > the allowance to 1. `ActionResolver.FREE_MOVE_SPACES = 4` drives both. Five terrain tests in
 > `tests/test_kan5_skills.gd` were re-staged one hex further out so they still pin the
 > priced-hop boundary. **918 passed, 0 failed** on Godot 4.7.1.
-> 🔴 **Enemy PLANNING still uses 3** (`EnemyAI.FREE_MOVE_SPACES`). The resolver would let an enemy
-> move 4; the AI simply never asks. Switching it moves 19 AI-geometry tests and the legacy
-> byte-identical hash pins, so enemy pacing waits on an owner call.
+> ✅ **Enemies plan 4 too (owner, 2026-10-13).** `EnemyAI.FREE_MOVE_SPACES` now reads the
+> resolver's constant, so there is one number. 19 AI-geometry tests were re-staged: the herding
+> ladder widened to 6×4 with two more wall posts so the chase still needs more than one Moment,
+> start distances moved one hex out, and the arena/door legacy hash re-pinned in all three
+> sharing files (reproduced on two full runs). **918 passed, 0 failed** on Godot 4.7.1.
 
 - **PROVISIONAL (numbers; shape settled).** Per tick a combatant gets at most: **one
   scheduled action** (the one due this tick) + ~~**one free (0-Moment) action**~~ **a
